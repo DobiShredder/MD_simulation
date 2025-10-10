@@ -1,0 +1,18 @@
+Heat, warm 0 to 300 K
+ &cntrl
+  imin=0, irest=0, ig=-1,
+  nstlim=500000, dt=0.002,
+  tempi=20.0, temp0=300.0,
+  ntt=3, ntb=1, gamma_ln=1.0,
+  ntp=0,
+  ntc=2, ntf=2, cut=10.0,
+  ntwx=5000, ntwr=5000, ntpr=5000,
+  nmropt=1,
+ /
+ &wt
+    type='TEMP0',
+    istep1=0, istep2=400000,
+    value1=20.0, value2=300.0,
+ /
+ &wt type='END'
+ /

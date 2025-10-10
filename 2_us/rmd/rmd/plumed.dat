@@ -1,0 +1,14 @@
+nterm: COM ATOMS=ATOM1
+cterm: COM ATOMS=ATOM2
+d1: DISTANCE ATOMS=nterm,cterm
+d1c: DISTANCE ATOMS=nterm,cterm COMPONENTS
+
+delta: CUSTOM ...
+    ARG=d1c.x,d1c.y,d1c.z
+    VAR=x,y,z
+    FUNC=sqrt(x^2+y^2+z^2)
+    PERIODIC=NO
+...
+
+ABMD ARG=delta TO=6 KAPPA=100 LABEL=abmd
+PRINT ARG=abmd.bias,delta,d1 STRIDE=100 FILE=abmd.dat
