@@ -8,6 +8,6 @@ intitial minimization solvent + ion, (no SHAKE, periodic)
   /
 Hold the protein fixed
 500.0
-RES 1 42
+RES 1 10
 END
 END

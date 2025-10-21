@@ -1,7 +1,7 @@
 #!/bin/bash
 
 rm *.group
-let num=`cat temp.dat | wc -l`
+let num=`cat temp.list | wc -l`
 for i in `seq 1 $num`
 do
     temp=`cat temp.dat | sed -n ${i}p`
