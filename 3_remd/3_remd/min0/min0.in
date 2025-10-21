@@ -5,9 +5,9 @@ intitial minimization solvent + ion, (no SHAKE, periodic)
    ntc=1, ntf=1, jfastw=4,
    ntb=1,
    ntr=1, cut=10.0,
-   /
-Hold the Protein only
+  /
+Hold the protein fixed
 500.0
-RES 1 10
+RES 1 42
 END
 END

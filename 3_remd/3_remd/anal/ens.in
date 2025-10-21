@@ -1,0 +1,5 @@
+parm ../wat.parm7
+ensemble ../remd/remd.nc.1 remlog ../remd/remd.log nstlim 1000 ntwx 5000
+ensemblesize 10
+rms first :1-42
+trajout ens/ens.nc netcdf remdtraj

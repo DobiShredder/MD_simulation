@@ -1,0 +1,2 @@
+-O -i heat/heat.in.REPNUM -o heat/heat.out.REPNUM -p wat.parm7 -c min1/min1.rst7 -r heat/heat.rst7.REPNUM -x heat/heat.nc.REPNUM -inf heat/heat.info.REPNUM
+-O -remlog remd/remd.log -i remd/remd.in.REPNUM -p wat.parm7 -c heat/heat.rst7.REPNUM -o remd/remd.out.REPNUM -r remd/remd.rst7.REPNUM -x remd/remd.nc.REPNUM -inf remd/remd.info.REPNUM
