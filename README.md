@@ -39,3 +39,46 @@ MD (Molecular Dynamics) simulation tutorials with AMBER, GROMACS
 
 6.2 OPES (On-the-fly Probability Enhanced Sampling with Metadynamics)
 
+
+
+---
+
+## Directory Structure
+
+```
+MD-Simulation-Tutorials/
+├─── 1_md/
+│   ├── amber/
+│   └── gmx/
+├─── 2_Umbrella_Sampling/
+├─── 3_REMD/
+│   ├── 3.1_remd/
+│   ├── 3.2_rest/
+│   ├── 3.3_reus/
+│   └── 3.4_gareus/
+├─── 4_GaMD/
+│   ├── 4.1_gamd/
+│   ├── 4.2_ligamd/
+│   ├── 4.3_pep-gamd/
+│   └── 4.4_ppi-gamd/
+├─── 5_FEP/
+│   ├── 5.1_rbfe/
+│   └── 5.2_abfe/
+├─── 6_MetaD/
+│   ├── 6.1_funnel_metad/
+└───└── 6.2_opes/
+```
+
+---
+
+
+## Key References
+
+- **REMD**      : *Chem Phys Lett* (1999), 314(1-2), 141-151.
+- **GaMD**      : *J Chem Theory Comput* (2015), 11(8), 3584-3595.
+- **FEP**       : *PNAS* (2005), 102(19), 6825-6830.
+- **MetaD**     : *PNAS* (2002), 99(20), 12562-12566.
+- **WT-MetaD**  : *Phys Rev Lett* (2008), 100, 020603.
+- **OPES**      : *J Phys Chem Lett* (2020), 11, 2731-2736.
+
+---
