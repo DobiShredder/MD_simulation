@@ -4,13 +4,12 @@ export PATH=$HOME/anaconda3/bin:$PATH
 source activate alchem
 
 source ~/bashrc/kbs
-source ~/amber24.sh
 
 cd prep
 
 python3 com.py -i nowat.pdb -o aligned.pdb
-cat aligned.pdb | grep -v LIG > prot.pdb
-cat aligned.pdb | grep LIG > lig.pdb
+cat aligned.pdb | grep -v HETATM > prot.pdb
+cat aligned.pdb | grep HETATM > lig.pdb
 tleap -f leap.src
 
 cd ..

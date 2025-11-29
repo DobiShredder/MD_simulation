@@ -1,7 +1,6 @@
 #!/bin/bash
 
 source ~/bashrc/kbs
-source ~/amber24.sh
 
 pmemd.cuda -O -i min0.in -o min0.out -p wat.parm7 -c wat.rst7 -r min0.rst7 -ref wat.rst7
 

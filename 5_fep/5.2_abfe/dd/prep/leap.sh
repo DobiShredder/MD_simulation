@@ -1,11 +1,10 @@
 #!/bin/bash
 
 source ~/bashrc/kbs
-source ~/amber24.sh
 
 ### Prn = residue number in receptor
 ### Ln = atom name in ligand
-Prn=( 152 203 213 )
+Prn=( 120 129 149 )
 Lan=( 'C2' 'C4' 'C6' )
 
 for i in complex complex_dual lig lig_dual
