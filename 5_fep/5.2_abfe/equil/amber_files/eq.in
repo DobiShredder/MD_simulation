@@ -1,0 +1,29 @@
+conventional MD simulation
+ &cntrl
+   imin=0, irest=1, ntx=5,
+   nstlim=100000, dt=0.002,
+   ig=-1, cut=10.0, ntb=2,
+   ntt=3, gamma_ln=1.0, temp0=300.0,
+   ntp=1, barostat=2,
+   ntc=2, ntf=2,
+   ntwx=5000, ntwr=5000, ntpr=5000, ioutfm=1,
+   ntr=1,
+   restraint_wt=50.0, restraintmask=':1',
+   infe=1,
+ /
+ &pmd
+  output_file='cm.dat',
+  output_freq=5000,
+  cv_file='cv.in',
+ /
+Hold the Backbone Atoms
+20.0
+FIND
+* CA * *
+* C * *
+* O * *
+* N * *
+SEARCH
+RES 1 RESNUM
+END
+END

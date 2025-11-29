@@ -1,0 +1,20 @@
+parm wat.parm7
+trajin prep/wat.pdb
+trajin eq5.rst7
+
+rms first :1-RESNUM
+
+strip :DUM
+strip :LIG
+strip :WAT
+strip :Na+
+strip :Cl-
+trajout prot.pdb pdb onlyframes 2
+run
+
+unstrip
+
+rms first :1-RESNUM
+strip !:LIG
+trajout lig.pdb pdb onlyframes 2
+run

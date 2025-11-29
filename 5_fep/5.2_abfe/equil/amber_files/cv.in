@@ -1,0 +1,7 @@
+cv_file
+&colvar
+ cv_type='COM_DISTANCE'
+ cv_ni=CV_NUM, cv_i=ATOM_NUM
+ anchor_position =     0.0000,     0.0000,     0.0000,   999.0000
+ anchor_strength =    10.0000,    10.0000,
+/

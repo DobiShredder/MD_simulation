@@ -1,0 +1,21 @@
+source leaprc.water.tip3p
+source leaprc.gaff
+loadamberparams frcmod.ionsjc_tip3p
+
+LoadAmberPrep ../lig.prepi
+loadamberparams ../lig.frcmod
+LIG = loadpdb ../lig.pdb
+check LIG
+
+savepdb LIG GB.pdb
+saveamberparm LIG GB.parm7 GB.rst7
+
+solvatebox LIG TIP3PBOX 14.0 1.0
+
+addions LIG Na+ 0
+addions LIG Cl- 0
+check LIG
+
+savepdb LIG wat.pdb
+saveamberparm LIG wat.parm7 wat.rst7
+quit

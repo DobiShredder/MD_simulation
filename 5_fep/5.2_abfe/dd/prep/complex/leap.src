@@ -1,0 +1,31 @@
+source leaprc.protein.ff19SB
+source leaprc.water.tip3p
+source leaprc.gaff
+loadamberparams frcmod.ionsjc_tip3p
+
+loadamberparams ../dum.frcmod
+DUM = loadmol2 ../dum.mol2
+check DUM
+
+LoadAmberPrep ../lig.prepi
+loadamberparams ../lig.frcmod
+LIG = loadpdb ../lig.pdb
+check LIG
+
+PROT = loadpdb ../prot.pdb
+check PROT
+
+complex = combine {DUM PROT LIG}
+check complex
+
+savepdb complex GB.pdb
+saveamberparm complex GB.parm7 GB.rst7
+
+solvatebox complex TIP3PBOX 14.0 1.0
+
+addions complex Na+ 0
+addions complex Cl- 0
+
+savepdb complex wat.pdb
+saveamberparm complex wat.parm7 wat.rst7
+quit
