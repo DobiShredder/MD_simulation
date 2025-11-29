@@ -1,0 +1,9 @@
+parm comp_wat.parm7
+trajin ../gareus/gareus.nc.REPNUM 
+
+strip :WAT
+strip :Na+
+strip :Cl-
+
+rms first !:1
+trajout nowat/nowat.nc.REPNUM netcdf 

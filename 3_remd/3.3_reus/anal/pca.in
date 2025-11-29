@@ -1,0 +1,17 @@
+parm comp_GB.parm7
+trajin ens.nc.1
+
+strip !:1
+
+rms first :1
+average crdset AVG
+run
+
+rms ref AVG :1
+matrix covar name MyMatrix :1
+createcrd CRD1
+run
+
+runanalysis diagmatrix MyMatrix vecs 20 name Evecs \
+nmwiz nmwizvecs 20 nmwizfile nmd.1 nmwizmask :1
+crdaction CRD1 projection evecs Evecs :1 out pca.dat.1 beg 1 end 20

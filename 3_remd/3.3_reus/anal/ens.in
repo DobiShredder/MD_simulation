@@ -1,0 +1,9 @@
+parm comp_wat.parm7
+ensemble ../reus/reus.nc.1 remlog ../reus/reus.log nstlim 10000 ntwx 5000
+strip :WAT
+strip :Na+
+strip :Cl-
+
+rms first !:1
+trajout ens/ens.nc netcdf remdtraj
+run

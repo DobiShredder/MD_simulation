@@ -1,0 +1,20 @@
+Ligand Gaussian-accelerated Molecular Dynamics 3 (LiGaMD3) Simulation for protein-ligand binding interaction
+ &cntrl
+   imin=0, irest=1,
+   nstlim=100000000, dt=0.002,                            !Time steps
+   ntx=5, ig=-1, cut=10.0,                                !Nonbonded cutoff in PME
+   ntb=1, ntt=3, gamma_ln=1.0, temp0=300.0,               !Temperature control
+   ntc=2, ntf=1, 
+   ntwx=5000, ntwr=5000, ntpr=5000,                       !Output format and save frequency
+   iwrap=1, ioutfm=1,
+
+   igamd=28, irest_gamd=1, iEP=2, iED=2, iEB=2,           !Ligand and system dual boosting
+   ntcmdprep=0, ntcmd=0,                                  !
+   ntebprep=0, nteb=0, ntave=100000,                      !
+   sigma0P=6.0, sigma0D=6.0, sigma0B=6.0,                 !The limit of standard deviation of boost potential
+
+   icfe=1, ifsc=1, gti_cpu_output=0, gti_add_sc=1,        !Ligand atoms will be difined by TI module in PMEMD
+   timask1=':1', timask2='',
+   scmask1=':1', scmask2='',
+   bgpro2atm=BEGIN, edpro2atm=END,
+/

@@ -11,7 +11,7 @@ Heat, warm 0 to 300 K
  /
  &wt
     type='TEMP0',
-    istep1=0, istep2=400000,
+    istep1=0, istep2=450000,
     value1=20.0, value2=300.0,
  /
  &wt type='END'

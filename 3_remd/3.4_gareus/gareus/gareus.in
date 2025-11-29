@@ -1,0 +1,18 @@
+Gaussian accelerated Replica Exchange Umbrella Sampling - GaREUS
+  &cntrl
+    imin=0, irest=1, ntx=5, ig=RANDOMNUM,
+    nstlim=1000, numexchg=100000, dt=0.002,
+    ntt=3, temp0=300.0, gamma_ln=1.0,
+    ntc=2, ntf=2, ntb=1,
+    cut=10.0, iwrap=1, ioutfm=1, nmropt=1,
+    ntwr=5000, ntpr=5000, ntwx=5000,
+
+    igamd=3, iE=1,
+    ntcmdprep=250000, ntcmd=1000000,
+    ntebprep=250000, nteb=1000000, ntave=50000,
+    sigma0P=6, sigma0D=6,
+  /
+ &wt type='DUMPFREQ', istep1=100, /
+ &wt type='END', /
+DISANG=dist/dist.RST.REPNUM
+DUMPAVE=dist/dist.dat.REPNUM

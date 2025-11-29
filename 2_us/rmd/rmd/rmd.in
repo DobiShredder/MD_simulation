@@ -1,6 +1,6 @@
 rMD simulation with PLUMED plugin 
  &cntrl
-   imin=0, irest=1, nstlim=10000000, dt=0.002,   !Time steps (20ns)
+   imin=0, irest=1, nstlim=1000000, dt=0.002,   !Time steps (2ns)
    ntx=5, ig=-1, cut=10.0,                      !Nonbonded cutoff in PME
    ntt=3, gamma_ln=1.0, temp0=300.0,            !Temperature controll
    ntc=2, ntf=2, ntb=1,                         !SHAKE to bonds involving H-atoms

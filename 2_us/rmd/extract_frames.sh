@@ -1,24 +1,34 @@
 #!/bin/bash
 
+mkdir -p snap
+
 n_rep=`cat dist.list | wc -l`
 for i in `seq 1 $n_rep`
 do
         d=`cat dist.list | sed -n "${i}p"`
-        cat dist.dat | tail -n +2 |
+        cat anal/dist.dat | tail -n +2 |
         awk -v b=$d 'BEGIN { min=60 } { dif=sqrt(($2-b)^2);
             if ( dif < min ) { min=dif ; num=NR ; dist=$2 } } END {print num, dist }' >> dist_sum.dat
 done
 
+
+prep_in="parm wat.parm7\n
+trajin rmd/rmd.nc\n
+autoimage :1\n
+strip :WAT\n
+strip :Na+\n
+strip :Cl-"
+
+echo -e ${prep_in} > prep.in
+
 let num=1
-for j in `cat dist_sum.dat | awk '{print $1}'`
+for i in `cat dist_sum.dat | awk '{print $1}'`
 do
-        echo "parm wat.parm7" > prep$num.in
-        echo "trajin rmd/rmd.nc $j $j 1" >> prep$num.in
-        echo "autoimage :1" >> prep$num.in
-        echo "trajout snap/wat.rst7.$num restart" >> prep$num.in
-        cpptraj -i prep$num.in
-        rm prep$num.in
+        echo "trajout snap/rmd.pdb.${num} pdb onlyframes ${i}" >> prep.in
         let num=num+1
 done
+cpptraj -i prep.in
+rm prep.in
 
 rm dist_sum.dat
+
