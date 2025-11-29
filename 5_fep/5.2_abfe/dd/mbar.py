@@ -29,14 +29,14 @@ for cy in cycle_name:
 
     mbar = MBAR()
     mbar.fit(alchemlyb.concat(decorrelated_u_nk_list))
-    delta_f_kBT = mbar.deltaf_.loc[0.00, 1.00]
+    delta_f_kBT = mbar.delta_f_.loc[0.00, 1.00]
     abfe.append(delta_f_kBT * RT)
 
 
 disang = []                         # disang : dist, a1, a2, d1, d2, d3
 rk = []                             # rk : force constant for dist, a1, a2, d1, d2, d3
 
-with open("dd/prep/disang.rest") as f:
+with open("prep/disang.rest") as f:
     lines = f.readlines()
     for line in lines:
         sub1 = "r2"
@@ -46,7 +46,7 @@ with open("dd/prep/disang.rest") as f:
 
         val_r = float(re.findall("\d+\.\d+", dis_text[0])[0])
         val_k = float(re.findall("\d+\.\d+", rk_text[0])[0])
-        disang.append(val_r))
+        disang.append(val_r)
         rk.append(val_k * 2)
 
 thA = math.radians(disang[1])       # convert angle from degrees to radians --> math.sin() wants radians
@@ -54,10 +54,10 @@ thB = math.radians(disang[2])       # convert angle from degrees to radians --> 
 
 
 arg =( (8 * math.pi**2 * V) / ((disang[0]/10)**2 * math.sin(thA) * math.sin(thB)) 
-      * ( ( (rk[0] * rk[1] * rk[2] * rk[3] * rk[4] * rk[5])**0.5 ) / ( (2 * math.pi * K * T)**(3) ) ) )
-dG_rest= - (K * T * math.log(arg)) / 4.184
+      * ( ( (rk[0] * rk[1] * rk[2] * rk[3] * rk[4] * rk[5])**0.5 ) / ( (2 * math.pi * RT)**(3) ) ) )
+dG_rest= - RT * math.log(arg)
 
-dG = - abfe[0] - abfe[1] + abfe[2] + abfe[3] + dG_rest
+dG = - abfe[0] - abfe[1] + abfe[2] + abfe[3] - dG_rest
 
 print("complex elec : %.4f" % (-abfe[0]) )
 print("complex vdw  : %.4f" % (-abfe[1]) )
@@ -73,4 +73,5 @@ with open('mbar.log', 'w') as f:
     f.write("ligand vdw   : %.4f\n" % abfe[3] )
     f.write("restraint    : %.4f\n" % (-dG_rest) )
     f.write("dG = %.4f\n" % dG)
+
 
