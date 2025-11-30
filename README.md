@@ -6,39 +6,43 @@
 [![Python](https://img.shields.io/badge/Python-3.8+-yellow?style=flat&logo=python)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
-A comprehensive collection of Molecular Dynamics (MD) simulation tutorials using **AMBER** and **GROMACS**. This repository covers enhanced sampling techniques ranging from conventional MD to free energy calculations.
+A comprehensive collection of Molecular Dynamics (MD) simulation tutorials using **AMBER** and **GROMACS**.
+
+This repository covers enhanced sampling techniques ranging from conventional MD to free energy calculations.
+
+
 
 ---
 
 ## 📚 Table of Contents
 
 ### 1. 💧 Conventional MD Simulation
-Basic setup and production runs for standard molecular dynamics.
+Basic setup and production runs for conventional molecular dynamics.
 
 ### 2. ☂️ US (Umbrella Sampling)
 Free energy calculations along a reaction coordinate using the umbrella sampling method.
 
 ### 3. 🌡️ REMD (Replica Exchange Molecular Dynamics)
 Enhanced sampling techniques to overcome energy barriers.
-- **3.1 REMD**: Standard T-REMD (Temperature Replica Exchange).
+- **3.1 REMD**: Standard T-REMD (Temperature-Replica Exchange).
 - **3.2 REST**: Replica Exchange with Solute Tempering (using **GROMACS**).
 - **3.3 REUS**: Replica Exchange Umbrella Sampling (combining REMD + US).
 - **3.4 GaREUS**: Gaussian accelerated Replica Exchange Umbrella Sampling.
 
 ### 4. 🚀 Gaussian Accelerated MD (GaMD)
 Unconstrained enhanced sampling method that works by adding a boost potential.
-- **4.1 GaMD**: Basic Gaussian accelerated MD.
-- **4.2 LiGaMD**: Ligand GaMD for binding free energy estimation.
-- **4.3 Pep-GaMD**: Peptide GaMD for peptide folding and binding.
+- **4.1 GaMD**: Gaussian accelerated MD.
+- **4.2 LiGaMD**: Ligand GaMD for protein-ligand interaction.
+- **4.3 Pep-GaMD**: Peptide GaMD for protein-peptide interaction.
 - **4.4 PPi-GaMD**: Protein-Protein interaction GaMD.
 
 ### 5. ⚡ Free Energy Perturbation (FEP)
-Alchemical free energy calculations for binding affinities.
+Alchemical free energy calculations
 - **5.1 RBFE**: Relative Binding Free Energy (using **GROMACS**).
 - **5.2 ABFE**: Absolute Binding Free Energy (using **AMBER**).
 
 ### 6. 🏔️ Metadynamics (MetaD)
-Bias potential methods based on collective variables (CVs).
+Bias potential methods based on collective variables.
 - **6.1 Funnel-MetaD**: Funnel-restrained Metadynamics for binding free energy.
 - **6.2 OPES**: On-the-fly Probability Enhanced Sampling (Next-gen Metadynamics).
 
@@ -103,4 +107,7 @@ matplotlib
 alchemlyb
 pymol-open-source
 ```
+
+*Created and maintained by DobiShredder*
+
 
