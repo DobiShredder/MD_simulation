@@ -101,13 +101,20 @@ To run the analysis scripts, you need the following Python libraries. You can in
 
 I recommend to manage your Python packages using [Anaconda](https://www.anaconda.com/download)
 ```bash
-numpy
-pandas
-matplotlib
-alchemlyb
-pymol-open-source
+**numpy**
+**pandas**
+**matplotlib**
+**pymbar**
+**alchemlyb**
+**pymol-open-source**
 ```
 
+*If you need some any help, pleas contact me.*
+
+
+
+
 *Created and maintained by DobiShredder*
+
 
 
