@@ -25,7 +25,7 @@ MD (Molecular Dynamics) simulation tutorials with AMBER, GROMACS
 
 4.3 Pep-GaMD (Peptide Gaussian accelerated MD simulation)
 
-4.4 PPI-GaMD (Protein-Protein Interaction Gaussian accelerated MD simulation)
+4.4 PPi-GaMD (Protein-Protein interaction Gaussian accelerated MD simulation)
 
 
 ## 5. Free Energy Perturbation (FEP)
@@ -34,7 +34,7 @@ MD (Molecular Dynamics) simulation tutorials with AMBER, GROMACS
 5.2 ABFE (Absolute Binding Free Energy) with AMBER
 
 
-## 6. MetaD (Metadynamics)
+## 6. Metadynamics (MetaD)
 6.1 funnel-MetaD
 
 6.2 OPES (On-the-fly Probability Enhanced Sampling with Metadynamics)
@@ -47,26 +47,26 @@ MD (Molecular Dynamics) simulation tutorials with AMBER, GROMACS
 
 ```
 MD-Simulation-Tutorials/
-├─── 1_md/
-│   ├── amber/
-│   └── gmx/
-├─── 2_Umbrella_Sampling/
+├─── 1_MD/
+│   ├── AMBER/
+│   └── GMX/
+├─── 2_US/
 ├─── 3_REMD/
-│   ├── 3.1_remd/
-│   ├── 3.2_rest/
-│   ├── 3.3_reus/
-│   └── 3.4_gareus/
+│   ├── 3.1_REMD/
+│   ├── 3.2_REST/
+│   ├── 3.3_REUS/
+│   └── 3.4_GaREUS/
 ├─── 4_GaMD/
-│   ├── 4.1_gamd/
-│   ├── 4.2_ligamd/
-│   ├── 4.3_pep-gamd/
-│   └── 4.4_ppi-gamd/
+│   ├── 4.1_GaMD/
+│   ├── 4.2_LiGaMD/
+│   ├── 4.3_Pep-GaMD/
+│   └── 4.4_PPi-GaMD/
 ├─── 5_FEP/
-│   ├── 5.1_rbfe/
-│   └── 5.2_abfe/
+│   ├── 5.1_RBFE/
+│   └── 5.2_ABFE/
 ├─── 6_MetaD/
-│   ├── 6.1_funnel_metad/
-└───└── 6.2_opes/
+│   ├── 6.1_funnel_MetaD/
+└───└── 6.2_OPES/
 ```
 
 ---
