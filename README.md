@@ -2,7 +2,7 @@
 
 [![AMBER](https://img.shields.io/badge/AMBER-20+-orange?style=flat)](https://ambermd.org/)
 [![GROMACS](https://img.shields.io/badge/GROMACS-2020+-blue?style=flat&logo=gromacs)](https://manual.gromacs.org/)
-[![PLUMED](https://img.shields.io/badge/PLUMED-2.7+-grey?style=flat)](https://www.plumed.org/)
+[![PLUMED](https://img.shields.io/badge/PLUMED-2.7+-lightgrey?style=flat)](https://www.plumed.org/)
 [![Python](https://img.shields.io/badge/Python-3.8+-yellow?style=flat&logo=python)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
