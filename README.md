@@ -78,12 +78,12 @@ MD-Simulation-Tutorials/
 
 | Method | Journal | Year | Citation | DOI
 | :--- | :--- | :---: | :--- | :---: |
-| **REMD** | *Chem. Phys. Lett.* | 1999 | Sugita & Okamoto, 314(1-2), 141-151 | [10.1016/10.1016/S0009-2614(99)01123-9](https://doi.org/10.1016/S0009-2614(99)01123-9)
-| **GaMD** | *J. Chem. Theory Comput.* | 2015 | Miao et al., 11(8), 3584-3595 |
-| **FEP** | *PNAS* | 2005 | Wang et al., 102(19), 6825-6830 |
-| **MetaD** | *PNAS* | 2002 | Laio & Parrinello, 99(20), 12562-12566 |
-| **WT-MetaD** | *Phys. Rev. Lett.* | 2008 | Barducci et al., 100, 020603 |
-| **OPES** | *J. Phys. Chem. Lett.* | 2020 | Invernizzi & Parrinello, 11, 2731-2736 |
+| **REMD** | *Chem. Phys. Lett.* | 1999 | Sugita & Okamoto, 314(1-2), 141-151 | [10.1016/S0009-2614(99)01123-9](https://doi.org/10.1016/S0009-2614(99)01123-9)
+| **GaMD** | *J. Chem. Theory Comput.* | 2015 | Miao et al., 11(8), 3584-3595 | [10.1021/acs.jctc.5b00436](https://dx.doi.org/10.1021/acs.jctc.5b00436)
+| **FEP** | *PNAS* | 2005 | Wang et al., 102(19), 6825-6830 | [10.1073/pnas.0409005102](https://doi.org/10.1073/pnas.0409005102)
+| **MetaD** | *PNAS* | 2002 | Laio & Parrinello, 99(20), 12562-12566 | [10.1073/pnas.202427399](https://doi.org/10.1073/pnas.202427399)
+| **WT-MetaD** | *Phys. Rev. Lett.* | 2008 | Barducci et al., 100, 020603 | [10.1103/PhysRevLett.100.020603](https://doi.org/10.1103/PhysRevLett.100.020603)
+| **OPES** | *J. Phys. Chem. Lett.* | 2020 | Invernizzi & Parrinello, 11, 2731-2736 | [10.1021/acs.jpclett.0c00497](http://dx.doi.org/10.1021/acs.jpclett.0c00497)
 
 
 ## 🛠️ Prerequisites & Tools
