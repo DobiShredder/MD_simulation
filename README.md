@@ -92,8 +92,8 @@ The tutorials utilize the following software packages. Please ensure they are in
 
 | Software | Description | Official Site |
 | :--- | :--- | :--- |
-| ![AMBER](https://img.shields.io/badge/AMBER-20+-orange) | Molecular dynamics package | [ambermd.org](http://ambermd.org/) |
-| ![GROMACS](https://img.shields.io/badge/GROMACS-2020+-blue) | Molecular dynamics package | [gromacs.org](https://manual.gromacs.org/)
+| ![AMBER](https://img.shields.io/badge/AMBER-20+-orange) | MD simulation package | [ambermd.org](http://ambermd.org/) |
+| ![GROMACS](https://img.shields.io/badge/GROMACS-2020+-blue) | MD simulation package | [gromacs.org](https://manual.gromacs.org/)
 | ![PLUMED](https://img.shields.io/badge/PLUMED-2.7+-lightgrey) | Plugin for enhanced sampling algorithms | [plumed.org](https://www.plumed.org/) |
 | ![Python](https://img.shields.io/badge/Python-3.8%2B-yellow?logo=python&logoColor=white) | Analysis & plotting | [python.org](https://www.python.org/) |
 
