@@ -53,25 +53,26 @@ Bias potential methods based on collective variables.
 ```bash
 MD-Simulation-Tutorials/
 ├── 1_MD/
-│   ├── AMBER/           # Conventional MD with AMBER
-│   └── GMX/             # Conventional MD with GROMACS
-├── 2_US/                # Umbrella Sampling
+│   ├── AMBER/               # Conventional MD with AMBER
+│   └── GMX/                 # Conventional MD with GROMACS
+├── 2_US/                    # Umbrella Sampling
 ├── 3_REMD/
-│   ├── 3.1_REMD/        # Standard REMD
-│   ├── 3.2_REST/        # Solute Tempering (GROMACS)
-│   ├── 3.3_REUS/        # Replica Exchange US
-│   └── 3.4_GaREUS/      # Gaussian accelerated REUS
+│   ├── 3.1_REMD/            # Standard REMD
+│   ├── 3.2_REST/            # Solute Tempering (GROMACS)
+│   ├── 3.3_REUS/            # Replica Exchange US
+│   └── 3.4_GaREUS/          # Gaussian accelerated REUS
 ├── 4_GaMD/
-│   ├── 4.1_GaMD/        # Standard GaMD
-│   ├── 4.2_LiGaMD/      # Ligand GaMD
-│   ├── 4.3_Pep-GaMD/    # Peptide GaMD
-│   └── 4.4_PPi-GaMD/    # Protein-Protein Interaction
+│   ├── 4.1_GaMD/            # Standard GaMD
+│   ├── 4.2_LiGaMD/          # Ligand-GaMD
+│   ├── 4.3_Pep-GaMD/        # Peptide-GaMD
+│   └── 4.4_PPi-GaMD/        # Protein-Protein interaction GaMD
 ├── 5_FEP/
-│   ├── 5.1_RBFE/        # Relative Binding Free Energy
-│   └── 5.2_ABFE/        # Absolute Binding Free Energy
+│   ├── 5.1_RBFE/            # Relative Binding Free Energy
+│   └── 5.2_ABFE/            # Absolute Binding Free Energy
 └── 6_MetaD/
-    ├── 6.1_funnel_MetaD/
-    └── 6.2_OPES/        # OPES Method
+	├── 6.1_WT-MetaD/        # Well-Tempered Metadynamics
+    ├── 6.2_funnel-MetaD/    # funnel-restrainted Metadynamics
+    └── 6.3_OPES/            # OPES Method
 ```
 
 
