@@ -13,6 +13,9 @@ This repository covers enhanced sampling techniques ranging from conventional MD
 **Youtube videos and presentation files for description will be updated soon**
 
 
+
+**presentation slides for description (updating):** [**here**](https://docs.google.com/presentation/d/1rGrlHCfM9lWvhG1cafMP6cIJ3lagn0hf/edit?usp=drive_link&ouid=111574709419600577762&rtpof=true&sd=true)
+
 ---
 
 ## 📚 Table of Contents
