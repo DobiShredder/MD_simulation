@@ -10,6 +10,7 @@ A comprehensive collection of Molecular Dynamics (MD) simulation tutorials using
 
 This repository covers enhanced sampling techniques ranging from conventional MD to free energy calculations.
 
+**Youtube videos and presentation files for description will be updated soon**
 
 
 ---
