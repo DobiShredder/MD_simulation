@@ -101,7 +101,7 @@ The tutorials utilize the following software packages. Please ensure they are in
 ### 🐍 Python Dependencies
 To run the analysis scripts, you need the following Python libraries. You can install them via `pip` or `conda`.
 
-I recommend to manage your Python packages using [Anaconda](https://www.anaconda.com/download)
+I recommend to manage your Python packages through virtual environment (ex: [Anaconda](https://www.anaconda.com/download))
 ```bash
 numpy
 pandas
