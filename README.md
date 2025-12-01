@@ -76,9 +76,9 @@ MD-Simulation-Tutorials/
 ```
 
 
-| Method | Journal | Year | Citation |
-| :--- | :--- | :---: | :--- |
-| **REMD** | *Chem. Phys. Lett.* | 1999 | Sugita & Okamoto, 314(1-2), 141-151 |
+| Method | Journal | Year | Citation | DOI
+| :--- | :--- | :---: | :--- | :---: |
+| **REMD** | *Chem. Phys. Lett.* | 1999 | Sugita & Okamoto, 314(1-2), 141-151 | [10.1016/10.1016/S0009-2614(99)01123-9](https://doi.org/10.1016/S0009-2614(99)01123-9)
 | **GaMD** | *J. Chem. Theory Comput.* | 2015 | Miao et al., 11(8), 3584-3595 |
 | **FEP** | *PNAS* | 2005 | Wang et al., 102(19), 6825-6830 |
 | **MetaD** | *PNAS* | 2002 | Laio & Parrinello, 99(20), 12562-12566 |
