@@ -47,8 +47,9 @@ Alchemical free energy calculations
 
 ### 6. 🏔️ Metadynamics (MetaD)
 Bias potential methods based on collective variables.
-- **6.1 Funnel-MetaD**: Funnel-restrained Metadynamics for binding free energy.
-- **6.2 OPES**: On-the-fly Probability Enhanced Sampling (Next-gen Metadynamics).
+- **6.1 WT-MetaD**: Well-Tempered Metadynamics
+- **6.2 Funnel-MetaD**: Funnel-restrained Metadynamics for binding free energy.
+- **6.3 OPES**: On-the-fly Probability Enhanced Sampling (Next-gen Metadynamics).
 
 ---
 
