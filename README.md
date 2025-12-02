@@ -82,10 +82,14 @@ MD-Simulation-Tutorials/
 
 | Method | Journal | Year | Citation
 | :--- | :--- | :---: | :--- |
+| **US** | *J. Comput. Phys.* | 1977 | [23(2), 187-199](https://doi.org/10.1016/0021-9991(77)90121-8)
 | **REMD** | *Chem. Phys. Lett.* | 1999 | [314(1-2), 141-151](https://doi.org/10.1016/S0009-2614(99)01123-9)
+| **REST** | *Proc. Natl. Acad. Sci. U.S.A.* | 2005 | [102(39), 13749-13754](https://doi.org/10.1073/pnas.0506346102)
+| **REUS** | *J. Chem. Phys.* | 2000 | [113, 6042–6051](https://doi.org/10.1063/1.1308516)
+| **GaREUS** | *J. Chem. Theory Comput.* | 2019 | [15, 5199−5208](http://dx.doi.org/10.1021/acs.jctc.9b00761)
 | **GaMD** | *J. Chem. Theory Comput.* | 2015 | [11(8), 3584-3595](https://dx.doi.org/10.1021/acs.jctc.5b00436)
-| **FEP** | *PNAS* | 2005 | [102(19), 6825-6830](https://doi.org/10.1073/pnas.0409005102)
-| **MetaD** | *PNAS* | 2002 | [99(20), 12562-12566](https://doi.org/10.1073/pnas.202427399)
+| **FEP** | *Proc. Natl. Acad. Sci. U.S.A.* | 2005 | [102(19), 6825-6830](https://doi.org/10.1073/pnas.0409005102)
+| **MetaD** | *Proc. Natl. Acad. Sci. U.S.A.* | 2002 | [99(20), 12562-12566](https://doi.org/10.1073/pnas.202427399)
 | **WT-MetaD** | *Phys. Rev. Lett.* | 2008 | [100, 020603](https://doi.org/10.1103/PhysRevLett.100.020603)
 | **OPES** | *J. Phys. Chem. Lett.* | 2020 | [11, 2731-2736](http://dx.doi.org/10.1021/acs.jpclett.0c00497)
 
