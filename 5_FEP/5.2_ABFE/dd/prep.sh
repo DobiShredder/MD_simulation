@@ -17,7 +17,7 @@ mbar_list2=`echo ${lambda2[@]} | sed "1,$ s/ /, /g"` ; mbar_num2=`echo ${#lambda
 mbar_list3=`echo ${lambda3[@]} | sed "1,$ s/ /, /g"` ; mbar_num3=`echo ${#lambda3[@]}`
 
 let n_res=`cat prep/prot.pdb | grep CA | wc -l`
-let n_term=n_res+1 ; let n_lig1=n_res+2 ; let n_lig2=n_res+3
+let n_term=n_res+1 ; let n_lig=n_res+2
 
 
 cdir=`pwd`
@@ -34,10 +34,10 @@ do
       awk 'BEGIN { printf "1,0," } { if ( $3=="C" || $3=="O" || $3=="CA" || $3=="N") printf "%s,", $2}'`
     let resnum=n_res+2
     cat amber_files/cv.in | sed "1,$ s/CV_NUM/${cv_num}/g;s/ATOM_NUM/${cv_atoms}/g" > v${j}/cv.in
-    cat amber_files/heat-lj-comp.in | sed "1,$ s/C_LAMBDA/${lambda3[$j]}/g;s/MK1/${n_lig1}/g;s/RESNUM/${n_term}/g" > v${j}/heat.in
-    cat amber_files/eq-lj-comp.in | sed "1,$ s/C_LAMBDA/${lambda3[$j]}/g;s/MK1/${n_lig1}/g;s/RESNUM/${n_term}/g" > v${j}/eq.in
-    cat amber_files/ti-lj-comp.in | sed "1,$ s/C_LAMBDA/${lambda3[$j]}/g;s/MK1/${n_lig1}/g;s/MBAR_NUM/${mbar_num3}/g;s/MBAR_LIST/${mbar_list3}/g;s/RESNUM/${n_term}/g" > v${j}/ti.in
-    ln -s ${cdir}/prep/complex/wat.parm7 v${j}/wat.parm7
+    cat amber_files/heat-lj-comp.in | sed "1,$ s/C_LAMBDA/${lambda3[$j]}/g;s/MK1/${n_lig}/g;s/RESNUM/${n_term}/g" > v${j}/heat.in
+    cat amber_files/eq-lj-comp.in | sed "1,$ s/C_LAMBDA/${lambda3[$j]}/g;s/MK1/${n_lig}/g;s/RESNUM/${n_term}/g" > v${j}/eq.in
+    cat amber_files/ti-lj-comp.in | sed "1,$ s/C_LAMBDA/${lambda3[$j]}/g;s/MK1/${n_lig}/g;s/MBAR_NUM/${mbar_num3}/g;s/MBAR_LIST/${mbar_list3}/g;s/RESNUM/${n_term}/g" > v${j}/ti.in
+    ln -s ${cdir}/prep/complex/wat_decharged.parm7 v${j}/wat.parm7
     ln -s ${cdir}/prep/complex/wat.rst7 v${j}/wat.rst7
     cp ${cdir}/prep/disang.rest v${j}/disang.rest
     echo "v${j}" >> list
@@ -56,12 +56,12 @@ do
       awk 'BEGIN { printf "1,0," } { if ( $3=="C" || $3=="O" || $3=="CA" || $3=="N") printf "%s,", $2}'`
     let resnum=n_res+3
     cat amber_files/cv.in | sed "1,$ s/CV_NUM/${cv_num}/g;s/ATOM_NUM/${cv_atoms}/g" > e${j}/cv.in
-    cat amber_files/heat-ch-comp.in | sed "1,$ s/C_LAMBDA/${lambda2[$j]}/g;s/MK1/${n_lig1}/g;s/MK2/${n_lig2}/g;s/RESNUM/${n_term}/g" > e${j}/heat.in
-    cat amber_files/eq-ch-comp.in | sed "1,$ s/C_LAMBDA/${lambda2[$j]}/g;s/MK1/${n_lig1}/g;s/MK2/${n_lig2}/g;s/RESNUM/${n_term}/g" > e${j}/eq.in
-    cat amber_files/ti-ch-comp.in | sed "1,$ s/C_LAMBDA/${lambda2[$j]}/g;s/MK1/${n_lig1}/g;s/MK2/${n_lig2}/g;s/MBAR_NUM/${mbar_num2}/g;s/MBAR_LIST/${mbar_list2}/g;s/RESNUM/${n_term}/g"> e${j}/ti.in
-    ln -s ${cdir}/prep/complex_dual/wat.parm7 e${j}/wat.parm7
-    ln -s ${cdir}/prep/complex_dual/wat.rst7 e${j}/wat.rst7
-    cp ${cdir}/prep/disang-dual.rest e${j}/disang.rest
+    cat amber_files/heat-ch-comp.in | sed "1,$ s/C_LAMBDA/${lambda2[$j]}/g;s/MK1/${n_lig}/g;s/RESNUM/${n_term}/g" > e${j}/heat.in
+    cat amber_files/eq-ch-comp.in | sed "1,$ s/C_LAMBDA/${lambda2[$j]}/g;s/MK1/${n_lig}/g;s/RESNUM/${n_term}/g" > e${j}/eq.in
+    cat amber_files/ti-ch-comp.in | sed "1,$ s/C_LAMBDA/${lambda2[$j]}/g;s/MK1/${n_lig}/g;s/MBAR_NUM/${mbar_num2}/g;s/MBAR_LIST/${mbar_list2}/g;s/RESNUM/${n_term}/g"> e${j}/ti.in
+    ln -s ${cdir}/prep/complex/wat.parm7 e${j}/wat.parm7
+    ln -s ${cdir}/prep/complex/wat.rst7 e${j}/wat.rst7
+    cp ${cdir}/prep/disang.rest e${j}/disang.rest
     echo "e${j}" >> list
 done
 
@@ -76,7 +76,7 @@ do
     cat amber_files/heat-lj-lig.in | sed "1,$ s/C_LAMBDA/${lambda1[$j]}/g;s/MK1/1/g" > w${j}/heat.in
     cat amber_files/eq-lj-lig.in | sed "1,$ s/C_LAMBDA/${lambda1[$j]}/g;s/MK1/1/g" > w${j}/eq.in
     cat amber_files/ti-lj-lig.in | sed "1,$ s/C_LAMBDA/${lambda1[$j]}/g;s/MK1/1/g;s/MBAR_NUM/${mbar_num1}/g;s/MBAR_LIST/${mbar_list1}/g" > w${j}/ti.in
-    ln -s ${cdir}/prep/lig/wat.parm7 w${j}/wat.parm7
+    ln -s ${cdir}/prep/lig/wat_decharged.parm7 w${j}/wat.parm7
     ln -s ${cdir}/prep/lig/wat.rst7 w${j}/wat.rst7
     echo "w${j}" >> list
 done
@@ -89,11 +89,11 @@ do
     cat amber_files/qsub.sh | sed "1,$ s/NAME/ti_f${j}/g" > f${j}/qsub.sh
     cp amber_files/run.sh f${j}/
     let resnum=1
-    cat amber_files/heat-ch-lig.in | sed "1,$ s/C_LAMBDA/${lambda1[$j]}/g;s/MK1/1/g;s/MK2/2/g" > f${j}/heat.in
-    cat amber_files/eq-ch-lig.in | sed "1,$ s/C_LAMBDA/${lambda1[$j]}/g;s/MK1/1/g;s/MK2/2/g" > f${j}/eq.in
-    cat amber_files/ti-ch-lig.in | sed "1,$ s/C_LAMBDA/${lambda1[$j]}/g;s/MK1/1/g;s/MK2/2/g;s/MBAR_NUM/${mbar_num1}/g;s/MBAR_LIST/${mbar_list1}/g" > f${j}/ti.in
-    ln -s ${cdir}/prep/lig_dual/wat.parm7 f${j}/wat.parm7
-    ln -s ${cdir}/prep/lig_dual/wat.rst7 f${j}/wat.rst7
+    cat amber_files/heat-ch-lig.in | sed "1,$ s/C_LAMBDA/${lambda1[$j]}/g;s/MK1/1/g" > f${j}/heat.in
+    cat amber_files/eq-ch-lig.in | sed "1,$ s/C_LAMBDA/${lambda1[$j]}/g;s/MK1/1/g" > f${j}/eq.in
+    cat amber_files/ti-ch-lig.in | sed "1,$ s/C_LAMBDA/${lambda1[$j]}/g;s/MK1/1/g;s/MBAR_NUM/${mbar_num1}/g;s/MBAR_LIST/${mbar_list1}/g" > f${j}/ti.in
+    ln -s ${cdir}/prep/lig/wat.parm7 f${j}/wat.parm7
+    ln -s ${cdir}/prep/lig/wat.rst7 f${j}/wat.rst7
     echo "f${j}" >> list
 done
 

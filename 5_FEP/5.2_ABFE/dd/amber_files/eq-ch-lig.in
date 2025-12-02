@@ -10,7 +10,6 @@ TI running charge decoupling
 
    icfe=1,
    clambda=C_LAMBDA,
-   timask1=':MK1', timask2=':MK2', crgmask=':MK2',
+   timask1=':MK1', timask2='', crgmask=':MK1',
    ifsc=0,
-   gti_chg_keep=0,
  /

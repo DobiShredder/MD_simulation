@@ -8,11 +8,11 @@ Heat, warm 0 to 300 K
   ntc=2, ntf=1, cut=10.0,
   ntwx=5000, ntwr=5000, ntpr=5000,
   nmropt=1,
+
   icfe=1, scalpha=0.5, scbeta=12.0,
   clambda=C_LAMBDA,
-  timask1=':MK1', timask2='', crgmask=':MK1',
-  ifsc=1, scmask1=':MK1', scmask2='',
-  gti_chg_keep=0, gti_add_sc=1,
+  timask1=':MK1', timask2='',
+  ifsc=1, scmask1=':MK1',
  /
  &wt
   type='TEMP0',

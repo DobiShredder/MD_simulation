@@ -1,0 +1,4 @@
+parm wat.parm7
+change CHARGE :LIG 0.00
+outparm wat_decharged.parm7
+quit
