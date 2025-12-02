@@ -114,7 +114,7 @@ alchemlyb
 pymol-open-source
 ```
 
-*If you need any help, pleas contact me.*
+*If you need any help, please contact me.*
 
 
 
