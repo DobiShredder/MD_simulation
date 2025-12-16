@@ -1,4 +1,4 @@
-Heat, warm 0 to 300 K
+Heat, warm 20 to 300 K
  &cntrl
   imin=0, irest=0, ig=-1,
   nstlim=500000, dt=0.002,
@@ -14,7 +14,7 @@ Heat, warm 0 to 300 K
   icfe=1, scalpha=0.5, scbeta=12.0,
   clambda=C_LAMBDA,
   timask1=':MK1', timask2='', crgmask=':MK1',
-  ifsc=1, scmask1=':MK1', 
+  ifsc=1, scmask1=':MK1', scmask2='',
   infe=1,
  /
  &pmd

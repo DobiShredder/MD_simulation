@@ -7,8 +7,6 @@
 cd $PBS_O_WORKDIR
 ulimit -s unlimited
 
-source ~/bashrc/kbs
-
 gid0=`nvidia-smi pmon -c 1 | awk 'BEGIN{i=0}{if($1==0&&$2>0) i+=1}END{print i}'`
 gid1=`nvidia-smi pmon -c 1 | awk 'BEGIN{i=0}{if($1==1&&$2>0) i+=1}END{print i}'`
 let gid=-1
@@ -23,7 +21,7 @@ export CUDA_VISIBLE_DEVICES="$gid"
 
 source ~/bashrc/kbs
 # AMBER select
-source ~/amber24.sh
+#source ~/amber24.sh
 
 bash run.sh
 

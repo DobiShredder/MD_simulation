@@ -138,5 +138,5 @@ plt.tight_layout()
 plt.suptitle('MBAR overlap matrix for FEP cycles', fontsize=20, y=1.02)
 plot_filename = 'mbar_overlap_matrix.png'
 plt.savefig(plot_filename, dpi=300, bbox_inches='tight')
-plt.show()
+#plt.show()
 

@@ -1,10 +1,11 @@
 TI running LJ decoupling
  &cntrl
    imin=0, irest=1,
-   nstlim=1000000, dt=0.002,                              !Time steps
+   nstlim=1000000, dt=0.002,                              !Time steps (1,000,000 steps = 2 ns)
    ntx=5, ig=-1, cut=10.0,                                !Nonbonded cutoff in PME
-   ntb=1, ntt=3, gamma_ln=1.0, temp0=300.0,               !Temperature control
-   ntc=2, ntf=1, 
+   ntt=3, gamma_ln=1.0, temp0=300.0,                      !Temperature control
+   ntc=2, ntf=1,
+   ntb=2, ntp=1, barostat=2, pres0=1.0, taup=2.0,         !Pressure control
    ntwx=5000, ntwr=5000, ntpr=5000,                       !Output format and save frequency
    iwrap=1, ioutfm=1,
    ntr=1,
@@ -14,7 +15,8 @@ TI running LJ decoupling
    icfe=1, scalpha=0.5, scbeta=12.0,
    clambda=C_LAMBDA,
    timask1=':MK1', timask2='', crgmask=':MK1',
-   ifsc=1, scmask1=':MK1',
+   ifsc=1, scmask1=':MK1', scmask2='',
+   gti_chg_keep=0, gti_add_sc=1,
    ifmbar=1,
    mbar_states=MBAR_NUM,
    mbar_lambda=MBAR_LIST,
