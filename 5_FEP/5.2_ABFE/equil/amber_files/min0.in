@@ -5,7 +5,6 @@ intitial minimization solvent + ion, (no SHAKE, periodic)
    ntc=1, ntf=1, jfastw=4,
    ntb=1,
    ntr=1, cut=10.0,
-   restraint_wt=50.0, restraintmask=':1',
    /
 Hold the Protein only
 500.0
