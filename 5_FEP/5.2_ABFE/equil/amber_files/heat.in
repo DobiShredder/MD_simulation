@@ -9,7 +9,7 @@ Heat, warm 0 to 300 K
    ntwx=5000, ntwr=5000, ntpr=5000,
    nmropt=1,
    ntr=1,
-   restraint_wt=50.0, restraintmask=':1',
+   restraint_wt=500.0, restraintmask=':1',
    infe=1,
  /
  &pmd
@@ -24,14 +24,3 @@ Heat, warm 0 to 300 K
  /
  &wt type='END'
  /
-Hold the Backbone Atoms
-20.0
-FIND
-* CA * *
-* C * *
-* O * *
-* N * *
-SEARCH
-RES 2 RESNUM
-END
-END

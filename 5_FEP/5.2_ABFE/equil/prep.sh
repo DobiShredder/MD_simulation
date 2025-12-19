@@ -26,8 +26,8 @@ cv_atoms=`cat prep/GB.pdb | grep "ATOM" | grep -v "LIG" |
 
 cat amber_files/cv.in | sed "1,$ s/CV_NUM/$cv_num/g;s/ATOM_NUM/$cv_atoms/g" > cv.in
 cat amber_files/min0.in | sed "1,$ s/RESNUM/$res_num/g" > min0.in
-cat amber_files/min1.in | sed "1,$ s/RESNUM/$res_num/g" > min1.in
-cat amber_files/heat.in | sed "1,$ s/RESNUM/$res_num/g" > heat.in
-cat amber_files/eq.in | sed "1,$ s/RESNUM/$res_num/g" > eq.in
+cat amber_files/min1.in  > min1.in
+cat amber_files/heat.in  > heat.in
+cat amber_files/eq.in > eq.in
 cat amber_files/split.in | sed "1,$ s/RESNUM/$res_num/g" > split.in
 

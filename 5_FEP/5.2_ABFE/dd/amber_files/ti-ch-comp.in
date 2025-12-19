@@ -9,7 +9,7 @@ TI running charge decoupling
    ntwx=5000, ntwr=5000, ntpr=5000,                       !Output format and save frequency
    iwrap=1, ioutfm=1,
    ntr=1,
-   restraint_wt=50.0, restraintmask=':1',
+   restraint_wt=500.0, restraintmask=':1',
    nmropt=1,
 
    icfe=1,
@@ -33,7 +33,7 @@ DISANG=disang.rest
 LISTOUT=POUT
 
 Hold the Backbone Atoms
-20.0
+5.0
 FIND
 * CA * *
 * C * *

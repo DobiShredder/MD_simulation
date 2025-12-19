@@ -1,7 +1,7 @@
 Equilibration - LJ decoupling
  &cntrl
    imin=0, irest=1,
-   nstlim=10000, dt=0.002,                                !Time steps
+   nstlim=500000, dt=0.002,                               !Time steps
    ntx=5, ig=-1, cut=10.0,                                !Nonbonded cutoff in PME
    ntt=3, gamma_ln=1.0, temp0=300.0,                      !Temperature control
    ntc=2, ntf=1,
@@ -9,7 +9,7 @@ Equilibration - LJ decoupling
    ntwx=5000, ntwr=5000, ntpr=5000,                       !Output format and save frequency
    iwrap=1, ioutfm=1,
    ntr=1,
-   restraint_wt=50.0, restraintmask=':1',
+   restraint_wt=500.0, restraintmask=':1',
    nmropt=1,
 
    icfe=1, scalpha=0.5, scbeta=12.0,
@@ -29,7 +29,7 @@ DISANG=disang.rest
 LISTOUT=POUT
 
 Hold the Backbone Atoms
-20.0
+5.0
 FIND
 * CA * *
 * C * *
