@@ -116,8 +116,11 @@ pandas
 matplotlib
 pymbar
 alchemlyb
-pymol-open-source
+MDAnalysis
 ```
+
+
+
 
 *If you need any help, please contact me.*
 
