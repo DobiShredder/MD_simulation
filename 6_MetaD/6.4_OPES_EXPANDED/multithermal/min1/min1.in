@@ -1,0 +1,9 @@
+minimisation protein + solvent + ion, (no SHAKE, periodic)
+  &cntrl
+   imin=1,
+   maxcyc=5000, ncyc=2500,
+   ntc=1, ntf=1,
+   ntb=1,
+   ntr=0, jfastw=4,
+   cut=10.0,
+  /
