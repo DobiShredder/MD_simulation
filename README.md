@@ -77,7 +77,9 @@ MD-Simulation-Tutorials/
 └── 6_MetaD/
 	├── 6.1_WT-MetaD/        # Well-Tempered Metadynamics
     ├── 6.2_funnel-MetaD/    # funnel-restrainted Metadynamics
-    └── 6.3_OPES/            # OPES Method
+    ├── 6.3_OPES_METAD/      # OPES-Metadynamics
+    └── 6.4_OPES_EXPANDED    # OPES_EXPANDED for various sampling
+
 ```
 
 
