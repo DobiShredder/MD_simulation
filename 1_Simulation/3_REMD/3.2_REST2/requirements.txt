@@ -1,0 +1,3 @@
+parmed>=4.2
+MDAnalysis>=2.7
+

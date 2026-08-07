@@ -1,0 +1,15 @@
+Minimize solvent and ions with chignolin heavy atoms restrained
+&cntrl
+ imin=1,
+ maxcyc=5000,
+ ncyc=2500,
+
+ ntc=1,
+ ntf=1,
+ ntb=1,
+ cut=10.0,
+
+ ntr=1,
+ restraint_wt=10.0,
+ restraintmask='!:WAT,Na+,Cl- & !@H=',
+/

@@ -1,0 +1,16 @@
+Minimize an umbrella seed with the window restraint active
+&cntrl
+ imin=1,
+ maxcyc=5000,
+ ncyc=2500,
+
+ ntc=1,
+ ntf=1,
+ ntb=1,
+ cut=10.0,
+ ntr=0,
+
+ nmropt=1,
+/
+&wt type='END' /
+DISANG=restraint.RST

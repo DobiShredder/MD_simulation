@@ -1,0 +1,8 @@
+Generate a thermalized basis state
+&cntrl
+  imin=0, irest=0, ntx=1, ntxo=2,
+  ntb=0, igb=1, cut=999.0, rgbmax=999.0,
+  nstlim=5000, dt=0.002,
+  ntt=3, gamma_ln=5.0, tempi=300.0, temp0=300.0, ig=20260804,
+  ntc=1, ntf=1, ntpr=500, ntwx=0, ntwr=5000,
+/

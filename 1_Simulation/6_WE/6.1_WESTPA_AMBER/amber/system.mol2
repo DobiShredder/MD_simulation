@@ -1,0 +1,12 @@
+@<TRIPOS>MOLECULE
+NaCl
+2 0 2 0 0
+SMALL
+USER_CHARGES
+
+@<TRIPOS>ATOM
+      1 Na          0.0000    0.0000    0.0000 Na+       1 Na+         1.0000
+      2 Cl          8.0000    0.0000    0.0000 Cl-       2 Cl-        -1.0000
+@<TRIPOS>SUBSTRUCTURE
+     1 Na+         1 RESIDUE           1 A     Na+        1 ROOT
+     2 Cl-         2 RESIDUE           1 A     Cl-        2 ROOT

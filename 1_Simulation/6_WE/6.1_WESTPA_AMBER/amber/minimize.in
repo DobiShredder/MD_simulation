@@ -1,0 +1,6 @@
+NaCl minimization in implicit solvent
+&cntrl
+  imin=1, maxcyc=1000, ncyc=500,
+  ntb=0, igb=1, cut=999.0, rgbmax=999.0,
+  ntpr=100,
+/

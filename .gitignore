@@ -1,0 +1,33 @@
+# OS metadata
+**/.DS_Store
+
+# Molecular dynamics outputs and generated system files
+**/work/
+**/*.out
+**/*.info
+**/*.log
+**/*.nc
+**/*.xtc
+**/*.trr
+**/*.tpr
+**/*.cpt
+**/*.edr
+**/*.xvg
+**/*.rst7
+**/*.parm7
+**/#*#
+
+# Local preparation inputs/outputs
+1_Simulation/1_MD/*/input/
+2_Analysis/**/output/
+
+# WESTPA runtime products
+**/west.h5
+**/traj_segs/
+**/seg_logs/
+**/istates/
+**/ANALYSIS/
+
+# Python/Jupyter caches
+**/__pycache__/
+.ipynb_checkpoints/

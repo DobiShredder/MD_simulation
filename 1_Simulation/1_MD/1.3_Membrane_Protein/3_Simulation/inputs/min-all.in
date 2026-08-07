@@ -1,0 +1,12 @@
+Minimize the complete membrane system
+&cntrl
+ imin=1,
+ maxcyc=10000,
+ ncyc=5000,
+
+ ntc=1,
+ ntf=1,
+ ntb=1,
+ cut=10.0,
+ ntr=0,
+/

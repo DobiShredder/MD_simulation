@@ -1,0 +1,4 @@
+source leaprc.water.tip3p
+system = loadMol2 amber/system.mol2
+saveAmberParm system common_files/system.parm7 common_files/system.rst7
+quit

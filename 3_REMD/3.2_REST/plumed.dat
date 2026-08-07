@@ -1,2 +1,0 @@
-ene: ENERGY
-PRINT ARG=ene STRIDE=5000 FILE=energy

@@ -1,0 +1,37 @@
+One 1 ns GaREUS production segment
+&cntrl
+ imin=0,
+ irest=1,
+ ntx=5,
+ ig=@SEED@,
+ nstlim=500000,
+ numexchg=1000,
+ dt=0.002,
+ temp0=300.0,
+ ntt=3,
+ gamma_ln=1.0,
+ ntb=2,
+ ntp=1,
+ barostat=2,
+ pres0=1.0,
+ taup=2.0,
+ ntc=2,
+ ntf=2,
+ cut=10.0,
+ iwrap=1,
+ ntwx=5000,
+ ntwr=500000,
+ ntpr=5000,
+ ioutfm=1,
+ nmropt=1,
+ igamd=3,
+ iE=1,
+ irest_gamd=1,
+ sigma0P=6.0,
+ sigma0D=6.0,
+/
+&wt type='DUMPFREQ', istep1=500, /
+&wt type='END' /
+DISANG='@DISANG@'
+DUMPAVE='@DUMPAVE@'
+
