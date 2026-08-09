@@ -40,24 +40,23 @@ def read_cv(path: Path) -> np.ndarray:
 
 
 def read_boosts(directory: Path, components: int) -> np.ndarray:
-    totals = []
-    for segment in range(1, 11):
-        path = directory / f"production.{segment:03d}.gamd.log"
-        if not path.is_file():
-            raise SystemExit(f"GaMD log를 찾을 수 없습니다: {path}")
-        segment_values = []
-        for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
-            fields = line.split()
-            if not fields or fields[0].startswith("#") or len(fields) < 6 + components:
-                continue
-            try:
-                segment_values.append(sum(float(fields[6 + index]) for index in range(components)))
-            except ValueError:
-                continue
-        if len(segment_values) != 100:
-            raise SystemExit(f"{path.name}: 100 GaMD records가 필요합니다: {len(segment_values)}")
-        totals.extend(segment_values)
-    return np.asarray(totals, dtype=float)
+    path = directory / "production.001.gamd.log"
+    if not path.is_file():
+        raise SystemExit(f"GaMD log를 찾을 수 없습니다: {path}")
+
+    values = []
+    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        fields = line.split()
+        if not fields or fields[0].startswith("#") or len(fields) < 6 + components:
+            continue
+        try:
+            values.append(sum(float(fields[6 + index]) for index in range(components)))
+        except ValueError:
+            continue
+
+    if len(values) != 100:
+        raise SystemExit(f"{path.name}: 100 GaMD records가 필요합니다: {len(values)}")
+    return np.asarray(values, dtype=float)
 
 
 def stable_ess(log_weights: np.ndarray) -> float:

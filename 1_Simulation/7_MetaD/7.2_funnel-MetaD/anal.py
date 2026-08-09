@@ -42,8 +42,8 @@ def main() -> int:
 
     segment_dirs = sorted((args.work_dir / "production").glob("[0-9][0-9][0-9]"))
 
-    if len(segment_dirs) != 10:
-        raise ValueError(f"Production segment가 10개가 아닙니다: {len(segment_dirs)}")
+    if len(segment_dirs) != 1:
+        raise ValueError(f"Production segment가 1개가 아닙니다: {len(segment_dirs)}")
 
     required_fields = {
         "time",

@@ -26,7 +26,7 @@ gmx_mpi=${GROMACS_MPI:-gmx_mpi}
 mpi_launcher=${MPI_LAUNCHER:-mpirun}
 replica_count=8
 mpi_processes=${MPI_PROCESSES:-$replica_count}
-production_segments=10
+production_segments=1
 exchange_steps=1000
 
 read -r -a mpi_options <<< "${MPI_OPTIONS:-}"
@@ -76,7 +76,7 @@ run_preproduction() {
     local replica
     local replica_dir
 
-    echo "Minimization과 1 ns equilibration을 실행합니다."
+    echo "Minimization과 100 ps equilibration을 실행합니다."
 
     while IFS=$'\t' read -r replica _; do
         if [[ "$replica" == "replica" ]]; then
@@ -122,7 +122,7 @@ if (( dry_run )); then
     echo "GROMACS: $gmx"
     echo "HREX engine: $gmx_mpi"
     echo "8 replicas, effective 300–500 K, 2 ps exchange interval"
-    echo "1 ns equilibration + 10 × 1 ns production"
+    echo "100 ps equilibration + 1 ns production"
     printf '%q ' "$mpi_launcher" "${mpi_options[@]}" -np "$mpi_processes" "$gmx_mpi" mdrun -multidir "$work_dir/replicas/000" ... "$work_dir/replicas/007" -deffnm production.001 -hrex -replex "$exchange_steps" -plumed plumed.dat
     printf '\n'
     exit 0
@@ -195,4 +195,4 @@ for segment in $(seq 1 "$production_segments"); do
     fi
 done
 
-echo "10 ns REST2가 완료되었습니다: $work_dir/replicas"
+echo "1 ns REST2가 완료되었습니다: $work_dir/replicas"

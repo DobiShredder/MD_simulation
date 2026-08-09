@@ -26,8 +26,8 @@ integer이며 segment마다 서로 다른 seed가 생성됩니다.
 |---|---|
 | `build.sh` | capped alanine을 만들고 ff19SB/TIP3P solvent box와 topology를 생성합니다. |
 | `check_topology.py` | build가 끝날 때 CV atom 번호와 atom 이름을 확인합니다. |
-| `run.sh` | minimization, 200 ps heating, 1 ns NPT equilibration과 10 × 1 ns production을 실행합니다. |
-| `anal.py` | segment별 φ/ψ 및 bias 범위를 기록하고 1, 5, 10 ns 누적 `HILLS`로 FES를 만듭니다. |
+| `run.sh` | minimization, 200 ps heating, 100 ps NPT equilibration과 1 ns production을 실행합니다. |
+| `anal.py` | φ/ψ 및 bias 범위를 기록하고 1 ns 누적 `HILLS`로 FES를 만듭니다. |
 
 ### 주요 option
 
@@ -41,7 +41,7 @@ PLUMED의 `RESTART`를 사용합니다. `md.rst7`, trajectory, log, `COLVAR`와
 `HILLS` 중 일부만 있으면 해당 segment에서 중단합니다. `HILLS`는 bias를
 복원하는 기록이며 `COLVAR`를 대신하지 않습니다.
 
-10 ns는 workflow 학습용 길이입니다. φ/ψ 공간의 수렴이나 정량 free energy를
+1 ns는 workflow 학습용 길이입니다. φ/ψ 공간의 수렴이나 정량 free energy를
 입증하지 않습니다. Keyword는 PLUMED 2.10
 [`METAD`](https://www.plumed.org/doc-v2.10/user-doc/html/_m_e_t_a_d.html)를
 기준으로 작성했습니다.
@@ -58,7 +58,7 @@ well-tempered metadynamics. `PACE=500` deposits a Gaussian every 1 ps,
 controls tempering. The -π to π grid supports `CALC_RCT`.
 
 `build.sh` creates and validates the ff19SB/TIP3P system. `run.sh` performs
-minimization, 200 ps heating, 1 ns NPT equilibration, and ten 1 ns production
-segments. Each continuation copies the cumulative `HILLS` file and enables
-PLUMED `RESTART`. `anal.py` reports sampled torsion and bias ranges. The 10 ns
+minimization, 200 ps heating, 100 ps NPT equilibration, and one 1 ns production
+segment. A continuation copies the cumulative `HILLS` file and enables
+PLUMED `RESTART`. `anal.py` reports sampled torsion and bias ranges. The 1 ns
 run demonstrates the workflow and is not evidence of converged free energies.

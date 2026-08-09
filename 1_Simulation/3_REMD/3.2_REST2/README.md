@@ -4,8 +4,8 @@
 
 Chignolin을 ff19SB/TIP3P로 만들고 8-replica REST2를 실행합니다. Protein
 Hamiltonian만 300–500 K effective temperature에 맞춰 scaling하며 실제 bath
-temperature는 300 K입니다. Equilibration은 1 ns, production은 replica당
-10 ns이고 교환은 2 ps마다 시도합니다.
+temperature는 300 K입니다. Equilibration은 100 ps, production은 replica당
+1 ns이고 교환은 2 ps마다 시도합니다.
 
 REST2는 전체 solvent를 실제로 가열하지 않고 solute–solute interaction을
 `λ=T0/Tm`, solute–solvent interaction을 `sqrt(λ)`로 scaling합니다. Solvent–
@@ -53,7 +53,7 @@ energy를 한 frame rerun으로 비교합니다. 허용 오차는
 
 `GROMACS`, `GROMACS_MPI`, `MPI_LAUNCHER`, `MPI_PROCESSES`,
 `MPI_OPTIONS`와 `GROMACS_OPTIONS`로 실행 환경을 지정합니다. Production은
-10개의 1 ns segment이며 일부 replica만 완료된 segment에서는 resume하지
+1 ns segment 하나이며 일부 replica만 완료된 segment에서는 resume하지
 않습니다.
 
 ### 주요 option
@@ -83,7 +83,7 @@ folding sampling을 돕기 위해 사용되어 온 method 특성입니다. 짧�
 
 This example runs eight-state REST2 for ff19SB/TIP3P Chignolin. Only protein
 interactions are scaled over effective temperatures of 300–500 K; the physical
-bath remains at 300 K. Equilibration is 1 ns, production is ten 1 ns segments,
+bath remains at 300 K. Equilibration is 100 ps, production is one 1 ns segment,
 and exchanges are attempted every 2 ps.
 
 REST2 scales solute–solute interactions by `lambda=T0/Tm` and solute–solvent

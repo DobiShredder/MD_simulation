@@ -20,7 +20,7 @@ receptor atom range가 최종 topology와 일치해야 합니다.
 | `protonate_benzamidine.py` | RCSB neutral SDF를 BEN(+1)로 바꾸는 내부 helper입니다. |
 | `build.sh` | BEN GAFF2/AM1-BCC parameter, solvated topology와 generated GaMD input을 만듭니다. |
 | `render_inputs.py` | Final topology에서 BEN 앞 receptor atom 범위를 찾아 template marker를 치환합니다. |
-| `run.sh` | Conventional stage, triple-boost preparation과 10개 production segment를 실행합니다. |
+| `run.sh` | Conventional stage, triple-boost preparation과 production segment 하나를 실행합니다. |
 | `anal.py` | 세 boost component와 total boost의 segment별 통계를 저장합니다. |
 
 ~~~bash
@@ -58,7 +58,7 @@ potential에 세 boost를 적용합니다. 완료된 segment의 MD restart와
 Amber26의 LiGaMD3 동작은 아직 실제 GPU에서 검증하지 않았습니다. 위 opt-in은
 이 상태를 확인하기 위한 것이며 호환성을 보장하지 않습니다. 세 boost component,
 `gamd-restart.dat`, DV/DL output과 짧은 continuation을 확인하기 전에는 결과를
-해석하지 않습니다. 10 ns는 binding thermodynamics나 kinetics 계산 길이가
+해석하지 않습니다. 1 ns는 binding thermodynamics나 kinetics 계산 길이가
 아닙니다.
 
 Amber 26 manual은 LiGaMD3를 serial GPU `pmemd.cuda` 전용으로 설명합니다.
@@ -95,7 +95,7 @@ CPU and MPI engine overrides.
 
 Actual execution requires `ALLOW_UNVERIFIED_LIGAMD3=1` until a short Amber26
 GPU run confirms all three nonzero boost components, restart state, and
-continuation behavior. The 10 ns example is not a binding thermodynamics or
+continuation behavior. The 1 ns example is not a binding thermodynamics or
 kinetics calculation.
 
 ## References / 참고 자료

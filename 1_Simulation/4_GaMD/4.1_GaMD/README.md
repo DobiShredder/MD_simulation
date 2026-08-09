@@ -3,8 +3,8 @@
 ## 한국어
 
 PDB 1UAO의 첫 NMR model을 ff19SB/TIP3P로 build하고 dual-boost GaMD를
-실행합니다. 계산은 minimization, 200 ps heating, 1 ns NPT equilibration,
-4 ns GaMD parameter preparation과 1 ns production segment 10개 순서입니다.
+실행합니다. 계산은 minimization, 200 ps heating, 100 ps NPT equilibration,
+4 ns GaMD parameter preparation과 1 ns production segment 하나 순서입니다.
 
 Standard dual-boost GaMD는 total potential과 dihedral potential에 서로 다른
 boost를 적용합니다. Dihedral barrier와 전체 potential fluctuation을 함께
@@ -18,7 +18,7 @@ reweighting 가능성을 판단할 수 있습니다.
 | `download.sh` | 1UAO PDB/mmCIF를 받고 checksum을 기록합니다. |
 | `prepare.py` | 첫 NMR model의 138 atoms를 simulation PDB로 정리합니다. |
 | `build.sh` | ff19SB/TIP3P topology와 solvated restart를 만듭니다. |
-| `run.sh` | Conventional stage, 4 ns parameter preparation과 10개 production segment를 실행합니다. |
+| `run.sh` | Conventional stage, 4 ns parameter preparation과 production segment 하나를 실행합니다. |
 | `anal.py` | 두 boost component와 total boost의 segment별 통계를 TSV로 저장합니다. |
 
 ~~~bash
@@ -52,14 +52,14 @@ production은 `irest_gamd=1`로 이 값을 이어받습니다. 완료된 stage�
 
 기본 engine은 `pmemd.cuda`입니다. 다른 executable은 `AMBER_ENGINE`, 별도
 output directory는 `WORK_DIR`, heating seed는 `RANDOM_SEED`로 지정합니다.
-10 ns trajectory와 reweighted PMF는 folding equilibrium 또는 수렴 결과가
+1 ns trajectory와 reweighted PMF는 folding equilibrium 또는 수렴 결과가
 아닙니다.
 
 ## English
 
 The first NMR model of PDB 1UAO is built with ff19SB/TIP3P. The workflow runs
-minimization, 200 ps heating, 1 ns NPT equilibration, 4 ns of GaMD parameter
-preparation, and ten 1 ns dual-boost production segments.
+minimization, 200 ps heating, 100 ps NPT equilibration, 4 ns of GaMD parameter
+preparation, and one 1 ns dual-boost production segment.
 
 Standard dual-boost GaMD accelerates both total and dihedral potentials. The
 two boost components and their sum must be inspected before reweighting.
@@ -78,7 +78,7 @@ averaging interval. Production uses `irest_gamd=1`; `ntwx=5000` and
 Production continues with `irest_gamd=1`; each completed stage preserves a
 `*.gamd.rst` state snapshot beside its MD restart. Set `AMBER_ENGINE`,
 `WORK_DIR`, or `RANDOM_SEED` for another executable, independent run directory,
-or positive heating seed. The 10 ns example does not establish folding
+or positive heating seed. The 1 ns example does not establish folding
 equilibrium or convergence.
 
 ## References / 참고 자료

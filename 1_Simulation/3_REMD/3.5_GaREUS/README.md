@@ -22,11 +22,11 @@ overlap뿐 아니라 exchange mixing, GaMD boost distribution과 reweighting 조
 | `run.sh` | Window별 pre-production, GaMD parameter preparation과 GaREUS exchange를 실행합니다. |
 | `anal.py` | Exchange/occupancy, restraint sampling과 GaMD boost 범위를 계산합니다. |
 
-각 window에서 minimization, 200 ps heating과 1 ns equilibration을 실행합니다.
+각 window에서 minimization, 200 ps heating과 100 ps equilibration을 실행합니다.
 15 Å reference window에서 4 ns 동안 GaMD parameter를 한 번 준비한 뒤 같은
 `gamd-restart.dat`을 모든 window에 배치합니다. `igamd=3`,
 `sigma0P=sigma0D=6.0`을 사용하며 이 state를 `irest_gamd=1`로 이어받아
-10개의 1 ns NVT GaREUS segment를 실행합니다. 교환은 1 ps마다 시도합니다.
+1 ns NVT GaREUS segment 하나를 실행합니다. 교환은 1 ps마다 시도합니다.
 
 ### 실행
 

@@ -4,7 +4,7 @@
 
 PDB 1UAO의 첫 NMR model로 10-residue chignolin system을 만듭니다. Force
 field는 ff19SB, water model은 TIP3P입니다. 계산은 minimization, 200 ps heating,
-1 ns NPT equilibration과 10 ns production 순서입니다.
+100 ps NPT equilibration과 1 ns production 순서입니다.
 
 Conventional MD에서는 모든 원자가 같은 physical Hamiltonian과 bath
 temperature를 따릅니다. 이 작은 protein 예제는 구조 준비, explicit-solvent
@@ -32,7 +32,7 @@ python3 prepare.py structure/1UAO.raw.pdb structure/chignolin.pdb
 
 | Option | 의미 |
 | --- | --- |
-| `nstlim`, `dt=0.002` | 200 ps heating, 1 ns equilibration과 10 ns production 길이를 정합니다. SHAKE를 사용하므로 timestep은 2 fs입니다. |
+| `nstlim`, `dt=0.002` | 200 ps heating, 100 ps equilibration과 1 ns production 길이를 정합니다. SHAKE를 사용하므로 timestep은 2 fs입니다. |
 | `ntt=3`, `gamma_ln=1.0` | Langevin thermostat와 collision frequency를 설정합니다. |
 | `ntb=2`, `ntp=1`, `barostat=2` | Equilibration과 production에서 isotropic NPT와 Monte Carlo barostat을 사용합니다. |
 | `ntc=2`, `ntf=2` | 수소가 포함된 bond를 SHAKE로 고정하고 해당 bond force 계산을 생략합니다. |
@@ -45,13 +45,13 @@ unknown residue, missing atom과 net charge를 확인합니다.
 
 Terminal state와 protonation은 build 전에 확인합니다. Heating에서 새 velocity를
 만들고 이후 단계는 restart의 좌표와 velocity를 이어받습니다. 기본 engine은
-`pmemd.cuda`이며 다른 실행 파일은 `AMBER_ENGINE`으로 지정합니다. 10 ns
+`pmemd.cuda`이며 다른 실행 파일은 `AMBER_ENGINE`으로 지정합니다. 1 ns
 결과는 folding equilibrium이나 수렴 판단에 사용하지 않습니다.
 
 ## English
 
 The first NMR model of PDB 1UAO is built with ff19SB and TIP3P. The workflow runs
-minimization, 200 ps heating, 1 ns NPT equilibration, and 10 ns production.
+minimization, 200 ps heating, 100 ps NPT equilibration, and 1 ns production.
 
 Conventional MD propagates one physical Hamiltonian at one bath temperature.
 This small protein provides a baseline for structure preparation, explicit
@@ -75,7 +75,7 @@ Check `structure/SHA256SUMS`, terminal states, protonation, and `work/leap.log`.
 `build.sh` writes `work/system.parm7` and `work/system.rst7`. Heating creates
 velocities, and later stages continue from the restart. `run.sh` uses
 `pmemd.cuda`; `AMBER_ENGINE` overrides it.
-The 10 ns trajectory is not a folding-equilibrium or convergence result.
+The 1 ns trajectory is not a folding-equilibrium or convergence result.
 
 ## References / 참고 자료
 

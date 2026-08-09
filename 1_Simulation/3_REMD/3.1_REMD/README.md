@@ -3,7 +3,7 @@
 ## 한국어
 
 Chignolin(PDB 1UAO)을 ff19SB/TIP3P로 만들고 20-replica T-REMD를 실행합니다.
-Temperature는 300–373 K이며 replica당 production은 10 ns입니다.
+Temperature는 300–373 K이며 replica당 production은 1 ns입니다.
 
 T-REMD는 모든 replica에 같은 Hamiltonian을 사용하고 bath temperature만
 바꿉니다. 높은 temperature replica는 barrier를 더 쉽게 넘고, 교환을 통해
@@ -38,8 +38,8 @@ python3 anal.py
 `MPI_PROCESSES`, `MPI_OPTIONS`와 `AMBER_OPTIONS`로 실행 환경을
 바꿀 수 있습니다. 기본 MPI process 수는 20이며 replica 수와 같아야 합니다.
 
-Heating은 200 ps, NPT equilibration은 1 ns입니다. Production input 하나는
-1 ns이고 `run.sh`가 10개 segment를 순서대로 실행합니다. 모든 replica가
+Heating은 200 ps, NPT equilibration은 100 ps입니다. Production input 하나는
+1 ns이고 `run.sh`가 segment 하나를 실행합니다. 모든 replica가
 완료된 마지막 segment에서만 이어서 실행합니다. 일부 replica에만 restart
 file이 있으면 해당 stage를 자동으로 덮어쓰지 않습니다.
 
@@ -68,8 +68,8 @@ file이 있으면 해당 stage를 자동으로 덮어쓰지 않습니다.
 ## English
 
 This example builds ff19SB/TIP3P Chignolin and runs 20-replica T-REMD from
-300 to 373 K. Heating is 200 ps, NPT equilibration is 1 ns, and production is
-ten 1 ns segments per replica. Exchanges are attempted every 1 ps.
+300 to 373 K. Heating is 200 ps, NPT equilibration is 100 ps, and production is
+one 1 ns segment per replica. Exchanges are attempted every 1 ps.
 
 T-REMD keeps one Hamiltonian and varies bath temperature. High-temperature
 replicas cross barriers more readily, while accepted swaps move configurations

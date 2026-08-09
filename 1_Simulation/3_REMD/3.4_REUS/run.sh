@@ -25,7 +25,7 @@ amber_mpi_engine=${AMBER_MPI_ENGINE:-pmemd.cuda.MPI}
 mpi_launcher=${MPI_LAUNCHER:-mpirun}
 replica_count=19
 mpi_processes=${MPI_PROCESSES:-$replica_count}
-production_segments=10
+production_segments=1
 
 read -r -a mpi_options <<< "${MPI_OPTIONS:-}"
 read -r -a amber_options <<< "${AMBER_OPTIONS:-}"
@@ -139,7 +139,7 @@ if (( dry_run )); then
     echo "Engine: $amber_engine"
     echo "Replica exchange engine: $amber_mpi_engine"
     echo "19 windows, 6–24 Å, 1 ps exchange interval"
-    echo "200 ps heating + 1 ns equilibration + 10 × 1 ns production"
+    echo "200 ps heating + 100 ps equilibration + 1 ns production"
     printf '%q ' "$mpi_launcher" "${mpi_options[@]}" -np "$mpi_processes" "$amber_mpi_engine" "${amber_options[@]}" -ng "$replica_count" -groupfile "$work_dir/production.001.group" -rem 3
     printf '\n'
     exit 0
@@ -185,5 +185,4 @@ for segment in $(seq 1 "$production_segments"); do
     fi
 done
 
-echo "10 ns REUS가 완료되었습니다: $work_dir/replicas"
-
+echo "1 ns REUS가 완료되었습니다: $work_dir/replicas"

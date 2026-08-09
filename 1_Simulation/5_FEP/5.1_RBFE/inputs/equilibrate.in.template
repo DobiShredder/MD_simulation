@@ -3,7 +3,7 @@ RBFE NPT equilibration at lambda @LAMBDA@
   imin=0,
   irest=1,
   ntx=5,
-  nstlim=500000,
+  nstlim=50000,
   dt=0.002,
   temp0=300.0,
   ntt=3,

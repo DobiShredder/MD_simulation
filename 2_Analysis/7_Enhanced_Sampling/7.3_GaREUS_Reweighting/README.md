@@ -49,7 +49,7 @@ GaMD bias는 남아 있습니다. 각 distance bin에서 MBAR weight를 사용�
 `gamd-restart.dat` workflow를 바꾸면 MBAR reduced potential도 함께 수정해야
 합니다.
 
-10 ns 결과와 2차 cumulant approximation은 수렴된 정량 free energy를
+1 ns 결과와 2차 cumulant approximation은 수렴된 정량 free energy를
 보장하지 않습니다. Overlap, effective sample size, boost distribution의
 Gaussian 성질, bin width와 independent run을 함께 확인합니다. Bootstrap,
 2D PMF와 kinetic reweighting은 포함하지 않습니다.
@@ -68,7 +68,7 @@ reweighting, per-frame MBAR weights, the state-overlap matrix, and weight
 diagnostics.
 
 The reduced-potential construction assumes that all replicas share the same
-GaMD parameters and differ only in their umbrella restraints. The 10 ns result
+GaMD parameters and differ only in their umbrella restraints. The 1 ns result
 is a workflow exercise rather than a converged quantitative free energy.
 Bootstrap uncertainty, two-dimensional PMFs, and kinetic reweighting are not
 included.

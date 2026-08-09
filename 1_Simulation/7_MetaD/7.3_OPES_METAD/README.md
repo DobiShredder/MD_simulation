@@ -20,7 +20,7 @@ python3 anal.py
 |---|---|
 | `build.sh` | ff19SB/TIP3P topology를 만들고 CV atom을 확인합니다. |
 | `check_topology.py` | `build.sh`가 자동 호출하며 CV atom 번호와 이름을 검사합니다. |
-| `run.sh` | preparation stage와 10 × 1 ns OPES_METAD production을 실행합니다. |
+| `run.sh` | preparation stage와 1 ns OPES_METAD production을 실행합니다. |
 | `anal.py` | φ/ψ, bias, effective sample size와 kernel 수를 segment별로 요약합니다. |
 
 ### 주요 option
@@ -35,7 +35,7 @@ reweighting에 쓰는 offset이고 bias 자체가 아닙니다.
 `STATE_RFILE`로 읽습니다. 누적 `KERNELS`도 함께 이어지며 `RESTART`가 output
 append 동작을 켭니다.
 
-이 example은 adaptive state와 restart를 학습하는 용도입니다. 10 ns 결과로
+이 example은 adaptive state와 restart를 학습하는 용도입니다. 1 ns 결과로
 정량 free energy나 수렴을 판단하지 않습니다. Keyword는 PLUMED 2.10
 [`OPES_METAD`](https://www.plumed.org/doc-v2.10/user-doc/html/_o_p_e_s__m_e_t_a_d.html)를
 기준으로 작성했습니다.
@@ -47,4 +47,4 @@ by `BARRIER=50` kJ/mol. `PACE=500` updates the bias every 1 ps, and the initial
 kernel widths are 0.15 rad. Exact continuation reads the binary/text OPES state
 through `STATE_RFILE`; the cumulative `KERNELS` file is retained as a readable
 history. `anal.py` reports CV, bias, effective-sample-size, and kernel-count
-diagnostics. The 10 ns example is not a converged free-energy calculation.
+diagnostics. The 1 ns example is not a converged free-energy calculation.

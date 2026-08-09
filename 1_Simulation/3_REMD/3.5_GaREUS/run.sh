@@ -25,7 +25,7 @@ amber_mpi_engine=${AMBER_MPI_ENGINE:-pmemd.cuda.MPI}
 mpi_launcher=${MPI_LAUNCHER:-mpirun}
 replica_count=20
 mpi_processes=${MPI_PROCESSES:-$replica_count}
-production_segments=10
+production_segments=1
 gamd_reference_replica=009
 
 read -r -a mpi_options <<< "${MPI_OPTIONS:-}"
@@ -259,8 +259,8 @@ if (( dry_run )); then
     echo "Engine: $amber_engine"
     echo "Replica exchange engine: $amber_mpi_engine"
     echo "20 windows, 6–25 Å, 1 ps exchange interval"
-    echo "200 ps heating + 1 ns equilibration + one shared 4 ns GaMD preparation"
-    echo "10 × 1 ns GaREUS production, igamd=3, sigma0P=sigma0D=6.0"
+    echo "200 ps heating + 100 ps equilibration + one shared 4 ns GaMD preparation"
+    echo "1 ns GaREUS production, igamd=3, sigma0P=sigma0D=6.0"
     printf '%q ' \
         "$mpi_launcher" \
         "${mpi_options[@]}" \
@@ -320,4 +320,4 @@ for segment in $(seq 1 "$production_segments"); do
     fi
 done
 
-echo "10 ns GaREUS가 완료되었습니다: $work_dir/replicas"
+echo "1 ns GaREUS가 완료되었습니다: $work_dir/replicas"

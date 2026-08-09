@@ -96,7 +96,7 @@ run_stage() {
 }
 
 if (( dry_run )); then
-    echo "ABFE: restraint/charge/LJ 65 windows, window당 2 × 1 ns production"
+    echo "ABFE: restraint/charge/LJ 65 windows, window당 1 ns production"
 fi
 
 while IFS=$'\t' read -r method_stage leg window lambda seed directory; do
@@ -107,7 +107,6 @@ while IFS=$'\t' read -r method_stage leg window lambda seed directory; do
     run_stage "$directory" heat minimize.rst7 yes
     run_stage "$directory" equilibrate heat.rst7 yes
     run_stage "$directory" production.001 equilibrate.rst7 yes
-    run_stage "$directory" production.002 production.001.rst7 yes
 done < "$states_file"
 
 if (( ! dry_run )); then

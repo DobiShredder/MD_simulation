@@ -2,7 +2,7 @@
 
 ## 한국어
 
-세 가지 system으로 AMBER 일반 MD를 연습합니다. Production은 모두 10 ns로
+세 가지 system으로 AMBER 일반 MD를 연습합니다. Production은 모두 1 ns로
 설정되어 있습니다.
 
 Conventional MD는 추가 bias나 replica 교환 없이 선택한 force field의
@@ -21,14 +21,14 @@ atom, 결정학적 첨가물과 force field는 build 전에 확인합니다. 기
 file은 `inputs/`, 생성된 topology·restart·trajectory는 `work/`에 둡니다.
 
 각 system README는 실제 script의 input과 output, restraint, thermostat,
-pressure coupling 및 restart option을 설명합니다. 10 ns라는 동일한 길이는
+pressure coupling 및 restart option을 설명합니다. 1 ns라는 동일한 길이는
 workflow 학습을 위한 값이며 세 system의 수렴 시간을 같다고 가정한 값이
 아닙니다.
 
 ## English
 
 Three systems cover the basic AMBER MD workflow. Each production input is set
-to 10 ns.
+to 1 ns.
 
 Conventional MD propagates one force-field Hamiltonian without an added bias or
 replica exchange. The examples move from clash removal and velocity generation
@@ -44,5 +44,5 @@ build. Chignolin and trypsin–benzamidine use TIP3P; KcsA uses OPC. The default
 engine is `pmemd.cuda`. Source and prepared structures use `structure/`, AMBER
 control files use `inputs/`, and generated files use `work/`.
 Each system README documents its scripts, restraints, thermostat, pressure
-coupling, and restart controls. The common 10 ns length is a workflow setting,
+coupling, and restart controls. The common 1 ns length is a workflow setting,
 not an assertion that the three systems converge on the same timescale.

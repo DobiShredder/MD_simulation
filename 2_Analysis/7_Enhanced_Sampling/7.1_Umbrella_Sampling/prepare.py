@@ -14,7 +14,7 @@ OUTPUT_DIR = TUTORIAL_DIR / "output"
 
 TIME_COLUMN = 1
 DISTANCE_COLUMN = 8
-DISCARD_PS = 1000.0
+DISCARD_PS = 100.0
 
 
 @dataclass(frozen=True)

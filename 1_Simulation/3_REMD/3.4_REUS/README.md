@@ -4,8 +4,8 @@
 
 Chignolin의 residue 1과 10 Cα distance를 CV로 사용하는 REUS 예제입니다.
 6–24 Å를 1 Å 간격으로 나눈 19개 window를 같은 온도에서 교환합니다.
-`rk2=rk3=10 kcal mol⁻¹ Å⁻²`이며, heating 200 ps, equilibration 1 ns,
-production은 window당 10 ns입니다. 교환은 1 ps마다 시도합니다.
+`rk2=rk3=10 kcal mol⁻¹ Å⁻²`이며, heating 200 ps, equilibration 100 ps,
+production은 window당 1 ns입니다. 교환은 1 ps마다 시도합니다.
 
 REUS는 umbrella restraint가 다른 Hamiltonian 사이에서 configuration을
 교환합니다. 일반 US가 각 window 안에서만 움직이는 것과 달리, accepted
@@ -47,7 +47,7 @@ window 범위를 먼저 바꿉니다.
 `AMBER_MPI_ENGINE`, `MPI_LAUNCHER`, `MPI_PROCESSES`,
 `MPI_OPTIONS`와 `AMBER_OPTIONS`로 실행 환경을 지정합니다.
 
-Production은 10개의 1 ns segment입니다. 모든 window가 완료된 마지막
+Production은 1 ns segment 하나입니다. 모든 window가 완료된 마지막
 segment에서만 이어서 실행합니다.
 
 ### 주요 option
@@ -77,8 +77,8 @@ Window overlap과 PMF는
 
 This REUS example exchanges 19 windows along the Chignolin residue 1–10 Cα
 distance. Centers span 6–24 Å at 1 Å spacing, with
-`rk2=rk3=10 kcal mol⁻¹ Å⁻²`. Heating is 200 ps, equilibration is 1 ns,
-production is ten 1 ns segments per window, and exchanges are attempted every
+`rk2=rk3=10 kcal mol⁻¹ Å⁻²`. Heating is 200 ps, equilibration is 100 ps,
+production is one 1 ns segment per window, and exchanges are attempted every
 1 ps.
 
 REUS exchanges configurations among Hamiltonians with different umbrella

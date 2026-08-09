@@ -35,9 +35,9 @@ def main() -> int:
     args = parser.parse_args()
 
     segment_dirs = sorted((args.work_dir / "production").glob("[0-9][0-9][0-9]"))
-    if len(segment_dirs) != 10:
+    if len(segment_dirs) != 1:
         raise ValueError(
-            f"완료된 production segment가 10개가 아닙니다: {len(segment_dirs)}"
+            f"완료된 production segment가 1개가 아닙니다: {len(segment_dirs)}"
         )
 
     output_dir = args.work_dir / "analysis"
@@ -102,7 +102,7 @@ def main() -> int:
                 "--skip-fes로 TSV만 만들 수 있습니다."
             )
             raise FileNotFoundError(message)
-        for segment_number in (1, 5, 10):
+        for segment_number in (1,):
             hills = args.work_dir / "production" / f"{segment_number:03d}" / "HILLS"
             output = output_dir / f"fes.{segment_number:03d}.dat"
             command = [

@@ -44,7 +44,7 @@ python3 anal.py
 | `protonate_benzamidine.py` | Neutral RCSB SDF를 benzamidinium(+1)으로 바꾸는 internal helper입니다. |
 | `build.sh` | BEN(+1) GAFF2/AM1-BCC parameter, ff19SB/TIP3P topology와 funnel geometry를 만듭니다. |
 | `setup_funnel.py` | Topology atom index, alignment reference, axis, ligand COM과 anchor를 계산합니다. `build.sh`가 실행합니다. |
-| `run.sh` | Minimization, 200 ps heating, 1 ns equilibration과 10×1 ns production을 실행합니다. |
+| `run.sh` | Minimization, 200 ps heating, 100 ps equilibration과 1 ns production을 실행합니다. |
 | `anal.py` | `lp`/`ld`, funnel boundary bias, cone–cylinder crossing과 1D FES를 요약합니다. |
 
 ### 주요 option
@@ -63,7 +63,7 @@ Production segment는 restart file과 cumulative `HILLS`를 함께 이어받습�
 
 PLUMED 2.10은 `funnel` module을 기본으로 build하지 않습니다.
 `FUNNEL_PS`와 `FUNNEL`이 포함되었는지 확인하고 AMBER와 PLUMED의 coupled
-run을 짧게 검증한 뒤 production을 시작합니다. 10 ns output은 workflow
+run을 짧게 검증한 뒤 production을 시작합니다. 1 ns output은 workflow
 학습용입니다. 충분한 bound–unbound recrossing, reweighting, uncertainty와
 funnel-volume standard-state correction 없이 binding free energy로 보고하지 않습니다.
 
@@ -81,13 +81,13 @@ recalculates the points from the built coordinates, generates a protein-Cα
 alignment reference, and verifies that the initial BEN COM is inside the cone.
 
 `build.sh` prepares benzamidinium(+1) with GAFF2/AM1-BCC and builds an
-ff19SB/TIP3P system. `run.sh` performs minimization, 200 ps heating, 1 ns
-equilibration, and ten 1 ns Funnel MetaD segments. Each continuation carries
+ff19SB/TIP3P system. `run.sh` performs minimization, 200 ps heating, 100 ps
+equilibration, and one 1 ns Funnel MetaD segment. A continuation carries
 both the AMBER restart and cumulative `HILLS` history.
 
 PLUMED must be built with the optional `funnel` module. Verify `FUNNEL_PS`,
 `FUNNEL`, PBC reconstruction, and a short AMBER–PLUMED coupled run before
-production. The 10 ns trajectory teaches the workflow; it is not evidence of
+production. The 1 ns trajectory teaches the workflow; it is not evidence of
 converged binding thermodynamics without repeated recrossings, reweighting,
 uncertainty analysis, and the funnel-volume standard-state correction.
 

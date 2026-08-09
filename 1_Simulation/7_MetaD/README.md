@@ -20,7 +20,7 @@ CV 대신 300–500 K multithermal target distribution을 구성합니다. 서�
 목표를 가진 method이므로 bias 크기만으로 성능을 비교하지 않습니다.
 
 각 runnable directory에서 `./build.sh`, `./run.sh --dry-run`, `./run.sh`,
-`python3 anal.py` 순서로 실행합니다. Production은 1 ns segment 10개입니다.
+`python3 anal.py` 순서로 실행합니다. Production은 1 ns segment 하나입니다.
 AMBER restart와 PLUMED bias state가 모두 있어야 다음 segment를 시작합니다.
 
 PLUMED가 연결된 Amber의 `pmemd.cuda`가 기본 engine입니다. AmberTools만 설치한
@@ -37,7 +37,7 @@ trypsin–benzamidine, OPES_METAD on φ/ψ, and multithermal OPES_EXPANDED over
 300–500 K. Funnel MetaD requires PLUMED's optional `funnel` module.
 
 Run `./build.sh`, `./run.sh --dry-run`, `./run.sh`, and `python3 anal.py` in a
-runnable directory. Production consists of ten 1 ns segments. Continuation
+runnable directory. Production consists of one 1 ns segment. Continuation
 requires both the AMBER restart and the method-specific PLUMED state. The default
 engine is a PLUMED-enabled `pmemd.cuda`; a PLUMED-enabled `sander` can be selected
 with `AMBER_ENGINE=sander`.

@@ -19,7 +19,7 @@ dual boost를 적용합니다. Flexible peptide의 내부 rearrangement와 recep
 | `prepare.py` | Chain A receptor와 resolved chain B PPPVPPRR를 정리하고 residue metadata를 만듭니다. |
 | `build.sh` | ff19SB/TIP3P topology를 만들고 peptide mask renderer를 호출합니다. |
 | `render_inputs.py` | Metadata의 residue 58–65를 `timask1`/`scmask1`에 기록합니다. |
-| `run.sh` | Conventional stage, Pep-GaMD preparation과 10개 production segment를 실행합니다. |
+| `run.sh` | Conventional stage, Pep-GaMD preparation과 production segment 하나를 실행합니다. |
 | `anal.py` | 두 boost component와 total boost의 segment별 통계를 저장합니다. |
 
 ~~~bash
@@ -53,7 +53,7 @@ Amber 26 manual은 Pep-GaMD를 serial GPU `pmemd.cuda` 전용으로 설명합니
 `AMBER_ENGINE`을 CPU 또는 MPI executable로 바꾸면 `run.sh`가 계산 전에
 중단합니다.
 
-10 ns에서 peptide dissociation·rebinding, binding free energy 또는 kinetics가
+1 ns에서 peptide dissociation·rebinding, binding free energy 또는 kinetics가
 수렴할 것으로 기대하지 않습니다. Independent run은 다른 `WORK_DIR`와
 `RANDOM_SEED`를 사용합니다.
 
@@ -80,7 +80,7 @@ Amber 26 documents Pep-GaMD only for serial GPU `pmemd.cuda`; `run.sh` rejects
 CPU and MPI engine overrides.
 `WORK_DIR` and `RANDOM_SEED` values define independent runs.
 
-The 10 ns example demonstrates preparation, restart, and reweighting data flow;
+The 1 ns example demonstrates preparation, restart, and reweighting data flow;
 it cannot establish peptide binding thermodynamics or kinetics. Use separate
 `WORK_DIR` values and positive `RANDOM_SEED` values for independent runs.
 

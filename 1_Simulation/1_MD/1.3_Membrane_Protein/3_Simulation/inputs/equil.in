@@ -1,11 +1,11 @@
-Initial 1 ns membrane equilibration at 310 K and 1 bar
+Initial 100 ps membrane equilibration at 310 K and 1 bar
 &cntrl
  imin=0,
  irest=1,
  ntx=5,
  ig=-1,
 
- nstlim=500000,
+ nstlim=50000,
  dt=0.002,
 
  temp0=310.0,

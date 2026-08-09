@@ -18,7 +18,7 @@ definition이 다릅니다. `ratchet.end_to_end_min`도 distance가 아니라 PL
 | --- | --- |
 | `run.sh` | 공통 topology를 읽고 minimization, heating, equilibration과 ABMD production을 실행합니다. |
 | `inputs/plumed.dat` | Molecule reconstruction, terminal distance와 ABMD bias를 정의합니다. |
-| `inputs/ratchet.in` | PLUMED를 활성화한 10 ns NPT AMBER production input입니다. |
+| `inputs/ratchet.in` | PLUMED를 활성화한 1 ns NPT AMBER production input입니다. |
 | `anal.py` | Cpptraj distance에서 ordered first-crossing frame을 찾고 restart seed를 저장합니다. |
 
 ```bash
@@ -33,8 +33,8 @@ python3 anal.py --dry-run
 python3 anal.py
 ```
 
-`run.sh`는 minimization, 200 ps NVT heating, 1 ns NPT equilibration과
-10 ns ratchet MD를 실행합니다. 기본 engine은 PLUMED가 연결된
+`run.sh`는 minimization, 200 ps NVT heating, 100 ps NPT equilibration과
+1 ns ratchet MD를 실행합니다. 기본 engine은 PLUMED가 연결된
 `pmemd.cuda`입니다. Output은 `work/ratchet.nc`, `work/ratchet.rst7`과
 `work/ratchet.dat`입니다. `run.sh`는 `inputs/plumed.dat`을 `work/`에
 복사한 뒤 AMBER에 넘깁니다.
@@ -78,8 +78,8 @@ units. `anal.py --max-error` controls the allowed Å difference when selecting
 first-crossing seeds. `SYSTEM_DIR`, `WORK_DIR`, and `AMBER_ENGINE` select the
 shared system, output location, and PLUMED-enabled executable.
 
-`run.sh` performs minimization, 200 ps NVT heating, 1 ns NPT equilibration, and
-10 ns ratchet MD. The default engine is a PLUMED-enabled `pmemd.cuda`.
+`run.sh` performs minimization, 200 ps NVT heating, 100 ps NPT equilibration, and
+1 ns ratchet MD. The default engine is a PLUMED-enabled `pmemd.cuda`.
 The PLUMED input is copied into `work/`. `anal.py` selects ordered
 first-crossing frames within 0.5 Å and writes AMBER
 restart seeds. It exits when a requested window was not sampled.

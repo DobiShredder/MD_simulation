@@ -92,6 +92,7 @@ run_window() {
                 -c min.rst7 \
                 -r heat.rst7 \
                 -x heat.nc \
+                -inf heat.info \
                 -ref min.rst7
         ); then
             die "$window_id window heating이 실패했습니다: $window_dir/heat.out"
@@ -114,7 +115,8 @@ run_window() {
                 -p system.parm7 \
                 -c heat.rst7 \
                 -r equil.rst7 \
-                -x equil.nc
+                -x equil.nc \
+                -inf equil.info
         ); then
             die "$window_id window equilibration이 실패했습니다: $window_dir/equil.out"
         fi

@@ -36,8 +36,8 @@ def main() -> int:
     parser.add_argument("work_dir", nargs="?", type=Path, default=Path(__file__).parent / "work")
     args = parser.parse_args()
     segments = sorted((args.work_dir / "production").glob("[0-9][0-9][0-9]"))
-    if len(segments) != 10:
-        raise ValueError(f"완료된 production segment가 10개가 아닙니다: {len(segments)}")
+    if len(segments) != 1:
+        raise ValueError(f"완료된 production segment가 1개가 아닙니다: {len(segments)}")
 
     output_dir = args.work_dir / "analysis"
     output_dir.mkdir(parents=True, exist_ok=True)

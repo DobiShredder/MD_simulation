@@ -4,7 +4,7 @@
 
 세 method는 각각 Chignolin, trypsin–benzamidine와 SH3–peptide system을
 독립적으로 build합니다. 4 ns 동안 boost 통계를 준비한 뒤 1 ns production
-segment 10개를 실행합니다. 완료된 segment마다 MD restart와 GaMD state
+segment 하나를 실행합니다. 완료된 segment마다 MD restart와 GaMD state
 snapshot을 함께 저장하므로 두 state가 모두 정상인 마지막 segment에서 resume합니다.
 
 GaMD는 potential energy가 threshold보다 낮을 때 smooth harmonic boost를 더해
@@ -26,8 +26,8 @@ segmented production을 실행합니다. `anal.py`는 GaMD log의 component별 �
 ## English
 
 The three independent examples use Chignolin, trypsin–benzamidine, and an
-SH3–peptide complex. Each prepares boost statistics for 4 ns and runs ten 1 ns
-production segments. Every completed segment preserves its MD restart and GaMD
+SH3–peptide complex. Each prepares boost statistics for 4 ns and runs one 1 ns
+production segment. The completed segment preserves its MD restart and GaMD
 state snapshot as one resumable pair.
 
 GaMD adds a smooth harmonic boost below an energy threshold to reduce barriers

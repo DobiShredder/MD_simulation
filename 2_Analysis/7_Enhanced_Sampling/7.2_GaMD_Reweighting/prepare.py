@@ -32,7 +32,7 @@ def main() -> None:
     if not topology.is_file():
         raise SystemExit(f"topology를 찾을 수 없습니다: {topology}")
 
-    trajectories = [work / f"production.{segment:03d}.nc" for segment in range(1, 11)]
+    trajectories = [work / "production.001.nc"]
     missing = [path for path in trajectories if not path.is_file()]
     if missing:
         raise SystemExit(f"production trajectory를 찾을 수 없습니다: {missing[0]}")

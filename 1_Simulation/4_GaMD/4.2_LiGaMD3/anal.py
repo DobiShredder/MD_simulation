@@ -11,7 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 WORK = Path(os.environ.get("WORK_DIR", ROOT / "work"))
 COMPONENT_COUNT = 3
-EXPECTED_SEGMENTS = 10
+EXPECTED_SEGMENTS = 1
 EXPECTED_FRAMES = 100
 TEMPERATURE_K = 300.0
 GAS_CONSTANT = 0.00198720425864083

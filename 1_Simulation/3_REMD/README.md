@@ -35,7 +35,7 @@ pre-production과 replica exchange를 실행합니다. `anal.py`는 exchange log
 acceptance, state 방문, occupancy와 round trip을 계산합니다. REST2/REST3에는
 scaled topology를 만드는 추가 helper가 있습니다.
 
-Production은 replica당 10 ns이며 1 ns segment 10개로 나뉩니다. 모든
+Production은 replica당 1 ns이며 1 ns segment 하나로 나뉩니다. 모든
 replica가 같은 segment를 완료했을 때만 resume합니다. MPI launcher, engine,
 process 수와 추가 option은 각 README에 적힌 environment variable로
 지정합니다.
@@ -57,7 +57,7 @@ depends on state spacing, exchange acceptance, state visits, and round trips,
 not on exchange attempts alone.
 
 Use `download.sh`, `prepare.py`, `build.sh`, `run.sh`, and `anal.py`
-in order. Production is ten 1 ns segments per replica. A run resumes only from
+in order. Production is one 1 ns segment per replica. A run resumes only from
 the last segment completed by every replica; partial segments are reported as
 errors. Engine and MPI settings are supplied through the environment variables
 documented by each method.

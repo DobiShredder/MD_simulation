@@ -25,7 +25,7 @@ work_dir=${WORK_DIR:-"$script_dir/work"}
 engine=${AMBER_ENGINE:-pmemd.cuda}
 plumed=${PLUMED:-plumed}
 seed_base=${RANDOM_SEED:-72000}
-production_segments=10
+production_segments=1
 read -r -a amber_options <<< "${AMBER_OPTIONS:-}"
 
 if [[ ! "$seed_base" =~ ^[1-9][0-9]*$ ]]; then
@@ -246,5 +246,5 @@ for segment_number in $(seq 1 "$production_segments"); do
 done
 
 if (( ! dry_run )); then
-    echo "10 ns Funnel MetaD production 완료: $work_dir/production"
+    echo "1 ns Funnel MetaD production 완료: $work_dir/production"
 fi

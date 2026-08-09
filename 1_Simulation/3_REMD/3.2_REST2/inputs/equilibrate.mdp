@@ -1,6 +1,6 @@
 integrator              = md
 dt                      = 0.002
-nsteps                  = 500000
+nsteps                  = 50000
 continuation            = no
 gen-vel                 = yes
 gen-temp                = 300
@@ -27,4 +27,3 @@ nstxout-compressed      = 5000
 nstenergy               = 5000
 nstlog                  = 5000
 pbc                     = xyz
-

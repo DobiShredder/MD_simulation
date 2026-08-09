@@ -23,7 +23,7 @@ if [[ "$work_dir" != /* ]]; then
 fi
 engine=${AMBER_ENGINE:-pmemd.cuda}
 random_seed=${RANDOM_SEED:-42001}
-production_segments=10
+production_segments=1
 read -r -a amber_options <<< "${AMBER_OPTIONS:-}"
 
 if [[ ! "$random_seed" =~ ^[1-9][0-9]*$ ]]; then
@@ -149,7 +149,7 @@ run_md_stage() {
 }
 
 if (( dry_run )); then
-    echo "Experimental LiGaMD3: 200 ps heating + 1 ns NPT + 4 ns parameter preparation + 10 × 1 ns production"
+    echo "Experimental LiGaMD3: 200 ps heating + 100 ps NPT + 4 ns parameter preparation + 1 ns production"
 fi
 run_md_stage minimize "$script_dir/inputs/minimize.in" "$initial_restart" no no
 run_md_stage heat "${heat_input:-$script_dir/inputs/heat.in.template}" "$work_dir/minimize.rst7" yes no
@@ -169,5 +169,5 @@ for segment_number in $(seq 1 "$production_segments"); do
 done
 
 if (( ! dry_run )); then
-    echo "10 ns LiGaMD3 production이 완료되었습니다: $work_dir"
+    echo "1 ns LiGaMD3 production이 완료되었습니다: $work_dir"
 fi

@@ -68,7 +68,7 @@ TIP3P oxygen type `OW`에 κ scaling을 적용합니다. 고정 κ를 재현하�
 replica 0 topology가 base topology와 byte 단위로 같은지 확인하고
 water–water 및 ion–water Lennard-Jones parameter가 보존되는지 검사합니다.
 
-Equilibration은 1 ns, production은 10개의 1 ns segment이며 교환은 2 ps마다
+Equilibration은 100 ps, production은 1 ns segment 하나이며 교환은 2 ps마다
 시도합니다. 실행 환경 변수와 resume 규칙은 REST2 예제와 같습니다.
 
 ### 주요 option
@@ -108,8 +108,8 @@ the solvent; water–water and ion–water interactions must remain physical.
 
 The build uses `repex-topology-parser==0.2.2`, verifies byte identity of the
 base topology, and checks that water–water and ion–water Lennard-Jones
-interactions are preserved. Equilibration is 1 ns; production is ten 1 ns
-segments with exchanges every 2 ps.
+interactions are preserved. Equilibration is 100 ps; production is one 1 ns
+segment with exchanges every 2 ps.
 
 The PyPI wheel inspected in August 2026 does not contain the parser module.
 Use the 0.2.2 source archive and point `REPEX_TOPOLOGY_PARSER_SOURCE` to its

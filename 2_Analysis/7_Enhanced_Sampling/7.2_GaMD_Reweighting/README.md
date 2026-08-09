@@ -14,13 +14,13 @@ cd 2_Analysis/7_Enhanced_Sampling/7.2_GaMD_Reweighting
 
 Profile별 CV는 Chignolin terminal Cα distance, BEN–Asp189 side-chain COM
 distance와 receptor alignment 후 peptide backbone RMSD입니다. `cv.dat`과
-GaMD log는 각각 1,000 frames여야 합니다.
+GaMD log는 각각 100 frames여야 합니다.
 
 ### Script 역할
 
 - `run.sh`: 선택한 profile에 맞는 cpptraj input을 만들고 CV를 계산한 다음,
   아래 두 Python script를 순서대로 실행합니다.
-- `prepare.py`: 10개 production segment의 GaMD log를 읽어 CV frame과 boost
+- `prepare.py`: production segment 하나의 GaMD log를 읽어 CV frame과 boost
   potential record가 일대일로 대응하는지 검사합니다.
 - `reweight.py`: 확인된 CV와 boost potential에 2차 cumulant expansion을 적용해
   1D PMF와 bin별 진단값을 계산합니다.
@@ -32,7 +32,7 @@ GaMD log는 각각 1,000 frames여야 합니다.
 effective sample size가 기록됩니다. 기본 bin width는 0.25 Å입니다. CV 범위는
 관측 범위에서 계산하며 비어 있는 bin은 쓰지 않습니다.
 
-10 ns example의 noisy PMF를 정량 free energy로 사용하지 않습니다. 서로 다른
+1 ns example의 noisy PMF를 정량 free energy로 사용하지 않습니다. 서로 다른
 independent run, bin sensitivity, anharmonicity, effective sample size와 sampling
 convergence를 함께 확인합니다. Kinetic reweighting과 2D PMF는 포함하지 않습니다.
 
@@ -40,13 +40,13 @@ convergence를 함께 확인합니다. Kinetic reweighting과 2D PMF는 포함�
 
 ## English
 
-cpptraj calculates one profile-specific CV from the ten production segments.
-`prepare.py` checks the one-to-one correspondence between 1,000 CV and boost
+cpptraj calculates one profile-specific CV from the production segment.
+`prepare.py` checks the one-to-one correspondence between 100 CV and boost
 records, and `reweight.py` applies second-order cumulant expansion to produce a
 one-dimensional PMF. `run.sh` executes these steps in order.
 
 `pmf.tsv` reports biased and reweighted probabilities and PMFs, per-bin boost
-mean and variance, and effective sample size. The 10 ns result is a workflow
+mean and variance, and effective sample size. The 1 ns result is a workflow
 example, not a converged free energy. Kinetic reweighting and two-dimensional
 PMFs are outside this example.
 

@@ -14,7 +14,7 @@
 | `inputs/min-all.in` | 전체 system restraint를 제거한 minimization입니다. |
 | `inputs/heat.in` | 20→310 K velocity 생성과 restrained NVT heating입니다. |
 | `inputs/equil.in` | 약한 protein/filter restraint를 둔 1 ns anisotropic NPT equilibration입니다. |
-| `inputs/production.in` | Restraint 없는 10 ns anisotropic NPT production입니다. |
+| `inputs/production.in` | Restraint 없는 1 ns anisotropic NPT production입니다. |
 
 ~~~bash
 cd 1_Simulation/1_MD/1.3_Membrane_Protein/3_Simulation
@@ -23,7 +23,7 @@ cd 1_Simulation/1_MD/1.3_Membrane_Protein/3_Simulation
 ~~~
 
 Protein과 filter ion을 restraint한 minimization·heating 뒤 1 ns
-equilibration과 10 ns production을 실행합니다. 기본값은 310 K와 anisotropic
+equilibration과 1 ns production을 실행합니다. 기본값은 310 K와 anisotropic
 pressure coupling입니다. 기본 engine은 `pmemd.cuda`입니다.
 
 ### 주요 option
@@ -45,8 +45,8 @@ bilayer thickness, lipid order, density와 box vector를 production 분석 전�
 
 The stage-2 topology and restart are the default inputs. Set `TOPOLOGY` and
 `COORDINATES` only to use different files. Protein and filter ions are
-restrained during minimization and heating, followed by 1 ns equilibration and
-10 ns production at 310 K with anisotropic pressure coupling.
+restrained during minimization and heating, followed by 100 ps equilibration and
+1 ns production at 310 K with anisotropic pressure coupling.
 
 `run.sh` executes environment minimization, unrestrained minimization, heating,
 equilibration, and production using the matching files under `inputs/`.

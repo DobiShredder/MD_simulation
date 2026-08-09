@@ -20,7 +20,7 @@ python3 anal.py
 |---|---|
 | `build.sh` | ff19SB/TIP3P capped alanine system을 생성합니다. |
 | `check_topology.py` | `build.sh`가 자동 호출하며 capped peptide atom ordering을 검사합니다. |
-| `run.sh` | NPT equilibration 후 fixed-volume multithermal production을 10 × 1 ns로 실행합니다. |
+| `run.sh` | NPT equilibration 후 fixed-volume multithermal production을 1 ns로 실행합니다. |
 | `anal.py` | potential energy, expanded CV, bias 범위와 `DELTAFS` state 수를 기록합니다. |
 
 ### 주요 option
@@ -36,7 +36,7 @@ python3 anal.py
 `ecv.ene`는 expanded CV이며 instantaneous physical temperature가 아닙니다.
 Temperature별 observable은 별도 reweighting이 필요합니다.
 
-10 ns는 state 파일과 fixed-volume workflow를 학습하기 위한 길이입니다.
+1 ns는 state 파일과 fixed-volume workflow를 학습하기 위한 길이입니다.
 Keyword는 PLUMED 2.10
 [`OPES_EXPANDED`](https://www.plumed.org/doc-v2.10/user-doc/html/_o_p_e_s__e_x_p_a_n_d_e_d.html)와
 [`ECV_MULTITHERMAL`](https://www.plumed.org/doc-v2.10/user-doc/html/_e_c_v__m_u_l_t_i_t_h_e_r_m_a_l.html)을
@@ -49,4 +49,4 @@ This example combines OPES_EXPANDED with `ECV_MULTITHERMAL` to sample a
 300 K, while production uses a fixed box (`ntb=1`, `ntp=0`). `opes.state` and
 `DELTAFS` are both carried into continuation segments. `ecv.ene` is an expanded
 CV, not an instantaneous physical temperature; temperature-resolved observables
-require separate reweighting. The 10 ns run is a workflow example.
+require separate reweighting. The 1 ns run is a workflow example.

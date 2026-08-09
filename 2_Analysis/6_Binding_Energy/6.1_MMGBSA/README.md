@@ -17,7 +17,7 @@ python3 anal.py
 분리합니다. Receptor에는 trypsin과 structural Ca²⁺가 들어갑니다. Complex,
 receptor와 ligand topology는 모두 `mbondi2` PBRadii를 사용합니다.
 
-기본 계산은 1,000 frame 중 10 frame마다 하나씩 선택한 100개 frame에
+기본 계산은 1 ns production에서 10 ps 간격으로 저장한 100개 frame에
 `igb=5`, `saltcon=0.15 M`와 LCPO nonpolar term을 적용합니다. `idecomp=2`는
 per-residue contribution을 기록합니다. `anal.py`는 energy, running mean, 5개
 block과 decomposition을 TSV로 요약합니다.

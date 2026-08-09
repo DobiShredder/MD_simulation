@@ -70,7 +70,7 @@ else
 fi
 
 # Main workflow
-run_stage 'solvent 최소화' \
+run_stage 'solvent minimization' \
     "$engine" \
     -O \
     -i "$script_dir/inputs/min-solvent.in" \
@@ -80,7 +80,7 @@ run_stage 'solvent 최소화' \
     -r min-solvent.rst7 \
     -ref system.rst7
 
-run_stage '전체 system 최소화' \
+run_stage '전체 system minimization' \
     "$engine" \
     -O \
     -i "$script_dir/inputs/min-all.in" \
@@ -98,6 +98,7 @@ run_stage 'NVT 가열' \
     -c min-all.rst7 \
     -r heat.rst7 \
     -x heat.nc \
+    -inf heat.info \
     -ref min-all.rst7
 
 run_stage 'NPT equilibration' \
@@ -109,9 +110,10 @@ run_stage 'NPT equilibration' \
     -c heat.rst7 \
     -r equil.rst7 \
     -x equil.nc \
+    -inf equil.info \
     -ref heat.rst7
 
-run_stage '10 ns production' \
+run_stage '1 ns production' \
     "$engine" \
     -O \
     -i "$script_dir/inputs/production.in" \

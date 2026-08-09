@@ -14,7 +14,7 @@ equation을 반복 계산합니다.
 python3 anal.py
 ```
 
-`run.sh`는 `us/work/windows/NNN/distance.dat`에서 처음 1,000 ps를 제외하고
+`run.sh`는 `us/work/windows/NNN/distance.dat`에서 처음 100 ps를 제외하고
 window별 series를 `output/series/`에 만듭니다. DUMPAVE의 1열을 time, 8열을
 distance로 읽습니다. Column이나 discard 구간이 다르면 `prepare.py` 상단의
 값을 수정합니다.
@@ -33,7 +33,7 @@ NMR-style restraint의 bias는 `rk(r-r0)^2`이므로 `window.tsv`의 `rk`를 그
 
 빈 bin은 PMF를 `nan`으로 기록합니다. PMF 범위 밖의 frame이 있거나 WHAM이
 설정한 tolerance까지 수렴하지 않으면 계산을 중단합니다. Overlap은 window
-배치 진단이며 수렴의 증거가 아닙니다. 10 ns 결과는 bin과 discard 구간에
+배치 진단이며 수렴의 증거가 아닙니다. 1 ns 결과는 bin과 discard 구간에
 민감할 수 있으므로 independent run과 sampling 길이를 따로 비교합니다.
 
 Bootstrap uncertainty와 radial Jacobian correction은 포함하지 않습니다.
@@ -47,7 +47,7 @@ to a one-dimensional terminal-distance PMF. The implementation solves the
 binned WHAM equations directly with NumPy and does not require an external WHAM
 executable.
 
-Run `./run.sh` to discard the first 1,000 ps and prepare each distance series,
+Run `./run.sh` to discard the first 100 ps and prepare each distance series,
 then run `python3 anal.py` to calculate and plot the PMF and neighboring-window
 overlap. The default grid covers 5–25 Å with 100 bins at 300 K.
 

@@ -44,7 +44,7 @@ python3 prepare.py structure/3PTB.raw.pdb structure/complex.pdb
 | `ntc=2`, `ntf=2`, `dt=0.002` | 수소 bond에 SHAKE를 적용하고 2 fs timestep을 사용합니다. |
 | `restraintmask` | 초기 stage에서 solvent/ion을 제외한 solute heavy atom을 restraint합니다. |
 
-Production은 10 ns입니다. Interaction 분석과 MM/GBSA·MM/PBSA input으로
+Production은 1 ns입니다. Interaction 분석과 MM/GBSA·MM/PBSA input으로
 사용할 수 있지만 binding affinity 수렴을 의미하지 않습니다. `leap.log`에서
 disulfide bond, Ca2+, ligand atom mapping과 net charge를 확인합니다.
 
@@ -84,7 +84,7 @@ atom mapping must describe the intended ligand before simulation.
 2 fs SHAKE timestep, Langevin thermostat, and isotropic Monte Carlo-barostat
 NPT. Initial solute-heavy-atom restraints are removed for production.
 
-Production is 10 ns. It can supply interaction and MM/GBSA or MM/PBSA input,
+Production is 1 ns. It can supply interaction and MM/GBSA or MM/PBSA input,
 but not a converged binding affinity. Check disulfides, Ca2+, ligand atom
 mapping, and net charge in `leap.log`. Set the target tautomer and protonation
 before `prepare.sh`. With the default `LIGAND_CHARGE=1`, the neutral RCSB ideal

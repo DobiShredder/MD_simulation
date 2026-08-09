@@ -30,7 +30,7 @@ python3 anal.py
 
 Complex와 solvent leg는 각각 lambda 0.0–1.0의 11개 window를 사용합니다.
 `timask1`/`timask2`는 BNZ와 MBN end state를, `scmask1`/`scmask2`는 soft-core
-대상을 지정합니다. 각 window는 200 ps heating, 1 ns NPT equilibration과
+대상을 지정합니다. 각 window는 200 ps heating, 100 ps NPT equilibration과
 1 ns production segment 두 개를 실행합니다. 완성된 segment는 건너뛰며 output이
 일부만 있으면 중단합니다.
 
@@ -71,7 +71,7 @@ needed.
 Run `download.sh`, `prepare.py`, `build.sh`, `run.sh`, and `anal.py` in that
 order. The complex and solvent legs each contain eleven lambda windows. AMBER
 soft-core masks define the two ligand end states. Every window uses 200 ps of
-heating, 1 ns of NPT equilibration, and two 1 ns production segments. Completed
+heating, 100 ps of NPT equilibration, and one 1 ns production segment. Completed
 segments resume safely; partial output stops the workflow.
 
 The inputs use the Amber 26 `aces26=1` soft-core format and scale

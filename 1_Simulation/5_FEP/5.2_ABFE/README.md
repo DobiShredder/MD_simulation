@@ -16,7 +16,7 @@ standard-state correction을 thermodynamic cycle의 부호에 맞춰 합칩니�
 | `protonate_benzamidine.py` | RCSB neutral SDF를 BEN(+1)로 바꾸는 내부 helper | `work/ben-protonated.sdf` |
 | `build.sh` | BEN parameter, charged/uncharged topology와 65개 window 생성 | `work/build/`, `states.tsv` |
 | `generate_inputs.py` | Topology에서 restraint atom 번호와 input 생성 | `restraints.tsv`, `work/windows/` |
-| `run.sh` | Window별 MD와 2 × 1 ns production 실행 | Restart, trajectory, AMBER output |
+| `run.sh` | Window별 MD와 1 ns production 실행 | Restart, trajectory, AMBER output |
 | `anal.py` | MBAR leg 계산, standard-state와 PME correction 조합 | `free_energy.tsv`, `overlap_matrix.tsv` |
 
 ```bash
@@ -87,7 +87,7 @@ ff19SB, GAFF2/AM1-BCC, and TIP3P, writes charged and zero-BEN-charge topologies,
 then creates 65 windows. Restraint and charge
 stages use eleven lambda states; the soft-core LJ stages use sixteen states with
 additional endpoint spacing. Each window contains 200 ps heating, 1 ns
-equilibration, and two 1 ns production segments.
+equilibration, and one 1 ns production segment.
 The default ligand path adds one imine-N hydrogen and a +1 formal charge to the
 neutral RCSB SDF. Boresch ligand anchors are `C7-C1-C2`.
 
