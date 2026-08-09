@@ -17,7 +17,7 @@ die() {
     exit 1
 }
 
-script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+script_dir=$(dirname "${BASH_SOURCE[0]}")
 input_pdb="$script_dir/structure/chignolin.pdb"
 states_file="$script_dir/inputs/states.tsv"
 work_dir=${WORK_DIR:-"$script_dir/work"}
@@ -40,18 +40,18 @@ if (( ! dry_run )); then
 fi
 
 window_count=$(awk 'NR > 1 {count++} END {print count + 0}' "$states_file")
-if [[ "$window_count" -ne 19 ]]; then
-    die "states.tsv에는 19개 window가 있어야 합니다: $window_count"
+if [[ "$window_count" -ne 20 ]]; then
+    die "states.tsv에는 20개 window가 있어야 합니다: $window_count"
 fi
 
 if (( dry_run )); then
-    echo "19개 GaREUS window용 ff19SB/TIP3P system을 생성합니다."
-    echo "CV: :1@CA–:10@CA, 6–24 Å, 1 Å spacing"
-    echo "생성 위치: $work_dir/replicas/000 ... 018"
+    echo "20개 GaREUS window용 ff19SB/TIP3P system을 생성합니다."
+    echo "CV: :1@CA–:10@CA, 6–25 Å, 1 Å spacing"
+    echo "생성 위치: $work_dir/replicas/000 ... 019"
     exit 0
 fi
 
-echo "19개 GaREUS window용 ff19SB/TIP3P system을 생성합니다."
+echo "20개 GaREUS window용 ff19SB/TIP3P system을 생성합니다."
 mkdir -p "$work_dir"
 cp "$input_pdb" "$work_dir/input.pdb"
 
@@ -105,4 +105,3 @@ done < "$states_file"
 
 cp "$states_file" "$work_dir/states.tsv"
 echo "GaREUS topology, restraint와 input: $work_dir/replicas"
-

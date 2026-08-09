@@ -1,51 +1,99 @@
-# Funnel Metadynamics Scaffold
+# Funnel Metadynamics / Funnel MetaD
 
 ## 한국어
 
-> 아직 실행하지 않습니다. `run.sh`는 의도적으로 오류를 반환합니다.
+Trypsin–benzamidine complex(PDB 3PTB)에 Funnel MetaD를 적용합니다.
+Funnel-shaped restraint는 binding pocket의 넓은 cone을 solvent의 좁은
+cylinder와 연결합니다. Ligand가 unbound state에서 불필요하게 넓은
+solvent volume을 탐색하지 않도록 하며, `fps.lp`에 well-tempered MetaD
+bias를 추가해 binding·unbinding 방향 sampling을 촉진합니다.
 
-Funnel MetaD는 ligand가 binding site에서 bulk solvent로 이동하는 경로를
-funnel-shaped restraint 안에 제한합니다. Binding site 가까이에서는 원뿔 영역을,
-bulk에서는 원통 영역을 사용해 ligand가 탐색해야 하는 solvent volume을 줄입니다.
-Bias는 보통 funnel axis 방향 위치와 axis에서 떨어진 거리에 적용합니다.
+### Geometry
 
-Example system은 trypsin–benzamidine 3PTB입니다. 다음 명령은 geometry 검토에
-필요한 원본 PDB, mmCIF와 BEN SDF만 다운로드합니다.
+Axis는 Funnel MetaD 원 논문의 trypsin–benzamidine 정의를 3PTB에
+적용합니다.
 
-```bash
+- Point A: Leu185 C, Pro225 Cα, Pro225 N의 center of mass
+- Point B: Cys220 Cα, Lys224 C, Gly226 N의 center of mass
+- `ZCC=1.8 nm`, `ALPHA=0.55 rad`, `RCYL=0.1 nm`
+- `MINS=-0.5 nm`, `MAXS=3.7 nm`; axial wall은 -0.3, 3.5 nm
+
+Raw 3PTB에서 A=(-2.323, 11.292, 7.015) Å, B=(-2.874, 13.242,
+11.159) Å입니다. Build 후에는 tleap이 이동한 실제 coordinate에서 다시
+계산합니다. Test build의 BEN COM은 `lp=1.007 nm`, `ld=0.191 nm`였고,
+해당 lp의 cone radius 0.586 nm 안에 있었습니다.
+
+### 실행
+
+~~~bash
 cd 1_Simulation/7_MetaD/7.2_funnel-MetaD
 ./download.sh
-```
+python3 prepare.py structure/3PTB.raw.pdb structure/complex.pdb
+./build.sh structure/complex.pdb structure/BEN_ideal.sdf
+./run.sh --dry-run
+./run.sh
+python3 anal.py
+~~~
 
-Runnable template로 만들기 전에 다음 선택을 구조에서 확인해야 합니다.
+### 파일 역할
 
-| 항목 | 필요한 결정 |
-|---|---|
-| Alignment | stable receptor atom group과 reference structure |
-| Funnel axis | binding pocket 안쪽 point와 solvent 방향 point |
-| Ligand | periodic molecule reconstruction과 BEN COM atom group |
-| Geometry | cone length, opening angle, cylinder radius와 axial 범위 |
-| Walls | `lp`와 `ld`에 적용할 wall 위치와 force constant |
+| 파일 | 역할 |
+| --- | --- |
+| `download.sh` | 3PTB PDB/mmCIF와 BEN SDF를 받고 checksum을 기록합니다. |
+| `prepare.py` | Protein, BEN, Ca2+와 disulfide bond를 정리하고 axis residue mapping을 만듭니다. |
+| `protonate_benzamidine.py` | Neutral RCSB SDF를 benzamidinium(+1)으로 바꾸는 internal helper입니다. |
+| `build.sh` | BEN(+1) GAFF2/AM1-BCC parameter, ff19SB/TIP3P topology와 funnel geometry를 만듭니다. |
+| `setup_funnel.py` | Topology atom index, alignment reference, axis, ligand COM과 anchor를 계산합니다. `build.sh`가 실행합니다. |
+| `run.sh` | Minimization, 200 ps heating, 1 ns equilibration과 10×1 ns production을 실행합니다. |
+| `anal.py` | `lp`/`ld`, funnel boundary bias, cone–cylinder crossing과 1D FES를 요약합니다. |
 
-이 값은 protein–ligand system마다 달라서 3PTB 구조를 보지 않고 고정하지
-않습니다. 기존 φ/ψ OPES input은 Funnel MetaD가 아니므로 제거했습니다.
-Geometry가 정해지면 PLUMED 2.10 `FUNNEL_PS`/`FUNNEL` module availability,
-PBC 처리와 short coupled run을 확인해야 합니다.
+### 주요 option
 
-Binding free energy를 계산하려면 bound/unbound basin sampling, reweighting과
-funnel volume의 standard-state correction이 추가로 필요합니다. Tutorial 길이의
-trajectory만으로 정량 값을 보고하지 않습니다.
+`setup_funnel.py`는 protein Cα atom으로 `funnel-reference.pdb`를 만듭니다.
+`FUNNEL_PS` alignment이 protein의 translation과 rotation을 따라가며, 가장 가까운
+protein heavy atom을 `ANCHOR`로 선택합니다. `WHOLEMOLECULES`는 protein과
+BEN의 periodic image를 복원합니다.
 
-참고: [PLUMED 2.10 FUNNEL_PS](https://www.plumed.org/doc-v2.10/user-doc/html/_f_u_n_n_e_l__p_s.html)
+`FUNNEL` restraint의 `KAPPA=35100 kJ mol⁻¹ nm⁻²`와 geometry는
+benzamidine–trypsin 참고값입니다. MetaD는 `fps.lp`에 0.05 nm width,
+1.2 kJ/mol initial height, 1 ps deposition interval, `BIASFACTOR=10`을 사용합니다.
+Heating과 equilibration에서 complex heavy atom restraint를 2.0에서
+0.5 kcal mol⁻¹ Å⁻²로 낮춰 bound starting pose를 유지합니다.
+Production segment는 restart file과 cumulative `HILLS`를 함께 이어받습니다.
+
+PLUMED 2.10은 `funnel` module을 기본으로 build하지 않습니다.
+`FUNNEL_PS`와 `FUNNEL`이 포함되었는지 확인하고 AMBER와 PLUMED의 coupled
+run을 짧게 검증한 뒤 production을 시작합니다. 10 ns output은 workflow
+학습용입니다. 충분한 bound–unbound recrossing, reweighting, uncertainty와
+funnel-volume standard-state correction 없이 binding free energy로 보고하지 않습니다.
 
 ## English
 
-This directory is intentionally not runnable. Funnel MetaD confines the ligand
-to a conical binding-site region connected to a cylindrical bulk region, then
-biases coordinates along and away from the funnel axis. `download.sh` retrieves
-3PTB and the BEN ligand for geometry design. A runnable input still requires an
-alignment group, two system-specific axis points, ligand reconstruction, funnel
-dimensions, and wall parameters. `run.sh` fails until those choices and the
-PLUMED funnel module are validated. Quantitative binding free energies would
-also require reweighting, basin convergence, and a standard-state volume
-correction.
+This example applies Funnel MetaD to trypsin–benzamidine (PDB 3PTB). A
+conical binding-site region joins a narrow bulk-solvent cylinder, while
+well-tempered MetaD biases the ligand COM projection `fps.lp`.
+
+The axis follows the original trypsin–benzamidine definition: point A is the
+COM of Leu185 C, Pro225 Cα, and Pro225 N; point B is the COM of Cys220 Cα,
+Lys224 C, and Gly226 N. The funnel uses `ZCC=1.8 nm`, `ALPHA=0.55 rad`,
+`RCYL=0.1 nm`, and an axial grid from -0.5 to 3.7 nm. `setup_funnel.py`
+recalculates the points from the built coordinates, generates a protein-Cα
+alignment reference, and verifies that the initial BEN COM is inside the cone.
+
+`build.sh` prepares benzamidinium(+1) with GAFF2/AM1-BCC and builds an
+ff19SB/TIP3P system. `run.sh` performs minimization, 200 ps heating, 1 ns
+equilibration, and ten 1 ns Funnel MetaD segments. Each continuation carries
+both the AMBER restart and cumulative `HILLS` history.
+
+PLUMED must be built with the optional `funnel` module. Verify `FUNNEL_PS`,
+`FUNNEL`, PBC reconstruction, and a short AMBER–PLUMED coupled run before
+production. The 10 ns trajectory teaches the workflow; it is not evidence of
+converged binding thermodynamics without repeated recrossings, reweighting,
+uncertainty analysis, and the funnel-volume standard-state correction.
+
+## References / 참고 자료
+
+- [Original Funnel MetaD paper](https://doi.org/10.1073/pnas.1303186110)
+- [PLUMED 2.10 FUNNEL_PS](https://www.plumed.org/doc-v2.10/user-doc/html/_f_u_n_n_e_l__p_s.html)
+- [PLUMED 2.10 FUNNEL](https://www.plumed.org/doc-v2.10/user-doc/html/_f_u_n_n_e_l.html)
+- [PLUMED Funnel MetaD masterclass](https://www.plumed.org/doc-v2.9/user-doc/html/masterclass-22-1.html)

@@ -36,7 +36,9 @@ show_dry_run() {
     printf '  --salt_c K+ \\\n'
     printf '  --salt_a Cl- \\\n'
     printf '  --saltcon %q \\\n' "$salt_concentration_molar"
-    printf '  --keepligs'
+    printf '  --keepligs \\\n'
+    printf '  --nottrim \\\n'
+    printf '  --notprotonate'
     if (( ${#memgen_options[@]} > 0 )); then
         printf ' %q' "${memgen_options[@]}"
     fi
@@ -61,6 +63,8 @@ run_packmol_memgen() {
             --salt_a Cl- \
             --saltcon "$salt_concentration_molar" \
             --keepligs \
+            --nottrim \
+            --notprotonate \
             "${memgen_options[@]}" \
             > packmol-memgen.log 2>&1
     ); then

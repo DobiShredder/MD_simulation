@@ -1,127 +1,156 @@
 #!/usr/bin/env python3
-"""Prepare AMBER DUMPAVE series and WHAM metadata."""
+"""AMBER DUMPAVE에서 window별 distance series를 준비합니다."""
 
 from __future__ import annotations
 
-import argparse
+import csv
 from dataclasses import dataclass
 from pathlib import Path
+
+
+TUTORIAL_DIR = Path.cwd()
+WINDOWS_DIR = TUTORIAL_DIR / "../../../1_Simulation/2_US/us/work/windows"
+OUTPUT_DIR = TUTORIAL_DIR / "output"
+
+TIME_COLUMN = 1
+DISTANCE_COLUMN = 8
+DISCARD_PS = 1000.0
 
 
 @dataclass(frozen=True)
 class Window:
     name: str
-    center: float
+    center_angstrom: float
     amber_force: float
     directory: Path
-
-
-def parse_args() -> argparse.Namespace:
-    script_dir = Path(__file__).resolve().parent
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--windows",
-        type=Path,
-        default=script_dir.parents[2] / "1_Simulation" / "2_US" / "us" / "work" / "windows",
-    )
-    parser.add_argument("--output", type=Path, default=script_dir / "output")
-    parser.add_argument("--time-column", type=int, default=1)
-    parser.add_argument("--distance-column", type=int, default=8)
-    parser.add_argument("--discard-ps", type=float, default=1000.0)
-    parser.add_argument("--dry-run", action="store_true")
-    return parser.parse_args()
 
 
 def read_window(directory: Path) -> Window:
     metadata = directory / "window.tsv"
     if not metadata.is_file():
-        raise ValueError(f"missing window metadata: {metadata}")
-    rows = [line.split() for line in metadata.read_text(encoding="utf-8").splitlines() if line.strip()]
-    if len(rows) != 2 or len(rows[1]) != 3:
-        raise ValueError(f"unexpected window metadata format: {metadata}")
-    name, center, force = rows[1]
-    return Window(name=name, center=float(center), amber_force=float(force), directory=directory)
+        raise ValueError(f"window metadata를 찾을 수 없습니다: {metadata}")
+
+    with metadata.open(encoding="utf-8", newline="") as handle:
+        rows = list(csv.DictReader(handle, delimiter="\t"))
+
+    if len(rows) != 1:
+        raise ValueError(f"window metadata 형식이 잘못되었습니다: {metadata}")
+
+    row = rows[0]
+    return Window(
+        name=row["window"],
+        center_angstrom=float(row["center_A"]),
+        amber_force=float(row["force_kcal_mol_A2"]),
+        directory=directory,
+    )
 
 
 def discover_windows(root: Path) -> list[Window]:
-    windows = [read_window(path) for path in sorted(root.glob("[0-9][0-9][0-9]")) if path.is_dir()]
+    windows = []
+    for directory in sorted(root.glob("[0-9][0-9][0-9]")):
+        if directory.is_dir():
+            windows.append(read_window(directory))
+
     if not windows:
-        raise ValueError(f"no umbrella windows under {root}")
-    centers = [window.center for window in windows]
+        raise ValueError(f"umbrella window를 찾을 수 없습니다: {root}")
+
+    centers = [window.center_angstrom for window in windows]
     if centers != sorted(centers) or len(centers) != len(set(centers)):
-        raise ValueError("window centers must be unique and increasing")
+        raise ValueError("window center는 중복 없이 증가해야 합니다.")
+
     return windows
 
 
-def read_dumpave(path: Path, time_column: int, distance_column: int) -> list[tuple[float, float]]:
-    if time_column < 1 or distance_column < 1:
-        raise ValueError("column numbers are one-based and must be positive")
-    required = max(time_column, distance_column)
-    values: list[tuple[float, float]] = []
+def read_dumpave(path: Path) -> list[tuple[float, float]]:
+    required_columns = max(TIME_COLUMN, DISTANCE_COLUMN)
+    values = []
+
     with path.open(encoding="utf-8") as handle:
         for raw_line in handle:
             line = raw_line.strip()
-            if not line or line.startswith("#"):
+            if not line or line.startswith(("#", "@")):
                 continue
+
             fields = line.replace("D", "E").split()
-            if len(fields) < required:
+            if len(fields) < required_columns:
                 continue
+
             try:
-                time = float(fields[time_column - 1])
-                distance = float(fields[distance_column - 1])
+                time_ps = float(fields[TIME_COLUMN - 1])
+                distance_angstrom = float(fields[DISTANCE_COLUMN - 1])
             except ValueError:
                 continue
-            values.append((time, distance))
+
+            values.append((time_ps, distance_angstrom))
+
     if not values:
-        raise ValueError(f"no numeric DUMPAVE rows found in {path}")
+        raise ValueError(f"DUMPAVE numeric record를 읽지 못했습니다: {path}")
+
     return values
 
 
-def main() -> int:
-    args = parse_args()
-    windows = discover_windows(args.windows)
-
-    if args.dry_run:
-        print(f"window input: {args.windows} ({len(windows)} windows)")
-        print(f"output: {args.output}")
-        print(
-            f"DUMPAVE columns: time={args.time_column}, distance={args.distance_column}; "
-            f"discard={args.discard_ps:g} ps"
-        )
-        return 0
-
-    series_dir = args.output / "series"
+def prepare_windows(windows_dir: Path, output_dir: Path) -> int:
+    windows = discover_windows(windows_dir)
+    series_dir = output_dir / "series"
     series_dir.mkdir(parents=True, exist_ok=True)
-    metadata_rows: list[str] = []
-    summary_rows = ["window\tcenter_A\tamber_rm2\twham_k\tframes\tfirst_time_ps\tlast_time_ps"]
+
+    summary_rows = [
+        [
+            "window",
+            "center_A",
+            "amber_rk_kcal_mol_A2",
+            "frames",
+            "first_time_ps",
+            "last_time_ps",
+        ]
+    ]
 
     for window in windows:
         source = window.directory / "distance.dat"
         if not source.is_file():
-            raise SystemExit(f"DUMPAVE output을 찾을 수 없습니다: {source}")
-        values = read_dumpave(source, args.time_column, args.distance_column)
-        cutoff = values[0][0] + args.discard_ps
-        kept = [(time, distance) for time, distance in values if time >= cutoff]
+            raise ValueError(f"DUMPAVE output을 찾을 수 없습니다: {source}")
+
+        values = read_dumpave(source)
+        first_production_time = values[0][0] + DISCARD_PS
+        kept = []
+        for time_ps, distance_angstrom in values:
+            if time_ps >= first_production_time:
+                kept.append((time_ps, distance_angstrom))
+
         if not kept:
-            raise SystemExit(f"discard 이후 frame이 없습니다: {source}")
+            raise ValueError(f"discard 이후 frame이 없습니다: {source}")
 
-        destination = (series_dir / f"window_{window.name}.dat").resolve()
-        with destination.open("w", encoding="utf-8") as handle:
-            for time, distance in kept:
-                handle.write(f"{time:.6f}\t{distance:.8f}\n")
+        series_file = series_dir / f"window_{window.name}.dat"
+        with series_file.open("w", encoding="utf-8") as handle:
+            handle.write("time_ps\tdistance_A\n")
+            for time_ps, distance_angstrom in kept:
+                handle.write(f"{time_ps:.6f}\t{distance_angstrom:.8f}\n")
 
-        wham_force = 2.0 * window.amber_force
-        metadata_rows.append(f"{destination}\t{window.center:.6f}\t{wham_force:.6f}")
         summary_rows.append(
-            f"{window.name}\t{window.center:.6f}\t{window.amber_force:.6f}\t"
-            f"{wham_force:.6f}\t{len(kept)}\t{kept[0][0]:.6f}\t{kept[-1][0]:.6f}"
+            [
+                window.name,
+                f"{window.center_angstrom:.6f}",
+                f"{window.amber_force:.6f}",
+                str(len(kept)),
+                f"{kept[0][0]:.6f}",
+                f"{kept[-1][0]:.6f}",
+            ]
         )
 
-    (args.output / "metadata.dat").write_text("\n".join(metadata_rows) + "\n", encoding="utf-8")
-    (args.output / "summary.tsv").write_text("\n".join(summary_rows) + "\n", encoding="utf-8")
-    print(f"WHAM input {len(windows)}개를 생성했습니다: {args.output}")
-    return 0
+    with (output_dir / "summary.tsv").open("w", encoding="utf-8", newline="") as handle:
+        csv.writer(handle, delimiter="\t").writerows(summary_rows)
+
+    return len(windows)
+
+
+def main() -> None:
+    try:
+        window_count = prepare_windows(WINDOWS_DIR, OUTPUT_DIR)
+    except (OSError, KeyError, ValueError) as error:
+        raise SystemExit(f"WHAM input 준비에 실패했습니다: {error}") from error
+
+    print(f"{window_count}개 window를 정리했습니다.")
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    main()

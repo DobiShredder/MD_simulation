@@ -1,30 +1,54 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-analysis_root=$(cd "$script_dir/../.." && pwd)
-python=${PYTHON:-python3}
-
-export TUTORIAL_DIR="$script_dir"
-export EXPECTED_OUTPUTS="sampled.nc sampled.dcd first_frame.pdb"
-
-"$analysis_root/_run_cpptraj.sh" "$@"
-
-if [[ "${1:-}" != "--dry-run" ]]; then
-    output_dir=${OUTPUT_DIR:-"$script_dir/output"}
-    cpptraj=${CPPTRAJ:-cpptraj}
-
-    if ! command -v "$python" >/dev/null 2>&1; then
-        echo "오류: Python을 찾을 수 없습니다: $python" >&2
-        exit 1
-    fi
-
-    "$python" "$script_dir/frame_map.py" \
-        --output "$output_dir" \
-        --cpptraj "$cpptraj"
-
-    if [[ ! -s "$output_dir/frame_map.tsv" ]]; then
-        echo "오류: frame_map.tsv가 생성되지 않았습니다." >&2
-        exit 1
-    fi
+if [[ $# -ne 0 ]]; then
+    echo "사용법: $0" >&2
+    exit 2
 fi
+
+# 다른 system이나 frame 범위를 사용할 때는 아래 설정을 수정합니다.
+tutorial_dir=$PWD
+simulation_dir="$tutorial_dir/../../../1_Simulation/1_MD/1.1_Soluble_Protein"
+topology="$simulation_dir/work/system.parm7"
+trajectory="$simulation_dir/work/production.nc"
+start_frame=1
+stop_frame=last
+stride=1
+
+cpptraj=cpptraj
+input_file="$tutorial_dir/inputs/cpptraj.in"
+output_dir="$tutorial_dir/output"
+trajectory_arguments="$start_frame $stop_frame $stride"
+
+if ! command -v "$cpptraj" >/dev/null 2>&1; then
+    echo "오류: cpptraj을 찾을 수 없습니다." >&2
+    exit 1
+fi
+if [[ ! -f "$input_file" ]]; then
+    echo "오류: cpptraj input이 없습니다: $input_file" >&2
+    exit 1
+fi
+if [[ ! -s "$topology" ]]; then
+    echo "오류: Chignolin topology가 없습니다: $topology" >&2
+    exit 1
+fi
+if [[ ! -s "$trajectory" ]]; then
+    echo "오류: Chignolin trajectory가 없습니다: $trajectory" >&2
+    exit 1
+fi
+
+mkdir -p "$output_dir"
+echo "선택한 frame을 NetCDF, DCD와 PDB로 변환합니다."
+
+cd "$output_dir"
+if ! "$cpptraj" \
+    -p "$topology" \
+    -y "$trajectory" \
+    -ya "$trajectory_arguments" \
+    -i "$input_file" \
+    > cpptraj.log 2>&1; then
+    echo "오류: cpptraj 실행에 실패했습니다: $output_dir/cpptraj.log" >&2
+    exit 1
+fi
+
+echo "변환 결과: $output_dir"

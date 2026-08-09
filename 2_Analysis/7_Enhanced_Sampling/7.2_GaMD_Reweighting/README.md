@@ -16,6 +16,18 @@ Profile별 CV는 Chignolin terminal Cα distance, BEN–Asp189 side-chain COM
 distance와 receptor alignment 후 peptide backbone RMSD입니다. `cv.dat`과
 GaMD log는 각각 1,000 frames여야 합니다.
 
+### Script 역할
+
+- `run.sh`: 선택한 profile에 맞는 cpptraj input을 만들고 CV를 계산한 다음,
+  아래 두 Python script를 순서대로 실행합니다.
+- `prepare.py`: 10개 production segment의 GaMD log를 읽어 CV frame과 boost
+  potential record가 일대일로 대응하는지 검사합니다.
+- `reweight.py`: 확인된 CV와 boost potential에 2차 cumulant expansion을 적용해
+  1D PMF와 bin별 진단값을 계산합니다.
+
+일반적인 사용에서는 `run.sh`만 실행하면 됩니다. 중간 결과를 확인하거나
+분석 parameter를 수정할 때만 Python script를 직접 실행합니다.
+
 `pmf.tsv`에는 biased/reweighted probability와 PMF, bin별 boost 평균·분산과
 effective sample size가 기록됩니다. 기본 bin width는 0.25 Å입니다. CV 범위는
 관측 범위에서 계산하며 비어 있는 bin은 쓰지 않습니다.
@@ -29,8 +41,9 @@ convergence를 함께 확인합니다. Kinetic reweighting과 2D PMF는 포함�
 ## English
 
 cpptraj calculates one profile-specific CV from the ten production segments.
-The Python script joins 1,000 CV and boost records and applies second-order
-cumulant expansion to produce a one-dimensional PMF.
+`prepare.py` checks the one-to-one correspondence between 1,000 CV and boost
+records, and `reweight.py` applies second-order cumulant expansion to produce a
+one-dimensional PMF. `run.sh` executes these steps in order.
 
 `pmf.tsv` reports biased and reweighted probabilities and PMFs, per-bin boost
 mean and variance, and effective sample size. The 10 ns result is a workflow

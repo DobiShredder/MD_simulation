@@ -3,42 +3,25 @@
 
 from __future__ import annotations
 
-import argparse
 from pathlib import Path
-import sys
 
 import matplotlib.pyplot as plt
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from analysis_utils import (
-    analysis_time_ns,
-    read_cpptraj_table,
-    read_run_metadata,
-    require_same_rows,
-)
-
-
-def parse_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output", type=Path, default=Path(__file__).parent / "output")
-    return parser.parse_args()
+import numpy as np
 
 
 def main() -> int:
-    args = parse_arguments()
-    _, before = read_cpptraj_table(args.output / "rmsd_before.dat")
-    _, after = read_cpptraj_table(args.output / "rmsd_after.dat")
-    frame_count = require_same_rows({"before": before, "after": after})
+    output_dir = Path(__file__).resolve().parent / "output"
+    before = np.loadtxt(output_dir / "rmsd_before.dat", comments="#", ndmin=2)
+    after = np.loadtxt(output_dir / "rmsd_after.dat", comments="#", ndmin=2)
     if before.shape[1] < 2 or after.shape[1] < 2:
         raise ValueError("RMSD output column이 부족합니다.")
-
-    metadata = read_run_metadata(args.output)
-    time_ns = analysis_time_ns(frame_count, metadata)
+    if not np.array_equal(before[:, 0], after[:, 0]):
+        raise ValueError("RMSD output의 frame 번호가 일치하지 않습니다.")
 
     figure, axis = plt.subplots(figsize=(8, 4.5))
-    axis.plot(time_ns, before[:, 1], label="Before fitting")
-    axis.plot(time_ns, after[:, 1], label="After fitting")
-    axis.set_xlabel("Analysis time (ns)")
+    axis.plot(before[:, 0], before[:, 1], label="Before fitting")
+    axis.plot(after[:, 0], after[:, 1], label="After fitting")
+    axis.set_xlabel("Frame")
     axis.set_ylabel("Backbone RMSD (Å)")
     axis.legend()
     figure.tight_layout()

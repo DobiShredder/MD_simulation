@@ -1,0 +1,45 @@
+@RESTART@
+
+# Protein과 ligand를 각각 하나의 periodic molecule로 복원한다.
+WHOLEMOLECULES ENTITY0=1-@PROTEIN_LAST@ ENTITY1=@LIGAND_ALL@
+
+ligand: COM ATOMS=@LIGAND_HEAVY@
+
+fps: FUNNEL_PS ...
+  LIGAND=ligand
+  REFERENCE=@REFERENCE@
+  ANCHOR=@ANCHOR@
+  POINTS=@POINTS@
+... FUNNEL_PS
+
+funnel: FUNNEL ...
+  ARG=fps.lp,fps.ld
+  ZCC=1.8
+  ALPHA=0.55
+  RCYL=0.1
+  MINS=-0.5
+  MAXS=3.7
+  KAPPA=35100
+  NBINS=500
+  NBINZ=500
+  FILE=FUNNEL_GRID
+... FUNNEL
+
+lower: LOWER_WALLS ARG=fps.lp AT=-0.3 KAPPA=35100 EXP=2
+upper: UPPER_WALLS ARG=fps.lp AT=3.5 KAPPA=35100 EXP=2
+
+metad: METAD ...
+  ARG=fps.lp
+  SIGMA=0.05
+  HEIGHT=1.2
+  PACE=500
+  BIASFACTOR=10
+  TEMP=300
+  FILE=HILLS
+  GRID_MIN=-0.5
+  GRID_MAX=3.7
+  GRID_BIN=420
+  CALC_RCT
+... METAD
+
+PRINT ARG=fps.lp,fps.ld,funnel.bias,lower.bias,upper.bias,metad.bias,metad.rbias STRIDE=5000 FILE=COLVAR

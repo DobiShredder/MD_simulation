@@ -4,39 +4,46 @@
 
 Trajectory 처리와 기본 구조 계산에는 cpptraj를 사용합니다. 통계 처리와
 plotting, dimension reduction 및 clustering에는 Python을 사용합니다.
-1–3번과 7번은 실행 가능한 예제이며 나머지는 아직 문서 skeleton입니다.
+모든 category에 실행 가능한 예제가 있습니다.
 
 1. [Preprocessing](1_Preprocessing/): imaging, alignment, conversion
 2. [Basic analysis](2_Basic/): RMSD, RMSF, Rg, distance, angle, dihedral
 3. [Interactions](3_Interactions/): H-bond, contacts, SASA, secondary structure
-4. [Dimensionality reduction](4_Dimension_Reduction/): PCA and t-SNE
-5. [Clustering](5_Clustering/): K-means and DBSCAN
+4. [Dimensionality reduction](4_Dimension_Reduction/): PCA, t-SNE, UMAP
+5. [Clustering](5_Clustering/): K-means, DBSCAN, HDBSCAN, GMM
 6. [Binding energy](6_Binding_Energy/): MM/GBSA and MM/PBSA
-7. [Enhanced-sampling analysis](7_Enhanced_Sampling/): US PMF and GaMD reweighting
+7. [Enhanced-sampling analysis](7_Enhanced_Sampling/): US, GaMD and GaREUS reweighting
 
-1–3번 tutorial은 Chignolin conventional MD의 topology와 trajectory를
-기본 input으로 사용합니다. 각 leaf는 다른 analysis 결과에 의존하지 않습니다.
+1–5번은 Chignolin, 6번은 trypsin–benzamidine conventional MD output을
+사용합니다. 7번은 대응하는 enhanced-sampling simulation output을 읽습니다.
+각 leaf는 다른 analysis 결과에 의존하지 않습니다. Command는 실행할 tutorial
+directory로 이동한 뒤 입력합니다.
 
 ```bash
-./run.sh [--dry-run] TOPOLOGY TRAJECTORY [TRAJECTORY ...]
-python3 anal.py [--output OUTPUT_DIR]
+./run.sh
+python3 anal.py
 ```
 
-`OUTPUT_DIR`, `START_FRAME`, `STOP_FRAME`, `STRIDE`, `FRAME_INTERVAL_PS`와
-`CPPTRAJ`을 environment variable로 바꿀 수 있습니다. `FRAME_INTERVAL_PS`는
-원본 trajectory의 frame 간격이며 기본값은 10 ps입니다. `anal.py`는 figure를
-화면에 표시하고 image file을 자동 저장하지 않습니다.
+위 순서는 1–6번의 기본 형식입니다. Conversion tutorial은 `./run.sh`만
+실행하고, 7번의 command와 입력 경로는 각 README를 따릅니다.
+
+먼저 대응하는 conventional MD를 실행합니다. 1–6번의 각 `run.sh`는 해당
+simulation의 `work/system.parm7`과 `work/production.nc`를 직접 읽습니다. 다른
+system을 사용할 때는 `run.sh` 상단의 `topology`와 `trajectory`를 수정합니다.
+`anal.py`는 figure를 화면에 표시하고 image file을 자동 저장하지 않습니다.
 
 ## English
 
 cpptraj handles trajectory processing and core structural observables. Python
 is used for dimensionality reduction, clustering, statistics, and plots.
-Categories 1–3 and 7 contain runnable examples. The remaining categories are
-currently documentation skeletons. Examples in categories 1–3 use the
-Chignolin conventional-MD topology and trajectory by default, and each leaf
-runs independently.
+All categories contain runnable examples. Categories 1–5 use Chignolin,
+category 6 uses trypsin–benzamidine conventional-MD output, and category 7
+reads the matching enhanced-sampling simulation. Each leaf runs independently.
 
-The common interface accepts one topology and one or more trajectories.
-`OUTPUT_DIR`, frame limits, stride, source frame interval, and the cpptraj
-executable can be overridden with environment variables. Plotting scripts
-display figures with `plt.show()` and do not save image files automatically.
+Run the Chignolin conventional-MD tutorial first. Each `run.sh` reads its
+`work/system.parm7` and `work/production.nc` directly. To analyze another
+system, edit the `topology` and `trajectory` variables at the top of that
+script. This two-command pattern applies to categories 1–6 except Conversion,
+which only runs `./run.sh`; category 7 documents its own command and input
+path. Every leaf is self-contained. Plotting scripts display figures with
+`plt.show()` and do not save image files automatically.

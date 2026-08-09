@@ -16,7 +16,7 @@ Replica exchange는 서로 다른 thermodynamic state 또는 Hamiltonian을 병�
 | 3.2 | [REST2](3.2_REST2/README.md) | 8 effective temperatures | GROMACS/PLUMED HREX |
 | 3.3 | [REST3](3.3_REST3/README.md) | 8 λ/κ states | GROMACS/PLUMED HREX |
 | 3.4 | [REUS](3.4_REUS/README.md) | 19 distance windows | `pmemd.cuda.MPI -rem 3` |
-| 3.5 | [GaREUS](3.5_GaREUS/README.md) | 19 distance windows | `pmemd.cuda.MPI -rem 3` |
+| 3.5 | [GaREUS](3.5_GaREUS/README.md) | 20 distance windows | `pmemd.cuda.MPI -rem 3` |
 
 각 폴더에서 다음 순서로 실행합니다.
 
@@ -49,7 +49,7 @@ REUS/GaREUS PMF처럼 더 긴 후처리는
 
 All five examples independently build ff19SB/TIP3P Chignolin. They cover
 20-temperature T-REMD, eight-state REST2, eight-state REST3, 19-window REUS,
-and 19-window GaREUS with the engines listed in the table above.
+and 20-window GaREUS with the engines listed in the table above.
 
 Replica exchange propagates parallel thermodynamic states or Hamiltonians and
 periodically proposes state swaps using a Metropolis criterion. Useful mixing

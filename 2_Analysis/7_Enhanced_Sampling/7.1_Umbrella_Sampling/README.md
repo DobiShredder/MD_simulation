@@ -3,51 +3,65 @@
 ## 한국어
 
 [`1_Simulation/2_US/`](../../../1_Simulation/2_US/README.md)의 window별
-`distance.dat`으로 1차원 PMF와 neighboring histogram overlap을 계산합니다.
-결과는 `output/`에 저장하며 simulation output은 수정하지 않습니다.
+`distance.dat`으로 terminal Cα distance의 1D PMF를 계산합니다. External
+WHAM executable은 사용하지 않습니다. `anal.py`가 NumPy로 binned WHAM
+equation을 반복 계산합니다.
+
+먼저 2_US production을 완료합니다. 이후 이 directory에서 실행합니다.
 
 ```bash
-cd 2_Analysis/7_Enhanced_Sampling/7.1_Umbrella_Sampling
-./run.sh --dry-run
 ./run.sh
+python3 anal.py
 ```
 
-기본 input은 `../../../1_Simulation/2_US/us/work/windows`입니다.
-`prepare.py`는 `distance.dat`의 1열을 time, 8열을 restrained distance로
-읽고 처음 1,000 ps를 제거합니다. Amber output의 column이 다르면
-`DISTANCE_COLUMN`을 바꿉니다.
+`run.sh`는 `us/work/windows/NNN/distance.dat`에서 처음 1,000 ps를 제외하고
+window별 series를 `output/series/`에 만듭니다. DUMPAVE의 1열을 time, 8열을
+distance로 읽습니다. Column이나 discard 구간이 다르면 `prepare.py` 상단의
+값을 수정합니다.
 
-WHAM metadata의 harmonic coefficient는 AMBER NMR-style restraint의
-`rk(r-r0)^2`를 `2*rm2`로 변환한 값입니다. 다른 restraint 또는 WHAM
-convention을 사용할 때는 이 변환을 수정합니다.
+`anal.py`는 300 K, 5–25 Å 범위와 100 bins를 기본으로 사용합니다. AMBER
+NMR-style restraint의 bias는 `rk(r-r0)^2`이므로 `window.tsv`의 `rk`를 그대로
+사용합니다. External WHAM의 `1/2 k(r-r0)^2` convention을 위한 factor-of-two
+변환은 적용하지 않습니다.
 
-`overlap.py`는 neighboring histogram의 overlap coefficient를 0–1 범위로
-계산합니다. 하나의 cutoff로 수렴을 판정하지 않습니다. Discard 구간, bin 수,
-window 배치, 독립 반복과 bootstrap 결과를 함께 비교합니다.
+| Output | 내용 |
+| --- | --- |
+| `output/pmf.tsv` | Bin별 frame 수, probability와 최솟값을 0으로 이동한 PMF |
+| `output/window_offsets.tsv` | WHAM에서 수렴한 window별 relative free-energy offset |
+| `output/overlap.tsv` | Neighboring-window histogram overlap coefficient |
+| `output/wham_diagnostics.tsv` | 온도, bin 수, iteration과 최종 residual |
 
-Estimator는 PATH 또는 `WHAM_BIN`의 Grossfield-style `wham`입니다.
-`BOOTSTRAP_TRIALS`가 0보다 크면 Monte Carlo bootstrap argument를 전달합니다.
-다른 WHAM CLI는 `run.sh`의 호출부를 수정합니다.
+빈 bin은 PMF를 `nan`으로 기록합니다. PMF 범위 밖의 frame이 있거나 WHAM이
+설정한 tolerance까지 수렴하지 않으면 계산을 중단합니다. Overlap은 window
+배치 진단이며 수렴의 증거가 아닙니다. 10 ns 결과는 bin과 discard 구간에
+민감할 수 있으므로 independent run과 sampling 길이를 따로 비교합니다.
+
+Bootstrap uncertainty와 radial Jacobian correction은 포함하지 않습니다.
+이 CV는 Chignolin 내부의 terminal distance이므로 결과를 절대 binding free
+energy 또는 전체 folding free energy로 해석하지 않습니다.
 
 ## English
 
-Per-window `distance.dat` files from the matching simulation are used for a
-one-dimensional WHAM PMF and neighboring-histogram overlap. Processed series,
-metadata, overlap tables, and the PMF are written under `output/`; simulation
-output is left unchanged.
+Per-window `distance.dat` files from the matching 2_US simulation are converted
+to a one-dimensional terminal-distance PMF. The implementation solves the
+binned WHAM equations directly with NumPy and does not require an external WHAM
+executable.
 
-The default input is the simulation `us/work/windows` directory. `prepare.py`
-reads each center and AMBER `rk2` from `window.tsv`, treats DUMPAVE column 1 as
-time and column 8 as the restrained distance, and discards the first 1,000 ps.
-Check the columns in the Amber 26 output and change `DISTANCE_COLUMN` when
-needed.
+Run `./run.sh` to discard the first 1,000 ps and prepare each distance series,
+then run `python3 anal.py` to calculate and plot the PMF and neighboring-window
+overlap. The default grid covers 5–25 Å with 100 bins at 300 K.
 
-The metadata converts AMBER's `rk(r-r0)^2` coefficient to the `1/2 k(r-r0)^2`
-convention expected by the selected WHAM executable using `k=2*rm2`. Recheck
-this conversion whenever either convention changes. Histogram overlap is a
-diagnostic, not a convergence proof. Test discard length, bins, window
-placement, independent repeats, and bootstrap uncertainty.
+The bias is evaluated directly as AMBER's `rk(r-r0)^2`. No factor-of-two
+conversion for an external `1/2 k(r-r0)^2` convention is needed. Empty bins are
+reported as `nan`, while samples outside the selected PMF range or failure to
+reach the WHAM tolerance stop the calculation.
 
-`run.sh` expects a Grossfield-style `wham` executable through PATH or
-`WHAM_BIN`. Positive `BOOTSTRAP_TRIALS` are passed using that implementation's
-Monte Carlo bootstrap arguments; adapt the command for a different WHAM CLI.
+`pmf.tsv`, `window_offsets.tsv`, `overlap.tsv`, and `wham_diagnostics.tsv`
+contain the numerical results. Histogram overlap diagnoses window placement but does not demonstrate
+convergence. Bootstrap uncertainty and a radial Jacobian correction are outside
+this example. The short terminal-distance PMF is neither an absolute binding
+free energy nor a complete folding free energy.
+
+## References / 참고 자료
+
+- [Kumar et al., WHAM](https://doi.org/10.1002/jcc.540130812)

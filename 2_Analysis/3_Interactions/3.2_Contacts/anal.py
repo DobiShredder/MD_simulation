@@ -3,30 +3,21 @@
 
 from __future__ import annotations
 
-import argparse
 from pathlib import Path
 import re
-import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from analysis_utils import (
-    analysis_time_ns,
-    read_cpptraj_table,
-    read_run_metadata,
-    require_same_rows,
-)
 
 
 RESIDUE_COUNT = 10
 
 
-def parse_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output", type=Path, default=Path(__file__).parent / "output")
-    return parser.parse_args()
+def read_table(path: Path) -> tuple[list[str], np.ndarray]:
+    with path.open(encoding="utf-8") as handle:
+        header = handle.readline().lstrip("#").split()
+    data = np.loadtxt(path, comments="#", ndmin=2)
+    return header, data
 
 
 def residue_pair(label: str) -> tuple[int, int] | None:
@@ -77,25 +68,21 @@ def write_frequency(path: Path, frequency: np.ndarray) -> None:
 
 
 def main() -> int:
-    args = parse_arguments()
-    _, counts = read_cpptraj_table(args.output / "contact_count.dat")
-    series_header, series = read_cpptraj_table(
-        args.output / "contact_residue_series.dat"
-    )
-    frame_count = require_same_rows({"counts": counts, "series": series})
+    output_dir = Path(__file__).resolve().parent / "output"
+    _, counts = read_table(output_dir / "contact_count.dat")
+    series_header, series = read_table(output_dir / "contact_residue_series.dat")
     if counts.shape[1] < 3:
         raise ValueError("contact count output column이 부족합니다.")
+    if not np.array_equal(counts[:, 0], series[:, 0]):
+        raise ValueError("Contact output의 frame 번호가 일치하지 않습니다.")
 
     frequency = contact_frequency(series_header, series)
-    write_frequency(args.output / "contact_frequency.tsv", frequency)
-
-    metadata = read_run_metadata(args.output)
-    time_ns = analysis_time_ns(frame_count, metadata)
+    write_frequency(output_dir / "contact_frequency.tsv", frequency)
 
     figure, axes = plt.subplots(1, 2, figsize=(12, 5))
-    axes[0].plot(time_ns, counts[:, 1], label="Native")
-    axes[0].plot(time_ns, counts[:, 2], label="Non-native")
-    axes[0].set_xlabel("Analysis time (ns)")
+    axes[0].plot(counts[:, 0], counts[:, 1], label="Native")
+    axes[0].plot(counts[:, 0], counts[:, 2], label="Non-native")
+    axes[0].set_xlabel("Frame")
     axes[0].set_ylabel("Heavy-atom contact count")
     axes[0].legend()
 

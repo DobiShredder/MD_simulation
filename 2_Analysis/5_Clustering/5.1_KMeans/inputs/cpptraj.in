@@ -1,0 +1,4 @@
+autoimage anchor :1-10
+rms ToFirst first :1-10@CA,C,N
+multidihedral Dihedrals phi psi resrange 2-9 out phi_psi.dat
+run

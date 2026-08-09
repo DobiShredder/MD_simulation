@@ -129,21 +129,32 @@ def write_uncharged_topology(source: Path, destination: Path) -> None:
     topology.save(str(destination), overwrite=True)
 
 
-def alchemical_options(stage: str, lambda_value: float, schedule: list[float]) -> str:
+def alchemical_options(
+    stage: str,
+    lambda_value: float,
+    schedule: list[float],
+    collect_mbar: bool,
+) -> str:
+    common = f"icfe=1, clambda={lambda_value:.6f}, timask1=':BEN', timask2='', "
     if stage == "restraint":
-        return ""
-    common = (
-        f"icfe=1, clambda={lambda_value:.6f}, timask1=':BEN', timask2='', "
-        f"mbar_states={len(schedule)}, mbar_lambda=" + ",".join(f"{value:.6f}" for value in schedule) + ","
-    )
-    if stage.endswith("vdw"):
+        common += (
+            " ifsc=0, aces26=1, gti_nmropt=1,"
+            " gti_sc_cc_energy_terms='', gti_sc_sc_energy_terms='',"
+        )
+    elif stage.endswith("vdw"):
         common += (
             " ifsc=1, scmask1=':BEN', scmask2='', scalpha=0.5, scbeta=12.0,"
             " aces26=1, gti_sc_cc_energy_terms='ele,vdw,ele14,vdw14',"
-            " gti_sc_sc_energy_terms='', gti_nmropt=0, ifmbar=1,"
+            " gti_sc_sc_energy_terms='', gti_nmropt=0,"
         )
     else:
-        common += " crgmask=':BEN', ifsc=0, ifmbar=1,"
+        common += " crgmask=':BEN', ifsc=0,"
+    if collect_mbar:
+        mbar_lambda = ",".join(f"{value:.6f}" for value in schedule)
+        common += (
+            f" ifmbar=1, mbar_states={len(schedule)},"
+            f" mbar_lambda={mbar_lambda},"
+        )
     return common
 
 
@@ -174,18 +185,23 @@ def main() -> None:
             topology_name = f"{leg}_uncharged.parm7" if stage.endswith("vdw") else f"{leg}.parm7"
             relative_link(args.work_dir / "build" / topology_name, directory / "system.parm7")
             relative_link(args.work_dir / "build" / f"{leg}.rst7", directory / "system.rst7")
-            restraint_scale = lambda_value if stage == "restraint" else (1.0 if leg == "complex" else 0.0)
+            restraint_scale = 1.0 if leg == "complex" else 0.0
             write_restraints(directory / "disang.rest", records, restraint_scale)
             replacements = {
                 "@STAGE@": stage,
                 "@LAMBDA@": f"{lambda_value:.6f}",
                 "@RANDOM_SEED@": str(61000 + state_index),
-                "@ALCHEMICAL_OPTIONS@": alchemical_options(stage, lambda_value, schedule),
                 "@RESTRAINT_OPTIONS@": "nmropt=1," if leg == "complex" else "",
                 "@WT_END@": "&wt type='END', /" if leg == "complex" else "",
                 "@DISANG@": "DISANG=disang.rest" if leg == "complex" else "",
             }
             for name in ("heat", "equilibrate", "production"):
+                replacements["@ALCHEMICAL_OPTIONS@"] = alchemical_options(
+                    stage,
+                    lambda_value,
+                    schedule,
+                    collect_mbar=name == "production",
+                )
                 render(args.input_dir / f"{name}.in.template", directory / f"{name}.in", replacements)
             (directory / "minimize.in").write_text(
                 (args.input_dir / "minimize.in").read_text(encoding="utf-8"), encoding="utf-8"

@@ -3,26 +3,10 @@
 
 from __future__ import annotations
 
-import argparse
 from pathlib import Path
-import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from analysis_utils import (
-    analysis_time_ns,
-    read_cpptraj_table,
-    read_run_metadata,
-    require_same_rows,
-)
-
-
-def parse_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output", type=Path, default=Path(__file__).parent / "output")
-    return parser.parse_args()
 
 
 def read_hbond_occupancy(path: Path) -> list[tuple[str, float]]:
@@ -58,23 +42,24 @@ def read_hbond_counts(path: Path, numeric_columns: int) -> np.ndarray:
 
 
 def main() -> int:
-    args = parse_arguments()
-    _, protein = read_cpptraj_table(args.output / "protein_hbond_count.dat")
-    water = read_hbond_counts(args.output / "water_hbond_count.dat", 4)
-    frame_count = require_same_rows({"protein": protein, "water": water})
+    output_dir = Path(__file__).resolve().parent / "output"
+    protein = np.loadtxt(
+        output_dir / "protein_hbond_count.dat", comments="#", ndmin=2
+    )
+    water = read_hbond_counts(output_dir / "water_hbond_count.dat", 4)
 
     if protein.shape[1] < 2 or water.shape[1] < 4:
         raise ValueError("hydrogen bond count output column이 부족합니다.")
+    if not np.array_equal(protein[:, 0], water[:, 0]):
+        raise ValueError("Hydrogen bond output의 frame 번호가 일치하지 않습니다.")
 
-    metadata = read_run_metadata(args.output)
-    time_ns = analysis_time_ns(frame_count, metadata)
-    occupancy = read_hbond_occupancy(args.output / "protein_hbond_average.dat")[:10]
+    occupancy = read_hbond_occupancy(output_dir / "protein_hbond_average.dat")[:10]
 
     figure, axes = plt.subplots(2, 1, figsize=(9, 8))
-    axes[0].plot(time_ns, protein[:, 1], label="Protein–protein")
-    axes[0].plot(time_ns, water[:, 2], label="Protein–water")
-    axes[0].plot(time_ns, water[:, 3], label="Water bridges")
-    axes[0].set_xlabel("Analysis time (ns)")
+    axes[0].plot(protein[:, 0], protein[:, 1], label="Protein–protein")
+    axes[0].plot(water[:, 0], water[:, 2], label="Protein–water")
+    axes[0].plot(water[:, 0], water[:, 3], label="Water bridges")
+    axes[0].set_xlabel("Frame")
     axes[0].set_ylabel("Hydrogen bond count")
     axes[0].legend()
 

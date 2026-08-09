@@ -3,47 +3,29 @@
 
 from __future__ import annotations
 
-import argparse
 from pathlib import Path
-import sys
 
 import matplotlib.pyplot as plt
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from analysis_utils import (
-    analysis_time_ns,
-    read_cpptraj_table,
-    read_run_metadata,
-    require_same_rows,
-)
-
-
-def parse_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output", type=Path, default=Path(__file__).parent / "output")
-    return parser.parse_args()
+import numpy as np
 
 
 def main() -> int:
-    args = parse_arguments()
-    _, rmsd_first = read_cpptraj_table(args.output / "rmsd_first.dat")
-    _, rmsd_average = read_cpptraj_table(args.output / "rmsd_average.dat")
-    _, rmsf = read_cpptraj_table(args.output / "rmsf_byres.dat")
-    _, rg = read_cpptraj_table(args.output / "rg.dat")
-
-    frame_count = require_same_rows(
-        {
-            "rmsd_first": rmsd_first,
-            "rmsd_average": rmsd_average,
-            "rg": rg,
-        }
+    output_dir = Path(__file__).resolve().parent / "output"
+    rmsd_first = np.loadtxt(output_dir / "rmsd_first.dat", comments="#", ndmin=2)
+    rmsd_average = np.loadtxt(
+        output_dir / "rmsd_average.dat", comments="#", ndmin=2
     )
-    metadata = read_run_metadata(args.output)
-    time_ns = analysis_time_ns(frame_count, metadata)
+    rmsf = np.loadtxt(output_dir / "rmsf_byres.dat", comments="#", ndmin=2)
+    rg = np.loadtxt(output_dir / "rg.dat", comments="#", ndmin=2)
+
+    if not np.array_equal(rmsd_first[:, 0], rmsd_average[:, 0]):
+        raise ValueError("RMSD output의 frame 번호가 일치하지 않습니다.")
+    if not np.array_equal(rmsd_first[:, 0], rg[:, 0]):
+        raise ValueError("RMSD와 Rg output의 frame 번호가 일치하지 않습니다.")
 
     figure, axes = plt.subplots(3, 1, figsize=(8, 9))
-    axes[0].plot(time_ns, rmsd_first[:, 1], label="First frame")
-    axes[0].plot(time_ns, rmsd_average[:, 1], label="Average structure")
+    axes[0].plot(rmsd_first[:, 0], rmsd_first[:, 1], label="First frame")
+    axes[0].plot(rmsd_average[:, 0], rmsd_average[:, 1], label="Average structure")
     axes[0].set_ylabel("Backbone RMSD (Å)")
     axes[0].legend()
 
@@ -51,8 +33,8 @@ def main() -> int:
     axes[1].set_xlabel("Residue")
     axes[1].set_ylabel("Backbone RMSF (Å)")
 
-    axes[2].plot(time_ns, rg[:, 1])
-    axes[2].set_xlabel("Analysis time (ns)")
+    axes[2].plot(rg[:, 0], rg[:, 1])
+    axes[2].set_xlabel("Frame")
     axes[2].set_ylabel("Radius of gyration (Å)")
 
     figure.tight_layout()

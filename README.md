@@ -16,12 +16,13 @@
 > 이 코드들은 범용 production protocol이 아닌 시작 템플릿입니다.
 > 실제 system에 맞는 force field, protonation, 원자 선택, equilibration, sampling 및 수렴성을
 > 사용자가 반드시 직접 디자인하고 검증해야합니다.
-> 학습용 production은 10–20 ns로 제한합니다.
+> 학습용 production 길이는 method별 README에 적힌 짧은 기본값을 사용합니다.
 >
 > These are starting templates, not universal production protocols. Users must
 > design and validate the force field, protonation states, atom selections,
 > equilibration, sampling strategy, and convergence criteria for their own
-> systems. Training production runs are limited to 10–20 ns.
+> systems. Each method uses a short tutorial-scale production length documented
+> in its local README.
 
 
 
@@ -43,7 +44,7 @@ MD_simulation/
 │   │   ├── 1.1_Soluble_Protein/    # Chignolin, PDB 1UAO
 │   │   ├── 1.2_Protein_Ligand/     # Trypsin–benzamidine, PDB 3PTB
 │   │   └── 1.3_Membrane_Protein/   # KcsA, PDB 1K4C
-│   ├── 2_US/                # Umbrella sampling
+│   ├── 2_US/                # Ratchet MD and umbrella sampling
 │   ├── 3_REMD/              # REMD, REST2, REST3, REUS, GaREUS
 │   ├── 4_GaMD/              # GaMD variants
 │   ├── 5_FEP/               # RBFE and ABFE
@@ -69,22 +70,24 @@ MD_simulation/
 | 4 | Gaussian accelerated MD | Chignolin GaMD, trypsin–benzamidine LiGaMD3, SH3–peptide Pep-GaMD | [Open](1_Simulation/4_GaMD/README.md) |
 | 5 | Free Energy Perturbation | T4L benzene→toluene RBFE and trypsin–benzamidine ABFE | [Open](1_Simulation/5_FEP/README.md) |
 | 6 | Weighted Ensemble | Na⁺/Cl⁻ distance sampling with WESTPA and AMBER | [Open](1_Simulation/6_WE/README.md) |
-| 7 | Metadynamics | WT-MetaD, funnel MetaD, OPES, OPES Expanded | [Open](1_Simulation/7_MetaD/README.md) |
+| 7 | Metadynamics | WT-MetaD, funnel MetaD and OPES variants | [Open](1_Simulation/7_MetaD/README.md) |
 
 ## Analysis areas / 분석 영역
 
 분석 파트는 preprocessing, 기본 구조 지표, interaction, dimension reduction,
-clustering 및 MM/GB(PB)SA로 구성됩니다. Preprocessing, 기본 구조 지표와
-interaction tutorial은 Chignolin trajectory를 사용하는 실행 예제입니다.
-Trajectory 처리는 cpptraj을 중심으로 하고 t-SNE, clustering, 통계와 plotting은
-Python으로 진행합니다.
+clustering, MM/GB(PB)SA와 enhanced-sampling 후처리로 구성됩니다. 1–6번은
+Chignolin 또는 trypsin–benzamidine trajectory를 사용하고, 7번은 대응하는 US,
+GaMD 또는 GaREUS simulation output을 사용합니다. Trajectory 처리는 cpptraj을
+중심으로 하고 dimension reduction, clustering, 통계와 plotting은 Python으로
+진행합니다.
 
 
 The analysis section covers preprocessing, basic structural metrics,
-interactions, dimensionality reduction, clustering, and MM/GB(PB)SA. Runnable
-preprocessing, basic, and interaction examples use the Chignolin trajectory.
-Trajectory processing primarily uses cpptraj, while t-SNE, clustering,
-statistics, and plotting use Python.
+interactions, dimensionality reduction, clustering, MM/GB(PB)SA, and
+enhanced-sampling post-processing. Categories 1–6 use Chignolin or
+trypsin–benzamidine trajectories; category 7 consumes the matching US, GaMD,
+or GaREUS output. Trajectory processing primarily uses cpptraj, while dimension
+reduction, clustering, statistics, and plotting use Python.
 
 
 
@@ -93,10 +96,10 @@ statistics, and plotting use Python.
 | Preprocessing | Imaging, alignment, conversion and sampling | [Open](2_Analysis/1_Preprocessing/README.md) |
 | Basic | RMSD, RMSF, Rg, distance, angle and dihedral | [Open](2_Analysis/2_Basic/README.md) |
 | Interactions | Hydrogen bonds, contacts, SASA and secondary structure | [Open](2_Analysis/3_Interactions/README.md) |
-| Dimensionality reduction | PCA and t-SNE | [Open](2_Analysis/4_Dimension_Reduction/README.md) |
-| Clustering | K-means and DBSCAN | [Open](2_Analysis/5_Clustering/README.md) |
+| Dimensionality reduction | PCA, t-SNE and UMAP | [Open](2_Analysis/4_Dimension_Reduction/README.md) |
+| Clustering | K-means, DBSCAN, HDBSCAN and GMM | [Open](2_Analysis/5_Clustering/README.md) |
 | Binding energy | MM/GBSA and MM/PBSA | [Open](2_Analysis/6_Binding_Energy/README.md) |
-| Enhanced sampling | Umbrella-sampling PMF, overlap and GaMD reweighting | [Open](2_Analysis/7_Enhanced_Sampling/README.md) |
+| Enhanced sampling | US WHAM, GaMD and GaREUS reweighting | [Open](2_Analysis/7_Enhanced_Sampling/README.md) |
 
 ## Example systems / 예제 시스템
 
@@ -104,12 +107,14 @@ statistics, and plotting use Python.
 | --- | --- | --- |
 | Chignolin | Soluble-protein MD and structural/ensemble analysis | PDB 1UAO; first NMR model; ff19SB/TIP3P |
 | Trypsin–benzamidine | Protein–ligand interactions and MM/GB(PB)SA | PDB 3PTB; BEN, structural Ca2+, six disulfides; ff19SB/GAFF2/TIP3P |
-| KcsA | Membrane build and membrane-protein analysis | PDB 1K4C; ff19SB/Lipid21/OPC; POPC:POPE:cholesterol 90:5:5 |
+| KcsA | Membrane build and membrane-protein MD | PDB 1K4C; ff19SB/Lipid21/OPC; POPC:POPE:cholesterol 90:5:5 |
 | C-crk SH3–SOS peptide | Pep-GaMD selective peptide boost | PDB 1CKB; resolved PPPVPPRR peptide; ff19SB/TIP3P |
+| T4 lysozyme L99A | Benzene→toluene RBFE | PDB 4W53; ff19SB/GAFF2/TIP3P |
+| Na⁺/Cl⁻ pair | WESTPA–AMBER weighted ensemble | Generated two-ion structure; implicit solvent |
+| Capped alanine dipeptide | WT-MetaD and OPES examples | Built with tleap; ff19SB/TIP3P |
 
-Source structures are downloaded at runtime and checksums are recorded. Large
-or generated coordinates, trajectories, restarts, topologies, and logs are not
-distributed through Git.
+Downloaded source structures are recorded with checksums. Generated systems,
+trajectories, restarts, topologies, and logs are not distributed through Git.
 
 ## Method references
 
@@ -126,6 +131,7 @@ distributed through Git.
 | WE | *J. Chem. Phys.* | 1996 | [105, 1604–1610](https://doi.org/10.1063/1.472061) |
 | MetaD | *PNAS* | 2002 | [99, 12562–12566](https://doi.org/10.1073/pnas.202427399) |
 | WT-MetaD | *Phys. Rev. Lett.* | 2008 | [100, 020603](https://doi.org/10.1103/PhysRevLett.100.020603) |
+| Funnel MetaD | *PNAS* | 2013 | [110, 6358–6363](https://doi.org/10.1073/pnas.1303186110) |
 | OPES | *J. Phys. Chem. Lett.* | 2020 | [11, 2731–2736](https://doi.org/10.1021/acs.jpclett.0c00497) |
 
 
@@ -152,6 +158,9 @@ conda create -n ambertools26 -c conda-forge python=3.12 ambertools=26
 conda activate ambertools26
 source "$CONDA_PREFIX/amber.sh"
 conda install westpa -c conda-forge
+conda install -c conda-forge \
+    "scikit-learn>=1.5,<2" \
+    "umap-learn>=0.5.7,<0.6"
 ```
 
 설치 결과는 다음 command로 확인합니다.
@@ -169,7 +178,8 @@ Conda-forge package는 topology build, `sander` CPU test와 cpptraj analysis에
 사용할 수 있습니다. CPU parallel 및 CUDA support는 포함하지 않습니다.
 Tutorial의 기본 production engine인 `pmemd.cuda`는 별도의 Amber 26 설치와
 지원되는 GPU가 필요합니다. AmberTools만 설치한 환경에서 짧은 test를 실행할
-때는 `AMBER_ENGINE=sander`를 지정합니다.
+때는 해당 method가 `sander`를 지원하는지 local README에서 먼저 확인합니다.
+아래 dry run은 engine 선택과 command만 표시하며 실제 계산을 검증하지 않습니다.
 
 ```bash
 AMBER_ENGINE=sander ./run.sh --dry-run
@@ -185,10 +195,12 @@ To run the analysis scripts, you need the following Python libraries. You can in
 I recommend to manage your Python packages through virtual environment (ex: [Anaconda](https://www.anaconda.com/download))
 ```bash
 numpy
-pandas
 matplotlib
-pymbar
-alchemlyb
+parmed
+h5py
+scikit-learn>=1.5,<2
+umap-learn>=0.5.7,<0.6
+pymbar>=4,<5
 MDAnalysis
 ```
 

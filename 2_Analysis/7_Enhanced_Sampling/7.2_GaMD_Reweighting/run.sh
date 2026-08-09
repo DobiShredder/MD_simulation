@@ -15,8 +15,8 @@ profile=$1
 simulation_work=$2
 cpptraj=${CPPTRAJ:-cpptraj}
 python=${PYTHON:-python3}
-script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-output_dir=${OUTPUT_DIR:-"$script_dir/output/$profile"}
+tutorial_dir=$PWD
+output_dir=${OUTPUT_DIR:-"$tutorial_dir/output/$profile"}
 
 case "$profile" in
     chignolin | pepgamd)
@@ -40,11 +40,14 @@ if ! "$python" -c 'import numpy' >/dev/null 2>&1; then
 fi
 
 mkdir -p "$output_dir"
-"$python" \
-    "$script_dir/prepare.py" \
+
+if ! "$python" \
+    "$tutorial_dir/prepare.py" \
     "$profile" \
     "$simulation_work" \
-    "$output_dir/cpptraj.in"
+    "$output_dir/cpptraj.in"; then
+    die "cpptraj input 생성에 실패했습니다."
+fi
 
 if ! "$cpptraj" \
     -i "$output_dir/cpptraj.in" \
@@ -55,13 +58,15 @@ if [[ ! -s "$output_dir/cv.dat" ]]; then
     die "CV output이 생성되지 않았습니다: $output_dir/cv.dat"
 fi
 
-"$python" \
-    "$script_dir/reweight.py" \
+if ! "$python" \
+    "$tutorial_dir/reweight.py" \
     --cv "$output_dir/cv.dat" \
     --log-directory "$simulation_work" \
     --components "$components" \
     --temperature 300 \
     --bin-width 0.25 \
-    --output "$output_dir/pmf.tsv"
+    --output "$output_dir/pmf.tsv"; then
+    die "GaMD reweighting에 실패했습니다."
+fi
 
 echo "GaMD reweighting 결과: $output_dir"

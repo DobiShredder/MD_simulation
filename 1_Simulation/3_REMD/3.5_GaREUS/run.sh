@@ -17,15 +17,16 @@ die() {
     exit 1
 }
 
-script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+script_dir=$(dirname "${BASH_SOURCE[0]}")
 work_dir=${WORK_DIR:-"$script_dir/work"}
 states_file="$work_dir/states.tsv"
 amber_engine=${AMBER_ENGINE:-pmemd.cuda}
 amber_mpi_engine=${AMBER_MPI_ENGINE:-pmemd.cuda.MPI}
 mpi_launcher=${MPI_LAUNCHER:-mpirun}
-replica_count=19
+replica_count=20
 mpi_processes=${MPI_PROCESSES:-$replica_count}
 production_segments=10
+gamd_reference_replica=009
 
 read -r -a mpi_options <<< "${MPI_OPTIONS:-}"
 read -r -a amber_options <<< "${AMBER_OPTIONS:-}"
@@ -48,29 +49,53 @@ if (( ! dry_run )); then
     done
 fi
 
-stage_status() {
-    local filename=$1
+completed_stage_count() {
+    local stage=$1
+    local require_gamd_log=${2:-no}
     local completed=0
+    local existing
     local replica
+    local replica_dir
+    local required
 
     while IFS=$'\t' read -r replica _; do
         if [[ "$replica" == "replica" ]]; then
             continue
         fi
-        if [[ -s "$work_dir/replicas/$replica/$filename" ]]; then
+
+        replica_dir="$work_dir/replicas/$replica"
+        required=(
+            "$replica_dir/$stage.out"
+            "$replica_dir/$stage.rst7"
+            "$replica_dir/$stage.nc"
+            "$replica_dir/$stage.info"
+        )
+        if [[ "$require_gamd_log" == yes ]]; then
+            required+=("$replica_dir/gamd.$stage.log")
+        fi
+
+        existing=0
+        for output in "${required[@]}"; do
+            if [[ -s "$output" ]]; then
+                existing=$((existing + 1))
+            fi
+        done
+
+        if [[ "$existing" -eq "${#required[@]}" ]]; then
             completed=$((completed + 1))
+        elif [[ "$existing" -ne 0 ]]; then
+            die "$stage output이 일부만 존재합니다: $replica_dir"
         fi
     done < "$states_file"
+
     echo "$completed"
 }
 
 run_stage() {
     local stage=$1
     local input_restart=$2
-    local gamd_log=${3:-}
     local replica
     local replica_dir
-    local extra_arguments=()
 
     echo "$stage stage를 실행합니다."
 
@@ -79,11 +104,6 @@ run_stage() {
             continue
         fi
         replica_dir="$work_dir/replicas/$replica"
-        extra_arguments=()
-
-        if [[ -n "$gamd_log" ]]; then
-            extra_arguments=(-gamd "$replica_dir/$gamd_log")
-        fi
 
         if ! (
             cd "$replica_dir"
@@ -96,14 +116,9 @@ run_stage() {
                 -c "$input_restart" \
                 -r "$stage.rst7" \
                 -x "$stage.nc" \
-                -inf "$stage.info" \
-                "${extra_arguments[@]}"
+                -inf "$stage.info"
         ); then
             die "$stage 계산에 실패했습니다: $replica_dir/$stage.out"
-        fi
-
-        if [[ "$stage" == gamd_prepare && ! -s "$replica_dir/gamd-restart.dat" ]]; then
-            die "GaMD state가 생성되지 않았습니다: $replica_dir/gamd-restart.dat"
         fi
     done < "$states_file"
 }
@@ -111,23 +126,93 @@ run_stage() {
 run_stage_if_needed() {
     local stage=$1
     local input_restart=$2
-    local gamd_log=${3:-}
     local completed
 
-    completed=$(stage_status "$stage.rst7")
+    completed=$(completed_stage_count "$stage")
     if [[ "$completed" -eq "$replica_count" ]]; then
-        if [[ "$stage" == gamd_prepare ]]; then
-            gamd_states=$(stage_status gamd-restart.dat)
-            if [[ "$gamd_states" -ne "$replica_count" ]]; then
-                die "gamd_prepare restart는 있지만 GaMD state가 일부 누락되었습니다 ($gamd_states/$replica_count)."
-            fi
-        fi
         return
     fi
     if [[ "$completed" -ne 0 ]]; then
         die "$stage stage가 일부 window에서만 완료되었습니다 ($completed/$replica_count)."
     fi
-    run_stage "$stage" "$input_restart" "$gamd_log"
+    run_stage "$stage" "$input_restart"
+
+    completed=$(completed_stage_count "$stage")
+    if [[ "$completed" -ne "$replica_count" ]]; then
+        die "$stage output이 완성되지 않았습니다 ($completed/$replica_count)."
+    fi
+}
+
+prepare_common_gamd_state() {
+    local reference_dir="$work_dir/replicas/$gamd_reference_replica"
+    local completed_segments
+    local existing=0
+    local output
+    local replica
+    local replica_dir
+    local required=(
+        "$reference_dir/gamd_prepare.out"
+        "$reference_dir/gamd_prepare.rst7"
+        "$reference_dir/gamd_prepare.nc"
+        "$reference_dir/gamd_prepare.info"
+        "$reference_dir/gamd.prepare.log"
+        "$reference_dir/gamd-restart.dat"
+    )
+
+    completed_segments=$(completed_stage_count production.001 yes)
+    if [[ "$completed_segments" -ne 0 ]]; then
+        return
+    fi
+
+    for output in "${required[@]}"; do
+        if [[ -s "$output" ]]; then
+            existing=$((existing + 1))
+        fi
+    done
+    if [[ "$existing" -ne 0 && "$existing" -ne "${#required[@]}" ]]; then
+        die "GaMD preparation output이 일부만 존재합니다: $reference_dir"
+    fi
+
+    if [[ "$existing" -eq 0 ]]; then
+        echo "Replica $gamd_reference_replica 에서 공통 GaMD parameter를 준비합니다."
+
+        if ! (
+            cd "$reference_dir"
+            "$amber_engine" \
+                "${amber_options[@]}" \
+                -O \
+                -i gamd_prepare.in \
+                -o gamd_prepare.out \
+                -p system.parm7 \
+                -c equilibrate.rst7 \
+                -r gamd_prepare.rst7 \
+                -x gamd_prepare.nc \
+                -inf gamd_prepare.info \
+                -gamd gamd.prepare.log
+        ); then
+            die "GaMD parameter preparation에 실패했습니다: $reference_dir/gamd_prepare.out"
+        fi
+    fi
+
+    if [[ ! -s "$reference_dir/gamd-restart.dat" ]]; then
+        die "공통 GaMD state가 생성되지 않았습니다: $reference_dir/gamd-restart.dat"
+    fi
+
+    while IFS=$'\t' read -r replica _; do
+        if [[ "$replica" == "replica" ]]; then
+            continue
+        fi
+
+        replica_dir="$work_dir/replicas/$replica"
+        if [[ "$replica" != "$gamd_reference_replica" ]]; then
+            cp "$reference_dir/gamd-restart.dat" "$replica_dir/gamd-restart.dat"
+        fi
+        cp "$replica_dir/equilibrate.rst7" "$replica_dir/production_start.rst7"
+
+        if ! cmp -s "$reference_dir/gamd-restart.dat" "$replica_dir/gamd-restart.dat"; then
+            die "replica에 공통 GaMD state를 배치하지 못했습니다: $replica_dir"
+        fi
+    done < "$states_file"
 }
 
 write_group_file() {
@@ -139,6 +224,7 @@ write_group_file() {
     local replica_dir
     local dump_file
     local gamd_log
+    local group_command
 
     segment_name=$(printf 'production.%03d' "$segment")
     : > "$group_file"
@@ -156,19 +242,34 @@ write_group_file() {
             "$replica_dir/production.template.in" \
             > "$replica_dir/$segment_name.in"
 
-        printf '%s\n' \
-            "-O -i $replica_dir/$segment_name.in -o $replica_dir/$segment_name.out -p $replica_dir/system.parm7 -c $replica_dir/$input_restart -r $replica_dir/$segment_name.rst7 -x $replica_dir/$segment_name.nc -inf $replica_dir/$segment_name.info -gamd $gamd_log" \
-            >> "$group_file"
+        group_command="-O -i $replica_dir/$segment_name.in"
+        group_command+=" -o $replica_dir/$segment_name.out"
+        group_command+=" -p $replica_dir/system.parm7"
+        group_command+=" -c $replica_dir/$input_restart"
+        group_command+=" -r $replica_dir/$segment_name.rst7"
+        group_command+=" -x $replica_dir/$segment_name.nc"
+        group_command+=" -inf $replica_dir/$segment_name.info"
+        group_command+=" -gamd $gamd_log"
+
+        printf '%s\n' "$group_command" >> "$group_file"
     done < "$states_file"
 }
 
 if (( dry_run )); then
     echo "Engine: $amber_engine"
     echo "Replica exchange engine: $amber_mpi_engine"
-    echo "19 windows, 6–24 Å, 1 ps exchange interval"
-    echo "200 ps heating + 1 ns equilibration + 4 ns GaMD preparation"
+    echo "20 windows, 6–25 Å, 1 ps exchange interval"
+    echo "200 ps heating + 1 ns equilibration + one shared 4 ns GaMD preparation"
     echo "10 × 1 ns GaREUS production, igamd=3, sigma0P=sigma0D=6.0"
-    printf '%q ' "$mpi_launcher" "${mpi_options[@]}" -np "$mpi_processes" "$amber_mpi_engine" "${amber_options[@]}" -ng "$replica_count" -groupfile "$work_dir/production.001.group" -rem 3
+    printf '%q ' \
+        "$mpi_launcher" \
+        "${mpi_options[@]}" \
+        -np "$mpi_processes" \
+        "$amber_mpi_engine" \
+        "${amber_options[@]}" \
+        -ng "$replica_count" \
+        -groupfile "$work_dir/production.001.group" \
+        -rem 3
     printf '\n'
     exit 0
 fi
@@ -176,11 +277,11 @@ fi
 run_stage_if_needed minimize system.rst7
 run_stage_if_needed heat minimize.rst7
 run_stage_if_needed equilibrate heat.rst7
-run_stage_if_needed gamd_prepare equilibrate.rst7 gamd.prepare.log
+prepare_common_gamd_state
 
 for segment in $(seq 1 "$production_segments"); do
     segment_name=$(printf 'production.%03d' "$segment")
-    completed=$(stage_status "$segment_name.rst7")
+    completed=$(completed_stage_count "$segment_name" yes)
 
     if [[ "$completed" -eq "$replica_count" ]]; then
         continue
@@ -190,7 +291,7 @@ for segment in $(seq 1 "$production_segments"); do
     fi
 
     if [[ "$segment" -eq 1 ]]; then
-        input_restart=gamd_prepare.rst7
+        input_restart=production_start.rst7
     else
         input_restart=$(printf 'production.%03d.rst7' "$((segment - 1))")
     fi
@@ -211,6 +312,11 @@ for segment in $(seq 1 "$production_segments"); do
         -rem 3 \
         -remlog "$exchange_log"; then
         die "GaREUS segment $segment 실행에 실패했습니다: $exchange_log"
+    fi
+
+    completed=$(completed_stage_count "$segment_name" yes)
+    if [[ "$completed" -ne "$replica_count" ]]; then
+        die "$segment_name output이 완성되지 않았습니다 ($completed/$replica_count)."
     fi
 done
 

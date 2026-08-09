@@ -3,8 +3,8 @@
 저장소의 학습 순서와 method 선택 기준을 정리한 문서입니다. 실행 command와
 input 설명은 각 폴더의 `README.md`에 있습니다.
 
-모든 input은 학습용 template입니다. 기본 production은 10–20 ns이며 수렴을
-판정하기 위한 길이가 아닙니다.
+모든 input은 학습용 template입니다. Production 길이는 method마다 다르며 각
+README에 적혀 있습니다. 어느 기본값도 수렴을 판정하기 위한 길이가 아닙니다.
 
 ## 목차
 
@@ -87,6 +87,21 @@ structure and scientific choices
 
 Syntax check와 정상 종료는 물리적 검증이나 수렴 판단을 대신하지 않습니다.
 
+### 현재 검증 범위
+
+AmberTools 26의 topology build, 짧은 `sander`/cpptraj 계산, WESTPA 연결과
+Python fixture는 확인했습니다. 다음 실제 engine 조합은 아직 다른 PC에서
+검증해야 합니다.
+
+- Amber 26 `pmemd.cuda` production과 GPU 전용 GaMD·FEP 기능
+- `pmemd.cuda.MPI` T-REMD, REUS와 GaREUS replica exchange
+- GROMACS/PLUMED REST2·REST3 HREX
+- PLUMED가 연결된 AMBER의 ratchet MD, WT-MetaD와 OPES
+
+따라서 local README에 opt-in gate나 호환성 경고가 있는 method는 해당 표시를
+유지합니다. 짧은 actual run, restart와 output 검사를 통과하기 전에는 검증
+완료로 간주하지 않습니다.
+
 ### 1.1 conventional MD
 
 일반 MD는 별도의 bias 없이 선택한 Hamiltonian과 ensemble에서 시간에 따른
@@ -111,9 +126,10 @@ ff19SB 개발 논문에서는 TIP3P와 OPC를 모두 평가했고, OPC에서 더
 - [KcsA](1_Simulation/1_MD/1.3_Membrane_Protein/README.md)
 
 KcsA는 PACKMOL-Memgen으로 POPC 90%, POPE 5%, cholesterol 5% membrane을
-만듭니다. tleap build는 별도 단계입니다. 결정수와 detergent는 제거하고
-selectivity filter의 K+는 유지합니다. E71 protonation은 채널 상태와 pH에
-맞게 정합니다.
+만듭니다. tleap build는 별도 단계입니다. Detergent와 bulk 결정수는
+제거하고 selectivity filter K+ 7개와 filter·cavity water 16개를
+유지합니다. Neutral-pH baseline은 E71=`GLH`, D80=`ASP`,
+H25/H124=`HIE`, E118/E120=`GLU`입니다.
 
 CHARMM lipid force field와 CHARMM-GUI는 membrane simulation에서 오래
 사용된 조합입니다. AMBER Lipid21은 AMBER protein·ligand force field와 함께
@@ -161,6 +177,7 @@ ensemble별 sampling과 관심 observable을 사용합니다.
 - GaREUS: GaMD와 REUS를 결합한 확장 예제
 
 - [Replica-exchange 튜토리얼](1_Simulation/3_REMD/README.md)
+- [GaREUS reweighting](2_Analysis/7_Enhanced_Sampling/7.3_GaREUS_Reweighting/README.md)
 
 ### 1.4 Gaussian accelerated MD
 
@@ -187,7 +204,9 @@ FEP input에는 lambda schedule, atom mapping, charge change, soft-core 설정�
 window별 equilibration이 들어갑니다. ABFE는 ligand position/orientation
 restraint와 standard-state correction도 포함합니다. RBFE는 T4 lysozyme L99A의
 benzene→toluene transformation, ABFE는 3PTB trypsin–benzamidine을 사용합니다.
-두 예제는 AMBER TI로 Gibbs free energy를 계산하며 production은 2 ns/window입니다.
+두 예제는 AMBER가 기록한 cross-state energy matrix를 FE-ToolKit MBAR로 분석하며
+production은 2 ns/window입니다. State overlap과 bootstrap uncertainty를 함께
+확인합니다.
 
 - [FEP 튜토리얼](1_Simulation/5_FEP/README.md)
 
@@ -209,11 +228,12 @@ weight는 WESTPA가 관리합니다.
 Metadynamics는 선택한 collective variable 공간에 history-dependent bias를
 누적하여 이미 방문한 영역에서 벗어나도록 합니다. Well-tempered MetaD는
 bias 증가를 완화하고, OPES는 목표 distribution에 접근하도록 bias를
-구성합니다.
+구성합니다. Funnel MetaD는 trypsin–benzamidine binding 경로를 cone과
+cylinder 안으로 제한하고 ligand의 axis projection을 bias합니다.
 
 Input에는 CV, Gaussian width·height, bias factor, pace, wall, grid와 단위를
-기록합니다. Restart할 때는 AMBER state와 `HILLS`/`COLVAR` history를 함께
-이어갑니다.
+기록합니다. Restart할 때는 AMBER restart와 method별 `HILLS` 또는 OPES state를
+함께 이어갑니다.
 
 - [MetaD와 OPES 튜토리얼](1_Simulation/7_MetaD/README.md)
 
@@ -231,21 +251,29 @@ Analysis는 simulation method와 분리합니다. 공통 preprocessing과 featur
    distance, angle과 dihedral
 3. [Interactions and structure](2_Analysis/3_Interactions/README.md): hydrogen
    bond, contact, SASA와 secondary structure
-4. [Dimensionality reduction](2_Analysis/4_Dimension_Reduction/README.md): PCA와 t-SNE
-5. [Clustering](2_Analysis/5_Clustering/README.md): K-means와 DBSCAN
+4. [Dimensionality reduction](2_Analysis/4_Dimension_Reduction/README.md): PCA, t-SNE와 UMAP
+5. [Clustering](2_Analysis/5_Clustering/README.md): K-means, DBSCAN, HDBSCAN과 GMM
 6. [Binding energy](2_Analysis/6_Binding_Energy/README.md): MM/GBSA와 MM/PBSA
 7. [Enhanced-sampling analysis](2_Analysis/7_Enhanced_Sampling/README.md):
-   umbrella-sampling PMF, histogram overlap과 GaMD reweighting
+   umbrella-sampling PMF, histogram overlap, GaMD와 GaREUS reweighting
 
-Cpptraj로 imaging, alignment와 기본 feature를 계산합니다. PCA, t-SNE와
+Cpptraj로 imaging, alignment와 기본 feature를 계산합니다. PCA, t-SNE, UMAP과
 clustering은 표 형태의 feature를 Python으로 전달합니다. Dimension-reduction
 plot과 cluster 결과는 representative structure, 시간 순서와 parameter
 sensitivity를 함께 봅니다.
 
-현재 실행 가능한 1–3번 공통 analysis는 Chignolin conventional-MD output을
-사용합니다. Trypsin–benzamidine은 protein–ligand interaction과
-MM/GBSA·MM/PBSA에, KcsA는 membrane-aware preprocessing과 채널 구조 분석에
-사용할 예정입니다.
+t-SNE와 HDBSCAN은 scikit-learn, UMAP은 umap-learn을 사용합니다.
+
+```bash
+conda activate ambertools26
+conda install -c conda-forge \
+    "scikit-learn>=1.5,<2" \
+    "umap-learn>=0.5.7,<0.6"
+```
+
+1–5번 analysis는 Chignolin conventional-MD output을 사용합니다.
+MM/GBSA·MM/PBSA는 trypsin–benzamidine output을 사용합니다. KcsA의
+membrane-aware preprocessing과 채널 구조 분석은 이후 범위입니다.
 
 ## 3. 참고 자료
 

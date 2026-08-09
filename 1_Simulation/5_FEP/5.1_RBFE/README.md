@@ -15,7 +15,7 @@ protein complex와 물에서 각각 계산하고 두 값의 차이로 `ΔΔG_bin
 | `build.sh` | GAFF2/AM1-BCC parameter와 두 leg의 topology 생성 | `work/build/`, `states.tsv` |
 | `generate_inputs.py` | 22개 window input 생성; `build.sh`가 호출 | `work/legs/` |
 | `run.sh` | Minimization, heating, equilibration, production 실행 | Window별 restart, trajectory, log |
-| `anal.py` | `DV/DL` 적분과 leg 조합 | `window_summary.tsv`, `free_energy.tsv` |
+| `anal.py` | MBAR energy 추출, FE-ToolKit 실행과 leg 조합 | `free_energy.tsv`, `overlap_matrix.tsv` |
 
 ```bash
 ./download.sh
@@ -39,10 +39,25 @@ Soft-core interaction은 Amber 26의 `aces26=1` 형식을 사용합니다.
 사이의 nonbonded term을 lambda에 따라 바꿉니다. 이 형식은 `pmemd.cuda`에서
 실행하며 `run.sh`는 다른 engine override를 거부합니다.
 
-`free_energy.tsv`의 `complex_delta_g`와 `solvent_delta_g`는 같은 방향의
-transformation입니다. `relative_binding_delta_delta_g`는 두 leg의 차이입니다.
-Lambda 간격과 sampling 길이를 바꿨다면 `window_summary.tsv`에서 derivative의
-변화와 uncertainty를 먼저 확인합니다.
+Production의 `ifmbar=1`과 `mbar_lambda`는 각 saved configuration의 potential
+energy를 11개 state에서 평가합니다. 이 계산은 현재 window의 dynamics를
+바꾸지 않고 MBAR에 필요한 full energy matrix를 mdout에 추가합니다.
+
+`anal.py`는 AmberTools 26의 `edgembar-amber2dats.py`로 matrix를 추출한 뒤
+`edgembar --mode=MBAR`를 실행합니다. FE-ToolKit의 automatic equilibration,
+correlated-sample stride와 20회 bootstrap을 사용합니다. 주요 output은 다음과
+같습니다.
+
+| Output | 내용 |
+| --- | --- |
+| `work/free_energy.tsv` | Complex, solvent와 `ΔΔG_bind`; MBAR uncertainty 포함 |
+| `work/mbar_diagnostics.tsv` | State별 sample 수, 제거한 equilibration과 stride |
+| `work/overlap_matrix.tsv` | Lambda state 사이의 MBAR overlap |
+| `work/mbar/rbfe_report.html` | FE-ToolKit convergence report |
+
+`complex_delta_g`와 `solvent_delta_g`는 같은 방향의 transformation입니다.
+`relative_binding_delta_delta_g`는 두 leg의 차이입니다. 최종 값보다 먼저 인접
+state의 overlap과 report의 equilibration warning을 확인합니다.
 
 참고: [RCSB PDB 4W53](https://www.rcsb.org/structure/4W53)
 
@@ -61,8 +76,11 @@ segments resume safely; partial output stops the workflow.
 
 The inputs use the Amber 26 `aces26=1` soft-core format and scale
 `ele,vdw,ele14,vdw14` interactions between soft-core and common regions.
-`run.sh` therefore requires `pmemd.cuda`.
+`run.sh` therefore requires `pmemd.cuda`. `ifmbar=1` evaluates every saved
+configuration at all eleven lambda states without changing its propagation.
 
-`anal.py` integrates the AMBER `DV/DL` records and writes the two leg values and
-their difference to `work/free_energy.tsv`. Inspect the per-window derivative
-summary before interpreting the final value.
+`anal.py` extracts the cross-state energy matrix and runs the AmberTools 26
+FE-ToolKit in MBAR mode. It writes free energies with bootstrap uncertainties,
+per-state sampling diagnostics, an overlap matrix, and an HTML convergence
+report. Inspect neighboring-state overlap and equilibration warnings before
+interpreting the final value.

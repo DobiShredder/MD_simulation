@@ -3,25 +3,10 @@
 
 from __future__ import annotations
 
-import argparse
 from pathlib import Path
-import sys
 
 import matplotlib.pyplot as plt
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from analysis_utils import (
-    analysis_time_ns,
-    read_cpptraj_table,
-    read_run_metadata,
-    require_same_rows,
-)
-
-
-def parse_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output", type=Path, default=Path(__file__).parent / "output")
-    return parser.parse_args()
+import numpy as np
 
 
 def residue_five_columns(header: list[str]) -> tuple[int, int]:
@@ -40,26 +25,32 @@ def residue_five_columns(header: list[str]) -> tuple[int, int]:
     return phi[0], psi[0]
 
 
+def read_table(path: Path) -> tuple[list[str], np.ndarray]:
+    with path.open(encoding="utf-8") as handle:
+        header = handle.readline().lstrip("#").split()
+    data = np.loadtxt(path, comments="#", ndmin=2)
+    return header, data
+
+
 def main() -> int:
-    args = parse_arguments()
-    _, geometry = read_cpptraj_table(args.output / "geometry.dat")
-    torsion_header, torsions = read_cpptraj_table(args.output / "phi_psi.dat")
-    frame_count = require_same_rows({"geometry": geometry, "torsions": torsions})
+    output_dir = Path(__file__).resolve().parent / "output"
+    _, geometry = read_table(output_dir / "geometry.dat")
+    torsion_header, torsions = read_table(output_dir / "phi_psi.dat")
     if geometry.shape[1] < 4:
         raise ValueError("geometry.dat column이 부족합니다.")
+    if not np.array_equal(geometry[:, 0], torsions[:, 0]):
+        raise ValueError("Geometry output의 frame 번호가 일치하지 않습니다.")
 
-    metadata = read_run_metadata(args.output)
-    time_ns = analysis_time_ns(frame_count, metadata)
     phi_column, psi_column = residue_five_columns(torsion_header)
 
     figure, axes = plt.subplots(3, 1, figsize=(8, 10))
-    axes[0].plot(time_ns, geometry[:, 1], label="Terminal Cα distance")
-    axes[0].plot(time_ns, geometry[:, 2], label="Minimum heavy-atom distance")
+    axes[0].plot(geometry[:, 0], geometry[:, 1], label="Terminal Cα distance")
+    axes[0].plot(geometry[:, 0], geometry[:, 2], label="Minimum heavy-atom distance")
     axes[0].set_ylabel("Distance (Å)")
     axes[0].legend()
 
-    axes[1].plot(time_ns, geometry[:, 3])
-    axes[1].set_xlabel("Analysis time (ns)")
+    axes[1].plot(geometry[:, 0], geometry[:, 3])
+    axes[1].set_xlabel("Frame")
     axes[1].set_ylabel("Cα angle (degree)")
 
     axes[2].scatter(torsions[:, phi_column], torsions[:, psi_column], s=12, alpha=0.6)

@@ -35,7 +35,9 @@ cd 1_Simulation/1_MD/1.3_Membrane_Protein/2_Topology_Build
 
 `work/leap.log`에서 unknown atom/residue, missing atom과 total charge를
 확인합니다. `work/system.pdb`에는 KcsA residue 412개, filter K+ 7개와
-설정한 POPC:POPE:CHL1 조성이 남아 있어야 합니다. `check` error가 있으면
+초기 pore water 16개, 설정한 POPC:POPE:CHL1 조성이 남아 있어야
+합니다. E71·D80·H25·H124의 AMBER residue name도 확인합니다.
+`check` error가 있으면
 topology를 사용하지 않습니다.
 
 `TLEAP`은 실행 파일, `WORK_DIR`는 output directory를 바꿉니다. Force field와
@@ -56,8 +58,9 @@ also defines a rectangular box enclosing the generated coordinates.
 retained filter K+ ions.
 
 Check unknown or missing atoms, total charge, 412 KcsA residues, seven filter
-K+ ions, and the POPC:POPE:CHL1 ratio. A topology with `check` errors is not
-ready for simulation. The outputs are `work/system.parm7` and
+K+ ions, 16 initial pore waters, the selected protonation names, and the
+POPC:POPE:CHL1 ratio. A topology with `check` errors is not ready for
+simulation. The outputs are `work/system.parm7` and
 `work/system.rst7`.
 `TLEAP` overrides the executable and `WORK_DIR` selects the output directory.
 Changing a force field or water model also requires compatible residue naming

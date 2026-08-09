@@ -1,0 +1,27 @@
+MM/GBSA and MM/PBSA comparison for trypsin-benzamidine
+&general
+ startframe=1,
+ endframe=1000,
+ interval=10,
+ keep_files=0,
+ netcdf=1,
+ verbose=2,
+/
+&gb
+ igb=5,
+ saltcon=0.15,
+ molsurf=0,
+/
+&pb
+ istrng=0.15,
+ indi=1.0,
+ exdi=80.0,
+ fillratio=4.0,
+ scale=2.0,
+ inp=2,
+ radiopt=0,
+/
+&decomp
+ idecomp=2,
+ dec_verbose=0,
+/
