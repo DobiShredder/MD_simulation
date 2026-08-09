@@ -68,6 +68,8 @@ def select_complex_records(
             if residue_key in disulfide_residues:
                 line = f"{line[:17]}CYX{line[20:]}"
 
+            line = f"{line[:22]}{residue_indices[residue_key]:4d}{line[26:]}"
+
         elif record_type == "HETATM" and residue_name in {"BEN", "CA"}:
             keep_record = True
             atom_counts[residue_name] += 1
@@ -113,11 +115,30 @@ def validate_selection(
         )
 
 
-def write_complex_pdb(output_pdb: Path, selected_records: list[str]) -> None:
+def write_complex_pdb(
+    output_pdb: Path,
+    selected_records: list[str],
+    protein_residue_count: int,
+) -> None:
     """Selected coordinate record를 complex PDB로 저장한다."""
     output_pdb.parent.mkdir(parents=True, exist_ok=True)
 
-    output_lines = selected_records + ["TER", "END"]
+    protein = [line for line in selected_records if line.startswith("ATOM  ")]
+    calcium = []
+    ligand = []
+
+    for line in selected_records:
+        if not line.startswith("HETATM"):
+            continue
+        residue_name = line[17:20].strip()
+        if residue_name == "CA":
+            calcium.append(f"{line[:22]}{protein_residue_count + 2:4d}{line[26:]}")
+        elif residue_name == "BEN":
+            if line[12:16].strip() == "C":
+                line = f"{line[:12]} C7 {line[16:]}"
+            ligand.append(f"{line[:22]}{protein_residue_count + 1:4d}{line[26:]}")
+
+    output_lines = protein + ["TER"] + ligand + ["TER"] + calcium + ["TER", "END"]
     output_pdb.write_text("\n".join(output_lines) + "\n", encoding="ascii")
 
 
@@ -158,7 +179,7 @@ def main() -> None:
 
     validate_selection(atom_counts, disulfide_pairs, residue_indices)
 
-    write_complex_pdb(args.output_pdb, selected_records)
+    write_complex_pdb(args.output_pdb, selected_records, len(residue_indices))
 
     bond_file = args.output_pdb.with_name("disulfides.leap")
     write_disulfide_commands(bond_file, disulfide_pairs, residue_indices)

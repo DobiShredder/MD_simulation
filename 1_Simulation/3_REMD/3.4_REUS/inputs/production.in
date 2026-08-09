@@ -4,7 +4,7 @@ One 1 ns REUS production segment
  irest=1,
  ntx=5,
  ig=@SEED@,
- nstlim=500000,
+ nstlim=500,
  numexchg=1000,
  dt=0.002,
  temp0=300.0,
@@ -27,6 +27,5 @@ One 1 ns REUS production segment
 /
 &wt type='DUMPFREQ', istep1=500, /
 &wt type='END' /
-DISANG='@DISANG@'
-DUMPAVE='@DUMPAVE@'
-
+DISANG=@DISANG@
+DUMPAVE=@DUMPAVE@

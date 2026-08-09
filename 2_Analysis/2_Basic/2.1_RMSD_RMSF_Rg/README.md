@@ -2,10 +2,33 @@
 
 ## 한국어
 
-구현 예정: reference·average structure RMSD, residue별 RMSF와 radius of
-gyration. Fitting mask와 측정 mask는 따로 지정합니다.
+Chignolin의 backbone RMSD, residue별 RMSF와 radius of gyration(Rg)을 한 번에
+계산합니다. RMSD는 첫 frame과 average structure를 각각 reference로 사용합니다.
+RMSF는 average structure에 fitting한 좌표에서 계산합니다.
+
+```bash
+TOPOLOGY=../../../1_Simulation/1_MD/1.1_Soluble_Protein/work/system.parm7
+TRAJECTORY=../../../1_Simulation/1_MD/1.1_Soluble_Protein/work/production.nc
+
+./run.sh "$TOPOLOGY" "$TRAJECTORY"
+python3 anal.py
+```
+
+`run.sh`는 cpptraj의 두 `run` pass를 사용합니다. 첫 pass에서
+`average.pdb`와 `rmsd_first.dat`을 만들고, 두 번째 pass에서
+`rmsd_average.dat`, `rmsf_byres.dat`과 `rg.dat`을 만듭니다. `anal.py`는 세
+지표를 각각 Å 단위로 표시합니다.
+
+RMSD와 RMSF mask는 `:1-10@CA,C,N`이고 Rg는 protein heavy atom에 질량을
+적용합니다. Reference와 mask가 바뀌면 값의 의미도 바뀌므로 서로 다른 계산을
+비교할 때 같은 definition을 사용합니다. 짧은 trajectory의 안정된 RMSD만으로
+구조 ensemble의 수렴을 판단하지 않습니다.
 
 ## English
 
-Planned: cpptraj RMSD, residue-wise RMSF, and radius of gyration with separate
-fit and measurement masks.
+This example calculates backbone RMSD against the first frame and the average
+structure, residue-level RMSF after fitting, and mass-weighted heavy-atom Rg.
+`run.sh` uses two cpptraj passes and writes the average structure plus four
+numeric tables. `anal.py` displays all observables in Å. Keep reference and
+mask definitions consistent when comparing trajectories; a stable RMSD from a
+short trajectory does not by itself establish ensemble convergence.

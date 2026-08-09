@@ -1,16 +1,19 @@
-# Weighted Ensemble / Weighted Ensemble
+# Weighted ensemble
 
 ## 한국어
 
-Weighted ensemble은 weighted walker를 progress coordinate에 따라 split 또는
-merge합니다. WESTPA는 weight와 resampling, AMBER는 MD segment를 담당합니다.
+Weighted ensemble은 짧은 trajectory segment를 여러 개 전파한 뒤 progress
+coordinate bin에서 walker를 split하거나 merge합니다. WESTPA가 walker weight와
+resampling을 관리하고 MD engine은 각 segment의 dynamics만 계산합니다.
 
-- [6.1 WESTPA + AMBER](6.1_WESTPA_AMBER/README.md)
+- [WESTPA + AMBER](6.1_WESTPA_AMBER/): Implicit-solvent Na⁺/Cl⁻ association
+
+이 예제는 WESTPA–AMBER 연결, restart 전달과 weight 보존을 확인하는 작은
+workflow입니다. Target 도달 횟수를 association rate로 해석하지 않습니다.
 
 ## English
 
-Weighted-ensemble simulations maintain statistically weighted walkers and
-periodically split or merge them along a progress coordinate. WESTPA manages
-weights and resampling; AMBER propagates each MD segment.
-
-- [6.1 WESTPA + AMBER](6.1_WESTPA_AMBER/README.md)
+Weighted ensemble propagates many short trajectory segments and resamples
+walkers across progress-coordinate bins. WESTPA owns the weights and resampling;
+AMBER supplies unbiased segment dynamics. The Na+/Cl- example is a compact
+workflow test and does not estimate an association rate.

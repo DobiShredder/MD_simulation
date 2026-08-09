@@ -1,0 +1,21 @@
+RBFE minimization at lambda @LAMBDA@
+&cntrl
+  imin=1,
+  maxcyc=5000,
+  ncyc=2500,
+  ntb=1,
+  cut=10.0,
+  ntpr=500,
+  icfe=1,
+  clambda=@LAMBDA@,
+  timask1=':BNZ',
+  timask2=':MBN',
+  scmask1=':BNZ',
+  scmask2=':MBN',
+  ifsc=1,
+  scalpha=0.5,
+  scbeta=12.0,
+  aces26=1,
+  gti_sc_cc_energy_terms='ele,vdw,ele14,vdw14',
+  gti_sc_sc_energy_terms='',
+/

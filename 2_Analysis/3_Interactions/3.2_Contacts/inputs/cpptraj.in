@@ -1,0 +1,13 @@
+# 첫 frame에서 정의한 heavy-atom contact와 새로 생기는 contact를 추적합니다.
+autoimage anchor :1-10
+
+nativecontacts name Contacts :1-10&!@H= \
+    byresidue distance 4.5 resoffset 3 first \
+    out contact_count.dat \
+    writecontacts contact_pairs.dat \
+    resout contact_residue_pairs.dat \
+    map mapout contact_map.dat \
+    series seriesout contact_series.dat \
+    savenonnative seriesnnout nonnative_series.dat \
+    resseries present resseriesout contact_residue_series.dat
+run

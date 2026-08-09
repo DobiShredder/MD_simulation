@@ -5,6 +5,21 @@
 Chignolin(PDB 1UAO)을 ff19SB/TIP3P로 만들고 20-replica T-REMD를 실행합니다.
 Temperature는 300–373 K이며 replica당 production은 10 ns입니다.
 
+T-REMD는 모든 replica에 같은 Hamiltonian을 사용하고 bath temperature만
+바꿉니다. 높은 temperature replica는 barrier를 더 쉽게 넘고, 교환을 통해
+그 configuration이 낮은 temperature ensemble로 이동합니다. 분석은 walker가
+temperature ladder를 왕복하는지와 300 K ensemble을 분리해 확인해야 합니다.
+
+### Script 역할
+
+| 파일 | 역할 |
+| --- | --- |
+| `download.sh` | 1UAO PDB/mmCIF를 받고 checksum을 기록합니다. |
+| `prepare.py` | 1UAO의 첫 NMR model을 simulation PDB로 정리합니다. |
+| `build.sh` | ff19SB/TIP3P topology를 만들고 `states.tsv`의 temperature·seed로 20개 replica input을 생성합니다. |
+| `run.sh` | Replica별 heating/equilibration과 `pmemd.cuda.MPI` exchange segment를 실행합니다. |
+| `anal.py` | `remlog`에서 acceptance, state 방문, round trip과 temperature occupancy를 계산합니다. |
+
 ### 실행
 
 AMBER 26의 `tleap`, `pmemd.cuda`, `pmemd.cuda.MPI`와 MPI launcher가
@@ -28,6 +43,17 @@ Heating은 200 ps, NPT equilibration은 1 ns입니다. Production input 하나�
 완료된 마지막 segment에서만 이어서 실행합니다. 일부 replica에만 restart
 file이 있으면 해당 stage를 자동으로 덮어쓰지 않습니다.
 
+### 주요 option
+
+| Option | 의미 |
+| --- | --- |
+| `-rem 1` | AMBER temperature REMD mode를 선택합니다. |
+| `temp0=@TEMP@` | `states.tsv`의 replica별 target temperature로 치환됩니다. |
+| `nstlim=500`, `numexchg=1000` | REMD에서 `nstlim`은 교환 사이의 step 수입니다. 500 steps마다 1,000회 교환하여 segment당 1 ns가 됩니다. |
+| `ig=@SEED@` | Replica마다 다른 positive random seed를 사용합니다. |
+| `MPI_PROCESSES=20` | AMBER replica 수와 MPI rank 수를 1:1로 맞춥니다. |
+| `AMBER_MPI_ENGINE`, `MPI_LAUNCHER`, `MPI_OPTIONS` | MPI executable과 launcher 설정을 바꿉니다. |
+
 ### Output
 
 - `work/replicas/NNN/production.001.nc` … `production.010.nc`
@@ -45,6 +71,17 @@ This example builds ff19SB/TIP3P Chignolin and runs 20-replica T-REMD from
 300 to 373 K. Heating is 200 ps, NPT equilibration is 1 ns, and production is
 ten 1 ns segments per replica. Exchanges are attempted every 1 ps.
 
+T-REMD keeps one Hamiltonian and varies bath temperature. High-temperature
+replicas cross barriers more readily, while accepted swaps move configurations
+through the ladder. `build.sh` expands `states.tsv`; `run.sh` uses
+`pmemd.cuda.MPI -rem 1`; `anal.py` measures acceptance, visits, round trips,
+and occupancy.
+
+`temp0` and `ig` are replica-specific. In AMBER REMD, `nstlim=500` is the step
+count between attempts and `numexchg=1000` gives a 1 ns segment.
+`MPI_PROCESSES` must equal 20; the MPI engine, launcher, and
+extra options are configurable through the documented environment variables.
+
 Run `download.sh`, `prepare.py`, `build.sh`, `run.sh`, and `anal.py`
 in that order. AMBER and MPI commands can be overridden with the environment
 variables listed above. Restarting is allowed only from the last segment
@@ -53,4 +90,3 @@ completed by every replica; a partial segment is reported as an error.
 The analysis writes adjacent-state acceptance, replica state ranges, round-trip
 counts, and temperature occupancy as TSV files. These short training runs do
 not establish convergence.
-

@@ -1,0 +1,7 @@
+SH3-peptide minimization
+&cntrl
+  imin=1,
+  maxcyc=5000, ncyc=2500,
+  ntb=1, ntc=1, ntf=1,
+  cut=10.0,
+/

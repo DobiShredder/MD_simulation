@@ -4,6 +4,20 @@ set -euo pipefail
 mkdir -p "$WEST_CURRENT_SEG_DATA_REF"
 cd "$WEST_CURRENT_SEG_DATA_REF"
 
+existing=0
+for output in segment.in segment.out segment.info seg.rst7; do
+    if [[ -e "$output" ]]; then
+        existing=$((existing + 1))
+    fi
+done
+if [[ -s "$WEST_PCOORD_RETURN" ]]; then
+    existing=$((existing + 1))
+fi
+if [[ "$existing" -ne 0 ]]; then
+    echo "오류: segment directory가 비어 있지 않습니다: $WEST_CURRENT_SEG_DATA_REF" >&2
+    exit 1
+fi
+
 case "$WEST_CURRENT_SEG_INITPOINT_TYPE" in
     SEG_INITPOINT_NEWTRAJ)
         parent_restart=$WEST_PARENT_DATA_REF
@@ -12,18 +26,35 @@ case "$WEST_CURRENT_SEG_INITPOINT_TYPE" in
         parent_restart=$WEST_PARENT_DATA_REF/seg.rst7
         ;;
     *)
-        echo "ERROR: unknown init point: $WEST_CURRENT_SEG_INITPOINT_TYPE" >&2
+        echo "오류: 알 수 없는 initial-point type입니다: $WEST_CURRENT_SEG_INITPOINT_TYPE" >&2
         exit 2
         ;;
 esac
 
+if [[ ! -s "$parent_restart" ]]; then
+    echo "오류: parent restart를 찾을 수 없습니다: $parent_restart" >&2
+    exit 1
+fi
+
 seed=$((WEST_RAND32 % 2147483646 + 1))
-sed "s/WEST_SEED/$seed/g" "$WEST_SIM_ROOT/amber/segment.in.template" \
+sed "s/WEST_SEED/$seed/g" "$WEST_SIM_ROOT/inputs/segment.in.template" \
     > segment.in
 
 start_pcoord=$("$WEST_SIM_ROOT/westpa_scripts/calc_pcoord.sh" "$parent_restart")
-"$AMBER_ENGINE" -O -i segment.in -o segment.out \
-    -p "$WEST_SIM_ROOT/common_files/system.parm7" -c "$parent_restart" \
-    -r seg.rst7 -inf segment.info
+if ! "$AMBER_ENGINE" \
+    -O \
+    -i segment.in \
+    -o segment.out \
+    -p "$WORK_DIR/common_files/system.parm7" \
+    -c "$parent_restart" \
+    -r seg.rst7 \
+    -inf segment.info; then
+    echo "오류: AMBER propagation에 실패했습니다: $WEST_CURRENT_SEG_DATA_REF/segment.out" >&2
+    exit 1
+fi
+if [[ ! -s seg.rst7 || ! -s segment.out || ! -s segment.info ]]; then
+    echo "오류: segment output이 완전하지 않습니다: $WEST_CURRENT_SEG_DATA_REF" >&2
+    exit 1
+fi
 end_pcoord=$("$WEST_SIM_ROOT/westpa_scripts/calc_pcoord.sh" seg.rst7)
 printf '%s\n%s\n' "$start_pcoord" "$end_pcoord" > "$WEST_PCOORD_RETURN"

@@ -1,0 +1,9 @@
+# Chignolin과 solvent를 같은 primary unit cell에 배치합니다.
+vector RawCenter center :1-10 out center_raw.dat
+vector BoxCenter boxcenter out box_center.dat
+
+autoimage anchor :1-10
+
+vector ImagedCenter center :1-10 out center_imaged.dat
+trajout imaged.nc netcdf
+run

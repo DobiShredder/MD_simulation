@@ -1,0 +1,14 @@
+Chignolin 4 ns dual-boost GaMD parameter preparation
+&cntrl
+  imin=0, irest=1, ntx=5,
+  nstlim=2000000, dt=0.002,
+  temp0=300.0, ntt=3, gamma_ln=1.0,
+  ntb=1, ntp=0,
+  ntc=2, ntf=2, cut=10.0,
+  ntpr=5000, ntwx=5000, ntwr=500000,
+  ioutfm=1, iwrap=0,
+  igamd=3, iE=1, irest_gamd=0,
+  ntcmdprep=200000, ntcmd=1000000,
+  ntebprep=200000, nteb=1000000, ntave=50000,
+  sigma0P=6.0, sigma0D=6.0,
+/

@@ -1,0 +1,10 @@
+# Imaging 뒤 backbone을 첫 frame에 fitting하고 solvent와 ion을 제거합니다.
+autoimage anchor :1-10
+
+rms BeforeFit first :1-10@CA,C,N nofit out rmsd_before.dat
+rms AfterFit first :1-10@CA,C,N out rmsd_after.dat
+average average.pdb :1-10 pdb
+
+strip :WAT,Na+,Cl- parmout stripped.parm7 nobox
+trajout aligned.nc netcdf nobox
+run

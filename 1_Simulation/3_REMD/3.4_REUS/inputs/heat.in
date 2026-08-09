@@ -28,6 +28,5 @@ Heat to 300 K over 200 ps
  value2=300.0,
 /
 &wt type='END' /
-DISANG='@DISANG@'
-DUMPAVE='@DUMPAVE@'
-
+DISANG=@DISANG@
+DUMPAVE=@DUMPAVE@

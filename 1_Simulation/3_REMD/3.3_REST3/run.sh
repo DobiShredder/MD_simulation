@@ -46,6 +46,13 @@ if (( ! dry_run )); then
             die "실행 파일을 찾을 수 없습니다: $executable"
         fi
     done
+
+    if ! mdrun_help=$("$gmx_mpi" mdrun -h 2>&1); then
+        die "GROMACS mdrun option을 확인하지 못했습니다: $gmx_mpi"
+    fi
+    if [[ "$mdrun_help" != *"-hrex"* || "$mdrun_help" != *"-plumed"* ]]; then
+        die "GROMACS MPI build에 PLUMED HREX 지원(-hrex, -plumed)이 없습니다: $gmx_mpi"
+    fi
 fi
 
 stage_status() {
@@ -189,4 +196,3 @@ for segment in $(seq 1 "$production_segments"); do
 done
 
 echo "10 ns REST3가 완료되었습니다: $work_dir/replicas"
-

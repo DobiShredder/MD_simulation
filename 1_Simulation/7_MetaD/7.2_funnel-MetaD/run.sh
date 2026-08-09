@@ -1,12 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-pmemd.cuda -O -i min0/min0.in -o min0/min0.out -p wat.parm7 -c wat.rst7 -r min0/min0.rst7 -ref wat.rst7
-
-pmemd.cuda -O -i min1/min1.in -o min1/min1.out -p wat.parm7 -c min0/min0.rst7 -r min1/min1.rst7 -ref wat.rst7
-
-pmemd.cuda -O -i heat/heat.in -o heat/heat.out -p wat.parm7 -c min1/min1.rst7 -r heat/heat.rst7 \
- -x heat/heat.nc -inf heat/heat.info
-
-pmemd.cuda -O -i metad/metad.in -p wat.parm7 -c heat/heat.rst7 \
-  -o metad/metad.out -r metad/metad.rst7 -x metad/metad.nc -inf metad/metad.info
-
+echo "오류: 3PTB의 alignment group, funnel axis와 wall geometry가 아직 정해지지 않았습니다." >&2
+echo "download.sh로 구조를 받은 뒤 README의 geometry 항목을 먼저 결정해야 합니다." >&2
+exit 1

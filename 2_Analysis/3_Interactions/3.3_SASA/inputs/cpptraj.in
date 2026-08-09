@@ -1,0 +1,15 @@
+# 전체 protein SASA와 residue별 기여도를 LCPO로 계산합니다.
+autoimage anchor :1-10
+
+surf Total :1-10 out sasa_total.dat offset 1.4
+surf Res1 :1 out sasa_byres.dat solutemask :1-10 offset 1.4
+surf Res2 :2 out sasa_byres.dat solutemask :1-10 offset 1.4
+surf Res3 :3 out sasa_byres.dat solutemask :1-10 offset 1.4
+surf Res4 :4 out sasa_byres.dat solutemask :1-10 offset 1.4
+surf Res5 :5 out sasa_byres.dat solutemask :1-10 offset 1.4
+surf Res6 :6 out sasa_byres.dat solutemask :1-10 offset 1.4
+surf Res7 :7 out sasa_byres.dat solutemask :1-10 offset 1.4
+surf Res8 :8 out sasa_byres.dat solutemask :1-10 offset 1.4
+surf Res9 :9 out sasa_byres.dat solutemask :1-10 offset 1.4
+surf Res10 :10 out sasa_byres.dat solutemask :1-10 offset 1.4
+run

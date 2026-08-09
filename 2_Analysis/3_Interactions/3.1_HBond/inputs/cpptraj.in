@@ -1,0 +1,18 @@
+# Protein 내부와 protein-water hydrogen bond를 나누어 계산합니다.
+autoimage anchor :1-10
+
+hbond ProteinHB :1-10 \
+    distance 3.0 angle 135 \
+    out protein_hbond_count.dat \
+    avgout protein_hbond_average.dat \
+    series uuseries protein_hbond_series.dat
+
+hbond WaterHB :1-10 \
+    distance 3.0 angle 135 \
+    out water_hbond_count.dat \
+    solventdonor :WAT \
+    solventacceptor :WAT@O \
+    solvout water_hbond_average.dat \
+    bridgeout water_bridge.dat \
+    series uvseries water_hbond_series.dat
+run

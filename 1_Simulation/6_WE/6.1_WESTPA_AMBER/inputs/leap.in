@@ -1,0 +1,5 @@
+source leaprc.water.tip3p
+set default PBradii amber6
+system = loadMol2 system.mol2
+saveAmberParm system system.parm7 system.rst7
+quit

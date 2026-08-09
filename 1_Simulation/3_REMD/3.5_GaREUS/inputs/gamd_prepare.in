@@ -36,6 +36,5 @@ GaMD parameter preparation for 4 ns
 /
 &wt type='DUMPFREQ', istep1=500, /
 &wt type='END' /
-DISANG='@DISANG@'
-DUMPAVE='@DUMPAVE@'
-
+DISANG=@DISANG@
+DUMPAVE=@DUMPAVE@

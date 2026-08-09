@@ -1,0 +1,18 @@
+SH3-peptide 1 ns Pep-GaMD production segment
+&cntrl
+  imin=0, irest=1, ntx=5,
+  nstlim=500000, dt=0.002,
+  temp0=300.0, ntt=3, gamma_ln=1.0,
+  ntb=1, ntp=0,
+  ntc=2, ntf=1, cut=10.0,
+  ntpr=5000, ntwx=5000, ntwr=500000,
+  ioutfm=1, iwrap=0,
+  igamd=15, iE=1, irest_gamd=1,
+  iEP=1, iED=1,
+  ntcmdprep=0, ntcmd=0,
+  ntebprep=0, nteb=0, ntave=50000,
+  sigma0P=6.0, sigma0D=6.0,
+  icfe=1, ifsc=1, gti_cpu_output=0, gti_add_sc=1,
+  timask1='@PEPTIDE_MASK@', timask2='',
+  scmask1='@PEPTIDE_MASK@', scmask2='',
+/

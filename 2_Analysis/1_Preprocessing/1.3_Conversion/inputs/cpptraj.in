@@ -1,0 +1,7 @@
+# 선택된 frame을 NetCDF와 DCD로 변환하고 첫 frame을 PDB로 저장합니다.
+autoimage anchor :1-10
+
+trajout sampled.nc netcdf
+trajout sampled.dcd dcd
+trajout first_frame.pdb pdb onlyframes 1
+run

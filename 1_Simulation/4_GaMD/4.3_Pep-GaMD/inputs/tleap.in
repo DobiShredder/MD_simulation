@@ -1,0 +1,13 @@
+source leaprc.protein.ff19SB
+source leaprc.water.tip3p
+
+system = loadpdb input.pdb
+check system
+
+solvateoct system TIP3PBOX 12.0
+addionsrand system Na+ 0
+addionsrand system Cl- 0
+
+saveamberparm system system.parm7 system.rst7
+savepdb system system.pdb
+quit

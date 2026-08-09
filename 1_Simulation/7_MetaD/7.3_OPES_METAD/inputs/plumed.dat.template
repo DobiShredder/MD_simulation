@@ -1,0 +1,18 @@
+@RESTART@
+
+phi: TORSION ATOMS=5,7,9,15
+psi: TORSION ATOMS=7,9,15,17
+
+opes: OPES_METAD ...
+  ARG=phi,psi
+  TEMP=300
+  PACE=500
+  BARRIER=50
+  SIGMA=0.15,0.15
+  FILE=KERNELS
+  @STATE_RFILE@
+  STATE_WFILE=opes.state
+  STATE_WSTRIDE=50000
+... OPES_METAD
+
+PRINT ARG=phi,psi,opes.bias,opes.rct,opes.neff,opes.nker STRIDE=5000 FILE=COLVAR

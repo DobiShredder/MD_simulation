@@ -169,10 +169,11 @@ reaction coordinate를 고정하지 않는 대신 boost distribution과 reweight
 quality를 함께 봅니다.
 
 - GaMD: 일반적인 potential boost
-- LiGaMD: ligand interaction과 관련된 boost
-- Pep-GaMD: peptide binding·dissociation을 위한 boost 구성
+- LiGaMD3: ligand, remaining nonbonded와 bonded potential의 triple boost
+- Pep-GaMD: SH3–peptide binding을 위한 selective dual boost
 
 - [GaMD 계열 튜토리얼](1_Simulation/4_GaMD/README.md)
+- [GaMD reweighting](2_Analysis/7_Enhanced_Sampling/7.2_GaMD_Reweighting/README.md)
 
 ### 1.5 Free-energy perturbation
 
@@ -184,7 +185,9 @@ FEP는 직접적인 물리적 transition 대신 alchemical intermediate를 정�
 
 FEP input에는 lambda schedule, atom mapping, charge change, soft-core 설정과
 window별 equilibration이 들어갑니다. ABFE는 ligand position/orientation
-restraint와 standard-state correction도 포함합니다.
+restraint와 standard-state correction도 포함합니다. RBFE는 T4 lysozyme L99A의
+benzene→toluene transformation, ABFE는 3PTB trypsin–benzamidine을 사용합니다.
+두 예제는 AMBER TI로 Gibbs free energy를 계산하며 production은 2 ns/window입니다.
 
 - [FEP 튜토리얼](1_Simulation/5_FEP/README.md)
 
@@ -195,8 +198,9 @@ binning과 resampling을 수행하는 path-sampling 방법입니다. 물리적 d
 변경하는 bias potential을 추가하지 않지만, progress coordinate와 초기·최종
 상태 정의가 효율과 해석을 좌우합니다.
 
-Analysis에서는 total weight, restart, random seed, steady state, flux와 반복
-계산의 uncertainty를 봅니다. Resampling과 weight는 WESTPA가 관리합니다.
+현재 Na⁺/Cl⁻ 예제는 total weight, restart, random seed, bin occupancy와 target
+도달을 점검합니다. Flux와 rate estimator는 포함하지 않습니다. Resampling과
+weight는 WESTPA가 관리합니다.
 
 - [WESTPA + AMBER WE 튜토리얼](1_Simulation/6_WE/README.md)
 
@@ -227,20 +231,21 @@ Analysis는 simulation method와 분리합니다. 공통 preprocessing과 featur
    distance, angle과 dihedral
 3. [Interactions and structure](2_Analysis/3_Interactions/README.md): hydrogen
    bond, contact, SASA와 secondary structure
-4. [Dimensionality reduction](2_Analysis/4_DimReduction/README.md): PCA와 t-SNE
+4. [Dimensionality reduction](2_Analysis/4_Dimension_Reduction/README.md): PCA와 t-SNE
 5. [Clustering](2_Analysis/5_Clustering/README.md): K-means와 DBSCAN
 6. [Binding energy](2_Analysis/6_Binding_Energy/README.md): MM/GBSA와 MM/PBSA
 7. [Enhanced-sampling analysis](2_Analysis/7_Enhanced_Sampling/README.md):
-   umbrella-sampling PMF와 histogram overlap
+   umbrella-sampling PMF, histogram overlap과 GaMD reweighting
 
 Cpptraj로 imaging, alignment와 기본 feature를 계산합니다. PCA, t-SNE와
 clustering은 표 형태의 feature를 Python으로 전달합니다. Dimension-reduction
 plot과 cluster 결과는 representative structure, 시간 순서와 parameter
 sensitivity를 함께 봅니다.
 
-Trypsin–benzamidine은 interaction과 MM/GBSA·MM/PBSA에, chignolin은 기본
-구조 분석과 PCA·clustering에, KcsA는 membrane-aware preprocessing과 채널
-구조 분석에 주로 사용합니다.
+현재 실행 가능한 1–3번 공통 analysis는 Chignolin conventional-MD output을
+사용합니다. Trypsin–benzamidine은 protein–ligand interaction과
+MM/GBSA·MM/PBSA에, KcsA는 membrane-aware preprocessing과 채널 구조 분석에
+사용할 예정입니다.
 
 ## 3. 참고 자료
 
@@ -251,6 +256,8 @@ Trypsin–benzamidine은 interaction과 MM/GBSA·MM/PBSA에, chignolin은 기본
 - [WESTPA documentation](https://westpa.readthedocs.io/)
 - [REMD temperature generator](https://virtualchemistry.org/remd-temperature-generator/)
 - [GaMD analysis resources](https://www.med.unc.edu/pharm/miaolab/resources/gamd/analysis/)
+- [LiGaMD3](https://doi.org/10.1021/acs.jctc.4c00502)
+- [Pep-GaMD](https://doi.org/10.1063/5.0021399)
 - [Boresch restraint formulation](https://doi.org/10.1021/jp0217839)
 - [PACKMOL-Memgen](https://doi.org/10.1021/acs.jcim.9b00269)
 - [Lipid21](https://doi.org/10.1021/acs.jctc.1c01217)

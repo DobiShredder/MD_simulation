@@ -2,16 +2,39 @@
 
 ## 한국어
 
-PLUMED가 CV bias를 계산하고 AMBER가 MD를 전파합니다. Atom index, CV,
-Gaussian/kernel width, barrier와 restart 설정은 example별 README에 있습니다.
+AMBER가 MD를 계산하고 PLUMED가 collective variable(CV)과 bias를 처리합니다.
+세 runnable example은 ff19SB/TIP3P capped alanine dipeptide를 사용합니다.
 
-- [7.1 Well-Tempered MetaD](7.1_WT-MetaD/README.md)
-- [7.2 Funnel MetaD scaffold](7.2_funnel-MetaD/README.md)
-- [7.3 OPES_METAD](7.3_OPES_METAD/README.md)
-- [7.4 OPES Expanded multithermal](7.4_OPES_EXPANDED/README.md)
+| Directory | Method | Bias 대상 | 상태 파일 |
+|---|---|---|---|
+| `7.1_WT-MetaD/` | well-tempered MetaD | φ, ψ | `HILLS` |
+| `7.2_funnel-MetaD/` | funnel MetaD scaffold | protein–ligand binding 경로 | 미정 |
+| `7.3_OPES_METAD/` | OPES_METAD | φ, ψ | `opes.state`, `KERNELS` |
+| `7.4_OPES_EXPANDED/` | multithermal OPES_EXPANDED | potential energy | `opes.state`, `DELTAFS` |
+
+WT-MetaD와 OPES_METAD는 선택한 CV 공간의 barrier를 낮춥니다. OPES Expanded는
+CV 대신 300–500 K multithermal target distribution을 구성합니다. 서로 다른
+목표를 가진 method이므로 bias 크기만으로 성능을 비교하지 않습니다.
+
+각 runnable directory에서 `./build.sh`, `./run.sh --dry-run`, `./run.sh`,
+`python3 anal.py` 순서로 실행합니다. Production은 1 ns segment 10개입니다.
+AMBER restart와 PLUMED bias state가 모두 있어야 다음 segment를 시작합니다.
+
+PLUMED가 연결된 Amber의 `pmemd.cuda`가 기본 engine입니다. AmberTools만 설치한
+환경에서는 PLUMED를 포함해 build한 `sander`를 `AMBER_ENGINE=sander`로 지정할
+수 있습니다. 설치된 executable이 PLUMED 연동을 지원하는지는 짧은 coupled run으로
+확인해야 합니다.
 
 ## English
 
-PLUMED evaluates CV-based biases while AMBER propagates the dynamics. Atom
-indices, CVs, Gaussian/kernel widths, barriers, and restart settings are listed
-in each example. The funnel folder is an incomplete scaffold.
+AMBER propagates the MD while PLUMED evaluates the collective variables and
+bias. The three runnable examples use an ff19SB/TIP3P capped alanine dipeptide.
+They cover well-tempered MetaD on φ/ψ, OPES_METAD on φ/ψ, and multithermal
+OPES_EXPANDED over 300–500 K. The funnel directory remains a geometry-design
+scaffold for the 3PTB trypsin–benzamidine system.
+
+Run `./build.sh`, `./run.sh --dry-run`, `./run.sh`, and `python3 anal.py` in a
+runnable directory. Production consists of ten 1 ns segments. Continuation
+requires both the AMBER restart and the method-specific PLUMED state. The default
+engine is a PLUMED-enabled `pmemd.cuda`; a PLUMED-enabled `sander` can be selected
+with `AMBER_ENGINE=sander`.

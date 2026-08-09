@@ -20,8 +20,10 @@ fi
 
 # Input과 사용자 설정
 ligand_sdf=$1
+ligand_sdf=$(cd "$(dirname "$ligand_sdf")" && pwd -P)/$(basename "$ligand_sdf")
 antechamber=${ANTECHAMBER:-antechamber}
 parmchk2=${PARMCHK2:-parmchk2}
+python=${PYTHON:-python3}
 ligand_charge=${LIGAND_CHARGE:-1}
 
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -29,6 +31,7 @@ work_dir=${WORK_DIR:-"$script_dir/work"}
 
 ligand_mol2="$work_dir/ben.mol2"
 ligand_frcmod="$work_dir/ben.frcmod"
+parameter_sdf="$ligand_sdf"
 
 # 사용자 설정 확인
 if [[ ! "$ligand_charge" =~ ^-?[0-9]+$ ]]; then
@@ -49,13 +52,25 @@ if (( ! dry_run )); then
     if ! command -v "$parmchk2" >/dev/null 2>&1; then
         die "parmchk2를 찾을 수 없습니다: $parmchk2"
     fi
+
+    if ! command -v "$python" >/dev/null 2>&1; then
+        die "Python을 찾을 수 없습니다: $python"
+    fi
 fi
 
 # Dry-run에서는 파일을 생성하지 않고 command만 보여줍니다.
 if (( dry_run )); then
     printf 'mkdir -p %q\n' "$work_dir"
+    if [[ "$ligand_charge" -eq 1 ]]; then
+        parameter_sdf="$work_dir/ben-protonated.sdf"
+        printf '%q %q %q %q\n' \
+            "$python" \
+            "$script_dir/protonate_benzamidine.py" \
+            "$ligand_sdf" \
+            "$parameter_sdf"
+    fi
     printf '%q \\\n' "$antechamber"
-    printf '  -i %q \\\n' "$ligand_sdf"
+    printf '  -i %q \\\n' "$parameter_sdf"
     printf '  -fi sdf \\\n'
     printf '  -o %q \\\n' "$ligand_mol2"
     printf '  -fo mol2 \\\n'
@@ -76,27 +91,41 @@ fi
 echo "BEN을 GAFF2/AM1-BCC로 parameterize합니다 (net charge: $ligand_charge)."
 mkdir -p "$work_dir"
 
-if ! "$antechamber" \
-    -i "$ligand_sdf" \
-    -fi sdf \
-    -o "$ligand_mol2" \
-    -fo mol2 \
-    -at gaff2 \
-    -c bcc \
-    -nc "$ligand_charge" \
-    -rn BEN \
-    -s 2 \
-    > "$work_dir/antechamber.log" 2>&1; then
+if [[ "$ligand_charge" -eq 1 ]]; then
+    parameter_sdf="$work_dir/ben-protonated.sdf"
+    "$python" \
+        "$script_dir/protonate_benzamidine.py" \
+        "$ligand_sdf" \
+        "$parameter_sdf"
+fi
+
+if ! (
+    cd "$work_dir"
+    "$antechamber" \
+        -i "$parameter_sdf" \
+        -fi sdf \
+        -o ben.mol2 \
+        -fo mol2 \
+        -at gaff2 \
+        -c bcc \
+        -nc "$ligand_charge" \
+        -rn BEN \
+        -s 2 \
+        > antechamber.log 2>&1
+); then
     die "antechamber 실행에 실패했습니다. 확인할 파일: $work_dir/antechamber.log"
 fi
 
 # Mol2에 없는 GAFF2 parameter를 frcmod로 만듭니다.
-if ! "$parmchk2" \
-    -i "$ligand_mol2" \
-    -f mol2 \
-    -o "$ligand_frcmod" \
-    -s gaff2 \
-    > "$work_dir/parmchk2.log" 2>&1; then
+if ! (
+    cd "$work_dir"
+    "$parmchk2" \
+        -i ben.mol2 \
+        -f mol2 \
+        -o ben.frcmod \
+        -s gaff2 \
+        > parmchk2.log 2>&1
+); then
     die "parmchk2 실행에 실패했습니다. 확인할 파일: $work_dir/parmchk2.log"
 fi
 

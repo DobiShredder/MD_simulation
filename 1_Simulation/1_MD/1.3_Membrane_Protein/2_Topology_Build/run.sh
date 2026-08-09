@@ -20,7 +20,6 @@ die() {
 
 # Input과 사용자 설정
 coordinate_pdb=$1
-converter=${CHARMMLIPID2AMBER:-charmmlipid2amber.py}
 tleap=${TLEAP:-tleap}
 
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -33,10 +32,6 @@ if (( ! dry_run )); then
         die "coordinate PDB를 찾을 수 없습니다: $coordinate_pdb"
     fi
 
-    if ! command -v "$converter" >/dev/null 2>&1; then
-        die "charmmlipid2amber.py를 찾을 수 없습니다: $converter"
-    fi
-
     if ! command -v "$tleap" >/dev/null 2>&1; then
         die "tleap을 찾을 수 없습니다: $tleap"
     fi
@@ -45,9 +40,7 @@ fi
 # Dry-run에서는 파일을 생성하지 않고 command만 보여줍니다.
 if (( dry_run )); then
     printf 'mkdir -p %q\n' "$work_dir"
-    printf '%q \\\n' "$converter"
-    printf '  -i %q \\\n' "$coordinate_pdb"
-    printf '  -o %q\n' "$amber_named_pdb"
+    printf 'cp %q %q\n' "$coordinate_pdb" "$amber_named_pdb"
     printf 'cd %q\n' "$work_dir"
     printf '%q \\\n' "$tleap"
     printf '  -f %q\n' "$script_dir/tleap.in"
@@ -57,17 +50,11 @@ fi
 echo "AMBER topology를 생성합니다 (ff19SB/Lipid21/OPC)."
 mkdir -p "$work_dir"
 
-# PACKMOL-Memgen/CHARMM 표기를 AMBER Lipid21 표기로 바꿉니다.
-if ! "$converter" \
-    -i "$coordinate_pdb" \
-    -o "$amber_named_pdb" \
-    > "$work_dir/name-conversion.log" 2>&1; then
-    die "lipid name 변환에 실패했습니다. 확인할 파일: $work_dir/name-conversion.log"
-fi
+# PACKMOL-Memgen의 기본 AMBER/Lipid21 naming을 그대로 사용합니다.
+cp "$coordinate_pdb" "$amber_named_pdb"
 
 if [[ ! -s "$amber_named_pdb" ]]; then
-    die "변환된 PDB가 생성되지 않았습니다. " \
-        "확인할 파일: $work_dir/name-conversion.log"
+    die "tleap input PDB를 준비하지 못했습니다: $amber_named_pdb"
 fi
 
 # 변환된 coordinate file에 ff19SB, Lipid21과 OPC를 적용합니다.

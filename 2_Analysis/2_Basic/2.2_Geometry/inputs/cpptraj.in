@@ -1,0 +1,10 @@
+# Chignolin의 전체 크기와 두 residue group 사이의 접근을 계산합니다.
+autoimage anchor :1-10
+
+distance TerminalDistance :1@CA :10@CA out geometry.dat
+mindist mask1 :1-5&!@H= mask2 :6-10&!@H= byatom name MinHalfDistance out geometry.dat
+angle BendAngle :1@CA :5@CA :10@CA out geometry.dat
+
+# Residue 2-9에서 표준 protein backbone phi/psi를 찾습니다.
+multidihedral Backbone phi psi resrange 2-9 out phi_psi.dat
+run

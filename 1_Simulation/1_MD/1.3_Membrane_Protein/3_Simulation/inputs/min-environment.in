@@ -3,6 +3,8 @@ Relax lipids, water, and bulk ions while restraining KcsA and filter K+
  imin=1,
  maxcyc=10000,
  ncyc=5000,
+ ntmin=2,
+ dx0=0.0001,
 
  ntc=1,
  ntf=1,

@@ -9,6 +9,5 @@ Window minimization
  nmropt=1,
 /
 &wt type='END' /
-DISANG='@DISANG@'
-DUMPAVE='@DUMPAVE@'
-
+DISANG=@DISANG@
+DUMPAVE=@DUMPAVE@

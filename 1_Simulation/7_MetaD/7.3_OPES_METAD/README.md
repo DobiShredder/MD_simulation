@@ -1,33 +1,50 @@
-# OPES Metadynamics / OPES_METAD
-
-References: Amber 2026 and PLUMED 2.10
-([OPES_METAD](https://www.plumed.org/doc-v2.10/user-doc/html/_o_p_e_s__m_e_t_a_d.html)).
+# OPES_METAD
 
 ## 한국어
 
-OPES_METAD는 CV의 unbiased distribution을 추정하면서 target distribution을
-sampling합니다. 기본 CV는 phi/psi torsion이며 `PACE=500`, `BARRIER=50`,
-`SIGMA=0.15`를 사용합니다. `BARRIER`는 탐색할 free-energy 범위에 맞춥니다.
+OPES_METAD는 simulation 중에 CV distribution을 추정하고, 설정한 barrier 안에서
+target distribution에 접근하도록 bias를 갱신합니다. 여기서는 alanine
+dipeptide의 φ와 ψ를 bias합니다.
 
-~~~bash
+```bash
 cd 1_Simulation/7_MetaD/7.3_OPES_METAD
-# opes module이 활성화된 PLUMED–AMBER와 wat.parm7/wat.rst7 준비
-bash run.sh
-~~~
+./build.sh
+./run.sh --dry-run
+./run.sh
+python3 anal.py
+```
 
-Output은 `opes.log`/`KERNELS`, `COLVAR`와 `opes/opes.nc`입니다. Restart에는
-`STATE_WFILE`/`STATE_RFILE`과 AMBER restart를 함께 사용합니다. Analysis에서는
-sampled range, effective sample size와 block별 reweighted FES를 비교합니다.
-출력 `c(t)`는 reweighting weight가 아닙니다.
+### Script 역할
+
+| File | 역할 |
+|---|---|
+| `build.sh` | ff19SB/TIP3P topology를 만들고 CV atom을 확인합니다. |
+| `check_topology.py` | `build.sh`가 자동 호출하며 CV atom 번호와 이름을 검사합니다. |
+| `run.sh` | preparation stage와 10 × 1 ns OPES_METAD production을 실행합니다. |
+| `anal.py` | φ/ψ, bias, effective sample size와 kernel 수를 segment별로 요약합니다. |
+
+### 주요 option
+
+`PACE=500`은 1 ps update interval입니다. `BARRIER=50` kJ/mol은 채우려는 최대
+free-energy barrier를 제한하며 simulation 온도와 system에 맞춰 정해야 합니다.
+`SIGMA=0.15` radian은 두 torsion의 initial kernel width입니다. `opes.rct`는
+reweighting에 쓰는 offset이고 bias 자체가 아닙니다.
+
+정확한 continuation에는 text kernel 기록만으로 충분하지 않습니다. 첫 segment가
+`STATE_WFILE=opes.state`를 만들고, 이후 segment는 이전 `opes.state`를
+`STATE_RFILE`로 읽습니다. 누적 `KERNELS`도 함께 이어지며 `RESTART`가 output
+append 동작을 켭니다.
+
+이 example은 adaptive state와 restart를 학습하는 용도입니다. 10 ns 결과로
+정량 free energy나 수렴을 판단하지 않습니다. Keyword는 PLUMED 2.10
+[`OPES_METAD`](https://www.plumed.org/doc-v2.10/user-doc/html/_o_p_e_s__m_e_t_a_d.html)를
+기준으로 작성했습니다.
 
 ## English
 
-OPES_METAD estimates the unbiased CV distribution on the fly and samples a
-target distribution. The input biases phi/psi with PACE=500, BARRIER=50, and
-SIGMA=0.15. Choose BARRIER near the highest barrier to overcome and adapt all
-atom indices and CV parameters.
-
-Use an OPES-enabled PLUMED build, provide AMBER inputs, and run a short run.sh
-test. Preserve exact PLUMED state with STATE_WFILE/STATE_RFILE when restarting.
-Check CV degeneracy, sampled range, effective sample size, and block convergence;
-do not use the printed c(t) as a reweighting weight.
+OPES_METAD adaptively estimates the φ/ψ distribution and builds a bias bounded
+by `BARRIER=50` kJ/mol. `PACE=500` updates the bias every 1 ps, and the initial
+kernel widths are 0.15 rad. Exact continuation reads the binary/text OPES state
+through `STATE_RFILE`; the cumulative `KERNELS` file is retained as a readable
+history. `anal.py` reports CV, bias, effective-sample-size, and kernel-count
+diagnostics. The 10 ns example is not a converged free-energy calculation.

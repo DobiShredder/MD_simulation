@@ -12,6 +12,15 @@ PLUMED `ABMD`는 목표값과 CV 차이로 정의한 ρ를 이용합니다. 기�
 definition이 다릅니다. `ratchet.end_to_end_min`도 distance가 아니라 PLUMED의
 ρ minimum입니다.
 
+### 파일 역할
+
+| 파일 | 역할 |
+| --- | --- |
+| `run.sh` | 공통 topology를 읽고 minimization, heating, equilibration과 ABMD production을 실행합니다. |
+| `inputs/plumed.dat` | Molecule reconstruction, terminal distance와 ABMD bias를 정의합니다. |
+| `inputs/ratchet.in` | PLUMED를 활성화한 10 ns NPT AMBER production input입니다. |
+| `anal.py` | Cpptraj distance에서 ordered first-crossing frame을 찾고 restart seed를 저장합니다. |
+
 ```bash
 cd 1_Simulation/2_US
 ./download.sh
@@ -29,6 +38,17 @@ python3 anal.py
 `pmemd.cuda`입니다. Output은 `work/ratchet.nc`, `work/ratchet.rst7`과
 `work/ratchet.dat`입니다. `run.sh`는 `inputs/plumed.dat`을 `work/`에
 복사한 뒤 AMBER에 넘깁니다.
+
+### 주요 option
+
+| Option | 의미 |
+| --- | --- |
+| `DISTANCE ATOMS=2,132 NOPBC` | 현재 topology의 terminal Cα atom index입니다. `WHOLEMOLECULES` 뒤에 계산합니다. |
+| `ABMD TO=3.0` | End-to-end distance target이며 PLUMED 기본 length unit인 nm를 사용합니다. |
+| `KAPPA=100` | Target 반대 방향의 ρ 증가를 억제하는 ratchet strength입니다. Harmonic distance force constant와 직접 비교하지 않습니다. |
+| `plumed=1`, `plumedfile='plumed.dat'` | AMBER에서 PLUMED bias를 활성화합니다. |
+| `--max-error 0.5` | `anal.py`가 target center와 seed frame 사이에 허용하는 distance 차이(Å)입니다. |
+| `SYSTEM_DIR`, `WORK_DIR`, `AMBER_ENGINE` | 공통 topology 위치, output directory와 PLUMED-enabled engine을 지정합니다. |
 
 `anal.py`는 cpptraj으로 `:1@CA`–`:10@CA` distance를 계산하고 각 window
 center의 first-crossing frame을 선택합니다. 허용 오차는 0.5 Å입니다. Seed는
@@ -50,6 +70,13 @@ the CV and its target. The training defaults are `TO=3.0 nm` and `KAPPA=100`.
 Because ABMD acts on ρ, its KAPPA does not have the same dimensional convention
 as an ordinary AMBER harmonic-distance restraint. The reported `_min`
 component is the PLUMED ρ minimum, not a minimum distance.
+
+`run.sh` handles the AMBER stages and activates `inputs/plumed.dat` through
+`plumed=1`. The PLUMED file reconstructs the protein, evaluates
+`DISTANCE ATOMS=2,132 NOPBC`, and applies `ABMD TO=3.0 KAPPA=100` in PLUMED
+units. `anal.py --max-error` controls the allowed Å difference when selecting
+first-crossing seeds. `SYSTEM_DIR`, `WORK_DIR`, and `AMBER_ENGINE` select the
+shared system, output location, and PLUMED-enabled executable.
 
 `run.sh` performs minimization, 200 ps NVT heating, 1 ns NPT equilibration, and
 10 ns ratchet MD. The default engine is a PLUMED-enabled `pmemd.cuda`.

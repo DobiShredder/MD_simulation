@@ -1,0 +1,18 @@
+source leaprc.protein.ff19SB
+source leaprc.gaff2
+source leaprc.water.tip3p
+
+loadamberparams bnz.frcmod
+loadamberparams mbn.frcmod
+BNZ = loadmol2 bnz.mol2
+MBN = loadmol2 mbn.mol2
+protein = loadpdb protein.pdb
+
+system = combine { protein BNZ MBN }
+solvatebox system TIP3PBOX 12.0
+addions system Na+ 0
+addions system Cl- 0
+
+saveamberparm system complex.parm7 complex.rst7
+savepdb system complex.pdb
+quit

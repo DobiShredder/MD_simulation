@@ -25,6 +25,5 @@ NPT equilibration for 1 ns
 /
 &wt type='DUMPFREQ', istep1=5000, /
 &wt type='END' /
-DISANG='@DISANG@'
-DUMPAVE='@DUMPAVE@'
-
+DISANG=@DISANG@
+DUMPAVE=@DUMPAVE@

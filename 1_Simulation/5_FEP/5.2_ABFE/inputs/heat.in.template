@@ -1,0 +1,15 @@
+ABFE heating: @STAGE@, lambda @LAMBDA@
+&cntrl
+  imin=0, irest=0, ntx=1,
+  nstlim=100000, dt=0.002,
+  tempi=0.0, temp0=300.0,
+  ntt=3, gamma_ln=1.0, ig=@RANDOM_SEED@,
+  ntb=1,
+  ntc=2, ntf=1,
+  cut=10.0,
+  ntpr=5000, ntwx=5000, ntwr=5000,
+  @ALCHEMICAL_OPTIONS@
+  @RESTRAINT_OPTIONS@
+/
+@WT_END@
+@DISANG@

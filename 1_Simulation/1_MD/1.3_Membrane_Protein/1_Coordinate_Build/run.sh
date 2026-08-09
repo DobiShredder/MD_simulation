@@ -36,7 +36,11 @@ show_dry_run() {
     printf '  --salt_c K+ \\\n'
     printf '  --salt_a Cl- \\\n'
     printf '  --saltcon %q \\\n' "$salt_concentration_molar"
-    printf '  --keepligs\n'
+    printf '  --keepligs'
+    if (( ${#memgen_options[@]} > 0 )); then
+        printf ' %q' "${memgen_options[@]}"
+    fi
+    printf '\n'
 }
 
 run_packmol_memgen() {
@@ -57,6 +61,7 @@ run_packmol_memgen() {
             --salt_a Cl- \
             --saltcon "$salt_concentration_molar" \
             --keepligs \
+            "${memgen_options[@]}" \
             > packmol-memgen.log 2>&1
     ); then
         die "PACKMOL-Memgen 실행에 실패했습니다. " \
@@ -94,10 +99,11 @@ fi
 # Input과 사용자 설정
 input_pdb=$1
 memgen=${PACKMOL_MEMGEN:-packmol-memgen}
-lipids=${LIPIDS:-POPC:POPE:CHL}
+lipids=${LIPIDS:-POPC:POPE:CHL1}
 lipid_ratio=${LIPID_RATIO:-90:5:5}
 salt_concentration_molar=${SALT_CONCENTRATION:-0.15}
 water_distance_angstrom=${WATER_DISTANCE:-20}
+read -r -a memgen_options <<< "${PACKMOL_MEMGEN_OPTIONS:-}"
 
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 work_dir=${WORK_DIR:-"$script_dir/work/packed"}
@@ -105,7 +111,7 @@ work_dir=${WORK_DIR:-"$script_dir/work/packed"}
 # Lipid 목록과 비율 중 하나만 잘못 바꾸는 실수를 막습니다.
 # 다른 조성을 쓸 때는 두 값을 함께 바꾼 뒤 override를 활성화합니다.
 composition="$lipids:$lipid_ratio"
-tutorial_composition="POPC:POPE:CHL:90:5:5"
+tutorial_composition="POPC:POPE:CHL1:90:5:5"
 
 if [[ "$composition" != "$tutorial_composition" ]]; then
     if [[ -z "${ALLOW_CUSTOM_COMPOSITION:-}" ]]; then

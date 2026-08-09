@@ -1,32 +1,88 @@
-# Absolute binding free energy with AMBER / AMBER ABFE
-
-Reference syntax: Amber 2026 thermodynamic integration, soft-core potentials,
-MBAR energy collection, and NMR-style restraints.
+# Trypsin–benzamidine ABFE / Trypsin–benzamidine ABFE
 
 ## 한국어
 
-Double decoupling으로 ligand의 electrostatic과 Lennard-Jones interaction을
-complex/solvent leg에서 제거합니다. Complex equilibration 뒤
-ligand–receptor distance, angle과 dihedral restraint를 만듭니다.
+PDB 3PTB의 benzamidine을 complex와 물에서 단계적으로 decouple합니다. Complex
+계산에서는 ligand가 binding site를 벗어나지 않도록 Boresch restraint 6개를
+먼저 연결합니다. Restraint, electrostatic, van der Waals contribution과
+standard-state correction을 thermodynamic cycle의 부호에 맞춰 합칩니다.
 
-1. [equil/](equil/README.md)에서 complex 준비와 equilibration
-2. 생성된 protein/ligand 구조를 dd/prep에 전달
-3. [dd/](dd/README.md)에서 restraint와 64개 window 생성
-4. 각 window의 run.sh 또는 dd/run_all.sh 실행
-5. MBAR 또는 지원되는 estimator로 window 결과 분석
+### Script 역할
 
-Atom/residue 번호, anchor atom, ligand parameter, lambda schedule과 production
-length는 example 값입니다. ABFE 계산에는 window overlap, restraint
-stability, standard-state correction과 독립 반복 결과가 필요합니다.
+| 파일 | 역할 | 주요 output |
+| --- | --- | --- |
+| `download.sh` | 3PTB와 BEN ideal SDF download | `structure/` |
+| `prepare.py` | BEN·Ca2+·disulfide 보존, Asp189 anchor 기록 | `complex.pdb`, `preparation.tsv` |
+| `protonate_benzamidine.py` | RCSB neutral SDF를 BEN(+1)로 바꾸는 내부 helper | `work/ben-protonated.sdf` |
+| `build.sh` | BEN parameter, charged/uncharged topology와 65개 window 생성 | `work/build/`, `states.tsv` |
+| `generate_inputs.py` | Topology에서 restraint atom 번호와 input 생성 | `restraints.tsv`, `work/windows/` |
+| `run.sh` | Window별 MD와 2 × 1 ns production 실행 | Restart, trajectory, AMBER output |
+| `anal.py` | TI 적분, standard-state와 PME correction 조합 | `window_summary.tsv`, `free_energy.tsv` |
+
+```bash
+./download.sh
+python3 prepare.py structure/3PTB.raw.pdb structure/complex.pdb
+./build.sh structure/complex.pdb structure/BEN_ideal.sdf
+./run.sh --dry-run
+./run.sh
+python3 anal.py
+```
+
+### 주요 option
+
+RCSB neutral SDF의 imine N에 H 하나와 formal charge를 추가한 뒤 BEN을
+GAFF2/AM1-BCC net charge +1로 parameterize합니다. Protein은 ff19SB, 물은
+TIP3P를 사용합니다. `generate_inputs.py`는 Asp189 `CA-CB-CG`와 BEN
+`C7-C1-C2`를 anchor로 선택하고 실제 topology atom 번호를 `restraints.tsv`에
+기록합니다.
+
+Restraint·charge stage는 11개 lambda state를 사용합니다. LJ stage는 endpoint
+근처를 촘촘히 나눈 16개 state를 사용합니다. `icfe`와 `clambda`가 alchemical
+state를 정하고 `ifsc`/`scmask1`이 LJ endpoint의 singularity를 피합니다.
+`ifmbar` energy도 저장하지만 기본 `anal.py` estimator는 TI입니다.
+
+Restraint stage는 λ=0의 unrestrained complex에서 λ=1의 restrained complex로
+진행합니다. 이 값을 binding cycle에 넣을 때는 부호를 바꿉니다. AMBER의
+`rk2`/`rk3`는 `U=rk(x-x0)^2`의 계수이므로 Boresch analytic correction에서는
+`K=2×rk`로 변환합니다. `standard_state_correction`은 decoupled ligand의
+restraint를 풀어 1 M 상태로 옮기는 항이며 보통 음수입니다.
+
+Charge stage는 원래 topology와 `crgmask=':BEN'`을 사용합니다. LJ stage는
+BEN charge를 0으로 만든 `complex_uncharged.parm7` 또는
+`solvent_uncharged.parm7`을 사용하고 `crgmask`를 다시 적용하지 않습니다.
+Soft-core input은 `aces26=1`과 명시적인 SC/CC nonbonded term 목록을 사용하며
+`pmemd.cuda`에서 실행합니다.
+
+Benzamidine decoupling은 system의 net charge를 바꿉니다. `anal.py`는 cubic-box
+근사를 사용한 leading PME net-charge correction을 별도 행으로 기록합니다.
+이는 모든 finite-size artifact를 대신하지 않습니다. Box 크기, restraint
+geometry와 window overlap을 바꾸었다면 correction과 cycle을 다시 검토합니다.
 
 ## English
 
-This double-decoupling template equilibrates a complex, constructs six
-ligand–receptor restraints, and decouples electrostatics and Lennard-Jones
-interactions in complex and solvent legs. A complete ABFE cycle also requires
-validated restraint and standard-state corrections.
+This restrained double-decoupling example removes benzamidine interactions in
+the 3PTB trypsin complex and in bulk water. Six Boresch coordinates retain the
+bound pose while electrostatic and Lennard-Jones interactions are decoupled.
 
-Follow `equil/`, transfer the structures to `dd/prep`, generate 64 windows, and
-run each window. An ABFE estimator is not included yet. Adapt atom selections,
-anchors, parameters, schedules, and lengths; report overlap, restraint
-stability, corrections, and repeats.
+Run the five public entry points in the order shown above. `build.sh` uses
+ff19SB, GAFF2/AM1-BCC, and TIP3P, writes charged and zero-BEN-charge topologies,
+then creates 65 windows. Restraint and charge
+stages use eleven lambda states; the soft-core LJ stages use sixteen states with
+additional endpoint spacing. Each window contains 200 ps heating, 1 ns
+equilibration, and two 1 ns production segments.
+The default ligand path adds one imine-N hydrogen and a +1 formal charge to the
+neutral RCSB SDF. Boresch ligand anchors are `C7-C1-C2`.
+
+The charge stage uses `crgmask=':BEN'` with the charged topology. The LJ stage
+uses the zero-BEN-charge topology without applying `crgmask` a second time.
+Soft-core interactions use the Amber 26 `aces26=1` format and require
+`pmemd.cuda`.
+
+`anal.py` integrates `DV/DL`, adds the restraint and standard-state terms, and
+reports a leading PME net-charge correction separately. The short windows and
+approximate correction are suitable for learning the workflow, not for claiming
+a converged experimental binding affinity.
+
+The restraint leg runs from an unrestrained to a restrained bound complex, so
+its TI contribution enters the binding cycle with the opposite sign. AMBER uses
+`U=rk(x-x0)^2`; the analytical Boresch expression therefore uses `K=2*rk`.

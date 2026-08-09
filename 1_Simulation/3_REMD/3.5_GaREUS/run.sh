@@ -36,6 +36,9 @@ fi
 if [[ "$mpi_processes" -ne "$replica_count" ]]; then
     die "MPI_PROCESSES는 window 수와 같아야 합니다: $replica_count"
 fi
+if (( ! dry_run )) && [[ "${ALLOW_UNVERIFIED_GAREUS:-0}" != 1 ]]; then
+    die "GaMD state와 multipmemd replica suffix 검증 전입니다. 실행하려면 ALLOW_UNVERIFIED_GAREUS=1을 지정하세요."
+fi
 
 if (( ! dry_run )); then
     for executable in "$amber_engine" "$amber_mpi_engine" "$mpi_launcher"; do
@@ -82,18 +85,25 @@ run_stage() {
             extra_arguments=(-gamd "$replica_dir/$gamd_log")
         fi
 
-        if ! "$amber_engine" \
-            "${amber_options[@]}" \
-            -O \
-            -i "$replica_dir/$stage.in" \
-            -o "$replica_dir/$stage.out" \
-            -p "$replica_dir/system.parm7" \
-            -c "$replica_dir/$input_restart" \
-            -r "$replica_dir/$stage.rst7" \
-            -x "$replica_dir/$stage.nc" \
-            -inf "$replica_dir/$stage.info" \
-            "${extra_arguments[@]}"; then
+        if ! (
+            cd "$replica_dir"
+            "$amber_engine" \
+                "${amber_options[@]}" \
+                -O \
+                -i "$stage.in" \
+                -o "$stage.out" \
+                -p system.parm7 \
+                -c "$input_restart" \
+                -r "$stage.rst7" \
+                -x "$stage.nc" \
+                -inf "$stage.info" \
+                "${extra_arguments[@]}"
+        ); then
             die "$stage 계산에 실패했습니다: $replica_dir/$stage.out"
+        fi
+
+        if [[ "$stage" == gamd_prepare && ! -s "$replica_dir/gamd-restart.dat" ]]; then
+            die "GaMD state가 생성되지 않았습니다: $replica_dir/gamd-restart.dat"
         fi
     done < "$states_file"
 }
@@ -106,6 +116,12 @@ run_stage_if_needed() {
 
     completed=$(stage_status "$stage.rst7")
     if [[ "$completed" -eq "$replica_count" ]]; then
+        if [[ "$stage" == gamd_prepare ]]; then
+            gamd_states=$(stage_status gamd-restart.dat)
+            if [[ "$gamd_states" -ne "$replica_count" ]]; then
+                die "gamd_prepare restart는 있지만 GaMD state가 일부 누락되었습니다 ($gamd_states/$replica_count)."
+            fi
+        fi
         return
     fi
     if [[ "$completed" -ne 0 ]]; then
@@ -199,4 +215,3 @@ for segment in $(seq 1 "$production_segments"); do
 done
 
 echo "10 ns GaREUS가 완료되었습니다: $work_dir/replicas"
-

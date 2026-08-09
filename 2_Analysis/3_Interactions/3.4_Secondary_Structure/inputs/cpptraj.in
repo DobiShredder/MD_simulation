@@ -1,0 +1,8 @@
+# DSSP 규칙으로 residue별 secondary structure를 계산합니다.
+autoimage anchor :1-10
+
+secstruct DSSP :1-10 \
+    out secondary_structure.dat \
+    sumout secondary_byresidue.dat \
+    totalout secondary_total.dat
+run
