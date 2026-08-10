@@ -24,6 +24,10 @@ fi
 # Input과 output 경로
 protein_pdb=$1
 python=${PYTHON:-python3}
+composition="POPC=90,POPE=5,CHOL=5"
+xy_padding=25
+water_padding=20
+protein_lipid_distance=2.0
 script_dir=$(dirname "${BASH_SOURCE[0]}")
 structure_dir="$script_dir/structure"
 work_dir=${WORK_DIR:-"$script_dir/work"}
@@ -31,7 +35,7 @@ output_pdb="$work_dir/system-coordinates.pdb"
 
 if (( dry_run )); then
     printf 'mkdir -p %q\n' "$work_dir"
-    printf '%q %q %q %q %q %q %q\n' \
+    printf '%q %q %q %q %q %q %q \\\n' \
         "$python" \
         "$script_dir/build_membrane.py" \
         "$protein_pdb" \
@@ -39,6 +43,10 @@ if (( dry_run )); then
         "$structure_dir/POPE.gro" \
         "$structure_dir/CHOL15.gro" \
         "$output_pdb"
+    printf '  --composition %q \\\n' "$composition"
+    printf '  --xy-padding %q \\\n' "$xy_padding"
+    printf '  --water-padding %q \\\n' "$water_padding"
+    printf '  --protein-lipid-distance %q\n' "$protein_lipid_distance"
     exit 0
 fi
 
@@ -70,6 +78,10 @@ mkdir -p "$work_dir"
     "$structure_dir/POPC.gro" \
     "$structure_dir/POPE.gro" \
     "$structure_dir/CHOL15.gro" \
-    "$output_pdb"
+    "$output_pdb" \
+    --composition "$composition" \
+    --xy-padding "$xy_padding" \
+    --water-padding "$water_padding" \
+    --protein-lipid-distance "$protein_lipid_distance"
 
 echo "Coordinate build 결과: $output_pdb"

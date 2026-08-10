@@ -2,13 +2,16 @@
 
 ## 한국어
 
-PDB 1K4C biological assembly에서 Fab을 제거한 KcsA tetramer를 사용합니다.
+OPM이 membrane에 배향한 PDB 1K4C에서 Fab을 제거한 KcsA
+tetramer를 사용합니다.
 Detergent와 bulk 결정수는 제거합니다. Selectivity filter의 K+ 7개와
 filter·cavity에 있는 결정수 16개는 유지합니다.
 Force field는 ff19SB와 Lipid21, water model은 OPC입니다. Membrane 조성은
 POPC 90%, POPE 5%, cholesterol 5%입니다.
 
-Fixed-charge neutral-pH baseline으로 네 subunit의 E71을 `GLH`, D80을
+1K4C에서 빠진 Ser22·Arg117 side-chain atom은 closed KcsA 3EFF의
+conformer를 local backbone에 alignment해 복원합니다. Fixed-charge
+neutral-pH baseline으로 네 subunit의 E71을 `GLH`, D80을
 `ASP`, H25를 `HIE`, E118·E120을 `GLU`로 지정합니다. Side chain 좌표가
 불완전한 terminal H124는 제외합니다. E71–D80 사이 proton transfer는 이
 model이 표현하지 않습니다.
@@ -21,8 +24,8 @@ topology build를 분리해 bilayer geometry와 force-field naming을 각각
 
 Build는 두 단계로 나눕니다.
 
-1. [`1_Coordinate_Build/`](1_Coordinate_Build/README.md): RCSB assembly
-   추출, KcsA 정리, 평형화 Lipid21 bilayer 복제와 protein 삽입
+1. [`1_Coordinate_Build/`](1_Coordinate_Build/README.md): OPM orientation,
+   KcsA 정리, 평형화 Lipid21 bilayer 복제와 protein 삽입
 2. [`2_Topology_Build/`](2_Topology_Build/README.md): Lipid21 명명 변환,
    tleap 검증, `parm7`/`rst7` 생성
 
@@ -32,11 +35,12 @@ protonation, K+ occupancy와 초기 water 배치를 함께 재검토합니다.
 
 ## English
 
-PDB 1K4C supplies the KcsA tetramer after Fab removal. Detergent and bulk
+OPM-oriented PDB 1K4C supplies the KcsA tetramer after Fab removal. Detergent and bulk
 crystallographic waters are removed. Seven selectivity-filter K+ ions and 16
 filter/cavity waters are retained. The fixed-charge neutral-pH baseline assigns
 E71 as `GLH`, D80 as `ASP`, H25 as `HIE`, and E118/E120 as `GLU` in all
-four subunits. Terminal H124 is omitted because its side-chain coordinates
+four subunits. Missing Ser22 and Arg117 side-chain atoms are transferred from
+closed KcsA 3EFF by local-backbone alignment. Terminal H124 is omitted because its side-chain coordinates
 are incomplete. The model does
 not represent proton transfer between E71 and D80. The model uses ff19SB,
 Lipid21, OPC, and a symmetric
@@ -56,4 +60,5 @@ review of protonation, K+ occupancy, and initial pore waters. Production is
 ## References / 참고 자료
 
 - [RCSB PDB 1K4C](https://www.rcsb.org/structure/1K4C)
+- [RCSB PDB 3EFF](https://www.rcsb.org/structure/3EFF)
 - [Lipid21](https://doi.org/10.1021/acs.jctc.1c01217)

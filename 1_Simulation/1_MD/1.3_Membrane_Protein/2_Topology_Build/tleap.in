@@ -3,9 +3,9 @@ source leaprc.lipid21
 source leaprc.water.opc
 
 system = loadpdb amber-named.pdb
-set system box { 124.072 124.686 90.0 }
+set system box { BOX_X BOX_Y BOX_Z }
 addionsrand system Cl- 0
-addionsrand system K+ 126 Cl- 126
+addionsrand system K+ SALT_PAIRS Cl- SALT_PAIRS
 check system
 saveamberparm system system.parm7 system.rst7
 savepdb system system.pdb

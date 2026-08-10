@@ -14,10 +14,11 @@ fi
 # 사용자 설정과 output 경로
 curl_bin=${CURL:-curl}
 
-script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+script_dir=$(dirname "${BASH_SOURCE[0]}")
 structure_dir="$script_dir/structure"
 
-assembly_pdb_url="https://files.rcsb.org/download/1K4C.pdb1"
+opm_pdb_url="https://opm-assets.storage.googleapis.com/pdb/1k4c.pdb"
+sidechain_template_url="https://opm-assets.storage.googleapis.com/pdb/3eff.pdb"
 assembly_cif_url="https://files.rcsb.org/download/1K4C-assembly1.cif"
 popc_url="https://zenodo.org/records/14776136/files/POPC.gro"
 pope_url="https://zenodo.org/records/14776136/files/POPE.gro"
@@ -28,15 +29,23 @@ if ! command -v "$curl_bin" >/dev/null 2>&1; then
     die "curl을 찾을 수 없습니다: $curl_bin"
 fi
 
-echo "KcsA biological assembly를 다운로드합니다 (PDB 1K4C)."
+echo "OPM에서 membrane에 정렬된 KcsA를 다운로드합니다 (PDB 1K4C)."
 mkdir -p "$structure_dir"
 
-# KcsA tetramer와 filter K+를 추출할 biological-assembly PDB를 받습니다.
+# OPM PDB에는 protein orientation과 z=±15 Å membrane boundary가 들어 있습니다.
 if ! "$curl_bin" \
     -fsSL \
-    "$assembly_pdb_url" \
-    -o "$structure_dir/1K4C.pdb1"; then
-    die "assembly PDB 다운로드에 실패했습니다: $assembly_pdb_url"
+    "$opm_pdb_url" \
+    -o "$structure_dir/1K4C-opm.pdb"; then
+    die "OPM PDB 다운로드에 실패했습니다: $opm_pdb_url"
+fi
+
+# 1K4C에서 빠진 Ser22와 Arg117 side-chain은 closed KcsA 3EFF에서 복원합니다.
+if ! "$curl_bin" \
+    -fsSL \
+    "$sidechain_template_url" \
+    -o "$structure_dir/3EFF-opm.pdb"; then
+    die "side-chain template 다운로드에 실패했습니다: $sidechain_template_url"
 fi
 
 # Lipid21로 평형화한 128-lipid bilayer coordinate를 받습니다.
@@ -65,7 +74,8 @@ if command -v sha256sum >/dev/null 2>&1; then
     (
         cd "$structure_dir"
         sha256sum \
-            1K4C.pdb1 \
+            1K4C-opm.pdb \
+            3EFF-opm.pdb \
             1K4C-assembly1.cif \
             POPC.gro \
             POPE.gro \
@@ -77,7 +87,8 @@ else
         cd "$structure_dir"
         shasum \
             -a 256 \
-            1K4C.pdb1 \
+            1K4C-opm.pdb \
+            3EFF-opm.pdb \
             1K4C-assembly1.cif \
             POPC.gro \
             POPE.gro \
