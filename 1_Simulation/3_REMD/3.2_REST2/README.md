@@ -32,13 +32,15 @@ effective-temperature ladder를 구성할 수 있습니다.
 
 ### 실행
 
-AMBER 26, ParmEd, GROMACS 2026.3, PLUMED 2.10과 HREX를 지원하도록 PLUMED
-patch가 적용된 MPI GROMACS가 필요합니다. `partial_tempering`은 `gawk`도
-사용합니다.
+AMBER 26, ParmEd, `GROMACS 2025.0`, `PLUMED 2.10.0`과 `gawk`가
+필요합니다. GROMACS는 PLUMED 2.10.0이 제공하는 GROMACS patch를
+적용하고 외부 MPI를 사용해 build합니다. 일반 PLUMED interface만 활성화한
+GROMACS에는 이 계산에 필요한 `-hrex`가 없습니다.
 
-PLUMED 2.10의 공식 patch 대상 목록에는 GROMACS 2026.3이 포함되어 있지
-않습니다. Version 번호만으로 호환된다고 판단하지 않으며, `run.sh`가 실제
-`gmx_mpi mdrun -h`에서 `-hrex`와 `-plumed`를 모두 확인합니다.
+GROMACS 2026.3은 PLUMED 2.10.0의 공식 patch 대상이 아니므로 이 tutorial에서
+사용하지 않습니다. GROMACS 2025.0은 PLUMED 2.10.0에서 patch를 공식 제공하는
+최신 GROMACS version입니다. `-hrex`만 제거하면 서로
+다른 scaled topology 사이의 exchange acceptance가 잘못 계산됩니다.
 
 ```bash
 python3 -m pip install -r requirements.txt
@@ -98,12 +100,14 @@ the full solvent box.
 
 The build converts the AMBER system with ParmEd, marks only protein atom types,
 creates scaled topologies with PLUMED `partial_tempering`, and compares the
-scale-one and original potential energies. A PLUMED-patched MPI GROMACS build
-with HREX support is required.
+scale-one and original potential energies. This tutorial requires an external-
+MPI build of `GROMACS 2025.0` with the GROMACS patch supplied by
+`PLUMED 2.10.0`.
 
-GROMACS 2026.3 is not listed among the official PLUMED 2.10 patch targets.
-`run.sh` checks the actual `gmx_mpi mdrun -h` output for both `-hrex` and
-`-plumed` instead of assuming compatibility from the version number.
+GROMACS 2026.3 is not an official patch target for PLUMED 2.10.0 and is
+not supported here. GROMACS 2025.0 is the latest GROMACS version for which
+PLUMED 2.10.0 officially supplies a patch. Removing only `-hrex` would
+produce incorrect exchange acceptance between the separately scaled topologies.
 
 `convert_topology.py` performs the AMBER-to-GROMACS conversion, `mark_hot.py`
 marks protein atom types, `build.sh` generates and verifies eight states,

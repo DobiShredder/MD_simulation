@@ -1,7 +1,7 @@
 # Molecular Dynamics Tutorials and Templates
 
 [![AMBER](https://img.shields.io/badge/AMBER-26+-orange?style=flat)](https://ambermd.org/)
-[![GROMACS](https://img.shields.io/badge/GROMACS-2026+-blue?style=flat&logo=gromacs)](https://manual.gromacs.org/)
+[![GROMACS](https://img.shields.io/badge/GROMACS-2025+-blue?style=flat&logo=gromacs)](https://manual.gromacs.org/)
 [![PLUMED](https://img.shields.io/badge/PLUMED-2.10+-green?style=flat)](https://www.plumed.org/doc-v2.10/user-doc/html/index.html)
 [![WESTPA](https://img.shields.io/badge/WESTPA-2+-blueviolet?style=flat)](https://westpa.github.io/westpa/)
 [![Python](https://img.shields.io/badge/Python-3.10+-yellow?style=flat&logo=python)](https://www.python.org/)

@@ -23,6 +23,12 @@ Replica exchange는 서로 다른 thermodynamic state 또는 Hamiltonian을 병�
 | 3.4 | [REUS](3.4_REUS/README.md) | 19 distance windows | `pmemd.cuda.MPI -rem 3` |
 | 3.5 | [GaREUS](3.5_GaREUS/README.md) | 20 distance windows | `pmemd.cuda.MPI -rem 3` |
 
+REST2와 REST3는 `GROMACS 2025.0`에 `PLUMED 2.10.0`의 GROMACS patch를
+적용한 MPI build를 사용합니다. 일반 PLUMED interface만 활성화한
+GROMACS에는 `-hrex`가 없으며, GROMACS 2026.3은 이 tutorial의 지원 조합이
+아닙니다. GROMACS 2025.0은 PLUMED 2.10.0에서 patch를 공식 제공하는
+최신 GROMACS version입니다.
+
 각 폴더에서 다음 순서로 실행합니다.
 
 ```bash
@@ -60,6 +66,12 @@ Replica exchange propagates parallel thermodynamic states or Hamiltonians and
 periodically proposes state swaps using a Metropolis criterion. Useful mixing
 depends on state spacing, exchange acceptance, state visits, and round trips,
 not on exchange attempts alone.
+
+REST2 and REST3 require an MPI build of `GROMACS 2025.0` with the GROMACS
+patch supplied by `PLUMED 2.10.0`. A standard PLUMED-enabled
+GROMACS build does not provide `-hrex`, and GROMACS 2026.3 is not a supported
+combination for these tutorials. GROMACS 2025.0 is the latest GROMACS version
+for which PLUMED 2.10.0 officially supplies a patch.
 
 Use `download.sh`, `prepare.py`, `build.sh`, `run.sh`, and `anal.py`
 in order. Production is one 1 ns segment per replica. A run resumes only from

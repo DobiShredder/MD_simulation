@@ -40,12 +40,14 @@ REST3는 REST2의 solute scaling에 κ-dependent solute–solvent correction을
 
 ### 실행
 
-AMBER 26, ParmEd, GROMACS 2026.3, PLUMED 2.10, HREX 지원 MPI GROMACS와
-`repex-topology-parser==0.2.2`가 필요합니다.
+AMBER 26, ParmEd, `GROMACS 2025.0`, `PLUMED 2.10.0`과
+`repex-topology-parser==0.2.2`가 필요합니다. GROMACS는 PLUMED 2.10.0이
+제공하는 GROMACS patch를 적용하고 외부 MPI를 사용해 build합니다.
 
-PLUMED 2.10의 공식 patch 대상 목록에는 GROMACS 2026.3이 포함되어 있지
-않습니다. `run.sh`는 실제 `gmx_mpi mdrun -h`에서 `-hrex`와 `-plumed`가
-제공되는지 확인한 뒤에만 production을 시작합니다.
+일반 PLUMED interface만 활성화한 GROMACS에는 `-hrex`가 없습니다. GROMACS
+2026.3은 PLUMED 2.10.0의 공식 patch 대상이 아니므로 이 tutorial에서
+사용하지 않습니다. GROMACS 2025.0은 PLUMED 2.10.0에서 patch를 공식
+제공하는 최신 GROMACS version입니다.
 
 ```bash
 python3 -m pip install parmed MDAnalysis numpy
@@ -126,8 +128,11 @@ solvent invariants, `run.sh` performs HREX with `-replex 1000`, and `anal.py`
 summarizes exchange and structure. `kappa_atom_names=['OW']` targets the TIP3P
 oxygen type. The physical thermostat remains at 300 K.
 
-Because GROMACS 2026.3 is not an official PLUMED 2.10 patch target, the runner
-requires the actual MPI executable help to expose both `-hrex` and `-plumed`.
+This tutorial requires an external-MPI build of `GROMACS 2025.0` patched with
+the GROMACS patch supplied by `PLUMED 2.10.0`. GROMACS 2026.3 is not an
+official patch target for that PLUMED release and is not supported here.
+GROMACS 2025.0 is the latest GROMACS version for which PLUMED 2.10.0 officially
+supplies a patch.
 
 The published kappa schedule was calibrated for a99SB-disp IDPs, not validated
 for ff19SB/TIP3P Chignolin. REST2 compaction at high effective temperature was
