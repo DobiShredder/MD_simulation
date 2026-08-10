@@ -27,17 +27,26 @@ cd 1_Simulation/2_US
 python3 prepare.py structure/1UAO.raw.pdb structure/chignolin.pdb
 ./prepare.sh
 cd rmd
-./run.sh --dry-run
-./run.sh
+./run.sh --dry-run --split-equil
+./run.sh --split-equil
 python3 anal.py --dry-run
 python3 anal.py
 ```
 
 `run.sh`는 minimization, 200 ps NVT heating, 100 ps NPT equilibration과
-1 ns ratchet MD를 실행합니다. 기본 engine은 PLUMED가 연결된
+1 ns ratchet MD를 실행합니다. `--split-equil`은 같은 100 ps를 10 ps씩
+10번 실행합니다. 각 segment가 시작할 때 `pmemd.cuda`가 spatial grid를
+다시 만들므로, 초기 density 변화가 큰 system에서 발생하는 GPU box-change
+오류를 줄일 수 있습니다. 기본 engine은 PLUMED가 연결된
 `pmemd.cuda`입니다. Output은 `work/ratchet.nc`, `work/ratchet.rst7`과
 `work/ratchet.dat`입니다. `run.sh`는 `inputs/plumed.dat`을 `work/`에
 복사한 뒤 AMBER에 넘깁니다.
+
+Segment mode의 output은 `equil_001.*`부터 `equil_010.*`입니다.
+`equil_010.rst7`이 ratchet MD의 input이 됩니다. 단일 100 ps 실행을
+원하면 option 없이 `./run.sh`를 실행합니다. 10 ps 안에도 같은
+오류가 나거나 temperature·energy 급등, NaN, SHAKE failure가 보이면
+segment를 더 나누어 숨기지 않고 initial structure와 `heat.out`을 확인합니다.
 
 ### 주요 option
 
@@ -47,6 +56,7 @@ python3 anal.py
 | `ABMD TO=3.0` | End-to-end distance target이며 PLUMED 기본 length unit인 nm를 사용합니다. |
 | `KAPPA=100` | Target 반대 방향의 ρ 증가를 억제하는 ratchet strength입니다. Harmonic distance force constant와 직접 비교하지 않습니다. |
 | `plumed=1`, `plumedfile='plumed.dat'` | AMBER에서 PLUMED bias를 활성화합니다. |
+| `--split-equil` | 100 ps NPT equilibration을 10 ps segment 10개로 나누고 restart를 순차적으로 전달합니다. |
 | `--max-error 0.5` | `anal.py`가 target center와 seed frame 사이에 허용하는 distance 차이(Å)입니다. |
 | `SYSTEM_DIR`, `WORK_DIR`, `AMBER_ENGINE` | 공통 topology 위치, output directory와 PLUMED-enabled engine을 지정합니다. |
 
@@ -79,7 +89,11 @@ first-crossing seeds. `SYSTEM_DIR`, `WORK_DIR`, and `AMBER_ENGINE` select the
 shared system, output location, and PLUMED-enabled executable.
 
 `run.sh` performs minimization, 200 ps NVT heating, 100 ps NPT equilibration, and
-1 ns ratchet MD. The default engine is a PLUMED-enabled `pmemd.cuda`.
+1 ns ratchet MD. With `--split-equil`, the same 100 ps NPT stage is run as ten
+10 ps jobs. Each new `pmemd.cuda` process rebuilds its spatial grid, reducing
+GPU box-change failures while preserving the total equilibration time. The
+numbered outputs run from `equil_001.*` to `equil_010.*`, and
+`equil_010.rst7` starts ratchet MD. The default engine is a PLUMED-enabled `pmemd.cuda`.
 The PLUMED input is copied into `work/`. `anal.py` selects ordered
 first-crossing frames within 0.5 Å and writes AMBER
 restart seeds. It exits when a requested window was not sampled.

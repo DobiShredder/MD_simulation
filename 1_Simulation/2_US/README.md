@@ -38,8 +38,8 @@ python3 prepare.py structure/1UAO.raw.pdb structure/chignolin.pdb
 ./prepare.sh
 
 cd rmd
-./run.sh --dry-run
-./run.sh
+./run.sh --dry-run --split-equil
+./run.sh --split-equil
 python3 anal.py
 
 cd ../us
