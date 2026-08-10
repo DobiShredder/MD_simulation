@@ -13,5 +13,5 @@ Relax lipids, water, and bulk ions while restraining KcsA and filter K+
 
  ntr=1,
  restraint_wt=10.0,
- restraintmask=':1-419 & !@H=',
+ restraintmask=':1-415 & !@H=',
 /

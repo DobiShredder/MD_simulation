@@ -24,7 +24,7 @@ Initial 100 ps membrane equilibration at 310 K and 1 bar
 
  ntr=1,
  restraint_wt=1.0,
- restraintmask=':1-419 & !@H=',
+ restraintmask=':1-415 & !@H=',
 
  ntwx=5000,
  ntwr=50000,

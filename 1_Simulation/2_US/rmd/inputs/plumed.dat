@@ -2,4 +2,4 @@
 WHOLEMOLECULES ENTITY0=1-138
 end_to_end: DISTANCE ATOMS=2,132 NOPBC
 ratchet: ABMD ARG=end_to_end TO=3.0 KAPPA=100
-PRINT ARG=end_to_end,ratchet.bias,ratchet.end_to_end_min STRIDE=5000 FILE=ratchet.dat
+PRINT ARG=end_to_end,ratchet.bias,ratchet.end_to_end_min STRIDE=500 FILE=ratchet.dat

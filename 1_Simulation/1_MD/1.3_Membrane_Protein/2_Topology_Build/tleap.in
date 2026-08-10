@@ -3,8 +3,9 @@ source leaprc.lipid21
 source leaprc.water.opc
 
 system = loadpdb amber-named.pdb
-setBox system "centers"
+set system box { 124.072 124.686 90.0 }
 addionsrand system Cl- 0
+addionsrand system K+ 126 Cl- 126
 check system
 saveamberparm system system.parm7 system.rst7
 savepdb system system.pdb

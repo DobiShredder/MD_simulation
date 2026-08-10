@@ -19,6 +19,9 @@ structure_dir="$script_dir/structure"
 
 assembly_pdb_url="https://files.rcsb.org/download/1K4C.pdb1"
 assembly_cif_url="https://files.rcsb.org/download/1K4C-assembly1.cif"
+popc_url="https://zenodo.org/records/14776136/files/POPC.gro"
+pope_url="https://zenodo.org/records/14776136/files/POPE.gro"
+cholesterol_url="https://zenodo.org/records/14776136/files/CHOL15.gro"
 
 # 실행 전 확인
 if ! command -v "$curl_bin" >/dev/null 2>&1; then
@@ -36,6 +39,19 @@ if ! "$curl_bin" \
     die "assembly PDB 다운로드에 실패했습니다: $assembly_pdb_url"
 fi
 
+# Lipid21로 평형화한 128-lipid bilayer coordinate를 받습니다.
+if ! "$curl_bin" -fsSL --retry 3 "$popc_url" -o "$structure_dir/POPC.gro"; then
+    die "POPC coordinate 다운로드에 실패했습니다: $popc_url"
+fi
+
+if ! "$curl_bin" -fsSL --retry 3 "$pope_url" -o "$structure_dir/POPE.gro"; then
+    die "POPE coordinate 다운로드에 실패했습니다: $pope_url"
+fi
+
+if ! "$curl_bin" -fsSL --retry 3 "$cholesterol_url" -o "$structure_dir/CHOL15.gro"; then
+    die "cholesterol coordinate 다운로드에 실패했습니다: $cholesterol_url"
+fi
+
 # 원본 assembly와 metadata를 확인할 mmCIF를 함께 받습니다.
 if ! "$curl_bin" \
     -fsSL \
@@ -51,6 +67,9 @@ if command -v sha256sum >/dev/null 2>&1; then
         sha256sum \
             1K4C.pdb1 \
             1K4C-assembly1.cif \
+            POPC.gro \
+            POPE.gro \
+            CHOL15.gro \
             > SHA256SUMS
     )
 else
@@ -60,6 +79,9 @@ else
             -a 256 \
             1K4C.pdb1 \
             1K4C-assembly1.cif \
+            POPC.gro \
+            POPE.gro \
+            CHOL15.gro \
             > SHA256SUMS
     )
 fi

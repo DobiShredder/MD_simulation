@@ -3,65 +3,49 @@
 ## 한국어
 
 1단계 coordinate에 ff19SB, Lipid21과 OPC를 적용해 `system.parm7`과
-`system.rst7`을 만듭니다.
+`system.rst7`을 만듭니다. Coordinate에 기록한 Lipid21 modular residue
+`PA`·`PC`·`PE`·`OL`·`CHL`은 `leaprc.lipid21`이 읽습니다.
 
-Coordinate file의 atom/residue name은 force-field template와 정확히 맞아야
-합니다. PACKMOL-Memgen의 기본 AMBER output은 Lipid21 naming을 사용합니다.
-`run.sh`는 이 coordinate를 복사하고 `tleap.in`을 실행한 뒤 topology를 검사합니다.
-PDB에는 AMBER restart에 필요한 periodic box 정보가 없으므로 `setBox system
-"centers"`로 coordinate 전체를 감싸는 직육면체 box도 지정합니다.
-Filter K+를 포함한 전체 charge는 `addionsrand system Cl- 0`으로 중화합니다.
+PDB의 `CRYST1`과 같은 124.072×124.686×90.000 Å box를 명시한 뒤, 먼저
+`addionsrand system Cl- 0`으로 KcsA와 filter K+를 포함한 전하를
+중화합니다. 이어 K+ 126개와 Cl− 126개를 추가해 box volume을 기준으로 약
+0.15 M KCl을 만듭니다. Ion은 water를 치환해 배치됩니다.
 
 ### 파일 역할
 
 | 파일 | 역할 |
 | --- | --- |
-| `run.sh` | Input 복사와 검사, tleap 실행 및 output 확인을 담당합니다. |
-| `tleap.in` | ff19SB, Lipid21, OPC를 읽고 `system.parm7`, `system.rst7`, `system.pdb`를 저장합니다. |
+| `run.sh` | Coordinate 복사, tleap 실행과 output 존재 여부를 확인합니다. |
+| `tleap.in` | ff19SB/Lipid21/OPC, box와 KCl을 적용해 topology를 저장합니다. |
 
 ~~~bash
 cd 1_Simulation/1_MD/1.3_Membrane_Protein/2_Topology_Build
-./run.sh --dry-run ../1_Coordinate_Build/work/packed/system-coordinates.pdb
-./run.sh ../1_Coordinate_Build/work/packed/system-coordinates.pdb
+./run.sh --dry-run ../1_Coordinate_Build/work/system-coordinates.pdb
+./run.sh ../1_Coordinate_Build/work/system-coordinates.pdb
 ~~~
+
+`work/leap.log`에서 unknown residue, missing heavy atom, bond error와 `check`
+결과를 확인합니다. Protein은 408 residues이고 filter K+ 7개와 pore water
+16개가 bulk ion·water보다 먼저 위치합니다. E71·D80·H25 residue name과
+leaflet당 POPC 185개, POPE 10개, cholesterol 10개도 확인합니다. `check`
+error가 있으면 topology를 사용하지 않습니다.
 
 ### 주요 option
 
 | Option | 의미 |
 | --- | --- |
-| `TLEAP` | AmberTools 설치에 맞는 tleap executable을 지정합니다. |
-| `WORK_DIR` | Naming 변환 file, tleap log와 topology output을 저장할 directory입니다. |
-| `source leaprc.*` | `tleap.in`에서 protein, lipid와 water force field 조합을 선택합니다. Naming과 water box를 함께 맞춰야 합니다. |
+| `TLEAP` | AmberTools 환경의 tleap executable을 지정합니다. |
+| `WORK_DIR` | tleap log, topology와 restart output directory를 바꿉니다. |
 
-`work/leap.log`에서 unknown atom/residue, missing atom과 total charge를
-확인합니다. `work/system.pdb`에는 KcsA residue 412개, filter K+ 7개와
-초기 pore water 16개, 설정한 POPC:POPE:CHL1 조성이 남아 있어야
-합니다. E71·D80·H25·H124의 AMBER residue name도 확인합니다.
-`check` error가 있으면
-topology를 사용하지 않습니다.
-
-`TLEAP`은 실행 파일, `WORK_DIR`는 output directory를 바꿉니다. Force field와
-water model을 바꾸려면 `tleap.in`의 `leaprc`와 water box를 함께 바꾸고 lipid
-residue 호환성을 다시 확인합니다.
+`TLEAP`은 executable, `WORK_DIR`는 output directory를 바꿉니다. Box나
+조성을 바꾸면 고정된 salt pair 수 126도 다시 계산해야 합니다.
 
 ## English
 
-Stage-1 coordinates are built into `system.parm7` and `system.rst7` with
-ff19SB, Lipid21, and OPC.
-
-PACKMOL-Memgen's default AMBER output already uses Lipid21 naming. `run.sh`
-copies those coordinates, executes `tleap.in`, and checks the resulting
-topology. The tleap input loads ff19SB, Lipid21, and OPC. Because PDB does not
-carry the periodic box required by an AMBER restart, `setBox system "centers"`
-also defines a rectangular box enclosing the generated coordinates.
-`addionsrand system Cl- 0` neutralizes the complete system, including the
-retained filter K+ ions.
-
-Check unknown or missing atoms, total charge, 412 KcsA residues, seven filter
-K+ ions, 16 initial pore waters, the selected protonation names, and the
-POPC:POPE:CHL1 ratio. A topology with `check` errors is not ready for
-simulation. The outputs are `work/system.parm7` and
-`work/system.rst7`.
-`TLEAP` overrides the executable and `WORK_DIR` selects the output directory.
-Changing a force field or water model also requires compatible residue naming
-and water-box settings.
+This stage applies ff19SB, Lipid21, and OPC to the stage-1 coordinates. The
+tleap input preserves the 124.072×124.686×90.000 Å box, neutralizes the
+protein/filter-ion charge, and adds 126 KCl pairs, approximately 0.15 M for
+this fixed volume. Verify the absence of unknown residues, missing heavy
+atoms, bond errors, and `check` errors. Expected membrane counts are 185 POPC,
+10 POPE, and 10 cholesterol molecules per leaflet. Outputs are
+`work/system.parm7`, `work/system.rst7`, and `work/system.pdb`.

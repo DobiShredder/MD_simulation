@@ -4,12 +4,12 @@ loadamberparams frcmod.ionsjc_tip3p
 
 system = loadpdb input.pdb
 check system
-solvatebox system TIP3PBOX 18.0
+solvatebox system TIP3PBOX 20.0
 addionsrand system Na+ 0
 addionsrand system Cl- 0
+setBox system "centers" 0.25
 check system
 
 savepdb system system.pdb
 saveamberparm system system.parm7 system.rst7
 quit
-

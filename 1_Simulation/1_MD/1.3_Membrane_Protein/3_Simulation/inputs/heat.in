@@ -21,7 +21,7 @@ Heat KcsA membrane system from 20 K to 310 K over 200 ps
 
  ntr=1,
  restraint_wt=5.0,
- restraintmask=':1-419 & !@H=',
+ restraintmask=':1-415 & !@H=',
 
  ntwx=5000,
  ntwr=50000,

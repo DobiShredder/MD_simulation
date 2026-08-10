@@ -2,18 +2,14 @@
 set -euo pipefail
 
 dry_run=0
-split_equil=0
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
     --dry-run)
         dry_run=1
         ;;
-    --split-equil)
-        split_equil=1
-        ;;
     *)
-        echo "사용법: $0 [--dry-run] [--split-equil]" >&2
+        echo "사용법: $0 [--dry-run]" >&2
         exit 2
         ;;
     esac
@@ -40,12 +36,6 @@ make_absolute_path() {
 run_stage() {
     local stage=$1
     shift
-    local quiet=0
-
-    if [[ "${1:-}" == "--quiet" ]]; then
-        quiet=1
-        shift
-    fi
 
     if (( dry_run )); then
         printf '+'
@@ -54,9 +44,7 @@ run_stage() {
         return
     fi
 
-    if (( ! quiet )); then
-        echo "실행: $stage ($engine)"
-    fi
+    echo "실행: $stage ($engine)"
 
     if ! "$@"; then
         die "$stage 단계가 실패했습니다. 확인할 경로: $work_dir"
@@ -137,47 +125,37 @@ run_stage 'NVT 가열' \
     -inf heat.info \
     -ref min-all.rst7
 
-equilibration_restart=equil.rst7
+run_stage 'NPT equilibration' \
+    "$engine" \
+    -O \
+    -i "$script_dir/inputs/equil.in" \
+    -o equil.out \
+    -p "$topology" \
+    -c heat.rst7 \
+    -r equil.rst7 \
+    -x equil.nc \
+    -inf equil.info \
+    -ref heat.rst7
 
-if (( split_equil )); then
-    previous_restart=heat.rst7
+if (( ! dry_run )); then
+    final_density=$(awk '
+        /A V E R A G E S/ { exit }
+        /Density/ { density = $3 }
+        END { print density }
+    ' equil.out)
 
-    if (( ! dry_run )); then
-        echo "실행: NPT equilibration (10 ps × 10, $engine)"
+    if [[ -z "$final_density" ]]; then
+        die "equil.out에서 최종 density를 읽지 못했습니다: $work_dir/equil.out"
     fi
 
-    for segment_number in {1..10}; do
-        printf -v segment_label '%03d' "$segment_number"
+    if ! awk \
+        -v density="$final_density" \
+        'BEGIN { exit !(density >= 0.90 && density <= 1.10) }'; then
+        die "NPT 후 density가 확인 범위를 벗어났습니다: " \
+            "${final_density} g/cm^3. ratchet MD를 시작하지 않습니다."
+    fi
 
-        run_stage "NPT equilibration $segment_number/10" \
-            --quiet \
-            "$engine" \
-            -O \
-            -i "$script_dir/inputs/equil-segment.in" \
-            -o "equil_${segment_label}.out" \
-            -p "$topology" \
-            -c "$previous_restart" \
-            -r "equil_${segment_label}.rst7" \
-            -x "equil_${segment_label}.nc" \
-            -inf "equil_${segment_label}.info" \
-            -ref heat.rst7
-
-        previous_restart="equil_${segment_label}.rst7"
-    done
-
-    equilibration_restart=$previous_restart
-else
-    run_stage 'NPT equilibration' \
-        "$engine" \
-        -O \
-        -i "$script_dir/inputs/equil.in" \
-        -o equil.out \
-        -p "$topology" \
-        -c heat.rst7 \
-        -r equil.rst7 \
-        -x equil.nc \
-        -inf equil.info \
-        -ref heat.rst7
+    echo "NPT 최종 density: ${final_density} g/cm^3"
 fi
 
 run_stage '1 ns ratchet MD' \
@@ -186,14 +164,11 @@ run_stage '1 ns ratchet MD' \
     -i "$script_dir/inputs/ratchet.in" \
     -o ratchet.out \
     -p "$topology" \
-    -c "$equilibration_restart" \
+    -c equil.rst7 \
     -r ratchet.rst7 \
     -x ratchet.nc \
     -inf ratchet.info
 
 if (( ! dry_run )); then
-    if (( split_equil )); then
-        echo "Equilibration restart: $work_dir/$equilibration_restart"
-    fi
     echo "Ratchet MD trajectory: $work_dir/ratchet.nc"
 fi

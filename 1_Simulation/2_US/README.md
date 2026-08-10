@@ -38,8 +38,8 @@ python3 prepare.py structure/1UAO.raw.pdb structure/chignolin.pdb
 ./prepare.sh
 
 cd rmd
-./run.sh --dry-run --split-equil
-./run.sh --split-equil
+./run.sh --dry-run
+./run.sh
 python3 anal.py
 
 cd ../us
@@ -53,6 +53,11 @@ cd ../us
 ff19SB/TIP3P `system.parm7`을 ratchet MD와 모든 umbrella
 window가 공유합니다. Window별 solvation은 하지 않습니다. CV, atom index,
 ABMD target, window 범위와 force constant는 chignolin용 설정입니다.
+
+`tleap.in`은 20 Å TIP3P buffer를 추가한 뒤 atom center로 계산한 box에
+0.25 Å padding을 둡니다. AmberTools 26에서 초기 density는 약
+0.93 g/cm³였고, 0.8 Å 미만의 periodic overlap은 없었습니다. Padding을
+제거하거나 box를 더 줄이면 반대편 water가 겹칠 수 있습니다.
 
 - [Ratchet MD와 seed 추출](rmd/README.md)
 - [Umbrella window](us/README.md)
@@ -81,6 +86,12 @@ checksums. `prepare.py` selects the first NMR model. `prepare.sh` creates
 one ff19SB/TIP3P topology shared by ratchet MD and every
 umbrella window. Seed frames are not resolvated. The CV, atom indices, target,
 window range, and restraint strength are specific to chignolin.
+
+The tleap build adds a 20 Å TIP3P buffer and defines the periodic box from
+atom centers with 0.25 Å padding. With AmberTools 26 this produced an initial
+density of about 0.93 g/cm³ without periodic contacts below 0.8 Å. Removing
+the padding or shrinking the box further can overlap waters across opposite
+box faces.
 
 The root scripts download, prepare, and build one shared ff19SB/TIP3P system.
 `rmd/run.sh` generates the pathway, `rmd/anal.py` extracts ordered seeds,

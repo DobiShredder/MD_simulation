@@ -18,7 +18,6 @@ PROTONATION_NAMES = {
     80: "ASP",
     118: "GLU",
     120: "GLU",
-    124: "HIE",
 }
 
 # 1K4C biological assembly에서 pore 주변에 배치된 결정수이다.
@@ -90,8 +89,10 @@ def collect_assembly_records(
 
         if line.startswith("ATOM  ") and line[21:22] == "C":
             alternate_location = line[16:17]
+            residue_number = int(line[22:26])
 
-            if alternate_location in {" ", "A"}:
+            # H124는 imidazole side chain 좌표가 없어 tutorial model에서 제외한다.
+            if alternate_location in {" ", "A"} and residue_number != 124:
                 protein_models.setdefault(model_id, []).append(line)
 
             continue
@@ -148,7 +149,7 @@ def validate_assembly(
     residue_count = count_residues(protein_models)
 
     if (
-        residue_count != 412
+        residue_count != 408
         or len(potassium_records) != 7
         or len(water_records) != 16
     ):
@@ -263,11 +264,11 @@ def main() -> None:
 
     print(
         f"KcsA tetramer 전처리 결과: {args.output_pdb} "
-        "(412 residues, K+ 7개, pore water 16개)"
+        "(408 residues, K+ 7개, pore water 16개)"
     )
     print(
         "Neutral-pH baseline: E71=GLH, D80=ASP, "
-        "H25/H124=HIE, E118/E120=GLU"
+        "H25=HIE, E118/E120=GLU; incomplete H124 omitted"
     )
 
 

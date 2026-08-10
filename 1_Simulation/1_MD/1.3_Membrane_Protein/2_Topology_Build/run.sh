@@ -50,7 +50,7 @@ fi
 echo "AMBER topology를 생성합니다 (ff19SB/Lipid21/OPC)."
 mkdir -p "$work_dir"
 
-# PACKMOL-Memgen의 기본 AMBER/Lipid21 naming을 그대로 사용합니다.
+# Coordinate build가 만든 AMBER/Lipid21 naming을 그대로 사용합니다.
 cp "$coordinate_pdb" "$amber_named_pdb"
 
 if [[ ! -s "$amber_named_pdb" ]]; then

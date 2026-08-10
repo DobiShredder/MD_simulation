@@ -125,11 +125,13 @@ ff19SB 개발 논문에서는 TIP3P와 OPC를 모두 평가했고, OPC에서 더
 - [T4 lysozyme–JZ4](1_Simulation/1_MD/1.2_Protein_Ligand/README.md)
 - [KcsA](1_Simulation/1_MD/1.3_Membrane_Protein/README.md)
 
-KcsA는 PACKMOL-Memgen으로 POPC 90%, POPE 5%, cholesterol 5% membrane을
+KcsA는 공개된 평형화 Lipid21 POPC bilayer를 2×2로 복제한 뒤 protein과
+겹치는 lipid를 제거해 POPC 90%, POPE 5%, cholesterol 5% membrane을
 만듭니다. tleap build는 별도 단계입니다. Detergent와 bulk 결정수는
 제거하고 selectivity filter K+ 7개와 filter·cavity water 16개를
-유지합니다. Neutral-pH baseline은 E71=`GLH`, D80=`ASP`,
-H25/H124=`HIE`, E118/E120=`GLU`입니다.
+유지합니다. Neutral-pH baseline은 E71=`GLH`, D80=`ASP`, H25=`HIE`,
+E118/E120=`GLU`입니다. Side chain 좌표가 불완전한 terminal H124는
+제외합니다.
 
 CHARMM lipid force field와 CHARMM-GUI는 membrane simulation에서 오래
 사용된 조합입니다. AMBER Lipid21은 AMBER protein·ligand force field와 함께
@@ -287,6 +289,5 @@ membrane-aware preprocessing과 채널 구조 분석은 이후 범위입니다.
 - [LiGaMD3](https://doi.org/10.1021/acs.jctc.4c00502)
 - [Pep-GaMD](https://doi.org/10.1063/5.0021399)
 - [Boresch restraint formulation](https://doi.org/10.1021/jp0217839)
-- [PACKMOL-Memgen](https://doi.org/10.1021/acs.jcim.9b00269)
 - [Lipid21](https://doi.org/10.1021/acs.jctc.1c01217)
 - [ff19SB](https://doi.org/10.1021/acs.jctc.9b00591)
