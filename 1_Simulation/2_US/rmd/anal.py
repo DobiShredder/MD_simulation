@@ -42,7 +42,7 @@ def parse_arguments() -> argparse.Namespace:
         "--max-error",
         dest="max_error_angstrom",
         type=float,
-        default=0.5,
+        default=0.75,
         help="target center와 frame distance 차이의 허용치 (Å)",
     )
     parser.add_argument("--dry-run", action="store_true")
