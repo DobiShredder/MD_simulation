@@ -1,5 +1,10 @@
 # DBSCAN clustering
 
+![DBSCAN의 core, border와 noise / Core, border, and noise points in DBSCAN](../../../assets/analysis/dbscan_density.svg)
+
+*eps neighborhood와 min_samples가 하나의 density cutoff를 정합니다. / The eps neighborhood and min_samples define one density cutoff.*
+
+
 ## 한국어
 
 DBSCAN은 `eps` 안에 `min_samples` 이상의 이웃이 있는 영역을 연결하고 희박한

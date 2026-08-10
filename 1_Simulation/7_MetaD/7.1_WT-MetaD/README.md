@@ -1,5 +1,10 @@
 # Well-Tempered Metadynamics
 
+![WT-MetaD에서 감소하는 Gaussian hill height / Decreasing Gaussian hill height in WT-MetaD](../../../assets/simulation/well_tempered_hills.svg)
+
+*Bias가 쌓일수록 새로 추가되는 hill의 height가 감소합니다. / Newly deposited hills become smaller as the bias accumulates.*
+
+
 ## 한국어
 
 Alanine dipeptide의 φ와 ψ torsion에 well-tempered MetaD bias를 적용합니다.

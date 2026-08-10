@@ -1,5 +1,10 @@
 # K-means clustering
 
+![K-means centroid와 hard assignment / K-means centroids and hard assignment](../../../assets/analysis/kmeans_centroids.svg)
+
+*각 frame은 가장 가까운 centroid의 cluster 하나에 배정됩니다. / Each frame is assigned to one cluster represented by its nearest centroid.*
+
+
 ## 한국어
 
 K-means는 cluster 내부의 centroid distance 제곱합을 줄이도록 frame을 나눕니다.

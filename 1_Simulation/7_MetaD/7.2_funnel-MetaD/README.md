@@ -1,5 +1,10 @@
 # Funnel Metadynamics / Funnel MetaD
 
+![Funnel MetaD의 cone–cylinder geometry / Cone–cylinder geometry in Funnel MetaD](../../../assets/simulation/funnel_geometry.svg)
+
+*lp는 funnel axis 방향 이동을, ld는 axis에서 떨어진 radial distance를 나타냅니다. / lp measures motion along the funnel axis, while ld is the radial distance from it.*
+
+
 ## 한국어
 
 Trypsin–benzamidine complex(PDB 3PTB)에 Funnel MetaD를 적용합니다.

@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img">
+<title>Funnel metadynamics geometry</title>
+<desc>Cone-and-cylinder funnel geometry showing the axial lp and radial ld collective variables for ligand motion.</desc>
+<defs>
+<marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#243447"/></marker>
+<marker id="blue-arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#0072B2"/></marker>
+<pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0 10L10 0" stroke="#6B7280" stroke-width="2"/></pattern>
+</defs>
+<rect width="1200" height="675" fill="#FFFFFF"/>
+<text x="60" y="52" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#243447">Funnel MetaD geometry</text>
+<text x="60" y="88" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="normal" fill="#6B7280">Schematic — axis and dimensions are recalculated from the built topology</text>
+<polygon points="170,180 650,285 650,390 170,495" fill="#E6F4FA" stroke="#0072B2" stroke-width="4" opacity="0.75"/>
+<rect x="650" y="285" width="400" height="105" rx="0" fill="#E6F4FA" stroke="#0072B2" stroke-width="4" opacity="1"/>
+<line x1="140" y1="338" x2="1080" y2="338" stroke="#243447" stroke-width="3" stroke-dasharray="9 7" marker-end="url(#arrow)"/>
+<text x="1070" y="315" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="normal" fill="#243447">funnel axis</text>
+<circle cx="280" cy="338" r="55" fill="#CC79A7" stroke="white" stroke-width="4" opacity="1"/>
+<text x="280" y="346" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="white">site</text>
+<circle cx="805" cy="380" r="22" fill="#E69F00" stroke="#243447" stroke-width="2" opacity="1"/>
+<text x="805" y="387" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="white">L</text>
+<line x1="280" y1="535" x2="805" y2="535" stroke="#009E73" stroke-width="4"/>
+<line x1="280" y1="520" x2="280" y2="550" stroke="#009E73" stroke-width="3"/>
+<line x1="805" y1="520" x2="805" y2="550" stroke="#009E73" stroke-width="3"/>
+<text x="542" y="570" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="normal" fill="#009E73">lp: projection along axis</text>
+<line x1="805" y1="338" x2="805" y2="375" stroke="#D55E00" stroke-width="4"/>
+<text x="840" y="365" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="bold" fill="#D55E00">ld</text>
+<text x="600" y="630" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#243447">The cone contains the binding site; the cylinder limits unbound solvent volume.</text>
+</svg>

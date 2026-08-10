@@ -1,5 +1,10 @@
 # UMAP
 
+![UMAP neighbor graph와 embedding / UMAP neighbor graph and embedding](../../../assets/analysis/umap_graph.svg)
+
+*UMAP은 고차원 neighbor graph의 연결 관계를 저차원에 배치합니다. / UMAP arranges high-dimensional neighbor-graph connectivity in a low-dimensional space.*
+
+
 ## 한국어
 
 UMAP은 이웃 graph를 만든 뒤 저차원에서 그 연결 관계를 보존하는 nonlinear

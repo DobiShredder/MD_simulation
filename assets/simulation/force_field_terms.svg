@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img">
+<title>Molecular mechanics force-field terms</title>
+<desc>Ball-and-stick schematic linking bond, angle, dihedral, electrostatic, and Lennard-Jones terms to molecular geometry.</desc>
+<defs>
+<marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#243447"/></marker>
+<marker id="blue-arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#0072B2"/></marker>
+<pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0 10L10 0" stroke="#6B7280" stroke-width="2"/></pattern>
+</defs>
+<rect width="1200" height="675" fill="#FFFFFF"/>
+<text x="60" y="52" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#243447">Molecular mechanics force field</text>
+<text x="60" y="88" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="normal" fill="#6B7280">Ball-and-stick schematic</text>
+<rect x="55" y="115" width="1090" height="330" rx="16" fill="#FAFCFD" stroke="#B8C4CE" stroke-width="2" opacity="1"/>
+<text x="77" y="149" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="bold" fill="#243447">Geometry and nonbonded interactions</text>
+<line x1="170" y1="300" x2="355" y2="225" stroke="#243447" stroke-width="10"/>
+<line x1="355" y1="225" x2="540" y2="310" stroke="#243447" stroke-width="10"/>
+<line x1="540" y1="310" x2="725" y2="225" stroke="#243447" stroke-width="10"/>
+<circle cx="170" cy="300" r="30" fill="#0072B2" stroke="white" stroke-width="3" opacity="1"/>
+<text x="170" y="306" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">C</text>
+<circle cx="355" cy="225" r="30" fill="#E69F00" stroke="white" stroke-width="3" opacity="1"/>
+<text x="355" y="231" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">C</text>
+<circle cx="540" cy="310" r="30" fill="#009E73" stroke="white" stroke-width="3" opacity="1"/>
+<text x="540" y="316" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">N</text>
+<circle cx="725" cy="225" r="30" fill="#CC79A7" stroke="white" stroke-width="3" opacity="1"/>
+<text x="725" y="231" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">C</text>
+<line x1="170" y1="365" x2="355" y2="365" stroke="#0072B2" stroke-width="3"/>
+<line x1="170" y1="354" x2="170" y2="376" stroke="#0072B2" stroke-width="3"/>
+<line x1="355" y1="354" x2="355" y2="376" stroke="#0072B2" stroke-width="3"/>
+<text x="262" y="397" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#0072B2">bond distance r</text>
+<path d="M395 259 Q446 210 497 268" stroke="#E69F00" stroke-width="4" fill="none" opacity="1"/>
+<text x="446" y="202" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#E69F00">angle θ</text>
+<path d="M548 345 C605 405 674 403 721 342" stroke="#009E73" stroke-width="4" fill="none" opacity="1" stroke-dasharray="8 6" marker-end="url(#arrow)"/>
+<text x="635" y="416" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#009E73">dihedral φ</text>
+<circle cx="930" cy="215" r="28" fill="#D55E00" stroke="white" stroke-width="3" opacity="1"/>
+<text x="930" y="221" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">+</text>
+<circle cx="1015" cy="335" r="28" fill="#0072B2" stroke="white" stroke-width="3" opacity="1"/>
+<text x="1015" y="341" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">−</text>
+<line x1="946" y1="239" x2="998" y2="311" stroke="#D55E00" stroke-width="3" stroke-dasharray="9 7"/>
+<text x="984" y="175" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#D55E00">electrostatic</text>
+<circle cx="885" cy="360" r="27" fill="#6B7280" stroke="white" stroke-width="3" opacity="1"/>
+<text x="885" y="366" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">C</text>
+<circle cx="1060" cy="360" r="27" fill="#6B7280" stroke="white" stroke-width="3" opacity="1"/>
+<text x="1060" y="366" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">C</text>
+<line x1="914" y1="360" x2="1031" y2="360" stroke="#6B7280" stroke-width="4" stroke-dasharray="4 7"/>
+<text x="973" y="405" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#6B7280">Lennard–Jones</text>
+<rect x="70" y="470" width="1060" height="165" rx="14" fill="#F5F9FC" stroke="#0072B2" stroke-width="2" opacity="1"/>
+<text x="600" y="497" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="#6B7280">AMBER additive functional form</text>
+<text x="205" y="535" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="bold" fill="#0072B2"><tspan>U</tspan><tspan baseline-shift="sub" font-size="13">bond</tspan><tspan> = k</tspan><tspan baseline-shift="sub" font-size="13">b</tspan><tspan>(r − r</tspan><tspan baseline-shift="sub" font-size="13">0</tspan><tspan>)</tspan><tspan baseline-shift="super" font-size="13">2</tspan></text>
+<text x="500" y="535" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="bold" fill="#E69F00"><tspan>U</tspan><tspan baseline-shift="sub" font-size="13">angle</tspan><tspan> = k</tspan><tspan baseline-shift="sub" font-size="13">θ</tspan><tspan>(θ − θ</tspan><tspan baseline-shift="sub" font-size="13">0</tspan><tspan>)</tspan><tspan baseline-shift="super" font-size="13">2</tspan></text>
+<text x="875" y="535" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#009E73"><tspan>U</tspan><tspan baseline-shift="sub" font-size="12">dihedral</tspan><tspan> = Σ V</tspan><tspan baseline-shift="sub" font-size="12">n</tspan><tspan>[1 + cos(nφ − γ)]</tspan></text>
+<text x="335" y="595" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#D55E00"><tspan>U</tspan><tspan baseline-shift="sub" font-size="14">elec</tspan><tspan> = q</tspan><tspan baseline-shift="sub" font-size="14">i</tspan><tspan>q</tspan><tspan baseline-shift="sub" font-size="14">j</tspan><tspan> / (εR</tspan><tspan baseline-shift="sub" font-size="14">ij</tspan><tspan>)</tspan></text>
+<text x="820" y="595" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#6B7280"><tspan>U</tspan><tspan baseline-shift="sub" font-size="14">LJ</tspan><tspan> = A</tspan><tspan baseline-shift="sub" font-size="14">ij</tspan><tspan>/R</tspan><tspan baseline-shift="sub" font-size="14">ij</tspan><tspan baseline-shift="super" font-size="14">12</tspan><tspan> − B</tspan><tspan baseline-shift="sub" font-size="14">ij</tspan><tspan>/R</tspan><tspan baseline-shift="sub" font-size="14">ij</tspan><tspan baseline-shift="super" font-size="14">6</tspan></text>
+</svg>

@@ -1,5 +1,10 @@
 # REST3
 
+![REST3의 interaction scaling과 kappa correction / REST3 interaction scaling and kappa correction](../../../assets/simulation/rest3_scaling.svg)
+
+*REST3는 REST scaling에 protein–water interaction을 조정하는 kappa schedule을 더합니다. / REST3 adds a kappa schedule that adjusts protein–water interactions.*
+
+
 ## 한국어
 
 Chignolin을 ff19SB/TIP3P로 만들고 8-replica solvent-scaled REST3를

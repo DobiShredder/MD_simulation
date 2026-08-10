@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img">
+<title>RBFE and ABFE thermodynamic cycles</title>
+<desc>Two-panel thermodynamic-cycle schematic for relative and absolute binding free-energy calculations.</desc>
+<defs>
+<marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#243447"/></marker>
+<marker id="blue-arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#0072B2"/></marker>
+<pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0 10L10 0" stroke="#6B7280" stroke-width="2"/></pattern>
+</defs>
+<rect width="1200" height="675" fill="#FFFFFF"/>
+<text x="60" y="52" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#243447">Alchemical thermodynamic cycles</text>
+<text x="60" y="88" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="normal" fill="#6B7280">Physical binding legs are inferred from sampled alchemical legs</text>
+<rect x="55" y="125" width="530" height="480" rx="16" fill="#FAFCFD" stroke="#B8C4CE" stroke-width="2" opacity="1"/>
+<text x="77" y="159" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="bold" fill="#243447">RBFE: benzene → toluene</text>
+<rect x="615" y="125" width="530" height="480" rx="16" fill="#FAFCFD" stroke="#B8C4CE" stroke-width="2" opacity="1"/>
+<text x="637" y="159" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="bold" fill="#243447">ABFE: restrained decoupling</text>
+<rect x="90" y="195" width="130" height="70" rx="12" fill="#F5F9FC" stroke="#0072B2" stroke-width="2" opacity="1"/>
+<text x="155" y="237" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="normal" fill="#243447">BNZ bound</text>
+<rect x="405" y="195" width="130" height="70" rx="12" fill="#F5F9FC" stroke="#E69F00" stroke-width="2" opacity="1"/>
+<text x="470" y="237" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="normal" fill="#243447">MBN bound</text>
+<rect x="90" y="445" width="130" height="70" rx="12" fill="#F5F9FC" stroke="#0072B2" stroke-width="2" opacity="1"/>
+<text x="155" y="487" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="normal" fill="#243447">BNZ water</text>
+<rect x="405" y="445" width="130" height="70" rx="12" fill="#F5F9FC" stroke="#E69F00" stroke-width="2" opacity="1"/>
+<text x="470" y="487" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="normal" fill="#243447">MBN water</text>
+<line x1="225" y1="230" x2="395" y2="230" stroke="#0072B2" stroke-width="4" marker-end="url(#arrow)"/>
+<line x1="225" y1="480" x2="395" y2="480" stroke="#E69F00" stroke-width="4" marker-end="url(#arrow)"/>
+<text x="310" y="208" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="normal" fill="#0072B2">ΔG_complex</text>
+<text x="310" y="458" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="normal" fill="#E69F00">ΔG_solvent</text>
+<line x1="155" y1="270" x2="155" y2="435" stroke="#6B7280" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow)"/>
+<line x1="470" y1="270" x2="470" y2="435" stroke="#6B7280" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow)"/>
+<text x="315" y="555" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="bold" fill="#243447">ΔΔG_bind = ΔG_complex − ΔG_solvent</text>
+<rect x="655" y="190" width="140" height="70" rx="12" fill="#F5F9FC" stroke="#CC79A7" stroke-width="2" opacity="1"/>
+<text x="725" y="232" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="normal" fill="#243447">BEN bound</text>
+<rect x="960" y="190" width="140" height="70" rx="12" fill="#F5F9FC" stroke="#CC79A7" stroke-width="2" opacity="1"/>
+<text x="1030" y="232" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="normal" fill="#243447">BEN decoupled</text>
+<rect x="655" y="440" width="140" height="70" rx="12" fill="#F5F9FC" stroke="#CC79A7" stroke-width="2" opacity="1"/>
+<text x="725" y="482" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="normal" fill="#243447">BEN at 1 M</text>
+<rect x="960" y="440" width="140" height="70" rx="12" fill="#F5F9FC" stroke="#CC79A7" stroke-width="2" opacity="1"/>
+<text x="1030" y="482" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="normal" fill="#243447">BEN in water</text>
+<line x1="795" y1="225" x2="955" y2="225" stroke="#CC79A7" stroke-width="4" marker-end="url(#arrow)"/>
+<text x="875" y="194" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="normal" fill="#CC79A7">restraint + charge + LJ</text>
+<line x1="1030" y1="265" x2="1030" y2="430" stroke="#E69F00" stroke-width="3" marker-end="url(#arrow)"/>
+<text x="1015" y="350" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="normal" fill="#E69F00" transform="rotate(-90 1015 350)">bulk leg</text>
+<line x1="955" y1="475" x2="800" y2="475" stroke="#009E73" stroke-width="3" marker-end="url(#arrow)"/>
+<text x="875" y="455" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="normal" fill="#009E73">standard-state term</text>
+<line x1="725" y1="430" x2="725" y2="270" stroke="#6B7280" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow)"/>
+<text x="875" y="555" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#243447">combine sampled legs with analytic corrections</text>
+<text x="600" y="640" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="normal" fill="#6B7280">λ states provide cross-state energies for MBAR.</text>
+</svg>

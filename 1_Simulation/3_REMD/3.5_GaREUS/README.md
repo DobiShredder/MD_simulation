@@ -1,5 +1,10 @@
 # Gaussian accelerated REUS
 
+![GaMD boost와 umbrella exchange의 결합 / Combined GaMD boost and umbrella exchange](../../../assets/simulation/gareus_layers.svg)
+
+*각 window 안에서는 GaMD가 barrier를 낮추고 window 사이는 replica exchange로 연결합니다. / GaMD lowers barriers within each window, while replica exchange connects neighboring windows.*
+
+
 ## 한국어
 
 REUS의 terminal Cα distance CV와 20개 window에 dual-boost GaMD를 결합합니다.

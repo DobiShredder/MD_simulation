@@ -1,5 +1,10 @@
 # SH3–peptide Pep-GaMD
 
+![Pep-GaMD의 selective dual boost / Selective dual boost in Pep-GaMD](../../../assets/simulation/pepgamd_components.svg)
+
+*Peptide-essential potential과 나머지 system potential을 나누어 가속합니다. / Peptide-essential and remaining-system potentials are accelerated separately.*
+
+
 ## 한국어
 
 PDB 1CKB의 C-crk N-terminal SH3 domain과 resolved SOS peptide PPPVPPRR를

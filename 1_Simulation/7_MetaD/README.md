@@ -1,5 +1,10 @@
 # Metadynamics and OPES / Metadynamics 및 OPES
 
+![Adaptive bias가 낮추는 effective barrier / Effective barrier lowered by adaptive bias](../../assets/simulation/adaptive_bias.svg)
+
+*선택한 target에 맞춘 bias가 barrier crossing을 늘리지만 그 자체로 수렴을 보장하지 않습니다. / Target-dependent bias increases barrier crossing but does not establish convergence by itself.*
+
+
 ## 한국어
 
 AMBER가 MD를 계산하고 PLUMED가 collective variable(CV)과 bias를 처리합니다.

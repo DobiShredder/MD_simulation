@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img">
+<title>REST3 interaction scaling</title>
+<desc>Interaction scaling diagram for REST3.</desc>
+<defs>
+<marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#243447"/></marker>
+<marker id="blue-arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#0072B2"/></marker>
+<pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0 10L10 0" stroke="#6B7280" stroke-width="2"/></pattern>
+</defs>
+<rect width="1200" height="675" fill="#FFFFFF"/>
+<text x="60" y="52" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#243447">REST3 interaction scaling</text>
+<text x="60" y="88" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="normal" fill="#6B7280">Hamiltonian scaling at reference temperature T₀</text>
+<rect x="85" y="150" width="300" height="300" rx="16" fill="#FAFCFD" stroke="#B8C4CE" stroke-width="2" opacity="1"/>
+<text x="107" y="184" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="bold" fill="#243447">protein–protein</text>
+<circle cx="175" cy="285" r="30" fill="#0072B2" stroke="white" stroke-width="3" opacity="1"/>
+<text x="175" y="291" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">P</text>
+<circle cx="295" cy="285" r="30" fill="#0072B2" stroke="white" stroke-width="3" opacity="1"/>
+<text x="295" y="291" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">P</text>
+<line x1="210" y1="285" x2="260" y2="285" stroke="#0072B2" stroke-width="5" stroke-dasharray="8 6"/>
+<text x="235" y="375" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="bold" fill="#0072B2">scale = λ</text>
+<rect x="450" y="150" width="300" height="300" rx="16" fill="#FAFCFD" stroke="#B8C4CE" stroke-width="2" opacity="1"/>
+<text x="472" y="184" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="bold" fill="#243447">protein–solvent</text>
+<circle cx="540" cy="285" r="30" fill="#0072B2" stroke="white" stroke-width="3" opacity="1"/>
+<text x="540" y="291" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">P</text>
+<circle cx="660" cy="285" r="30" fill="#56B4E9" stroke="white" stroke-width="3" opacity="1"/>
+<text x="660" y="291" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">W</text>
+<line x1="575" y1="285" x2="625" y2="285" stroke="#E69F00" stroke-width="5" stroke-dasharray="8 6"/>
+<text x="600" y="375" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="bold" fill="#E69F00">scale = √λ</text>
+<rect x="815" y="150" width="300" height="300" rx="16" fill="#FAFCFD" stroke="#B8C4CE" stroke-width="2" opacity="1"/>
+<text x="837" y="184" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="bold" fill="#243447">solvent–solvent</text>
+<circle cx="905" cy="285" r="30" fill="#56B4E9" stroke="white" stroke-width="3" opacity="1"/>
+<text x="905" y="291" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">W</text>
+<circle cx="1025" cy="285" r="30" fill="#56B4E9" stroke="white" stroke-width="3" opacity="1"/>
+<text x="1025" y="291" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">W</text>
+<line x1="940" y1="285" x2="990" y2="285" stroke="#009E73" stroke-width="5" stroke-dasharray="8 6"/>
+<text x="965" y="375" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="bold" fill="#009E73">scale = 1</text>
+<rect x="260" y="500" width="680" height="95" rx="14" fill="#FFF8E6" stroke="#E69F00" stroke-width="2" opacity="1"/>
+<text x="600" y="540" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="bold" fill="#E69F00">κ adjusts the protein–water contribution</text>
+<text x="600" y="574" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="normal" fill="#6B7280">Published schedule; not validated for ff19SB/TIP3P Chignolin</text>
+</svg>

@@ -1,5 +1,10 @@
 # Clustering / 군집화
 
+![같은 illustrative data에 적용한 네 clustering 방법 / Four clustering methods applied to the same illustrative data](../../assets/analysis/clustering_comparison.svg)
+
+*각 방법은 cluster shape, density와 membership에 서로 다른 가정을 둡니다. / Each method makes different assumptions about cluster shape, density, and membership.*
+
+
 ## 한국어
 
 Chignolin backbone dihedral feature를 PCA 5차원으로 줄인 뒤 네 가지 방법으로

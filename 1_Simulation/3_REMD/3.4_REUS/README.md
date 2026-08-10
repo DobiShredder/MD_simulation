@@ -1,5 +1,10 @@
 # Replica Exchange Umbrella Sampling
 
+![Umbrella state 사이의 replica exchange / Replica exchange between umbrella states](../../../assets/simulation/reus_exchange.svg)
+
+*Walker는 같은 온도에서 인접 restraint center를 교환합니다. / Walkers exchange neighboring restraint centers at the same temperature.*
+
+
 ## 한국어
 
 Chignolin의 residue 1과 10 Cα distance를 CV로 사용하는 REUS 예제입니다.

@@ -1,5 +1,10 @@
 # Trypsin–benzamidine LiGaMD3
 
+![LiGaMD3의 세 boost component / Three boost components in LiGaMD3](../../../assets/simulation/ligamd3_components.svg)
+
+*Ligand-essential, remaining nonbonded와 bonded potential의 통계를 따로 수집합니다. / Ligand-essential, remaining nonbonded, and bonded potentials use separate statistics.*
+
+
 ## 한국어
 
 PDB 3PTB의 trypsin–benzamidine complex를 ff19SB/GAFF2/TIP3P로 build하고

@@ -1,5 +1,10 @@
 # T4 lysozyme RBFE / T4 lysozyme RBFE
 
+![RBFE dual topology에서 선택되는 atom / Atoms selected by the RBFE dual topology](../../../assets/simulation/rbfe_alchemical_atoms.svg)
+
+*현재 mask는 공통 ring만이 아니라 BNZ와 MBN residue 전체를 각각 decouple하고 couple합니다. / The current masks decouple and couple the complete BNZ and MBN residues, not only the shared ring.*
+
+
 ## 한국어
 
 T4 lysozyme L99A에서 benzene을 toluene으로 바꿉니다. 같은 transformation을

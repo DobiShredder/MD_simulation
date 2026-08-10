@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img">
+<title>RBFE dual-topology atom selection</title>
+<desc>Ball-and-stick schematic showing the full BNZ residue decoupling while the full MBN residue couples in the current dual-topology template.</desc>
+<defs>
+<marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#243447"/></marker>
+<marker id="blue-arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#0072B2"/></marker>
+<pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0 10L10 0" stroke="#6B7280" stroke-width="2"/></pattern>
+</defs>
+<rect width="1200" height="675" fill="#FFFFFF"/>
+<text x="60" y="52" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#243447">RBFE dual topology</text>
+<text x="60" y="88" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="normal" fill="#6B7280">Actual masks: scmask1=&#x27;:BNZ&#x27; and scmask2=&#x27;:MBN&#x27;</text>
+<rect x="60" y="130" width="480" height="390" rx="16" fill="#FAFCFD" stroke="#B8C4CE" stroke-width="2" opacity="1"/>
+<text x="82" y="164" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="bold" fill="#243447">State 1: BNZ present</text>
+<rect x="660" y="130" width="480" height="390" rx="16" fill="#FAFCFD" stroke="#B8C4CE" stroke-width="2" opacity="1"/>
+<text x="682" y="164" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="bold" fill="#243447">State 2: MBN present</text>
+<line x1="300.0" y1="225.0" x2="386.6025403784439" y2="275.0" stroke="#0072B2" stroke-width="6"/>
+<line x1="386.6025403784439" y1="275.0" x2="386.6025403784439" y2="375.0" stroke="#0072B2" stroke-width="6"/>
+<line x1="386.6025403784439" y1="375.0" x2="300.0" y2="425.0" stroke="#0072B2" stroke-width="6"/>
+<line x1="300.0" y1="425.0" x2="213.39745962155612" y2="375.0" stroke="#0072B2" stroke-width="6"/>
+<line x1="213.39745962155612" y1="375.0" x2="213.39745962155615" y2="275.0" stroke="#0072B2" stroke-width="6"/>
+<line x1="213.39745962155615" y1="275.0" x2="300.0" y2="225.0" stroke="#0072B2" stroke-width="6"/>
+<circle cx="300.0" cy="225.0" r="15" fill="#0072B2" stroke="white" stroke-width="3" opacity="1"/>
+<text x="300.0" y="231.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">C</text>
+<circle cx="386.6025403784439" cy="275.0" r="15" fill="#0072B2" stroke="white" stroke-width="3" opacity="1"/>
+<text x="386.6025403784439" y="281.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">C</text>
+<circle cx="386.6025403784439" cy="375.0" r="15" fill="#0072B2" stroke="white" stroke-width="3" opacity="1"/>
+<text x="386.6025403784439" y="381.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">C</text>
+<circle cx="300.0" cy="425.0" r="15" fill="#0072B2" stroke="white" stroke-width="3" opacity="1"/>
+<text x="300.0" y="431.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">C</text>
+<circle cx="213.39745962155612" cy="375.0" r="15" fill="#0072B2" stroke="white" stroke-width="3" opacity="1"/>
+<text x="213.39745962155612" y="381.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">C</text>
+<circle cx="213.39745962155615" cy="275.0" r="15" fill="#0072B2" stroke="white" stroke-width="3" opacity="1"/>
+<text x="213.39745962155615" y="281.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">C</text>
+<line x1="885.0" y1="235.0" x2="962.9422863405995" y2="280.0" stroke="#E69F00" stroke-width="6"/>
+<line x1="962.9422863405995" y1="280.0" x2="962.9422863405995" y2="370.0" stroke="#E69F00" stroke-width="6"/>
+<line x1="962.9422863405995" y1="370.0" x2="885.0" y2="415.0" stroke="#E69F00" stroke-width="6"/>
+<line x1="885.0" y1="415.0" x2="807.0577136594005" y2="370.0" stroke="#E69F00" stroke-width="6"/>
+<line x1="807.0577136594005" y1="370.0" x2="807.0577136594005" y2="280.0" stroke="#E69F00" stroke-width="6"/>
+<line x1="807.0577136594005" y1="280.0" x2="885.0" y2="235.0" stroke="#E69F00" stroke-width="6"/>
+<circle cx="885.0" cy="235.0" r="15" fill="#E69F00" stroke="white" stroke-width="3" opacity="1"/>
+<text x="885.0" y="241.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">C</text>
+<circle cx="962.9422863405995" cy="280.0" r="15" fill="#E69F00" stroke="white" stroke-width="3" opacity="1"/>
+<text x="962.9422863405995" y="286.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">C</text>
+<circle cx="962.9422863405995" cy="370.0" r="15" fill="#E69F00" stroke="white" stroke-width="3" opacity="1"/>
+<text x="962.9422863405995" y="376.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">C</text>
+<circle cx="885.0" cy="415.0" r="15" fill="#E69F00" stroke="white" stroke-width="3" opacity="1"/>
+<text x="885.0" y="421.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">C</text>
+<circle cx="807.0577136594005" cy="370.0" r="15" fill="#E69F00" stroke="white" stroke-width="3" opacity="1"/>
+<text x="807.0577136594005" y="376.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">C</text>
+<circle cx="807.0577136594005" cy="280.0" r="15" fill="#E69F00" stroke="white" stroke-width="3" opacity="1"/>
+<text x="807.0577136594005" y="286.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">C</text>
+<line x1="962.9422863405995" y1="280.0" x2="1034.9422863405994" y2="238.0" stroke="#E69F00" stroke-width="6"/>
+<circle cx="1034.9422863405994" cy="238.0" r="17" fill="#E69F00" stroke="white" stroke-width="3" opacity="1"/>
+<text x="1034.9422863405994" y="244.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">C</text>
+<line x1="1034.9422863405994" y1="238.0" x2="1068.9422863405994" y2="218.0" stroke="#E69F00" stroke-width="3"/>
+<circle cx="1068.9422863405994" cy="218.0" r="11" fill="#E8EEF3" stroke="white" stroke-width="3" opacity="1"/>
+<text x="1068.9422863405994" y="224.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">H</text>
+<line x1="1034.9422863405994" y1="238.0" x2="1068.9422863405994" y2="258.0" stroke="#E69F00" stroke-width="3"/>
+<circle cx="1068.9422863405994" cy="258.0" r="11" fill="#E8EEF3" stroke="white" stroke-width="3" opacity="1"/>
+<text x="1068.9422863405994" y="264.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">H</text>
+<line x1="1034.9422863405994" y1="238.0" x2="1034.9422863405994" y2="198.0" stroke="#E69F00" stroke-width="3"/>
+<circle cx="1034.9422863405994" cy="198.0" r="11" fill="#E8EEF3" stroke="white" stroke-width="3" opacity="1"/>
+<text x="1034.9422863405994" y="204.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">H</text>
+<line x1="535" y1="325" x2="650" y2="325" stroke="#243447" stroke-width="4" marker-end="url(#arrow)"/>
+<text x="592" y="295" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="bold" fill="#243447">λ</text>
+<text x="300" y="475" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#0072B2">all BNZ atoms decouple</text>
+<text x="885" y="475" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#E69F00">all MBN atoms couple</text>
+<rect x="185" y="565" width="830" height="65" rx="12" fill="#FFF8E6" stroke="#E69F00" stroke-width="2" opacity="1"/>
+<text x="600" y="605" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="normal" fill="#243447">The chemical ring is shared conceptually, but the current soft-core masks include both complete residues.</text>
+</svg>

@@ -1,5 +1,10 @@
 # Trypsin–benzamidine ABFE / Trypsin–benzamidine ABFE
 
+![ABFE에서 BEN의 electrostatic 및 Lennard-Jones decoupling / Electrostatic and Lennard-Jones decoupling of BEN in ABFE](../../../assets/simulation/abfe_decoupling_atoms.svg)
+
+*BEN 전체에서 charge를 먼저 제거한 뒤 zero-charge topology에서 Lennard-Jones interaction을 제거합니다. / Charge is removed from all BEN atoms before Lennard-Jones interactions are removed from the zero-charge topology.*
+
+
 ## 한국어
 
 PDB 3PTB의 benzamidine을 complex와 물에서 단계적으로 decouple합니다. Complex

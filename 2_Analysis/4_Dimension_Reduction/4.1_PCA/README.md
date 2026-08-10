@@ -1,5 +1,10 @@
 # PCA / 주성분 분석
 
+![PCA의 principal axis와 분산 / Principal axes and variance in PCA](../../../assets/analysis/pca_variance.svg)
+
+*PC1은 선택하고 scaling한 feature에서 가장 큰 분산 방향을 나타냅니다. / PC1 is the largest-variance direction in the selected and scaled feature space.*
+
+
 ## 한국어
 
 Chignolin residue 2–9의 φ/ψ를 sine/cosine feature로 바꾼 뒤 표준화하고 PCA를

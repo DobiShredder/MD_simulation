@@ -1,5 +1,10 @@
 # Ratchet MD and umbrella sampling / Ratchet MD와 US
 
+![Harmonic restraint window와 histogram overlap / Harmonic restraint windows and histogram overlap](../../assets/simulation/umbrella_overlap.svg)
+
+*인접 window의 histogram이 겹쳐야 CV 구간 사이의 PMF를 연결할 수 있습니다. / Neighboring histograms must overlap to connect the PMF across the CV range.*
+
+
 ## 한국어
 
 Chignolin terminal Cα distance를 CV로 사용합니다.

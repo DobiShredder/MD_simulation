@@ -39,6 +39,7 @@
 ```text
 MD_simulation/
 ├── GUIDE.md                 # Integrated curriculum and method selection
+├── assets/                  # Shared SVG concept figures
 ├── 1_Simulation/
 │   ├── 1_MD/
 │   │   ├── 1.1_Soluble_Protein/    # Chignolin, PDB 1UAO

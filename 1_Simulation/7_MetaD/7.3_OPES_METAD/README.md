@@ -1,5 +1,10 @@
 # OPES_METAD
 
+![OPES_METAD의 sampled distribution과 target distribution / Sampled and target distributions in OPES_METAD](../../../assets/simulation/opes_target.svg)
+
+*OPES는 sampled distribution을 추정하고 선택한 target distribution을 향하는 bias를 갱신합니다. / OPES estimates the sampled distribution and updates a bias toward the selected target distribution.*
+
+
 ## 한국어
 
 OPES_METAD는 simulation 중에 CV distribution을 추정하고, 설정한 barrier 안에서

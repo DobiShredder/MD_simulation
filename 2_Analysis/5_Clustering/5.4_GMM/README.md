@@ -1,5 +1,10 @@
 # Gaussian mixture model clustering
 
+![GMM covariance와 soft membership / GMM covariance and soft membership](../../../assets/analysis/gmm_membership.svg)
+
+*Gaussian component가 겹치는 영역에서는 한 frame이 여러 component에 posterior probability를 가집니다. / In overlapping regions, one frame has posterior probabilities for multiple components.*
+
+
 ## 한국어
 
 GMM은 feature 분포를 여러 Gaussian component의 합으로 나타냅니다. K-means와

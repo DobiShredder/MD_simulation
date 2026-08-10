@@ -1,5 +1,10 @@
 # OPES Expanded Multithermal
 
+![OPES Expanded의 multithermal target / Multithermal target in OPES Expanded](../../../assets/simulation/multithermal_target.svg)
+
+*Potential-energy 공간에서 여러 temperature state를 잇는 target distribution을 구성합니다. / A target distribution connects multiple temperature states in potential-energy space.*
+
+
 ## 한국어
 
 OPES_EXPANDED와 `ECV_MULTITHERMAL`을 연결해 300–500 K의 potential-energy

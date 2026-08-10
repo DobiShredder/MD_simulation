@@ -1,5 +1,10 @@
 # Dimensionality reduction / 차원 축소
 
+![Backbone dihedral feature에서 저차원 projection까지 / From backbone-dihedral features to low-dimensional projections](../../assets/analysis/feature_pipeline.svg)
+
+*세 방법은 같은 periodic feature에서 시작하지만 저차원 구조의 의미는 서로 다릅니다. / All three methods start from the same periodic features but give different meanings to the low-dimensional geometry.*
+
+
 ## 한국어
 
 Chignolin residue 2–9의 backbone φ/ψ를 낮은 차원으로 투영합니다. 각 angle은

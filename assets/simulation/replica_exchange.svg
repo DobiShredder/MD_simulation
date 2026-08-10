@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img">
+<title>Replica exchange and state diffusion</title>
+<desc>Replica exchange schematic distinguishing fixed thermodynamic states from walkers that move after accepted neighbor exchanges.</desc>
+<defs>
+<marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#243447"/></marker>
+<marker id="blue-arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#0072B2"/></marker>
+<pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0 10L10 0" stroke="#6B7280" stroke-width="2"/></pattern>
+</defs>
+<rect width="1200" height="675" fill="#FFFFFF"/>
+<text x="60" y="52" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#243447">Replica exchange</text>
+<text x="60" y="88" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="normal" fill="#6B7280">States stay on the ladder; walkers visit different states</text>
+<rect x="60" y="120" width="1080" height="480" rx="16" fill="#FAFCFD" stroke="#B8C4CE" stroke-width="2" opacity="1"/>
+<text x="82" y="154" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="bold" fill="#243447">Adjacent-state exchange</text>
+<line x1="170" y1="200" x2="1030" y2="200" stroke="#C9D3DC" stroke-width="3"/>
+<text x="120" y="207" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="bold" fill="#243447">T₅</text>
+<circle cx="250" cy="200" r="23" fill="#0072B2" stroke="#243447" stroke-width="2" opacity="1"/>
+<text x="250" y="207" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="white">A</text>
+<line x1="170" y1="285" x2="1030" y2="285" stroke="#C9D3DC" stroke-width="3"/>
+<text x="120" y="292" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="bold" fill="#243447">T₄</text>
+<circle cx="385" cy="285" r="23" fill="#E69F00" stroke="#243447" stroke-width="2" opacity="1"/>
+<text x="385" y="292" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="white">B</text>
+<line x1="170" y1="370" x2="1030" y2="370" stroke="#C9D3DC" stroke-width="3"/>
+<text x="120" y="377" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="bold" fill="#243447">T₃</text>
+<circle cx="520" cy="370" r="23" fill="#009E73" stroke="#243447" stroke-width="2" opacity="1"/>
+<text x="520" y="377" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="white">C</text>
+<line x1="170" y1="455" x2="1030" y2="455" stroke="#C9D3DC" stroke-width="3"/>
+<text x="120" y="462" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="bold" fill="#243447">T₂</text>
+<circle cx="655" cy="455" r="23" fill="#CC79A7" stroke="#243447" stroke-width="2" opacity="1"/>
+<text x="655" y="462" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="white">D</text>
+<line x1="170" y1="540" x2="1030" y2="540" stroke="#C9D3DC" stroke-width="3"/>
+<text x="120" y="547" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="bold" fill="#243447">T₁</text>
+<circle cx="790" cy="540" r="23" fill="#D55E00" stroke="#243447" stroke-width="2" opacity="1"/>
+<text x="790" y="547" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="white">E</text>
+<path d="M250 200 C360 220 375 265 385 285" stroke="#0072B2" stroke-width="4" fill="none" opacity="1" marker-end="url(#arrow)"/>
+<path d="M385 285 C500 305 505 350 520 370" stroke="#E69F00" stroke-width="4" fill="none" opacity="1" marker-end="url(#arrow)"/>
+<path d="M520 370 C635 390 640 435 655 455" stroke="#009E73" stroke-width="4" fill="none" opacity="1" marker-end="url(#arrow)"/>
+<path d="M655 455 C765 475 775 520 790 540" stroke="#CC79A7" stroke-width="4" fill="none" opacity="1" marker-end="url(#arrow)"/>
+<text x="960" y="170" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#6B7280">neighbor exchanges</text>
+<line x1="950" y1="180" x2="950" y2="245" stroke="#6B7280" stroke-width="3" marker-end="url(#arrow)"/>
+<text x="600" y="583" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="normal" fill="#243447">Accepted swaps let each walker diffuse through state space.</text>
+</svg>

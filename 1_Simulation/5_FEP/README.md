@@ -1,5 +1,10 @@
 # Free-energy perturbation
 
+![RBFE와 ABFE thermodynamic cycle / RBFE and ABFE thermodynamic cycles](../../assets/simulation/thermodynamic_cycles.svg)
+
+*직접 sampling하기 어려운 physical binding leg를 계산 가능한 alchemical leg의 조합으로 구합니다. / Physical binding legs are obtained from combinations of tractable alchemical legs.*
+
+
 ## 한국어
 
 Alchemical calculation은 실제 결합·해리 경로 대신 Hamiltonian을 단계적으로

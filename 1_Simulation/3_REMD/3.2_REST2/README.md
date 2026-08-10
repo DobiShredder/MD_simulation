@@ -1,5 +1,10 @@
 # REST2
 
+![REST2의 interaction scaling / Interaction scaling in REST2](../../../assets/simulation/rest2_scaling.svg)
+
+*Solute interaction만 단계적으로 scaling하고 bulk solvent interaction은 기준 온도에 유지합니다. / Solute interactions are scaled while bulk-solvent interactions remain at the reference temperature.*
+
+
 ## 한국어
 
 Chignolin을 ff19SB/TIP3P로 만들고 8-replica REST2를 실행합니다. Protein

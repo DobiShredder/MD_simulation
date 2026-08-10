@@ -1,5 +1,10 @@
 # Weighted ensemble
 
+![Weighted Ensemble의 propagation과 resampling / Weighted Ensemble propagation and resampling](../../assets/simulation/weighted_ensemble.svg)
+
+*Walker를 bin 안에서 split하거나 merge해도 statistical weight의 합은 보존됩니다. / Splitting or merging walkers within bins preserves total statistical weight.*
+
+
 ## 한국어
 
 Weighted ensemble은 짧은 trajectory segment를 여러 개 전파한 뒤 progress

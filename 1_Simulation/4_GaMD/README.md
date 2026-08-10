@@ -1,5 +1,10 @@
 # Gaussian accelerated MD / Gaussian 가속 MD
 
+![GaMD harmonic boost가 적용된 potential / Potential modified by the GaMD harmonic boost](../../assets/simulation/gamd_boost.svg)
+
+*Threshold 아래의 low-energy region에 smooth boost를 더해 barrier crossing을 촉진합니다. / A smooth boost is added below the threshold to facilitate barrier crossing.*
+
+
 ## 한국어
 
 세 method는 각각 Chignolin, trypsin–benzamidine와 SH3–peptide system을

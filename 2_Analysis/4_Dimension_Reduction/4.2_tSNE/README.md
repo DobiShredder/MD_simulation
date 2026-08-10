@@ -1,5 +1,10 @@
 # t-SNE
 
+![t-SNE의 local-neighborhood 보존 / Local-neighborhood preservation in t-SNE](../../../assets/analysis/tsne_neighborhoods.svg)
+
+*가까운 이웃은 강조되지만 cluster 사이 거리와 면적은 정량적으로 해석하지 않습니다. / Nearby observations are emphasized, but inter-cluster distances and areas are not quantitative.*
+
+
 ## 한국어
 
 t-SNE는 고차원에서 가까운 frame이 2차원에서도 이웃이 되도록 확률 분포를

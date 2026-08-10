@@ -1,5 +1,10 @@
 # Replica-exchange simulations / Replica exchange 시뮬레이션
 
+![Replica exchange에서 state와 walker의 이동 / State and walker motion in replica exchange](../../assets/simulation/replica_exchange.svg)
+
+*State는 ladder에 남고 accepted exchange를 통해 walker가 여러 state를 방문합니다. / States remain on the ladder while accepted exchanges let walkers visit different states.*
+
+
 ## 한국어
 
 다섯 예제 모두 Chignolin(PDB 1UAO)을 ff19SB/TIP3P로 만들며 다른 tutorial의
