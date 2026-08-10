@@ -14,26 +14,26 @@ fi
 # 사용자 설정과 output 경로
 curl_bin=${CURL:-curl}
 
-script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+script_dir=$(dirname "${BASH_SOURCE[0]}")
 structure_dir="$script_dir/structure"
 
-complex_pdb_url="https://files.rcsb.org/download/3PTB.pdb"
-complex_cif_url="https://files.rcsb.org/download/3PTB.cif"
-ligand_sdf_url="https://files.rcsb.org/ligands/download/BEN_ideal.sdf"
+complex_pdb_url="https://files.rcsb.org/download/3HTB.pdb"
+complex_cif_url="https://files.rcsb.org/download/3HTB.cif"
+ligand_sdf_url="https://files.rcsb.org/ligands/download/JZ4_ideal.sdf"
 
 # 실행 전 확인
 if ! command -v "$curl_bin" >/dev/null 2>&1; then
     die "curl을 찾을 수 없습니다: $curl_bin"
 fi
 
-echo "Trypsin–benzamidine 구조를 다운로드합니다 (PDB 3PTB)."
+echo "T4 lysozyme–JZ4 구조를 다운로드합니다 (PDB 3HTB)."
 mkdir -p "$structure_dir"
 
 # Protein–ligand complex preparation에 사용할 PDB를 받습니다.
 if ! "$curl_bin" \
     -fsSL \
     "$complex_pdb_url" \
-    -o "$structure_dir/3PTB.raw.pdb"; then
+    -o "$structure_dir/3HTB.raw.pdb"; then
     die "PDB 다운로드에 실패했습니다: $complex_pdb_url"
 fi
 
@@ -41,16 +41,16 @@ fi
 if ! "$curl_bin" \
     -fsSL \
     "$complex_cif_url" \
-    -o "$structure_dir/3PTB.cif"; then
+    -o "$structure_dir/3HTB.cif"; then
     die "mmCIF 다운로드에 실패했습니다: $complex_cif_url"
 fi
 
-# Benzamidine parameterization에 사용할 ideal SDF를 받습니다.
+# JZ4 parameterization에 사용할 ideal SDF를 받습니다.
 if ! "$curl_bin" \
     -fsSL \
     "$ligand_sdf_url" \
-    -o "$structure_dir/BEN_ideal.sdf"; then
-    die "BEN SDF 다운로드에 실패했습니다: $ligand_sdf_url"
+    -o "$structure_dir/JZ4_ideal.sdf"; then
+    die "JZ4 SDF 다운로드에 실패했습니다: $ligand_sdf_url"
 fi
 
 # Linux와 macOS의 checksum command 차이를 처리합니다.
@@ -58,9 +58,9 @@ if command -v sha256sum >/dev/null 2>&1; then
     (
         cd "$structure_dir"
         sha256sum \
-            3PTB.raw.pdb \
-            3PTB.cif \
-            BEN_ideal.sdf \
+            3HTB.raw.pdb \
+            3HTB.cif \
+            JZ4_ideal.sdf \
             > SHA256SUMS
     )
 else
@@ -68,9 +68,9 @@ else
         cd "$structure_dir"
         shasum \
             -a 256 \
-            3PTB.raw.pdb \
-            3PTB.cif \
-            BEN_ideal.sdf \
+            3HTB.raw.pdb \
+            3HTB.cif \
+            JZ4_ideal.sdf \
             > SHA256SUMS
     )
 fi

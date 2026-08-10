@@ -42,7 +42,7 @@ MD_simulation/
 ├── 1_Simulation/
 │   ├── 1_MD/
 │   │   ├── 1.1_Soluble_Protein/    # Chignolin, PDB 1UAO
-│   │   ├── 1.2_Protein_Ligand/     # Trypsin–benzamidine, PDB 3PTB
+│   │   ├── 1.2_Protein_Ligand/     # T4 lysozyme–JZ4, PDB 3HTB
 │   │   └── 1.3_Membrane_Protein/   # KcsA, PDB 1K4C
 │   ├── 2_US/                # Ratchet MD and umbrella sampling
 │   ├── 3_REMD/              # REMD, REST2, REST3, REUS, GaREUS
@@ -64,7 +64,7 @@ MD_simulation/
 
 | No. | Method | Included templates | Guide |
 | --- | --- | --- | --- |
-| 1 | Conventional MD | Chignolin, trypsin–benzamidine, KcsA with AMBER | [Open](1_Simulation/1_MD/README.md) |
+| 1 | Conventional MD | Chignolin, T4 lysozyme–JZ4, KcsA with AMBER | [Open](1_Simulation/1_MD/README.md) |
 | 2 | Ratchet MD / Umbrella Sampling | PLUMED ABMD pathway and restrained windows | [Open](1_Simulation/2_US/README.md) |
 | 3 | Replica Exchange | REMD, REST2, REST3, REUS, GaREUS | [Open](1_Simulation/3_REMD/README.md) |
 | 4 | Gaussian accelerated MD | Chignolin GaMD, trypsin–benzamidine LiGaMD3, SH3–peptide Pep-GaMD | [Open](1_Simulation/4_GaMD/README.md) |
@@ -76,7 +76,7 @@ MD_simulation/
 
 분석 파트는 preprocessing, 기본 구조 지표, interaction, dimension reduction,
 clustering, MM/GB(PB)SA와 enhanced-sampling 후처리로 구성됩니다. 1–6번은
-Chignolin 또는 trypsin–benzamidine trajectory를 사용하고, 7번은 대응하는 US,
+Chignolin 또는 T4 lysozyme–JZ4 trajectory를 사용하고, 7번은 대응하는 US,
 GaMD 또는 GaREUS simulation output을 사용합니다. Trajectory 처리는 cpptraj을
 중심으로 하고 dimension reduction, clustering, 통계와 plotting은 Python으로
 진행합니다.
@@ -84,8 +84,8 @@ GaMD 또는 GaREUS simulation output을 사용합니다. Trajectory 처리는 cp
 
 The analysis section covers preprocessing, basic structural metrics,
 interactions, dimensionality reduction, clustering, MM/GB(PB)SA, and
-enhanced-sampling post-processing. Categories 1–6 use Chignolin or
-trypsin–benzamidine trajectories; category 7 consumes the matching US, GaMD,
+enhanced-sampling post-processing. Categories 1–6 use Chignolin or T4
+lysozyme–JZ4 trajectories; category 7 consumes the matching US, GaMD,
 or GaREUS output. Trajectory processing primarily uses cpptraj, while dimension
 reduction, clustering, statistics, and plotting use Python.
 
@@ -106,7 +106,7 @@ reduction, clustering, statistics, and plotting use Python.
 | System | Role | Source and important choices |
 | --- | --- | --- |
 | Chignolin | Soluble-protein MD and structural/ensemble analysis | PDB 1UAO; first NMR model; ff19SB/TIP3P |
-| Trypsin–benzamidine | Protein–ligand interactions and MM/GB(PB)SA | PDB 3PTB; BEN, structural Ca2+, six disulfides; ff19SB/GAFF2/TIP3P |
+| T4 lysozyme–JZ4 | Protein–ligand interactions and MM/GB(PB)SA | PDB 3HTB; neutral JZ4; ff19SB/GAFF2/TIP3P |
 | KcsA | Membrane build and membrane-protein MD | PDB 1K4C; ff19SB/Lipid21/OPC; POPC:POPE:cholesterol 90:5:5 |
 | C-crk SH3–SOS peptide | Pep-GaMD selective peptide boost | PDB 1CKB; resolved PPPVPPRR peptide; ff19SB/TIP3P |
 | T4 lysozyme L99A | Benzene→toluene RBFE | PDB 4W53; ff19SB/GAFF2/TIP3P |

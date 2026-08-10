@@ -14,7 +14,7 @@ plotting, dimension reduction 및 clustering에는 Python을 사용합니다.
 6. [Binding energy](6_Binding_Energy/): MM/GBSA and MM/PBSA
 7. [Enhanced-sampling analysis](7_Enhanced_Sampling/): US, GaMD and GaREUS reweighting
 
-1–5번은 Chignolin, 6번은 trypsin–benzamidine conventional MD output을
+1–5번은 Chignolin, 6번은 T4 lysozyme–JZ4 conventional MD output을
 사용합니다. 7번은 대응하는 enhanced-sampling simulation output을 읽습니다.
 각 leaf는 다른 analysis 결과에 의존하지 않습니다. Command는 실행할 tutorial
 directory로 이동한 뒤 입력합니다.
@@ -37,7 +37,7 @@ system을 사용할 때는 `run.sh` 상단의 `topology`와 `trajectory`를 수�
 cpptraj handles trajectory processing and core structural observables. Python
 is used for dimensionality reduction, clustering, statistics, and plots.
 All categories contain runnable examples. Categories 1–5 use Chignolin,
-category 6 uses trypsin–benzamidine conventional-MD output, and category 7
+category 6 uses T4 lysozyme–JZ4 conventional-MD output, and category 7
 reads the matching enhanced-sampling simulation. Each leaf runs independently.
 
 Run the Chignolin conventional-MD tutorial first. Each `run.sh` reads its

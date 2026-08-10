@@ -11,7 +11,7 @@ tutorial_dir=$PWD
 simulation_dir="$tutorial_dir/../../../1_Simulation/1_MD/1.2_Protein_Ligand"
 solvated_topology="$simulation_dir/work/system.parm7"
 trajectory="$simulation_dir/work/production.nc"
-ligand_mask=:BEN
+ligand_mask=:JZ4
 
 ante_mmpbsa=ante-MMPBSA.py
 mmpbsa=MMPBSA.py
@@ -29,11 +29,11 @@ if [[ ! -s "$input_file" ]]; then
     exit 1
 fi
 if [[ ! -s "$solvated_topology" ]]; then
-    echo "오류: trypsin–benzamidine topology가 없습니다: $solvated_topology" >&2
+    echo "오류: T4 lysozyme–JZ4 topology가 없습니다: $solvated_topology" >&2
     exit 1
 fi
 if [[ ! -s "$trajectory" ]]; then
-    echo "오류: trypsin–benzamidine trajectory가 없습니다: $trajectory" >&2
+    echo "오류: T4 lysozyme–JZ4 trajectory가 없습니다: $trajectory" >&2
     exit 1
 fi
 

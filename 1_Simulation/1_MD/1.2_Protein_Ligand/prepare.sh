@@ -14,24 +14,21 @@ if [[ "${1:-}" == "--dry-run" ]]; then
 fi
 
 if [[ $# -ne 1 ]]; then
-    echo "사용법: $0 [--dry-run] BEN_ideal.sdf" >&2
+    echo "사용법: $0 [--dry-run] JZ4_ideal.sdf" >&2
     exit 2
 fi
 
 # Input과 사용자 설정
 ligand_sdf=$1
-ligand_sdf=$(cd "$(dirname "$ligand_sdf")" && pwd -P)/$(basename "$ligand_sdf")
 antechamber=${ANTECHAMBER:-antechamber}
 parmchk2=${PARMCHK2:-parmchk2}
-python=${PYTHON:-python3}
-ligand_charge=${LIGAND_CHARGE:-1}
+ligand_charge=${LIGAND_CHARGE:-0}
 
-script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+script_dir=$(dirname "${BASH_SOURCE[0]}")
 work_dir=${WORK_DIR:-"$script_dir/work"}
 
-ligand_mol2="$work_dir/ben.mol2"
-ligand_frcmod="$work_dir/ben.frcmod"
-parameter_sdf="$ligand_sdf"
+ligand_mol2="$work_dir/jz4.mol2"
+ligand_frcmod="$work_dir/jz4.frcmod"
 
 # 사용자 설정 확인
 if [[ ! "$ligand_charge" =~ ^-?[0-9]+$ ]]; then
@@ -53,63 +50,47 @@ if (( ! dry_run )); then
         die "parmchk2를 찾을 수 없습니다: $parmchk2"
     fi
 
-    if ! command -v "$python" >/dev/null 2>&1; then
-        die "Python을 찾을 수 없습니다: $python"
-    fi
 fi
 
 # Dry-run에서는 파일을 생성하지 않고 command만 보여줍니다.
 if (( dry_run )); then
     printf 'mkdir -p %q\n' "$work_dir"
-    if [[ "$ligand_charge" -eq 1 ]]; then
-        parameter_sdf="$work_dir/ben-protonated.sdf"
-        printf '%q %q %q %q\n' \
-            "$python" \
-            "$script_dir/protonate_benzamidine.py" \
-            "$ligand_sdf" \
-            "$parameter_sdf"
-    fi
+    printf 'cp %q %q\n' "$ligand_sdf" "$work_dir/JZ4_ideal.sdf"
+    printf 'cd %q\n' "$work_dir"
     printf '%q \\\n' "$antechamber"
-    printf '  -i %q \\\n' "$parameter_sdf"
+    printf '  -i JZ4_ideal.sdf \\\n'
     printf '  -fi sdf \\\n'
-    printf '  -o %q \\\n' "$ligand_mol2"
+    printf '  -o jz4.mol2 \\\n'
     printf '  -fo mol2 \\\n'
     printf '  -at gaff2 \\\n'
     printf '  -c bcc \\\n'
     printf '  -nc %q \\\n' "$ligand_charge"
-    printf '  -rn BEN \\\n'
+    printf '  -rn JZ4 \\\n'
     printf '  -s 2\n'
     printf '%q \\\n' "$parmchk2"
-    printf '  -i %q \\\n' "$ligand_mol2"
+    printf '  -i jz4.mol2 \\\n'
     printf '  -f mol2 \\\n'
-    printf '  -o %q \\\n' "$ligand_frcmod"
+    printf '  -o jz4.frcmod \\\n'
     printf '  -s gaff2\n'
     exit 0
 fi
 
 # GAFF2 atom type과 AM1-BCC charge를 적용합니다.
-echo "BEN을 GAFF2/AM1-BCC로 parameterize합니다 (net charge: $ligand_charge)."
+echo "JZ4를 GAFF2/AM1-BCC로 parameterize합니다 (net charge: $ligand_charge)."
 mkdir -p "$work_dir"
-
-if [[ "$ligand_charge" -eq 1 ]]; then
-    parameter_sdf="$work_dir/ben-protonated.sdf"
-    "$python" \
-        "$script_dir/protonate_benzamidine.py" \
-        "$ligand_sdf" \
-        "$parameter_sdf"
-fi
+cp "$ligand_sdf" "$work_dir/JZ4_ideal.sdf"
 
 if ! (
     cd "$work_dir"
     "$antechamber" \
-        -i "$parameter_sdf" \
+        -i JZ4_ideal.sdf \
         -fi sdf \
-        -o ben.mol2 \
+        -o jz4.mol2 \
         -fo mol2 \
         -at gaff2 \
         -c bcc \
         -nc "$ligand_charge" \
-        -rn BEN \
+        -rn JZ4 \
         -s 2 \
         > antechamber.log 2>&1
 ); then
@@ -120,9 +101,9 @@ fi
 if ! (
     cd "$work_dir"
     "$parmchk2" \
-        -i ben.mol2 \
+        -i jz4.mol2 \
         -f mol2 \
-        -o ben.frcmod \
+        -o jz4.frcmod \
         -s gaff2 \
         > parmchk2.log 2>&1
 ); then

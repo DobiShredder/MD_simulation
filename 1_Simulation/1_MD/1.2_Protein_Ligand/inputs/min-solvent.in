@@ -1,4 +1,4 @@
-Minimize solvent and ions with protein, BEN, and structural calcium restrained
+Minimize solvent and ions with protein and JZ4 restrained
 &cntrl
  imin=1,
  maxcyc=5000,

@@ -2,7 +2,7 @@
 
 ## 한국어
 
-Trypsin–benzamidine conventional-MD trajectory에서 MMPBSA.py single-trajectory
+T4 lysozyme–JZ4 conventional-MD trajectory에서 MMPBSA.py single-trajectory
 MM/GBSA와 MM/PBSA를 계산합니다. Explicit solvent trajectory에서 같은 complex,
 receptor와 ligand coordinate를 추출해 molecular-mechanics energy와 implicit
 solvation energy를 조합합니다.
@@ -17,5 +17,5 @@ implicit-solvent model, frame selection과 correlated sampling에 의존합니�
 ## English
 
 MMPBSA.py applies single-trajectory MM/GBSA and MM/PBSA to the
-trypsin–benzamidine simulation. The examples omit configurational entropy and
+T4 lysozyme–JZ4 simulation. The examples omit configurational entropy and
 are end-state model estimates, not converged absolute binding free energies.

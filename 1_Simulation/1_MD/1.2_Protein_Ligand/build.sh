@@ -20,23 +20,18 @@ die() {
 
 # Input과 사용자 설정
 complex_pdb=$1
-disulfide_file=$(dirname "$complex_pdb")/disulfides.leap
 tleap=${TLEAP:-tleap}
 
-script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+script_dir=$(dirname "${BASH_SOURCE[0]}")
 work_dir=${WORK_DIR:-"$script_dir/work"}
 
-ligand_mol2="$work_dir/ben.mol2"
-ligand_frcmod="$work_dir/ben.frcmod"
+ligand_mol2="$work_dir/jz4.mol2"
+ligand_frcmod="$work_dir/jz4.frcmod"
 
 # 실행 전 확인
 if (( ! dry_run )); then
     if [[ ! -f "$complex_pdb" ]]; then
         die "complex PDB를 찾을 수 없습니다: $complex_pdb"
-    fi
-
-    if [[ ! -s "$disulfide_file" ]]; then
-        die "disulfide 명령 파일을 찾을 수 없습니다: $disulfide_file"
     fi
 
     if [[ ! -s "$ligand_mol2" ]]; then
@@ -56,24 +51,24 @@ fi
 if (( dry_run )); then
     printf 'mkdir -p %q\n' "$work_dir"
     printf 'cp %q %q\n' "$complex_pdb" "$work_dir/complex.pdb"
-    printf 'cp %q %q\n' "$disulfide_file" "$work_dir/disulfides.leap"
+    printf 'cp %q %q\n' "$script_dir/tleap.in" "$work_dir/tleap.in"
     printf 'cd %q\n' "$work_dir"
     printf '%q \\\n' "$tleap"
-    printf '  -f %q\n' "$script_dir/tleap.in"
+    printf '  -f tleap.in\n'
     exit 0
 fi
 
-# Protein, ligand, structural Ca2+를 하나의 solvated system으로 만듭니다.
-echo "ff19SB/GAFF2/TIP3P로 trypsin–benzamidine system을 생성합니다."
+# Protein과 ligand를 하나의 solvated system으로 만듭니다.
+echo "ff19SB/GAFF2/TIP3P로 T4 lysozyme–JZ4 system을 생성합니다."
 
 mkdir -p "$work_dir"
 cp "$complex_pdb" "$work_dir/complex.pdb"
-cp "$disulfide_file" "$work_dir/disulfides.leap"
+cp "$script_dir/tleap.in" "$work_dir/tleap.in"
 
 if ! (
     cd "$work_dir"
     "$tleap" \
-        -f "$script_dir/tleap.in" \
+        -f tleap.in \
         > leap.log 2>&1
 ); then
     die "tleap 실행에 실패했습니다. 확인할 파일: $work_dir/leap.log"

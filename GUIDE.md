@@ -113,7 +113,7 @@ trajectory이며 대부분의 후속 분석을 배우는 출발점입니다.
 | 시스템 | 시작 구조 | 학습 목표 | 기본 AMBER model |
 | --- | --- | --- | --- |
 | Chignolin | PDB 1UAO | 수용성 단백질 build와 기본 구조·ensemble 분석 | ff19SB + TIP3P |
-| Trypsin–benzamidine | PDB 3PTB | ligand parameterization, interaction와 end-state energy | ff19SB + GAFF2 + TIP3P |
+| T4 lysozyme–JZ4 | PDB 3HTB | ligand parameterization, interaction와 end-state energy | ff19SB + GAFF2 + TIP3P |
 | KcsA | PDB 1K4C | 막 단백질 좌표·topology build와 membrane analysis | ff19SB + Lipid21 + OPC |
 
 ff19SB 개발 논문에서는 TIP3P와 OPC를 모두 평가했고, OPC에서 더 나은
@@ -122,7 +122,7 @@ ff19SB 개발 논문에서는 TIP3P와 OPC를 모두 평가했고, OPC에서 더
 
 - [일반 MD 전체 안내](1_Simulation/1_MD/README.md)
 - [Chignolin](1_Simulation/1_MD/1.1_Soluble_Protein/README.md)
-- [Trypsin–benzamidine](1_Simulation/1_MD/1.2_Protein_Ligand/README.md)
+- [T4 lysozyme–JZ4](1_Simulation/1_MD/1.2_Protein_Ligand/README.md)
 - [KcsA](1_Simulation/1_MD/1.3_Membrane_Protein/README.md)
 
 KcsA는 PACKMOL-Memgen으로 POPC 90%, POPE 5%, cholesterol 5% membrane을
@@ -272,7 +272,7 @@ conda install -c conda-forge \
 ```
 
 1–5번 analysis는 Chignolin conventional-MD output을 사용합니다.
-MM/GBSA·MM/PBSA는 trypsin–benzamidine output을 사용합니다. KcsA의
+MM/GBSA·MM/PBSA는 T4 lysozyme–JZ4 output을 사용합니다. KcsA의
 membrane-aware preprocessing과 채널 구조 분석은 이후 범위입니다.
 
 ## 3. 참고 자료

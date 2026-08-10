@@ -10,7 +10,7 @@ tutorial만 Lipid21과 OPC를 사용합니다.
 
 | 번호 | 방법 | 포함된 템플릿 |
 | --- | --- | --- |
-| 1 | [MD](1_MD/README.md) | Chignolin, trypsin–benzamidine, KcsA AMBER MD |
+| 1 | [MD](1_MD/README.md) | Chignolin, T4 lysozyme–JZ4, KcsA AMBER MD |
 | 2 | [Ratchet MD / US](2_US/README.md) | PLUMED ABMD, 동일-topology seed, umbrella window |
 | 3 | [REMD](3_REMD/README.md) | T-REMD, REST2, REST3, REUS, GaREUS |
 | 4 | [GaMD](4_GaMD/README.md) | GaMD, LiGaMD3, Pep-GaMD |
