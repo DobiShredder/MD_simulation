@@ -37,7 +37,7 @@ def preserve_residue_specific_cmaps(structure: parmed.Structure) -> dict[str, st
 
 
 def add_cmap_residue_selectors(path: Path, cmap_residues: dict[str, str]) -> None:
-    """GROMACS 2025.0 AMBER19SB 형식의 residue selector를 추가합니다."""
+    """AMBER19SB CMAP 형식의 residue selector를 추가합니다."""
     lines = path.read_text(encoding="utf-8").splitlines()
     output: list[str] = []
     section = ""

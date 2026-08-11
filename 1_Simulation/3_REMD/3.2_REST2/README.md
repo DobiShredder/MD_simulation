@@ -33,15 +33,16 @@ effective-temperature ladder를 구성할 수 있습니다.
 
 ### 실행
 
-AMBER 26, ParmEd, `GROMACS 2025.0`, `PLUMED 2.10.0`과 `gawk`가
+AMBER 26, ParmEd, `GROMACS 2024.3`, `PLUMED 2.10.0`과 `gawk`가
 필요합니다. GROMACS는 PLUMED 2.10.0이 제공하는 GROMACS patch를
 적용하고 외부 MPI를 사용해 build합니다. 일반 PLUMED interface만 활성화한
 GROMACS에는 이 계산에 필요한 `-hrex`가 없습니다.
 
-GROMACS 2026.3은 PLUMED 2.10.0의 공식 patch 대상이 아니므로 이 tutorial에서
-사용하지 않습니다. GROMACS 2025.0은 PLUMED 2.10.0에서 patch를 공식 제공하는
-최신 GROMACS version입니다. `-hrex`만 제거하면 서로
-다른 scaled topology 사이의 exchange acceptance가 잘못 계산됩니다.
+권장 조합은 `GROMACS 2024.3 + PLUMED 2.10.0`입니다. PLUMED의 GROMACS
+2024.3 patch에는 서로 다른 topology의 Hamiltonian을 교차 평가하는 `-hrex`
+경로가 포함됩니다. GROMACS 2025 patch와 GROMACS의 built-in PLUMED
+interface는 이 경로를 제공하지 않습니다. `-hrex`만 제거하면 서로 다른
+scaled topology 사이의 exchange acceptance가 올바르게 계산되지 않습니다.
 
 ```bash
 python3 -m pip install -r requirements.txt
@@ -63,7 +64,7 @@ energy를 한 frame rerun으로 비교합니다. 이 Chignolin tutorial의 허�
 
 ff19SB는 residue별 backbone CMAP을 사용합니다. `convert_topology.py`는
 ParmEd 변환 중 이 map들이 하나의 `XC` type으로 합쳐지지 않도록 C-alpha
-type을 `XC0`, `XC1`처럼 분리합니다. GROMACS 2025의 AMBER19SB 형식에 맞춰
+type을 `XC0`, `XC1`처럼 분리합니다. AMBER19SB CMAP 형식에 맞춰
 `XC0-TYR`처럼 residue selector도 붙입니다. `scale_cmap.py`는 PLUMED가
 처리하지 않는 CMAP grid를 각 REST2 state에 맞게 보정합니다. CMAP lookup은
 bonded type을 사용하므로 `_` marker는 `[atoms]`의 nonbonded type에만 붙이고
@@ -142,17 +143,18 @@ the full solvent box.
 The build converts the AMBER system with ParmEd, marks only protein atom types,
 creates scaled topologies with PLUMED `partial_tempering`, and compares the
 scale-one and original potential energies. This tutorial requires an external-
-MPI build of `GROMACS 2025.0` with the GROMACS patch supplied by
+MPI build of `GROMACS 2024.3` with the GROMACS patch supplied by
 `PLUMED 2.10.0`.
 
-GROMACS 2026.3 is not an official patch target for PLUMED 2.10.0 and is
-not supported here. GROMACS 2025.0 is the latest GROMACS version for which
-PLUMED 2.10.0 officially supplies a patch. Removing only `-hrex` would
-produce incorrect exchange acceptance between the separately scaled topologies.
+The recommended combination is `GROMACS 2024.3 + PLUMED 2.10.0`. The PLUMED
+patch for GROMACS 2024.3 includes the `-hrex` path that cross-evaluates
+different replica topologies. The GROMACS 2025 patch and the built-in GROMACS
+PLUMED interface do not provide this path. Removing only `-hrex` would produce
+incorrect exchange acceptance between the separately scaled topologies.
 
 `convert_topology.py` performs the AMBER-to-GROMACS conversion, `mark_hot.py`
 marks protein atom types, and `scale_cmap.py` preserves residue-specific ff19SB
-CMAPs using GROMACS 2025 residue selectors such as `XC0-TYR`, then scales their
+CMAPs using residue selectors such as `XC0-TYR`, then scales their
 grids for each state. The `_` marker is limited to nonbonded atom types in
 `[ atoms ]`; CMAP lookup continues to use the original bonded types. `build.sh`
 generates and verifies the states selected by the input file,

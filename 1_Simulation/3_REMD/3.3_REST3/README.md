@@ -41,14 +41,14 @@ REST3는 REST2의 solute scaling에 κ-dependent solute–solvent correction을
 
 ### 실행
 
-AMBER 26, ParmEd, `GROMACS 2025.0`, `PLUMED 2.10.0`과
+AMBER 26, ParmEd, `GROMACS 2024.3`, `PLUMED 2.10.0`과
 `repex-topology-parser==0.2.2`가 필요합니다. GROMACS는 PLUMED 2.10.0이
 제공하는 GROMACS patch를 적용하고 외부 MPI를 사용해 build합니다.
 
-일반 PLUMED interface만 활성화한 GROMACS에는 `-hrex`가 없습니다. GROMACS
-2026.3은 PLUMED 2.10.0의 공식 patch 대상이 아니므로 이 tutorial에서
-사용하지 않습니다. GROMACS 2025.0은 PLUMED 2.10.0에서 patch를 공식
-제공하는 최신 GROMACS version입니다.
+권장 조합은 `GROMACS 2024.3 + PLUMED 2.10.0`입니다. 이 PLUMED patch에는
+서로 다른 REST3 topology를 교차 평가하는 `-hrex` 경로가 포함됩니다.
+GROMACS 2025 patch와 GROMACS의 built-in PLUMED interface는 이 경로를
+제공하지 않습니다.
 
 ```bash
 python3 -m pip install parmed MDAnalysis numpy
@@ -77,7 +77,7 @@ replica 0 topology가 base topology와 byte 단위로 같은지 확인하고
 water–water 및 ion–water Lennard-Jones parameter가 보존되는지 검사합니다.
 
 ff19SB의 residue-specific CMAP은 ParmEd 변환 전에 서로 다른 C-alpha
-atom type으로 분리하고 GROMACS 2025 형식의 residue selector를 붙입니다.
+atom type으로 분리하고 AMBER19SB CMAP residue selector를 붙입니다.
 `repex-topology-parser` 0.2.2는 CMAP section을 생성하지 않으므로
 `scale_cmap.py`가 원래 bonded type과 residue selector를 적용한 CMAP을 넣고
 energy grid를 `lambda_pp`로 scaling합니다. REST3의 scaled nonbonded atom
@@ -163,18 +163,17 @@ root or `src/repex_topology_parser.py`.
 
 `convert_topology.py` creates the base topology, `generate_rest3.py` applies
 the `states.tsv` lambda/kappa schedule, and `scale_cmap.py` restores and scales
-the residue-specific ff19SB CMAP section with GROMACS 2025 residue selectors;
+the residue-specific ff19SB CMAP section with AMBER19SB residue selectors;
 parser 0.2.2 omits this section. CMAP selectors retain the original bonded
 types while only their grids are scaled. `verify_rest3.py` checks base, CMAP, and
 solvent invariants, `run.sh` performs HREX with `-replex 1000`, and `anal.py`
 summarizes exchange and structure. `kappa_atom_names=['OW']` targets the TIP3P
 oxygen type. The physical thermostat remains at 300 K.
 
-This tutorial requires an external-MPI build of `GROMACS 2025.0` patched with
-the GROMACS patch supplied by `PLUMED 2.10.0`. GROMACS 2026.3 is not an
-official patch target for that PLUMED release and is not supported here.
-GROMACS 2025.0 is the latest GROMACS version for which PLUMED 2.10.0 officially
-supplies a patch.
+This tutorial recommends an external-MPI build of `GROMACS 2024.3` patched
+with `PLUMED 2.10.0`. That patch includes the `-hrex` path required to
+cross-evaluate the different REST3 topologies. The GROMACS 2025 patch and the
+built-in GROMACS PLUMED interface do not provide this path.
 
 The published kappa schedule was calibrated for a99SB-disp IDPs, not validated
 for ff19SB/TIP3P Chignolin. REST2 compaction at high effective temperature was
