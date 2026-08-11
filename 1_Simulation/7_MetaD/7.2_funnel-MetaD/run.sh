@@ -32,6 +32,8 @@ topology="$work_dir/system.parm7"
 initial_restart="$work_dir/system.rst7"
 
 stage_state() {
+    local marker=$1
+    shift
     local present=0
     local path
 
@@ -41,10 +43,10 @@ stage_state() {
         fi
     done
 
-    if [[ "$present" -eq 0 ]]; then
-        echo missing
-    elif [[ "$present" -eq "$#" ]]; then
+    if [[ -f "$marker" && "$present" -eq "$#" ]]; then
         echo complete
+    elif [[ ! -f "$marker" && "$present" -eq 0 ]]; then
+        echo missing
     else
         echo partial
     fi
@@ -86,6 +88,7 @@ run_standard_stage() {
     local write_trajectory=$4
     local reference_restart=${5:-}
     local prefix="$work_dir/$stage"
+    local completion_marker="$work_dir/.$stage.complete"
     local required=("$prefix.out" "$prefix.info" "$prefix.rst7")
     local command=(
         "$engine" "${amber_options[@]}" -O
@@ -107,12 +110,13 @@ run_standard_stage() {
     fi
 
     if (( ! dry_run )); then
-        state=$(stage_state "${required[@]}")
+        state=$(stage_state "$completion_marker" "${required[@]}")
         if [[ "$state" == complete ]]; then
             return 0
         fi
         if [[ "$state" == partial ]]; then
-            die "$stage Partial output detected."
+            echo "Warning: removing partial $stage output and restarting the stage." >&2
+            rm -f -- "$completion_marker" "${required[@]}"
         fi
     fi
 
@@ -124,6 +128,7 @@ run_standard_stage() {
                 die "$stage Output not found: $output"
             fi
         done
+        touch "$completion_marker"
     fi
 }
 
@@ -137,6 +142,7 @@ run_production_segment() {
 
     segment=$(printf '%03d' "$segment_number")
     segment_dir="$work_dir/production/$segment"
+    local completion_marker="$segment_dir/.complete"
 
     if [[ "$segment_number" -eq 1 ]]; then
         input_restart=../../equilibrate.rst7
@@ -156,7 +162,7 @@ run_production_segment() {
     )
 
     if (( ! dry_run )); then
-        state=$(stage_state "${required[@]}")
+        state=$(stage_state "$completion_marker" "${required[@]}")
         if [[ "$state" == complete ]]; then
             return 0
         fi
@@ -198,6 +204,7 @@ run_production_segment() {
                 die "production $segment Output not found: $output"
             fi
         done
+        touch "$completion_marker"
     fi
 }
 

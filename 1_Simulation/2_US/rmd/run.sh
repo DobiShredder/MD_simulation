@@ -22,8 +22,22 @@ die() {
 }
 
 run_stage() {
-    local stage=$1
-    shift
+    local stage_name=$1
+    local stage_type=$2
+    local stage_label=$3
+    shift 3
+    local completion_marker=".$stage_name.complete"
+    local required=()
+    local option_index
+
+    for ((option_index = 1; option_index <= $#; option_index++)); do
+        case "${!option_index}" in
+            -o|-r|-x|-inf)
+                option_index=$((option_index + 1))
+                required+=("${!option_index}")
+                ;;
+        esac
+    done
 
     if (( dry_run )); then
         printf '+'
@@ -32,11 +46,35 @@ run_stage() {
         return
     fi
 
-    echo "Running: $stage ($engine)"
+    local existing=0
+    local output
+    for output in "${required[@]}"; do
+        if [[ -s "$output" ]]; then
+            existing=$((existing + 1))
+        fi
+    done
+    if [[ -f "$completion_marker" && "$existing" -eq "${#required[@]}" ]]; then
+        return
+    fi
+    if [[ -f "$completion_marker" || "$existing" -ne 0 ]]; then
+        if [[ "$stage_type" == production ]]; then
+            die "Partial production output detected: $stage_name"
+        fi
+        echo "Warning: removing partial $stage_name output and restarting the stage." >&2
+        rm -f -- "$completion_marker" "${required[@]}"
+    fi
+
+    echo "Running: $stage_label ($engine)"
 
     if ! "$@"; then
-        die "$stage stage failed. Check: $work_dir"
+        die "$stage_label stage failed. Check: $work_dir"
     fi
+    for output in "${required[@]}"; do
+        if [[ ! -s "$output" ]]; then
+            die "$stage_label output was not created: $work_dir/$output"
+        fi
+    done
+    touch "$completion_marker"
 }
 
 # User settings and input/output paths
@@ -85,7 +123,7 @@ else
 fi
 
 # Main workflow
-run_stage 'solvent minimization' \
+run_stage min-solvent preproduction 'solvent minimization' \
     "$engine" \
     -O \
     -i inputs/min-solvent.in \
@@ -95,7 +133,7 @@ run_stage 'solvent minimization' \
     -r min-solvent.rst7 \
     -ref system.rst7
 
-run_stage 'Whole-system minimization' \
+run_stage min-all preproduction 'Whole-system minimization' \
     "$engine" \
     -O \
     -i inputs/min-all.in \
@@ -104,7 +142,7 @@ run_stage 'Whole-system minimization' \
     -c min-solvent.rst7 \
     -r min-all.rst7
 
-run_stage 'NVT heating' \
+run_stage heat preproduction 'NVT heating' \
     "$engine" \
     -O \
     -i inputs/heat.in \
@@ -116,7 +154,7 @@ run_stage 'NVT heating' \
     -inf heat.info \
     -ref min-all.rst7
 
-run_stage 'NPT equilibration' \
+run_stage equil preproduction 'NPT equilibration' \
     "$engine" \
     -O \
     -i inputs/equil.in \
@@ -149,7 +187,7 @@ if (( ! dry_run )); then
     echo "NPT final density: ${final_density} g/cm^3"
 fi
 
-run_stage '1 ns ratchet MD' \
+run_stage ratchet production '1 ns ratchet MD' \
     "$engine" \
     -O \
     -i inputs/ratchet.in \

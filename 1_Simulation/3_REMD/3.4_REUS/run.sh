@@ -44,20 +44,54 @@ if (( ! dry_run )); then
     done
 fi
 
-stage_status() {
-    local filename=$1
-    local completed=0
+stage_state() {
+    local stage=$1
+    local marker="$work_dir/.$stage.complete"
+    local existing=0
+    local expected=$((replica_count * 4))
     local replica
+    local suffix
 
     while IFS=$'\t' read -r replica _; do
         if [[ "$replica" == "replica" ]]; then
             continue
         fi
-        if [[ -s "$work_dir/$replica/$filename" ]]; then
-            completed=$((completed + 1))
-        fi
+        for suffix in out rst7 info nc; do
+            [[ ! -s "$work_dir/$replica/$stage.$suffix" ]] || existing=$((existing + 1))
+        done
     done < "$states_file"
-    echo "$completed"
+    if [[ -f "$marker" && "$existing" -eq "$expected" ]]; then
+        echo complete
+    elif [[ ! -f "$marker" && "$existing" -eq 0 ]]; then
+        echo missing
+    else
+        echo partial
+    fi
+}
+
+remove_stage_outputs() {
+    local stage=$1
+    local replica
+    rm -f -- "$work_dir/.$stage.complete"
+    while IFS=$'\t' read -r replica _; do
+        [[ "$replica" != replica ]] || continue
+        rm -f -- "$work_dir/$replica/$stage.out" "$work_dir/$replica/$stage.rst7" \
+            "$work_dir/$replica/$stage.info" "$work_dir/$replica/$stage.nc"
+    done < "$states_file"
+}
+
+mark_stage_complete() {
+    local stage=$1
+    local replica
+    local suffix
+    while IFS=$'\t' read -r replica _; do
+        [[ "$replica" != replica ]] || continue
+        for suffix in out rst7 info nc; do
+            [[ -s "$work_dir/$replica/$stage.$suffix" ]] || \
+                die "$stage output is incomplete: $work_dir/$replica/$stage.$suffix"
+        done
+    done < "$states_file"
+    touch "$work_dir/.$stage.complete"
 }
 
 run_stage() {
@@ -87,19 +121,20 @@ run_stage() {
             die "$stage Calculation failed: $replica_dir/$stage.out"
         fi
     done < "$states_file"
+    mark_stage_complete "$stage"
 }
 
 run_stage_if_needed() {
     local stage=$1
     local input_restart=$2
-    local completed
-
-    completed=$(stage_status "$stage.rst7")
-    if [[ "$completed" -eq "$replica_count" ]]; then
+    local state
+    state=$(stage_state "$stage")
+    if [[ "$state" == complete ]]; then
         return
     fi
-    if [[ "$completed" -ne 0 ]]; then
-        die "Only some windows completed $stage ($completed/$replica_count)."
+    if [[ "$state" == partial ]]; then
+        echo "Warning: removing partial $stage output from all windows and restarting the stage." >&2
+        remove_stage_outputs "$stage"
     fi
     run_stage "$stage" "$input_restart"
 }
@@ -150,13 +185,12 @@ run_stage_if_needed equilibrate heat.rst7
 
 for segment in $(seq 1 "$production_segments"); do
     segment_name=$(printf 'production.%03d' "$segment")
-    completed=$(stage_status "$segment_name.rst7")
-
-    if [[ "$completed" -eq "$replica_count" ]]; then
+    state=$(stage_state "$segment_name")
+    if [[ "$state" == complete ]]; then
         continue
     fi
-    if [[ "$completed" -ne 0 ]]; then
-        die "Only some windows completed $segment_name ($completed/$replica_count)."
+    if [[ "$state" == partial ]]; then
+        die "Partial production output detected: $segment_name"
     fi
 
     if [[ "$segment" -eq 1 ]]; then
@@ -182,6 +216,7 @@ for segment in $(seq 1 "$production_segments"); do
         -remlog "$exchange_log"; then
         die "REUS segment $segment Run failed: $exchange_log"
     fi
+    mark_stage_complete "$segment_name"
 done
 
 echo "Completed 1 ns REUS: $work_dir"

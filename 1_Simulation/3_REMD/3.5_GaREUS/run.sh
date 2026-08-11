@@ -59,6 +59,7 @@ fi
 completed_stage_count() {
     local stage=$1
     local require_gamd_log=${2:-no}
+    local tolerate_partial=${3:-no}
     local completed=0
     local existing
     local replica
@@ -91,11 +92,24 @@ completed_stage_count() {
         if [[ "$existing" -eq "${#required[@]}" ]]; then
             completed=$((completed + 1))
         elif [[ "$existing" -ne 0 ]]; then
-            die "$stage output is only partially present: $replica_dir"
+            if [[ "$tolerate_partial" != yes ]]; then
+                die "$stage output is only partially present: $replica_dir"
+            fi
         fi
     done < "$states_file"
 
     echo "$completed"
+}
+
+remove_stage_outputs() {
+    local stage=$1
+    local replica
+    rm -f -- "$work_dir/.$stage.complete"
+    while IFS=$'\t' read -r replica _; do
+        [[ "$replica" != replica ]] || continue
+        rm -f -- "$work_dir/$replica/$stage.out" "$work_dir/$replica/$stage.rst7" \
+            "$work_dir/$replica/$stage.nc" "$work_dir/$replica/$stage.info"
+    done < "$states_file"
 }
 
 run_stage() {
@@ -135,19 +149,21 @@ run_stage_if_needed() {
     local input_restart=$2
     local completed
 
-    completed=$(completed_stage_count "$stage")
-    if [[ "$completed" -eq "$replica_count" ]]; then
+    completed=$(completed_stage_count "$stage" no yes)
+    if [[ -f "$work_dir/.$stage.complete" && "$completed" -eq "$replica_count" ]]; then
         return
     fi
-    if [[ "$completed" -ne 0 ]]; then
-        die "Only some windows completed $stage ($completed/$replica_count)."
+    if [[ "$completed" -ne 0 || -f "$work_dir/.$stage.complete" ]]; then
+        echo "Warning: removing incomplete $stage output from all windows and restarting the stage." >&2
     fi
+    remove_stage_outputs "$stage"
     run_stage "$stage" "$input_restart"
 
     completed=$(completed_stage_count "$stage")
     if [[ "$completed" -ne "$replica_count" ]]; then
         die "$stage output is incomplete ($completed/$replica_count)."
     fi
+    touch "$work_dir/.$stage.complete"
 }
 
 prepare_common_gamd_state() {
@@ -165,6 +181,7 @@ prepare_common_gamd_state() {
         "$reference_dir/gamd.prepare.log"
         "$reference_dir/gamd-restart.dat"
     )
+    local completion_marker="$work_dir/.gamd_prepare.complete"
 
     completed_segments=$(completed_stage_count production.001 yes)
     if [[ "$completed_segments" -ne 0 ]]; then
@@ -176,11 +193,11 @@ prepare_common_gamd_state() {
             existing=$((existing + 1))
         fi
     done
-    if [[ "$existing" -ne 0 && "$existing" -ne "${#required[@]}" ]]; then
+    if [[ -f "$completion_marker" && "$existing" -eq "${#required[@]}" ]]; then
+        :
+    elif [[ "$existing" -ne 0 ]]; then
         die "GaMD preparation output is only partially present: $reference_dir"
-    fi
-
-    if [[ "$existing" -eq 0 ]]; then
+    else
         echo "Prepared shared GaMD parameters from replica $gamd_reference_replica."
 
         if ! (
@@ -220,6 +237,7 @@ prepare_common_gamd_state() {
             die "Could not place the shared GaMD state in replica: $replica_dir"
         fi
     done < "$states_file"
+    touch "$completion_marker"
 }
 
 write_group_file() {
@@ -290,11 +308,11 @@ for segment in $(seq 1 "$production_segments"); do
     segment_name=$(printf 'production.%03d' "$segment")
     completed=$(completed_stage_count "$segment_name" yes)
 
-    if [[ "$completed" -eq "$replica_count" ]]; then
+    if [[ -f "$work_dir/.$segment_name.complete" && "$completed" -eq "$replica_count" ]]; then
         continue
     fi
     if [[ "$completed" -ne 0 ]]; then
-        die "Only some windows completed $segment_name ($completed/$replica_count)."
+        die "Partial production output detected: $segment_name"
     fi
 
     if [[ "$segment" -eq 1 ]]; then
@@ -325,6 +343,7 @@ for segment in $(seq 1 "$production_segments"); do
     if [[ "$completed" -ne "$replica_count" ]]; then
         die "$segment_name output is incomplete ($completed/$replica_count)."
     fi
+    touch "$work_dir/.$segment_name.complete"
 done
 
 echo "Completed 1 ns GaREUS: $work_dir"

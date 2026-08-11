@@ -62,21 +62,75 @@ if (( ! dry_run )); then
     fi
 fi
 
-stage_status() {
-    local filename=$1
-    local completed=0
+stage_state() {
+    local stage=$1
+    local marker="$work_dir/.$stage.complete"
+    local existing=0
+    local any_existing=0
     local replica
+    local candidate
 
     while IFS=$'\t' read -r replica _; do
         if [[ "$replica" == "replica" ]]; then
             continue
         fi
-        if [[ -s "$work_dir/$replica/$filename" ]]; then
-            completed=$((completed + 1))
+        if [[ "$stage" == preproduction ]]; then
+            [[ ! -s "$work_dir/$replica/minimize.gro" ]] || existing=$((existing + 1))
+            [[ ! -s "$work_dir/$replica/equilibrate.gro" ]] || existing=$((existing + 1))
+            [[ ! -s "$work_dir/$replica/equilibrate.cpt" ]] || existing=$((existing + 1))
+            for candidate in \
+                "$work_dir/$replica"/minimize.{tpr,gro,log,edr,trr,cpt} \
+                "$work_dir/$replica"/equilibrate.{tpr,gro,log,edr,trr,cpt} \
+                "$work_dir/$replica"/{minimize,equilibrate}.{grompp,mdrun}.log; do
+                [[ ! -e "$candidate" ]] || any_existing=1
+            done
+        else
+            [[ ! -s "$work_dir/$replica/$stage.gro" ]] || existing=$((existing + 1))
+            [[ ! -s "$work_dir/$replica/$stage.cpt" ]] || existing=$((existing + 1))
+            for candidate in "$work_dir/$replica/$stage".{tpr,gro,cpt,log,edr,trr,xtc} \
+                "$work_dir/$replica/$stage".{grompp,mdrun}.log; do
+                [[ ! -e "$candidate" ]] || any_existing=1
+            done
         fi
     done < "$states_file"
+    local expected=$((replica_count * 2))
+    [[ "$stage" != preproduction ]] || expected=$((replica_count * 3))
+    if [[ -f "$marker" && "$existing" -eq "$expected" ]]; then
+        echo complete
+    elif [[ ! -f "$marker" && "$any_existing" -eq 0 ]]; then
+        echo missing
+    else
+        echo partial
+    fi
+}
 
-    echo "$completed"
+remove_preproduction_outputs() {
+    local replica
+    rm -f -- "$work_dir/.preproduction.complete"
+    while IFS=$'\t' read -r replica _; do
+        [[ "$replica" != replica ]] || continue
+        rm -f -- "$work_dir/$replica"/minimize.{tpr,gro,log,edr,trr,cpt} \
+            "$work_dir/$replica"/equilibrate.{tpr,gro,log,edr,trr,cpt} \
+            "$work_dir/$replica"/{minimize,equilibrate}.{grompp,mdrun}.log
+    done < "$states_file"
+}
+
+mark_gromacs_stage_complete() {
+    local stage=$1
+    local replica
+    while IFS=$'\t' read -r replica _; do
+        [[ "$replica" != replica ]] || continue
+        if [[ "$stage" == preproduction ]]; then
+            [[ -s "$work_dir/$replica/minimize.gro" &&
+               -s "$work_dir/$replica/equilibrate.gro" &&
+               -s "$work_dir/$replica/equilibrate.cpt" ]] || \
+                die "preproduction output is incomplete: $work_dir/$replica"
+        else
+            [[ -s "$work_dir/$replica/$stage.gro" && -s "$work_dir/$replica/$stage.cpt" ]] || \
+                die "$stage output is incomplete: $work_dir/$replica"
+        fi
+    done < "$states_file"
+    touch "$work_dir/.$stage.complete"
 }
 
 run_preproduction() {
@@ -125,6 +179,7 @@ run_preproduction() {
             die "equilibration failed: $replica_dir/equilibrate.mdrun.log"
         fi
     done < "$states_file"
+    mark_gromacs_stage_complete preproduction
 }
 
 if (( dry_run )); then
@@ -137,11 +192,13 @@ if (( dry_run )); then
     exit 0
 fi
 
-equilibrated=$(stage_status equilibrate.cpt)
-if [[ "$equilibrated" -eq 0 ]]; then
+preproduction_state=$(stage_state preproduction)
+if [[ "$preproduction_state" == missing ]]; then
     run_preproduction
-elif [[ "$equilibrated" -ne "$replica_count" ]]; then
-    die "Only some replicas completed equilibration ($equilibrated/$replica_count)."
+elif [[ "$preproduction_state" == partial ]]; then
+    echo "Warning: removing partial preproduction output from all replicas and restarting." >&2
+    remove_preproduction_outputs
+    run_preproduction
 fi
 
 replica_dirs=()
@@ -154,14 +211,12 @@ done < "$states_file"
 
 for segment in $(seq 1 "$production_segments"); do
     segment_name=$(printf 'production.%03d' "$segment")
-    completed=$(stage_status "$segment_name.cpt")
-
-    if [[ "$completed" -eq "$replica_count" ]]; then
+    production_state=$(stage_state "$segment_name")
+    if [[ "$production_state" == complete ]]; then
         continue
     fi
-
-    if [[ "$completed" -ne 0 ]]; then
-        die "Only some replicas completed $segment_name ($completed/$replica_count)."
+    if [[ "$production_state" == partial ]]; then
+        die "Partial production output detected: $segment_name"
     fi
 
     if [[ "$segment" -eq 1 ]]; then
@@ -203,6 +258,7 @@ for segment in $(seq 1 "$production_segments"); do
         "${gromacs_options[@]}"; then
         die "REST3 segment $segment run failed."
     fi
+    mark_gromacs_stage_complete "$segment_name"
 done
 
 echo "Completed 1 ns REST3: $work_dir"

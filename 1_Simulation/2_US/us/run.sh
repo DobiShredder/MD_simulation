@@ -42,10 +42,33 @@ run_command() {
     "$@"
 }
 
+stage_state() {
+    local marker=$1
+    shift
+    local existing=0
+    local output
+    for output in "$@"; do
+        if [[ -s "$output" ]]; then
+            existing=$((existing + 1))
+        fi
+    done
+    if [[ -f "$marker" && "$existing" -eq "$#" ]]; then
+        echo complete
+    elif [[ ! -f "$marker" && "$existing" -eq 0 ]]; then
+        echo missing
+    else
+        echo partial
+    fi
+}
+
 run_window() {
     local window_dir=$1
     local window_id=${window_dir##*/}
     local required_file
+    local production_state=missing
+    local min_state
+    local heat_state
+    local equil_state
 
     for required_file in system.parm7 seed.rst7 restraint.RST; do
         if [[ ! -s "$window_dir/$required_file" ]]; then
@@ -53,13 +76,32 @@ run_window() {
         fi
     done
 
-    if [[ -f "$window_dir/.production.complete" ]] && (( ! dry_run )); then
-        skipped_window_count=$((skipped_window_count + 1))
-        return
+    if (( ! dry_run )); then
+        production_state=$(stage_state \
+            "$window_dir/.production.complete" \
+            "$window_dir/production.out" \
+            "$window_dir/production.rst7" \
+            "$window_dir/production.info" \
+            "$window_dir/production.nc")
+        if [[ "$production_state" == complete ]]; then
+            skipped_window_count=$((skipped_window_count + 1))
+            return
+        fi
+        if [[ "$production_state" == partial ]]; then
+            die "Partial production output detected: $window_dir/production"
+        fi
     fi
 
     # Minimization
-    if [[ ! -f "$window_dir/.min.complete" ]] || (( dry_run )); then
+    min_state=$(stage_state \
+        "$window_dir/.min.complete" \
+        "$window_dir/min.out" \
+        "$window_dir/min.rst7")
+    if [[ "$min_state" != complete ]] || (( dry_run )); then
+        if [[ "$min_state" == partial ]] && (( ! dry_run )); then
+            echo "Warning: removing partial minimization output and restarting the stage: $window_dir/min" >&2
+            rm -f -- "$window_dir/.min.complete" "$window_dir/min.out" "$window_dir/min.rst7"
+        fi
         if ! (
             cd "$window_dir"
             run_command \
@@ -75,12 +117,26 @@ run_window() {
         fi
 
         if (( ! dry_run )); then
+            if [[ ! -s "$window_dir/min.out" || ! -s "$window_dir/min.rst7" ]]; then
+                die "$window_id window minimization output is incomplete: $window_dir/min"
+            fi
             touch "$window_dir/.min.complete"
         fi
     fi
 
     # Heating
-    if [[ ! -f "$window_dir/.heat.complete" ]] || (( dry_run )); then
+    heat_state=$(stage_state \
+        "$window_dir/.heat.complete" \
+        "$window_dir/heat.out" \
+        "$window_dir/heat.rst7" \
+        "$window_dir/heat.info" \
+        "$window_dir/heat.nc")
+    if [[ "$heat_state" != complete ]] || (( dry_run )); then
+        if [[ "$heat_state" == partial ]] && (( ! dry_run )); then
+            echo "Warning: removing partial heating output and restarting the stage: $window_dir/heat" >&2
+            rm -f -- "$window_dir/.heat.complete" "$window_dir/heat.out" \
+                "$window_dir/heat.rst7" "$window_dir/heat.info" "$window_dir/heat.nc"
+        fi
         if ! (
             cd "$window_dir"
             run_command \
@@ -99,12 +155,27 @@ run_window() {
         fi
 
         if (( ! dry_run )); then
+            if [[ ! -s "$window_dir/heat.out" || ! -s "$window_dir/heat.rst7" ||
+                  ! -s "$window_dir/heat.info" || ! -s "$window_dir/heat.nc" ]]; then
+                die "$window_id window heating output is incomplete: $window_dir/heat"
+            fi
             touch "$window_dir/.heat.complete"
         fi
     fi
 
     # Equilibration
-    if [[ ! -f "$window_dir/.equil.complete" ]] || (( dry_run )); then
+    equil_state=$(stage_state \
+        "$window_dir/.equil.complete" \
+        "$window_dir/equil.out" \
+        "$window_dir/equil.rst7" \
+        "$window_dir/equil.info" \
+        "$window_dir/equil.nc")
+    if [[ "$equil_state" != complete ]] || (( dry_run )); then
+        if [[ "$equil_state" == partial ]] && (( ! dry_run )); then
+            echo "Warning: removing partial equilibration output and restarting the stage: $window_dir/equil" >&2
+            rm -f -- "$window_dir/.equil.complete" "$window_dir/equil.out" \
+                "$window_dir/equil.rst7" "$window_dir/equil.info" "$window_dir/equil.nc"
+        fi
         if ! (
             cd "$window_dir"
             run_command \
@@ -122,12 +193,16 @@ run_window() {
         fi
 
         if (( ! dry_run )); then
+            if [[ ! -s "$window_dir/equil.out" || ! -s "$window_dir/equil.rst7" ||
+                  ! -s "$window_dir/equil.info" || ! -s "$window_dir/equil.nc" ]]; then
+                die "$window_id window equilibration output is incomplete: $window_dir/equil"
+            fi
             touch "$window_dir/.equil.complete"
         fi
     fi
 
     # Production
-    if [[ ! -f "$window_dir/.production.complete" ]] || (( dry_run )); then
+    if [[ "$production_state" != complete ]] || (( dry_run )); then
         if ! (
             cd "$window_dir"
             run_command \
@@ -145,6 +220,10 @@ run_window() {
         fi
 
         if (( ! dry_run )); then
+            if [[ ! -s "$window_dir/production.out" || ! -s "$window_dir/production.rst7" ||
+                  ! -s "$window_dir/production.info" || ! -s "$window_dir/production.nc" ]]; then
+                die "$window_id window production output is incomplete: $window_dir/production"
+            fi
             touch "$window_dir/.production.complete"
         fi
     fi

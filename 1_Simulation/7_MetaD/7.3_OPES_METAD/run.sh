@@ -28,15 +28,17 @@ topology="$work_dir/system.parm7"
 initial_restart="$work_dir/system.rst7"
 
 stage_state() {
+    local marker=$1
+    shift
     local present=0
     local path
     for path in "$@"; do
         [[ -s "$path" ]] && present=$((present + 1))
     done
-    if [[ "$present" -eq 0 ]]; then
-        echo missing
-    elif [[ "$present" -eq "$#" ]]; then
+    if [[ -f "$marker" && "$present" -eq "$#" ]]; then
         echo complete
+    elif [[ ! -f "$marker" && "$present" -eq 0 ]]; then
+        echo missing
     else
         echo partial
     fi
@@ -75,6 +77,7 @@ run_standard_stage() {
     local write_trajectory=$4
     local reference_restart=${5:-}
     local prefix="$work_dir/$stage"
+    local completion_marker="$work_dir/.$stage.complete"
     local required=("$prefix.out" "$prefix.info" "$prefix.rst7")
     local command=(
         "$engine" "${amber_options[@]}" -O
@@ -92,15 +95,19 @@ run_standard_stage() {
         command+=(-ref "$reference_restart")
     fi
     if (( ! dry_run )); then
-        state=$(stage_state "${required[@]}")
+        state=$(stage_state "$completion_marker" "${required[@]}")
         [[ "$state" != complete ]] || return 0
-        [[ "$state" != partial ]] || die "$stage Partial output detected."
+        if [[ "$state" == partial ]]; then
+            echo "Warning: removing partial $stage output and restarting the stage." >&2
+            rm -f -- "$completion_marker" "${required[@]}"
+        fi
     fi
     run_command "$stage" "$work_dir" "${command[@]}"
     if (( ! dry_run )); then
         for output in "${required[@]}"; do
             [[ -s "$output" ]] || die "$stage Output not found: $output"
         done
+        touch "$completion_marker"
     fi
 }
 
@@ -133,6 +140,7 @@ run_production_segment() {
 
     segment=$(printf '%03d' "$number")
     segment_dir="$work_dir/production/$segment"
+    local completion_marker="$segment_dir/.complete"
     if [[ "$number" -eq 1 ]]; then
         input_restart=../../equilibrate.rst7
     else
@@ -149,7 +157,7 @@ run_production_segment() {
     )
 
     if (( ! dry_run )); then
-        state=$(stage_state "${required[@]}")
+        state=$(stage_state "$completion_marker" "${required[@]}")
         [[ "$state" != complete ]] || return 0
         [[ "$state" != partial ]] || die "production $segment Partial output detected."
         mkdir -p "$segment_dir"
@@ -175,6 +183,7 @@ run_production_segment() {
         for output in "${required[@]}"; do
             [[ -s "$output" ]] || die "production $segment Output not found: $output"
         done
+        touch "$completion_marker"
     fi
 }
 

@@ -62,6 +62,8 @@ if (( ! dry_run )); then
 fi
 
 stage_state() {
+    local marker=$1
+    shift
     local existing=0
     local path
     for path in "$@"; do
@@ -69,10 +71,10 @@ stage_state() {
             existing=$((existing + 1))
         fi
     done
-    if [[ "$existing" -eq 0 ]]; then
-        echo missing
-    elif [[ "$existing" -eq "$#" ]]; then
+    if [[ -f "$marker" && "$existing" -eq "$#" ]]; then
         echo complete
+    elif [[ ! -f "$marker" && "$existing" -eq 0 ]]; then
+        echo missing
     else
         echo partial
     fi
@@ -102,6 +104,7 @@ run_md_stage() {
     local with_reference=$6
     local gamd_state_input=${7:-}
     local prefix=$stage
+    local completion_marker=".$stage.complete"
     local required=("$prefix.out" "$prefix.rst7" "$prefix.info")
     local command=(
         "$engine" "${amber_options[@]}" -O
@@ -130,12 +133,20 @@ run_md_stage() {
     fi
 
     local state
-    state=$(stage_state "${required[@]}")
+    state=$(stage_state "$completion_marker" "${required[@]}")
     if [[ "$state" == complete ]]; then
         return
     fi
     if [[ "$state" == partial ]]; then
-        die "Partial output detected for $stage. Check the stage output."
+        case "$stage" in
+            minimize|heat|equilibrate)
+                echo "Warning: removing partial $stage output and restarting the stage." >&2
+                rm -f -- "$completion_marker" "${required[@]}"
+                ;;
+            *)
+                die "Partial production or GaMD-state output detected for $stage."
+                ;;
+        esac
     fi
     if [[ -n "$gamd_state_input" ]]; then
         if [[ ! -s "$gamd_state_input" ]]; then
@@ -155,6 +166,7 @@ run_md_stage() {
             die "$stage Output was not created: $output"
         fi
     done
+    touch "$completion_marker"
 }
 
 if (( dry_run )); then

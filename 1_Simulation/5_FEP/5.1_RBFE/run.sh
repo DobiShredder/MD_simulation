@@ -34,6 +34,8 @@ if (( ! dry_run )); then
 fi
 
 stage_state() {
+    local marker=$1
+    shift
     local existing=0
     local path
     for path in "$@"; do
@@ -41,10 +43,10 @@ stage_state() {
             existing=$((existing + 1))
         fi
     done
-    if [[ "$existing" -eq 0 ]]; then
-        echo missing
-    elif [[ "$existing" -eq "$#" ]]; then
+    if [[ -f "$marker" && "$existing" -eq "$#" ]]; then
         echo complete
+    elif [[ ! -f "$marker" && "$existing" -eq 0 ]]; then
+        echo missing
     else
         echo partial
     fi
@@ -57,6 +59,7 @@ run_stage() {
     local trajectory=$4
     local calculation=$5
     local prefix="$directory/$stage"
+    local completion_marker="$directory/.$stage.complete"
     local required=("$prefix.out" "$prefix.rst7" "$prefix.info")
     local command=(
         "$engine" "${amber_options[@]}" -O
@@ -80,25 +83,34 @@ run_stage() {
     fi
 
     local state
-    state=$(stage_state "${required[@]}")
+    state=$(stage_state "$completion_marker" "${required[@]}")
     if [[ "$state" == complete ]]; then
         return
     fi
     if [[ "$state" == partial ]]; then
-        die "Partial output detected: $prefix"
+        case "$stage" in
+            minimize|heat|equilibrate)
+                echo "Warning: removing partial $stage output and restarting the stage: $prefix" >&2
+                rm -f -- "$completion_marker" "${required[@]}"
+                ;;
+            *)
+                die "Partial production output detected: $prefix"
+                ;;
+        esac
     fi
     echo "Running: $calculation - $stage"
     if ! (
         cd "$directory"
         "${command[@]}"
     ); then
-        die "$stage Calculation failed: $prefix.out"
+        die "$stage calculation failed: $prefix.out"
     fi
     for output in "${required[@]}"; do
         if [[ ! -s "$output" ]]; then
-            die "$stage Output was not created: $output"
+            die "$stage output was not created: $output"
         fi
     done
+    touch "$completion_marker"
 }
 
 if (( dry_run )); then

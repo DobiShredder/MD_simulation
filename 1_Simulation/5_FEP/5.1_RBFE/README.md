@@ -36,8 +36,17 @@ python3 anal.py
 Complex와 solvent environment는 각각 lambda 0.0–1.0의 11개 window를 사용합니다.
 `timask1`/`timask2`는 BNZ와 MBN end state를, `scmask1`/`scmask2`는 soft-core
 대상을 지정합니다. 각 window는 200 ps heating, 100 ps NPT equilibration과
-1 ns production segment 하나를 실행합니다. 완성된 segment는 건너뛰며 output이
-일부만 있으면 중단합니다.
+1 ns production segment 하나를 실행합니다. 완성된 stage는 건너뜁니다.
+중단된 minimization, heating 또는 equilibration의 partial output은 해당 stage를
+시작하기 전에 삭제합니다. Production partial output은 자동으로 삭제하지 않고
+중단합니다. 정상 종료는 engine이 exit status 0을 반환하고 필수 output이 모두
+생성된 뒤 `.<stage>.complete` marker를 기록했는지로 판별합니다. Marker가 없으면
+필수 output이 모두 있어도 partial stage로 처리합니다.
+
+Solvent environment는 `solvatebox system TIP3PBOX 20.0`을 사용합니다. 가장 짧은
+box dimension도 `cut=10 Å`의 GPU neighbor list에 필요한 공간을 갖도록 ligand와
+box edge 사이에 20 Å buffer를 둡니다. Complex environment는 protein 때문에
+box가 충분히 크므로 12 Å buffer를 유지합니다.
 
 Soft-core interaction은 Amber 26의 `aces26=1` 형식을 사용합니다.
 `gti_sc_cc_energy_terms='ele,vdw,ele14,vdw14'`는 soft-core와 common region
@@ -78,7 +87,15 @@ Run `download.sh`, `prepare.py`, `build.sh`, `run.sh`, and `anal.py` in that
 order. The complex and solvent environments each contain eleven lambda windows. AMBER
 soft-core masks define the two ligand end states. Every window uses 200 ps of
 heating, 100 ps of NPT equilibration, and one 1 ns production segment. Completed
-segments resume safely; partial output stops the workflow.
+stages are skipped. Partial minimization, heating, or equilibration output is
+removed before that stage is restarted. Partial production output is preserved
+and stops the workflow. A stage is complete only after the engine exits with
+status 0, every required output is present, and `.<stage>.complete` is written.
+Outputs without this marker are treated as partial even when every file exists.
+
+The solvent environment uses a 20 Å solute-to-box-edge buffer so its shortest
+dimension is large enough for the GPU neighbor list with the 10 Å cutoff. The
+protein complex retains its 12 Å buffer because that box is already larger.
 
 The inputs use the Amber 26 `aces26=1` soft-core format and scale
 `ele,vdw,ele14,vdw14` interactions between soft-core and common regions.

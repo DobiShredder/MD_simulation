@@ -50,6 +50,11 @@ replica가 같은 segment를 완료했을 때만 resume합니다. MPI launcher, 
 process 수와 추가 option은 각 README에 적힌 environment variable로
 지정합니다.
 
+모든 replica의 engine 정상 종료와 필수 output을 확인한 뒤 stage marker를
+기록합니다. Partial minimization, heating과 equilibration은 모든 replica에서
+해당 stage output을 제거하고 다시 실행합니다. Partial production/exchange
+segment는 자동으로 삭제하지 않습니다.
+
 Exchange acceptance, state 방문과 occupancy는 `anal.py`에서 계산합니다.
 REUS/GaREUS PMF처럼 더 긴 후처리는
 [analysis tutorial](../../2_Analysis/7_Enhanced_Sampling/README.md)에서
@@ -89,6 +94,11 @@ in order. Production is one 1 ns segment per replica. A run resumes only from
 the last segment completed by every replica; partial segments are reported as
 errors. Engine and MPI settings are supplied through the environment variables
 documented by each method.
+
+A stage marker is written only after successful engine exits and required-output
+checks across every replica. Partial minimization, heating, and equilibration
+outputs are removed across all replicas before the stage is restarted. Partial
+production or exchange segments are preserved and reported as errors.
 
 In every folder, download and preparation handle the source structure, build
 creates topology/state inputs, run performs pre-production and exchange, and

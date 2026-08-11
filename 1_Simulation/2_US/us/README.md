@@ -39,10 +39,10 @@ window directory가 있으면 종료합니다. 각 window의 계산 순서는 �
 3. Distance restraint를 사용한 100 ps NPT equilibration
 4. Distance restraint를 사용한 1 ns NPT production
 
-`run.sh`는 `.<stage>.complete` marker가 없는 stage부터 실행하고 완료된 window는
-건너뜁니다. 정상 종료 시 실행한 window와 기존 완료 window 수를
-한 번만 출력합니다. 비정상 종료 후에는 marker와 AMBER output을 같이
-확인합니다.
+`run.sh`는 engine 정상 종료와 필수 output을 확인한 뒤 `.<stage>.complete`
+marker를 기록하고 완료된 window를 건너뜁니다. Marker가 없는 minimization,
+heating과 equilibration output은 삭제 후 다시 실행합니다. Marker가 없는
+production output은 보존하고 중단합니다.
 `inputs/continue.in`은 production restart에서 좌표와 velocity를 이어받는
 1 ns continuation input입니다.
 
@@ -82,10 +82,10 @@ restraint active. `--window N` limits execution to one window; `WINDOW_FILE`,
 `build.sh` creates `work/NNN/` only after validating every seed and
 refuses to overwrite an existing build. Each window runs restrained
 minimization, 200 ps NVT heating, 100 ps NPT equilibration, and 1 ns NPT
-production. Successful-stage markers allow `run.sh` to resume a partial local
-workflow and skip completed windows. The terminal reports only the final count
-of processed and previously completed windows. Inspect the marker and AMBER
-output after any abnormal termination.
+production. Successful-stage markers are written after required-output checks
+and allow `run.sh` to skip completed windows. Partial minimization, heating, and
+equilibration output is removed before that stage is restarted. Partial
+production output is preserved and stops the workflow.
 
 `inputs/continue.in` inherits coordinates and velocities from a production
 restart. Production distances are written to `distance.dat` every 1 ps. PMF

@@ -12,6 +12,11 @@
 segment 하나를 실행합니다. 완료된 segment마다 MD restart와 GaMD state
 snapshot을 함께 저장하므로 두 state가 모두 정상인 마지막 segment에서 resume합니다.
 
+Minimization, heating과 conventional equilibration의 partial output은 해당
+stage를 다시 시작하기 전에 삭제합니다. GaMD parameter preparation과 production은
+MD restart 외에 GaMD state를 포함하므로 partial output을 보존하고 중단합니다.
+정상 완료 marker는 engine과 필수 output 검사가 모두 통과한 뒤 기록합니다.
+
 GaMD는 potential energy가 threshold보다 낮을 때 smooth harmonic boost를 더해
 energy barrier를 낮춥니다. 특정 CV를 미리 정하지 않는 대신 boost distribution이
 Gaussian에 가까워야 낮은 차수의 cumulant expansion으로 원래 ensemble을
@@ -34,6 +39,11 @@ The three independent examples use Chignolin, trypsin–benzamidine, and an
 SH3–peptide complex. Each prepares boost statistics for 4 ns and runs one 1 ns
 production segment. The completed segment preserves its MD restart and GaMD
 state snapshot as one resumable pair.
+
+Partial minimization, heating, and conventional equilibration output is removed
+before restarting that stage. GaMD parameter preparation and production preserve
+partial output and stop because the GaMD state must remain paired with the MD
+restart. Completion markers are written only after engine and output checks.
 
 GaMD adds a smooth harmonic boost below an energy threshold to reduce barriers
 without choosing a CV. Cumulant reweighting relies on a sufficiently narrow,

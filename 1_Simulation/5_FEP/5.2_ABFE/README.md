@@ -49,6 +49,14 @@ Window는 `work/restraint/complex/`, `work/charge/{complex,solvent}/`와
 `work/vdw/{complex,solvent}/`에 생성됩니다. 각 directory 아래의 `000`부터
 시작하는 번호가 lambda window입니다.
 
+Solvent topology는 ligand와 box edge 사이에 20 Å buffer를 둡니다. 이는
+`cut=10 Å`를 사용하는 `pmemd.cuda`가 작은 solvent box를 거부하지 않도록 가장
+짧은 box dimension을 늘립니다. 완성된 stage는 건너뜁니다. 중단된 minimization,
+heating 또는 equilibration의 partial output은 삭제한 뒤 해당 stage를 다시
+실행합니다. Production partial output은 보존하고 중단합니다. 정상 종료는 engine
+exit status, 필수 output과 `.<stage>.complete` marker를 모두 사용해 판별합니다.
+Marker가 없는 output은 파일이 모두 있어도 partial stage로 처리합니다.
+
 Restraint stage는 λ=0의 unrestrained complex에서 λ=1의 restrained complex로
 진행합니다. 모든 window는 같은 full-strength `DISANG` file을 사용하고,
 `gti_nmropt=1`이 restraint energy를 lambda에 따라 scaling합니다. 따라서
@@ -98,6 +106,14 @@ additional endpoint spacing. Each window contains 200 ps heating, 1 ns
 equilibration, and one 1 ns production segment.
 JZ4 is parameterized with a net charge of zero. The protein anchors are GLN102
 `CG-CB-CA`, and the ligand anchors are JZ4 `C7-C8-C9`.
+
+The solvent topology uses a 20 Å solute-to-box-edge buffer to keep the shortest
+box dimension out of the `pmemd.cuda` small-box guard with the 10 Å cutoff.
+Completed stages are skipped. Partial minimization, heating, or equilibration
+output is removed before restarting that stage. Partial production output is
+preserved and stops the workflow. Completion requires a zero engine exit status,
+all required outputs, and a `.<stage>.complete` marker. Outputs without the
+marker are partial even when every expected file is present.
 
 The restraint stage uses one full-strength `DISANG` definition in every window.
 `gti_nmropt=1` scales that restraint from the unrestrained to the restrained

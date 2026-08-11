@@ -59,6 +59,11 @@ ff19SB/TIP3P `system.parm7`을 ratchet MD와 모든 umbrella
 window가 공유합니다. Window별 solvation은 하지 않습니다. CV, atom index,
 ABMD target, window 범위와 force constant는 chignolin용 설정입니다.
 
+Ratchet MD와 umbrella window는 engine 정상 종료와 필수 output 검사를 통과한
+stage에만 completion marker를 기록합니다. Partial preparation stage는 해당
+output을 삭제하고 다시 실행하며 partial ratchet/umbrella production은 보존하고
+중단합니다.
+
 `tleap.in`은 20 Å TIP3P buffer를 추가한 뒤 atom center로 계산한 box에
 0.25 Å padding을 둡니다. AmberTools 26에서 초기 density는 약
 0.93 g/cm³였고, 0.8 Å 미만의 periodic overlap은 없었습니다. Padding을
@@ -91,6 +96,11 @@ checksums. `prepare.py` selects the first NMR model. `prepare.sh` creates
 one ff19SB/TIP3P topology shared by ratchet MD and every
 umbrella window. Seed frames are not resolvated. The CV, atom indices, target,
 window range, and restraint strength are specific to chignolin.
+
+Ratchet MD and umbrella windows write a completion marker only after the engine
+exits successfully and all required outputs are present. Partial preparation
+stages are restarted after their outputs are removed; partial ratchet or
+umbrella production is preserved and stops the workflow.
 
 The tleap build adds a 20 Å TIP3P buffer and defines the periodic box from
 atom centers with 0.25 Å padding. With AmberTools 26 this produced an initial

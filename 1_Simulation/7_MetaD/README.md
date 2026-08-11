@@ -28,6 +28,11 @@ CV 대신 300–500 K multithermal target distribution을 구성합니다. 서�
 `python3 anal.py` 순서로 실행합니다. Production은 1 ns segment 하나입니다.
 AMBER restart와 PLUMED bias state가 모두 있어야 다음 segment를 시작합니다.
 
+Minimization, heating과 equilibration의 partial output은 해당 stage를 다시
+시작하기 전에 삭제합니다. Production은 AMBER restart와 `HILLS`, `opes.state`
+같은 bias state를 함께 보존하고 partial segment에서 중단합니다. Completion
+marker는 engine 정상 종료와 method별 필수 output을 모두 확인한 뒤 기록합니다.
+
 PLUMED가 연결된 Amber의 `pmemd.cuda`가 기본 engine입니다. AmberTools만 설치한
 환경에서는 PLUMED를 포함해 build한 `sander`를 `AMBER_ENGINE=sander`로 지정할
 수 있습니다. 설치된 executable이 PLUMED 연동을 지원하는지는 짧은 coupled run으로
@@ -46,3 +51,8 @@ runnable directory. Production consists of one 1 ns segment. Continuation
 requires both the AMBER restart and the method-specific PLUMED state. The default
 engine is a PLUMED-enabled `pmemd.cuda`; a PLUMED-enabled `sander` can be selected
 with `AMBER_ENGINE=sander`.
+
+Partial minimization, heating, and equilibration output is removed before that
+stage is restarted. Production preserves the AMBER restart and bias state and
+stops on a partial segment. A completion marker is written only after successful
+engine and method-specific output checks.
