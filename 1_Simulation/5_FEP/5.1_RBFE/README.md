@@ -42,7 +42,8 @@ Complex와 solvent leg는 각각 lambda 0.0–1.0의 11개 window를 사용합�
 Soft-core interaction은 Amber 26의 `aces26=1` 형식을 사용합니다.
 `gti_sc_cc_energy_terms='ele,vdw,ele14,vdw14'`는 soft-core와 common region
 사이의 nonbonded term을 lambda에 따라 바꿉니다. 이 형식은 `pmemd.cuda`에서
-실행하며 `run.sh`는 다른 engine override를 거부합니다.
+실행하며 `run.sh`는 다른 engine override를 거부합니다. Minimization의
+`ntmin=2`는 `ifsc=1`에서 요구되는 steepest-descent algorithm을 사용합니다.
 
 Production의 `ifmbar=1`과 `mbar_lambda`는 각 saved configuration의 potential
 energy를 11개 state에서 평가합니다. 이 계산은 현재 window의 dynamics를
@@ -81,7 +82,8 @@ segments resume safely; partial output stops the workflow.
 
 The inputs use the Amber 26 `aces26=1` soft-core format and scale
 `ele,vdw,ele14,vdw14` interactions between soft-core and common regions.
-`run.sh` therefore requires `pmemd.cuda`. `ifmbar=1` evaluates every saved
+`run.sh` therefore requires `pmemd.cuda`. Minimization uses `ntmin=2` because
+`ifsc=1` requires the steepest-descent algorithm. `ifmbar=1` evaluates every saved
 configuration at all eleven lambda states without changing its propagation.
 
 `anal.py` extracts the cross-state energy matrix and runs the AmberTools 26
