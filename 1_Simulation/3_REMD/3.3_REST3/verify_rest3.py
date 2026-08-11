@@ -154,7 +154,7 @@ def verify_cmap_scaling(base: Path, observed: Path, scale: float) -> None:
 
     for (base_types, base_values), (types, values) in zip(base_maps, observed_maps):
         if types != base_types:
-            raise SystemExit(f"CMAP bonded type 또는 residue selector가 바뀌었습니다: {observed}")
+            raise SystemExit(f"CMAP bonded type이 바뀌었습니다: {observed}")
 
         for reference, value in zip(base_values, values):
             if not math.isclose(

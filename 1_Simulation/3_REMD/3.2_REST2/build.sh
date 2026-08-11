@@ -138,7 +138,7 @@ if ! "$python_bin" "$script_dir/scale_cmap.py" \
     "$work_dir/topol.top" \
     "$work_dir/processed.top" \
     1.0; then
-    die "processed topology의 CMAP residue selector 복원에 실패했습니다."
+    die "processed topology의 residue-specific CMAP 복원에 실패했습니다."
 fi
 
 if ! "$python_bin" "$script_dir/mark_hot.py" \
