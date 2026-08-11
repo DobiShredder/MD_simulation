@@ -17,10 +17,10 @@ protein complex와 물에서 각각 계산하고 두 값의 차이로 `ΔΔG_bin
 | --- | --- | --- |
 | `download.sh` | 4W53 PDB/mmCIF와 ligand SDF download | `structure/` |
 | `prepare.py` | Protein과 bound BNZ/MBN coordinate 분리 | `protein.pdb`, `bound_*.pdb` |
-| `build.sh` | GAFF2/AM1-BCC parameter와 두 leg의 topology 생성 | `work/build/`, `states.tsv` |
-| `generate_inputs.py` | 22개 window input 생성; `build.sh`가 호출 | `work/legs/` |
+| `build.sh` | GAFF2/AM1-BCC parameter와 complex 및 solvent topology 생성 | `work/build/`, `states.tsv` |
+| `generate_inputs.py` | 22개 window input 생성; `build.sh`가 호출 | `work/complex/`, `work/solvent/` |
 | `run.sh` | Minimization, heating, equilibration, production 실행 | Window별 restart, trajectory, log |
-| `anal.py` | MBAR energy 추출, FE-ToolKit 실행과 leg 조합 | `free_energy.tsv`, `overlap_matrix.tsv` |
+| `anal.py` | MBAR energy 추출, FE-ToolKit 실행과 두 environment 조합 | `free_energy.tsv`, `overlap_matrix.tsv` |
 
 ```bash
 ./download.sh
@@ -33,10 +33,10 @@ python3 anal.py
 
 ### 주요 option
 
-Complex와 solvent leg는 각각 lambda 0.0–1.0의 11개 window를 사용합니다.
+Complex와 solvent environment는 각각 lambda 0.0–1.0의 11개 window를 사용합니다.
 `timask1`/`timask2`는 BNZ와 MBN end state를, `scmask1`/`scmask2`는 soft-core
 대상을 지정합니다. 각 window는 200 ps heating, 100 ps NPT equilibration과
-1 ns production segment 두 개를 실행합니다. 완성된 segment는 건너뛰며 output이
+1 ns production segment 하나를 실행합니다. 완성된 segment는 건너뛰며 output이
 일부만 있으면 중단합니다.
 
 Soft-core interaction은 Amber 26의 `aces26=1` 형식을 사용합니다.
@@ -62,7 +62,7 @@ correlated-sample stride와 20회 bootstrap을 사용합니다. 주요 output은
 | `work/mbar/rbfe_report.html` | FE-ToolKit convergence report |
 
 `complex_delta_g`와 `solvent_delta_g`는 같은 방향의 transformation입니다.
-`relative_binding_delta_delta_g`는 두 leg의 차이입니다. 최종 값보다 먼저 인접
+`relative_binding_delta_delta_g`는 complex와 solvent 계산의 차이입니다. 최종 값보다 먼저 인접
 state의 overlap과 report의 equilibration warning을 확인합니다.
 
 참고: [RCSB PDB 4W53](https://www.rcsb.org/structure/4W53)
@@ -75,7 +75,7 @@ binding free energy. Both ligands are neutral, so no net-charge correction is
 needed.
 
 Run `download.sh`, `prepare.py`, `build.sh`, `run.sh`, and `anal.py` in that
-order. The complex and solvent legs each contain eleven lambda windows. AMBER
+order. The complex and solvent environments each contain eleven lambda windows. AMBER
 soft-core masks define the two ligand end states. Every window uses 200 ps of
 heating, 100 ps of NPT equilibration, and one 1 ns production segment. Completed
 segments resume safely; partial output stops the workflow.

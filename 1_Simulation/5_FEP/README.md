@@ -2,7 +2,7 @@
 
 ![RBFE와 ABFE thermodynamic cycle / RBFE and ABFE thermodynamic cycles](../../assets/simulation/thermodynamic_cycles.svg)
 
-*직접 sampling하기 어려운 physical binding leg를 계산 가능한 alchemical leg의 조합으로 구합니다. / Physical binding legs are obtained from combinations of tractable alchemical legs.*
+*직접 sampling하기 어려운 binding process를 계산 가능한 alchemical path의 조합으로 구합니다. / The physical binding process is obtained from a combination of tractable alchemical paths.*
 
 
 ## 한국어
@@ -47,6 +47,6 @@ lysozyme L99A/M102Q. Both collect the full cross-state energy matrix with AMBER 
 and use the AmberTools 26 FE-ToolKit MBAR estimator. Two nanoseconds of
 production per window is a tutorial-scale default.
 
-The ACES26 cross-state matrix and restrained ABFE leg still require a short
+The ACES26 cross-state matrix and restrained ABFE path still require a short
 Amber 26 `pmemd.cuda` validation run. Confirm that the GPU mdout contains the
 `MBAR Energy analysis` block for every lambda before interpreting either cycle.

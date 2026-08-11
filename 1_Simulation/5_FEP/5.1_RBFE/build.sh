@@ -25,7 +25,7 @@ parmchk2=${PARMCHK2:-parmchk2}
 tleap=${TLEAP:-tleap}
 
 if (( dry_run )); then
-    echo "Build: ff19SB/GAFF2/AM1-BCC/TIP3P, complex와 solvent leg"
+    echo "Build: ff19SB/GAFF2/AM1-BCC/TIP3P, complex와 solvent environment"
     printf '%q -i %q -fi pdb -o %q -fo mol2 -at gaff2 -c bcc -nc 0 -rn BNZ\n' "$antechamber" "$structure_dir/bound_bnz.pdb" "$build_dir/bnz.mol2"
     printf '%q -i %q -fi pdb -o %q -fo mol2 -at gaff2 -c bcc -nc 0 -rn MBN\n' "$antechamber" "$structure_dir/bound_mbn.pdb" "$build_dir/mbn.mol2"
     printf '%q %q %q %q\n' python3 "generate_inputs.py" "$work_dir" "inputs"
@@ -73,17 +73,17 @@ echo "Benzene과 toluene을 GAFF2/AM1-BCC로 parameterize합니다."
 )
 
 echo "Complex와 solvent topology를 생성합니다."
-for leg in complex solvent; do
-    cp "inputs/tleap_${leg}.in" "$build_dir/tleap_${leg}.in"
-    if ! (cd "$build_dir" && "$tleap" -f "tleap_${leg}.in" > "tleap_${leg}.log" 2>&1); then
-        die "$leg topology build에 실패했습니다: $build_dir/tleap_${leg}.log"
+for environment in complex solvent; do
+    cp "inputs/tleap_${environment}.in" "$build_dir/tleap_${environment}.in"
+    if ! (cd "$build_dir" && "$tleap" -f "tleap_${environment}.in" > "tleap_${environment}.log" 2>&1); then
+        die "$environment topology build에 실패했습니다: $build_dir/tleap_${environment}.log"
     fi
     for suffix in parm7 rst7 pdb; do
-        if [[ ! -s "$build_dir/$leg.$suffix" ]]; then
-            die "$leg build output이 없습니다: $build_dir/$leg.$suffix"
+        if [[ ! -s "$build_dir/$environment.$suffix" ]]; then
+            die "$environment build output이 없습니다: $build_dir/$environment.$suffix"
         fi
     done
 done
 
 python3 "generate_inputs.py" "$work_dir" "inputs"
-echo "RBFE window 22개를 생성했습니다: $work_dir/legs"
+echo "RBFE window 22개를 생성했습니다: $work_dir/complex, $work_dir/solvent"

@@ -19,9 +19,9 @@ standard-state correction을 thermodynamic cycle의 부호에 맞춰 합칩니�
 | `download.sh` | 3HTB와 JZ4 ideal SDF download | `structure/` |
 | `prepare.py` | T4 lysozyme와 JZ4를 선택하고 anchor metadata 기록 | `complex.pdb`, `preparation.tsv` |
 | `build.sh` | JZ4 parameter, 원본/zero-charge topology와 65개 window 생성 | `work/build/`, `states.tsv` |
-| `generate_inputs.py` | Topology에서 restraint atom 번호와 input 생성 | `restraints.tsv`, `work/windows/` |
+| `generate_inputs.py` | Topology에서 restraint atom 번호와 input 생성 | `restraints.tsv`, `work/restraint/`, `work/charge/`, `work/vdw/` |
 | `run.sh` | Window별 MD와 1 ns production 실행 | Restart, trajectory, AMBER output |
-| `anal.py` | MBAR leg 계산과 standard-state correction 조합 | `free_energy.tsv`, `overlap_matrix.tsv` |
+| `anal.py` | Stage별 MBAR 계산과 standard-state correction 조합 | `free_energy.tsv`, `overlap_matrix.tsv` |
 
 ```bash
 ./download.sh
@@ -44,6 +44,10 @@ Restraint·charge stage는 11개 lambda state를 사용합니다. LJ stage는 en
 state를 정하고 `ifsc`/`scmask1`이 LJ endpoint의 singularity를 피합니다.
 `ifmbar=1`은 각 configuration의 potential energy를 해당 stage의 모든 lambda에서
 평가합니다. 이 full energy matrix가 MBAR의 input입니다.
+
+Window는 `work/restraint/complex/`, `work/charge/{complex,solvent}/`와
+`work/vdw/{complex,solvent}/`에 생성됩니다. 각 directory 아래의 `000`부터
+시작하는 번호가 lambda window입니다.
 
 Restraint stage는 λ=0의 unrestrained complex에서 λ=1의 restrained complex로
 진행합니다. 모든 window는 같은 full-strength `DISANG` file을 사용하고,
@@ -111,7 +115,7 @@ per-state sampling diagnostics, stage overlap matrices, and an HTML convergence
 report. The short windows and approximate correction are suitable for learning
 the workflow, not for claiming a converged experimental binding affinity.
 
-The restraint leg runs from an unrestrained to a restrained bound complex, so
+The restraint stage runs from an unrestrained to a restrained bound complex, so
 its MBAR contribution enters the binding cycle with the opposite sign. AMBER uses
 `U=rk(x-x0)^2`; the analytical Boresch expression therefore uses `K=2*rk`.
 The `gti_nmropt=1` restraint-MBAR combination still requires an Amber 26

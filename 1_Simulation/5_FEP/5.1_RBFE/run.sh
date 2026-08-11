@@ -55,6 +55,7 @@ run_stage() {
     local stage=$2
     local input_restart=$3
     local trajectory=$4
+    local calculation=$5
     local prefix="$directory/$stage"
     local required=("$prefix.out" "$prefix.rst7" "$prefix.info")
     local command=(
@@ -86,6 +87,7 @@ run_stage() {
     if [[ "$state" == partial ]]; then
         die "일부 output만 존재합니다: $prefix"
     fi
+    echo "실행: $calculation - $stage"
     if ! (
         cd "$directory"
         "${command[@]}"
@@ -100,20 +102,20 @@ run_stage() {
 }
 
 if (( dry_run )); then
-    echo "RBFE: 2 legs × 11 lambda windows, window당 1 ns production"
+    echo "RBFE: complex/solvent 각 11개 lambda window, window당 1 ns production"
 fi
 
-while IFS=$'\t' read -r leg window lambda seed directory; do
-    if [[ "$leg" == leg ]]; then
+while IFS=$'\t' read -r environment window lambda seed directory; do
+    if [[ "$environment" == environment ]]; then
         continue
     fi
-    directory="$work_dir/legs/$leg/$window"
-    run_stage "$directory" minimize system.rst7 no
-    run_stage "$directory" heat minimize.rst7 yes
-    run_stage "$directory" equilibrate heat.rst7 yes
-    run_stage "$directory" production.001 equilibrate.rst7 yes
+    calculation="RBFE $environment window $window (lambda=$lambda)"
+    run_stage "$directory" minimize system.rst7 no "$calculation"
+    run_stage "$directory" heat minimize.rst7 yes "$calculation"
+    run_stage "$directory" equilibrate heat.rst7 yes "$calculation"
+    run_stage "$directory" production.001 equilibrate.rst7 yes "$calculation"
 done < "$states_file"
 
 if (( ! dry_run )); then
-    echo "RBFE production이 완료되었습니다: $work_dir/legs"
+    echo "RBFE production이 완료되었습니다: $work_dir/complex, $work_dir/solvent"
 fi

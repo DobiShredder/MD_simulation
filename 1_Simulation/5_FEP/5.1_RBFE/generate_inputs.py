@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""RBFE leg/window directory와 AMBER input을 생성합니다."""
+"""RBFE environment/window directory와 AMBER input을 생성합니다."""
 
 from __future__ import annotations
 
@@ -35,16 +35,16 @@ def relative_link(target: Path, link: Path) -> None:
 
 def main() -> None:
     args = parse_arguments()
-    state_rows = ["leg\twindow\tlambda\tseed\tdirectory"]
+    state_rows = ["environment\twindow\tlambda\tseed\tdirectory"]
     state_index = 0
 
-    for leg in ("complex", "solvent"):
-        topology = args.work_dir / "build" / f"{leg}.parm7"
-        restart = args.work_dir / "build" / f"{leg}.rst7"
+    for environment in ("complex", "solvent"):
+        topology = args.work_dir / "build" / f"{environment}.parm7"
+        restart = args.work_dir / "build" / f"{environment}.rst7"
         for window_index, lambda_value in enumerate(LAMBDAS):
             state_index += 1
             window = f"{window_index:03d}"
-            directory = args.work_dir / "legs" / leg / window
+            directory = args.work_dir / environment / window
             directory.mkdir(parents=True, exist_ok=True)
 
             relative_link(topology, directory / "system.parm7")
@@ -70,7 +70,8 @@ def main() -> None:
                 replacements,
             )
             state_rows.append(
-                f"{leg}\t{window}\t{lambda_value:.1f}\t{51000 + state_index}\t{directory}"
+                f"{environment}\t{window}\t{lambda_value:.1f}\t"
+                f"{51000 + state_index}\t{directory}"
             )
 
     (args.work_dir / "states.tsv").write_text("\n".join(state_rows) + "\n", encoding="utf-8")

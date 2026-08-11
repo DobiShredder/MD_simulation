@@ -55,6 +55,7 @@ run_stage() {
     local stage=$2
     local input_restart=$3
     local trajectory=$4
+    local calculation=$5
     local prefix="$directory/$stage"
     local required=("$prefix.out" "$prefix.rst7" "$prefix.info")
     local command=(
@@ -84,6 +85,7 @@ run_stage() {
     if [[ "$state" == partial ]]; then
         die "일부 output만 존재합니다: $prefix"
     fi
+    echo "실행: $calculation - $stage"
     if ! (
         cd "$directory"
         "${command[@]}"
@@ -101,17 +103,18 @@ if (( dry_run )); then
     echo "ABFE: restraint/charge/LJ 65 windows, window당 1 ns production"
 fi
 
-while IFS=$'\t' read -r method_stage leg window lambda seed directory; do
+while IFS=$'\t' read -r method_stage environment window lambda seed directory; do
     if [[ "$method_stage" == stage ]]; then
         continue
     fi
-    directory="$work_dir/windows/$method_stage/$window"
-    run_stage "$directory" minimize system.rst7 no
-    run_stage "$directory" heat minimize.rst7 yes
-    run_stage "$directory" equilibrate heat.rst7 yes
-    run_stage "$directory" production.001 equilibrate.rst7 yes
+    interaction=${method_stage##*_}
+    calculation="ABFE $interaction/$environment window $window (lambda=$lambda)"
+    run_stage "$directory" minimize system.rst7 no "$calculation"
+    run_stage "$directory" heat minimize.rst7 yes "$calculation"
+    run_stage "$directory" equilibrate heat.rst7 yes "$calculation"
+    run_stage "$directory" production.001 equilibrate.rst7 yes "$calculation"
 done < "$states_file"
 
 if (( ! dry_run )); then
-    echo "ABFE production이 완료되었습니다: $work_dir/windows"
+    echo "ABFE production이 완료되었습니다: $work_dir/restraint, $work_dir/charge, $work_dir/vdw"
 fi

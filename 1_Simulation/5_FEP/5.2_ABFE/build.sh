@@ -74,14 +74,14 @@ cp "$ligand_sdf" "$build_dir/JZ4_ideal.sdf"
 )
 
 echo "Complex와 solvent topology를 생성합니다."
-for leg in complex solvent; do
-    cp "inputs/tleap_${leg}.in" "$build_dir/tleap_${leg}.in"
-    if ! (cd "$build_dir" && "$tleap" -f "tleap_${leg}.in" > "tleap_${leg}.log" 2>&1); then
-        die "$leg topology build에 실패했습니다: $build_dir/tleap_${leg}.log"
+for environment in complex solvent; do
+    cp "inputs/tleap_${environment}.in" "$build_dir/tleap_${environment}.in"
+    if ! (cd "$build_dir" && "$tleap" -f "tleap_${environment}.in" > "tleap_${environment}.log" 2>&1); then
+        die "$environment topology build에 실패했습니다: $build_dir/tleap_${environment}.log"
     fi
     for suffix in parm7 rst7; do
-        if [[ ! -s "$build_dir/$leg.$suffix" ]]; then
-            die "$leg build output이 없습니다: $build_dir/$leg.$suffix"
+        if [[ ! -s "$build_dir/$environment.$suffix" ]]; then
+            die "$environment build output이 없습니다: $build_dir/$environment.$suffix"
         fi
     done
 done
@@ -92,4 +92,4 @@ done
     "inputs" \
     "$anchor_residue"
 
-echo "ABFE window 65개를 생성했습니다: $work_dir/windows"
+echo "ABFE window 65개를 생성했습니다: $work_dir/restraint, $work_dir/charge, $work_dir/vdw"

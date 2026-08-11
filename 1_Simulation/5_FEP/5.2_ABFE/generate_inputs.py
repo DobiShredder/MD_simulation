@@ -23,6 +23,23 @@ STAGES = [
 ]
 
 
+def window_directory(
+    work_dir: Path,
+    stage: str,
+    environment: str,
+    window: str,
+) -> Path:
+    if stage == "restraint":
+        interaction = "restraint"
+    elif stage.endswith("_charge"):
+        interaction = "charge"
+    elif stage.endswith("_vdw"):
+        interaction = "vdw"
+    else:
+        raise SystemExit(f"지원하지 않는 ABFE stage입니다: {stage}")
+    return work_dir / interaction / environment / window
+
+
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("work_dir", type=Path)
@@ -171,10 +188,10 @@ def main() -> None:
         str(args.work_dir / "build" / "complex.parm7"),
         xyz=str(args.work_dir / "build" / "complex.rst7"),
     )
-    for leg in ("complex", "solvent"):
+    for environment in ("complex", "solvent"):
         write_uncharged_topology(
-            args.work_dir / "build" / f"{leg}.parm7",
-            args.work_dir / "build" / f"{leg}_uncharged.parm7",
+            args.work_dir / "build" / f"{environment}.parm7",
+            args.work_dir / "build" / f"{environment}_uncharged.parm7",
         )
     records = restraint_records(topology, args.protein_anchor_residue)
     metadata = ["restraint\treference\tforce_constant\tatom_indices"]
@@ -185,25 +202,33 @@ def main() -> None:
         )
     (args.work_dir / "restraints.tsv").write_text("\n".join(metadata) + "\n", encoding="utf-8")
 
-    states = ["stage\tleg\twindow\tlambda\tseed\tdirectory"]
+    states = ["stage\tenvironment\twindow\tlambda\tseed\tdirectory"]
     state_index = 0
-    for stage, leg, schedule in STAGES:
+    for stage, environment, schedule in STAGES:
         for window_index, lambda_value in enumerate(schedule):
             state_index += 1
-            directory = args.work_dir / "windows" / stage / f"{window_index:03d}"
+            window = f"{window_index:03d}"
+            directory = window_directory(args.work_dir, stage, environment, window)
             directory.mkdir(parents=True, exist_ok=True)
-            topology_name = f"{leg}_uncharged.parm7" if stage.endswith("vdw") else f"{leg}.parm7"
+            topology_name = (
+                f"{environment}_uncharged.parm7"
+                if stage.endswith("vdw")
+                else f"{environment}.parm7"
+            )
             relative_link(args.work_dir / "build" / topology_name, directory / "system.parm7")
-            relative_link(args.work_dir / "build" / f"{leg}.rst7", directory / "system.rst7")
-            restraint_scale = 1.0 if leg == "complex" else 0.0
+            relative_link(
+                args.work_dir / "build" / f"{environment}.rst7",
+                directory / "system.rst7",
+            )
+            restraint_scale = 1.0 if environment == "complex" else 0.0
             write_restraints(directory / "disang.rest", records, restraint_scale)
             replacements = {
                 "@STAGE@": stage,
                 "@LAMBDA@": f"{lambda_value:.6f}",
                 "@RANDOM_SEED@": str(61000 + state_index),
-                "@RESTRAINT_OPTIONS@": "nmropt=1," if leg == "complex" else "",
-                "@WT_END@": "&wt type='END', /" if leg == "complex" else "",
-                "@DISANG@": "DISANG=disang.rest" if leg == "complex" else "",
+                "@RESTRAINT_OPTIONS@": "nmropt=1," if environment == "complex" else "",
+                "@WT_END@": "&wt type='END', /" if environment == "complex" else "",
+                "@DISANG@": "DISANG=disang.rest" if environment == "complex" else "",
             }
             for name in ("heat", "equilibrate", "production"):
                 replacements["@ALCHEMICAL_OPTIONS@"] = alchemical_options(
@@ -217,7 +242,7 @@ def main() -> None:
                 (args.input_dir / "minimize.in").read_text(encoding="utf-8"), encoding="utf-8"
             )
             states.append(
-                f"{stage}\t{leg}\t{window_index:03d}\t{lambda_value:.6f}\t"
+                f"{stage}\t{environment}\t{window}\t{lambda_value:.6f}\t"
                 f"{61000 + state_index}\t{directory}"
             )
     (args.work_dir / "states.tsv").write_text("\n".join(states) + "\n", encoding="utf-8")

@@ -77,27 +77,29 @@ def extract_window(
                     output_handle.write(input_handle.read())
 
 
-def prepare_leg_data(
+def prepare_environment_data(
     extractor: str,
-    leg: str,
+    environment_name: str,
     states: list[dict[str, str]],
     mbar_directory: Path,
 ) -> tuple[Path, list[str]]:
-    leg_states = [state for state in states if state["leg"] == leg]
-    leg_states.sort(key=lambda state: float(state["lambda"]))
-    data_directory = mbar_directory / "data" / leg
+    environment_states = [
+        state for state in states if state["environment"] == environment_name
+    ]
+    environment_states.sort(key=lambda state: float(state["lambda"]))
+    data_directory = mbar_directory / "data" / environment_name
     data_directory.mkdir(parents=True)
     log_file = mbar_directory / "extract.log"
 
-    for state in leg_states:
+    for state in environment_states:
         extract_window(extractor, state, data_directory, log_file)
 
-    lambdas = [f"{float(state['lambda']):.8f}" for state in leg_states]
+    lambdas = [f"{float(state['lambda']):.8f}" for state in environment_states]
     expected_files = len(lambdas) * len(lambdas)
     observed_files = len(list(data_directory.glob("efep_*.dat")))
     if observed_files != expected_files:
         raise SystemExit(
-            f"{leg} MBAR energy matrix가 불완전합니다: "
+            f"{environment_name} MBAR energy matrix가 불완전합니다: "
             f"expected={expected_files}, observed={observed_files}"
         )
     return data_directory, lambdas
@@ -143,7 +145,7 @@ def environment_result(edge: object, name: str) -> tuple[float, float]:
     for environment in edge.GetEnvs():
         if environment.stages[0].name == name:
             return environment.GetValueAndError(edge.results.prod)
-    raise SystemExit(f"MBAR report에서 {name} leg를 찾지 못했습니다.")
+    raise SystemExit(f"MBAR report에서 {name} environment를 찾지 못했습니다.")
 
 
 def write_free_energy(edge: object) -> None:
@@ -181,20 +183,20 @@ def write_diagnostics(edge: object) -> None:
     with diagnostics_path.open("w", encoding="utf-8", newline="") as diagnostics_handle:
         diagnostics = csv.writer(diagnostics_handle, delimiter="\t")
         diagnostics.writerow([
-            "leg", "lambda", "input_samples", "production_samples",
+            "environment", "lambda", "input_samples", "production_samples",
             "equilibration_start", "statistical_stride", "equilibrated",
         ])
 
         with overlap_path.open("w", encoding="utf-8", newline="") as overlap_handle:
             overlap = csv.writer(overlap_handle, delimiter="\t")
-            overlap.writerow(["leg", "sampled_lambda", "evaluated_lambda", "overlap"])
+            overlap.writerow(["environment", "sampled_lambda", "evaluated_lambda", "overlap"])
 
             for environment in edge.GetEnvs():
                 trial = environment.stages[0].trials[0]
-                leg = environment.stages[0].name
+                environment_name = environment.stages[0].name
                 for state_index, state_result in enumerate(trial.results):
                     diagnostics.writerow([
-                        leg,
+                        environment_name,
                         trial.ene[state_index],
                         state_result.osize,
                         state_result.psize,
@@ -204,7 +206,7 @@ def write_diagnostics(edge: object) -> None:
                     ])
                     for evaluated_index, value in enumerate(state_result.overlaps):
                         overlap.writerow([
-                            leg,
+                            environment_name,
                             trial.ene[state_index],
                             trial.ene[evaluated_index],
                             f"{float(value):.8f}",
@@ -221,8 +223,8 @@ def main() -> None:
         shutil.rmtree(mbar_directory)
     mbar_directory.mkdir(parents=True)
 
-    complex_data = prepare_leg_data(extractor, "complex", states, mbar_directory)
-    solvent_data = prepare_leg_data(extractor, "solvent", states, mbar_directory)
+    complex_data = prepare_environment_data(extractor, "complex", states, mbar_directory)
+    solvent_data = prepare_environment_data(extractor, "solvent", states, mbar_directory)
     xml_path = mbar_directory / "rbfe.xml"
     report_path = mbar_directory / "rbfe_report.py"
     write_edge_xml(xml_path, complex_data, solvent_data)
