@@ -8,9 +8,12 @@ SH3-peptide heating from 20 to 300 K
   ntc=2, ntf=2, cut=10.0,
   ntpr=5000, ntwx=5000, ntwr=100000,
   ioutfm=1, iwrap=0,
-  ntr=1, netfrc=0,
+  ntr=1,
   restraint_wt=5.0, restraintmask='!:WAT,Na+,Cl-',
   nmropt=1,
+/
+&ewald
+  netfrc=0,
 /
 &wt type='TEMP0', istep1=0, istep2=100000, value1=20.0, value2=300.0 /
 &wt type='END' /
