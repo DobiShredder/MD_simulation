@@ -14,7 +14,7 @@ equation을 반복 계산합니다.
 python3 anal.py
 ```
 
-`run.sh`는 `us/work/windows/NNN/distance.dat`에서 처음 100 ps를 제외하고
+`run.sh`는 `us/work/NNN/distance.dat`에서 처음 100 ps를 제외하고
 window별 series를 `output/series/`에 만듭니다. DUMPAVE의 1열을 time, 8열을
 distance로 읽습니다. Column이나 discard 구간이 다르면 `prepare.py` 상단의
 값을 수정합니다.

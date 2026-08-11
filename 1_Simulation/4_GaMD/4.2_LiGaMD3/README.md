@@ -59,6 +59,7 @@ potential에 세 boost를 적용합니다. 완료된 segment의 MD restart와
 | `ntcmd*`, `nteb*` | Initial conventional statistics와 GaMD equilibration schedule입니다. `*prep`과 전체 step 값을 독립 구간처럼 더하지 않습니다. |
 | `LIGAND_CHARGE=1` | AM1-BCC parameterization에 사용하는 BEN net charge입니다. |
 | `ALLOW_UNVERIFIED_LIGAMD3=1` | Amber26 GPU 검증 전 실제 실행을 의도적으로 opt-in합니다. |
+| `ntr=1`, `-ref minimize.rst7` | Heating restraint의 reference로 minimization restart를 사용합니다. |
 
 Amber26의 LiGaMD3 동작은 아직 실제 GPU에서 검증하지 않았습니다. 위 opt-in은
 이 상태를 확인하기 위한 것이며 호환성을 보장하지 않습니다. 세 boost component,
@@ -94,6 +95,7 @@ thresholds.
 conventional-statistics and GaMD-equilibration schedules. `LIGAND_CHARGE`
 controls BEN parameterization, and
 actual runs remain gated by `ALLOW_UNVERIFIED_LIGAMD3=1`.
+Heating passes `minimize.rst7` to `-ref` for the `ntr=1` positional restraint.
 
 Amber 26 documents LiGaMD3 only for serial GPU `pmemd.cuda`; `run.sh` rejects
 CPU and MPI engine overrides.

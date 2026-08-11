@@ -115,7 +115,7 @@ def prepare_inputs(simulation_work: Path, output_dir: Path) -> int:
 
     for state in states:
         replica = state["replica"]
-        replica_dir = simulation_work / "replicas" / replica
+        replica_dir = simulation_work / replica
         frames = prepare_window(
             replica,
             replica_dir,

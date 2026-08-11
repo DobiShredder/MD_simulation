@@ -55,7 +55,7 @@ if (( dry_run )); then
     echo "ff19SB/TIP3P AMBER system을 GROMACS topology로 변환합니다."
     echo "Protein atom만 표시하고 8개 REST2 topology를 생성합니다."
     echo "Scale 1.0 topology와 원본 topology의 potential energy를 비교합니다."
-    echo "생성 위치: $work_dir/replicas/000 ... 007"
+    echo "생성 위치: $work_dir/000 ... 007"
     exit 0
 fi
 
@@ -103,13 +103,21 @@ while IFS=$'\t' read -r replica effective_temperature lambda_pp _ seed; do
         continue
     fi
 
-    replica_dir="$work_dir/replicas/$replica"
+    replica_dir="$work_dir/$replica"
     mkdir -p "$replica_dir"
 
     if ! "$plumed" partial_tempering "$lambda_pp" \
         < "$work_dir/processed.hot.top" \
         > "$replica_dir/topol.top"; then
         die "REST2 topology 생성에 실패했습니다: replica $replica"
+    fi
+
+    if ! "$python_bin" "$script_dir/scale_cmap.py" \
+        "$replica_dir/topol.top" \
+        "$replica_dir/topol.top" \
+        "$lambda_pp" \
+        --type-suffix _; then
+        die "REST2 CMAP scaling에 실패했습니다: replica $replica"
     fi
 
     cp "$work_dir/system.gro" "$replica_dir/system.gro"
@@ -134,7 +142,7 @@ for variant in unscaled scale_one; do
     if [[ "$variant" == "unscaled" ]]; then
         topology="$work_dir/topol.top"
     else
-        topology="$work_dir/replicas/000/topol.top"
+        topology="$work_dir/000/topol.top"
     fi
 
     if ! "$gmx" grompp \
@@ -168,5 +176,4 @@ done
     "$energy_dir/scale_one.xvg" \
     "$energy_tolerance"
 
-echo "REST2 topology와 좌표: $work_dir/replicas"
-
+echo "REST2 topology와 좌표: $work_dir"

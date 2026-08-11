@@ -47,7 +47,7 @@ fi
 if (( dry_run )); then
     echo "19개 REUS window용 ff19SB/TIP3P system을 생성합니다."
     echo "CV: :1@CA–:10@CA, 6–24 Å, 1 Å spacing"
-    echo "생성 위치: $work_dir/replicas/000 ... 018"
+    echo "생성 위치: $work_dir/000 ... 018"
     exit 0
 fi
 
@@ -74,14 +74,14 @@ done
     "$work_dir/system.parm7" \
     "$work_dir/system.rst7" \
     "$states_file" \
-    "$work_dir/replicas"
+    "$work_dir"
 
 while IFS=$'\t' read -r replica _ seed; do
     if [[ "$replica" == "replica" ]]; then
         continue
     fi
 
-    replica_dir="$work_dir/replicas/$replica"
+    replica_dir="$work_dir/$replica"
     restraint_file="$replica_dir/distance.RST"
 
     cp "$work_dir/system.parm7" "$replica_dir/system.parm7"
@@ -104,5 +104,4 @@ while IFS=$'\t' read -r replica _ seed; do
 done < "$states_file"
 
 cp "$states_file" "$work_dir/states.tsv"
-echo "REUS topology, restraint와 input: $work_dir/replicas"
-
+echo "REUS topology, restraint와 input: $work_dir"

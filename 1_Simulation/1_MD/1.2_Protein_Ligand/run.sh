@@ -39,8 +39,7 @@ run_stage() {
 # 사용자 설정과 output 경로
 engine=${AMBER_ENGINE:-pmemd.cuda}
 
-script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-work_dir=${WORK_DIR:-"$script_dir/work"}
+work_dir=${WORK_DIR:-work}
 topology="$work_dir/system.parm7"
 coordinates="$work_dir/system.rst7"
 
@@ -65,6 +64,8 @@ if (( dry_run )); then
     printf '+ cd %q\n' "$work_dir"
 else
     mkdir -p "$work_dir"
+    mkdir -p "$work_dir/inputs"
+    cp inputs/*.in "$work_dir/inputs/"
     cd "$work_dir"
     echo "AMBER engine: $engine (기본값: pmemd.cuda)"
 fi
@@ -73,7 +74,7 @@ fi
 run_stage 'solvent minimization' \
     "$engine" \
     -O \
-    -i "$script_dir/inputs/min-solvent.in" \
+    -i inputs/min-solvent.in \
     -o min-solvent.out \
     -p system.parm7 \
     -c system.rst7 \
@@ -83,7 +84,7 @@ run_stage 'solvent minimization' \
 run_stage '전체 system minimization' \
     "$engine" \
     -O \
-    -i "$script_dir/inputs/min-all.in" \
+    -i inputs/min-all.in \
     -o min-all.out \
     -p system.parm7 \
     -c min-solvent.rst7 \
@@ -92,7 +93,7 @@ run_stage '전체 system minimization' \
 run_stage 'NVT 가열' \
     "$engine" \
     -O \
-    -i "$script_dir/inputs/heat.in" \
+    -i inputs/heat.in \
     -o heat.out \
     -p system.parm7 \
     -c min-all.rst7 \
@@ -104,7 +105,7 @@ run_stage 'NVT 가열' \
 run_stage 'NPT equilibration' \
     "$engine" \
     -O \
-    -i "$script_dir/inputs/equil.in" \
+    -i inputs/equil.in \
     -o equil.out \
     -p system.parm7 \
     -c heat.rst7 \
@@ -116,7 +117,7 @@ run_stage 'NPT equilibration' \
 run_stage '1 ns production' \
     "$engine" \
     -O \
-    -i "$script_dir/inputs/production.in" \
+    -i inputs/production.in \
     -o production.out \
     -p system.parm7 \
     -c equil.rst7 \
@@ -125,5 +126,5 @@ run_stage '1 ns production' \
     -inf production.info
 
 if (( ! dry_run )); then
-    echo "Production trajectory: $work_dir/production.nc"
+    echo "Production trajectory: production.nc"
 fi

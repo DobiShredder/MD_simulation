@@ -1,117 +1,84 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img">
-<title>ABFE benzamidinium decoupling stages</title>
-<desc>Ball-and-stick schematic showing electrostatic and then Lennard-Jones decoupling of every BEN atom while the environment remains unchanged.</desc>
-<defs>
-<marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#243447"/></marker>
-<marker id="blue-arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#0072B2"/></marker>
-<pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0 10L10 0" stroke="#6B7280" stroke-width="2"/></pattern>
-</defs>
-<rect width="1200" height="675" fill="#FFFFFF"/>
-<text x="60" y="52" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#243447">ABFE decoupling of :BEN</text>
-<text x="60" y="88" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="normal" fill="#6B7280">All ligand atoms are selected; the environment remains interacting</text>
-<text x="200" y="145" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="bold" fill="#243447">Interacting BEN</text>
-<rect x="40" y="175" width="320" height="300" rx="16" fill="#F8FBFD" stroke="#B8C4CE" stroke-width="2" opacity="1"/>
-<line x1="115.0" y1="250.0" x2="171.29165124598853" y2="282.5" stroke="#CC79A7" stroke-width="6"/>
-<line x1="171.29165124598853" y1="282.5" x2="171.29165124598853" y2="347.5" stroke="#CC79A7" stroke-width="6"/>
-<line x1="171.29165124598853" y1="347.5" x2="115.0" y2="380.0" stroke="#CC79A7" stroke-width="6"/>
-<line x1="115.0" y1="380.0" x2="58.70834875401148" y2="347.5" stroke="#CC79A7" stroke-width="6"/>
-<line x1="58.70834875401148" y1="347.5" x2="58.70834875401149" y2="282.5" stroke="#CC79A7" stroke-width="6"/>
-<line x1="58.70834875401149" y1="282.5" x2="115.0" y2="250.0" stroke="#CC79A7" stroke-width="6"/>
-<circle cx="115.0" cy="250.0" r="15" fill="#CC79A7" stroke="white" stroke-width="3" opacity="1"/>
-<text x="115.0" y="256.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">C</text>
-<circle cx="171.29165124598853" cy="282.5" r="15" fill="#CC79A7" stroke="white" stroke-width="3" opacity="1"/>
-<text x="171.29165124598853" y="288.5" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">C</text>
-<circle cx="171.29165124598853" cy="347.5" r="15" fill="#CC79A7" stroke="white" stroke-width="3" opacity="1"/>
-<text x="171.29165124598853" y="353.5" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">C</text>
-<circle cx="115.0" cy="380.0" r="15" fill="#CC79A7" stroke="white" stroke-width="3" opacity="1"/>
-<text x="115.0" y="386.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">C</text>
-<circle cx="58.70834875401148" cy="347.5" r="15" fill="#CC79A7" stroke="white" stroke-width="3" opacity="1"/>
-<text x="58.70834875401148" y="353.5" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">C</text>
-<circle cx="58.70834875401149" cy="282.5" r="15" fill="#CC79A7" stroke="white" stroke-width="3" opacity="1"/>
-<text x="58.70834875401149" y="288.5" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">C</text>
-<line x1="180" y1="315" x2="250" y2="315" stroke="#CC79A7" stroke-width="6"/>
-<circle cx="255" cy="315" r="17" fill="#CC79A7" stroke="white" stroke-width="3" opacity="1"/>
-<text x="255" y="321" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">C</text>
-<line x1="270" y1="307" x2="315" y2="270" stroke="#CC79A7" stroke-width="4"/>
-<line x1="270" y1="323" x2="315" y2="360" stroke="#CC79A7" stroke-width="4"/>
-<circle cx="325" cy="263" r="17" fill="#0072B2" stroke="white" stroke-width="3" opacity="1"/>
-<text x="325" y="269" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">N</text>
-<circle cx="325" cy="367" r="17" fill="#0072B2" stroke="white" stroke-width="3" opacity="1"/>
-<text x="325" y="373" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">N</text>
-<text x="600" y="145" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="bold" fill="#243447">Charge removed</text>
-<rect x="440" y="175" width="320" height="300" rx="16" fill="#F8FBFD" stroke="#B8C4CE" stroke-width="2" opacity="1"/>
-<line x1="515.0" y1="250.0" x2="571.2916512459885" y2="282.5" stroke="#6B7280" stroke-width="6"/>
-<line x1="571.2916512459885" y1="282.5" x2="571.2916512459885" y2="347.5" stroke="#6B7280" stroke-width="6"/>
-<line x1="571.2916512459885" y1="347.5" x2="515.0" y2="380.0" stroke="#6B7280" stroke-width="6"/>
-<line x1="515.0" y1="380.0" x2="458.70834875401147" y2="347.5" stroke="#6B7280" stroke-width="6"/>
-<line x1="458.70834875401147" y1="347.5" x2="458.70834875401147" y2="282.5" stroke="#6B7280" stroke-width="6"/>
-<line x1="458.70834875401147" y1="282.5" x2="515.0" y2="250.0" stroke="#6B7280" stroke-width="6"/>
-<circle cx="515.0" cy="250.0" r="15" fill="#6B7280" stroke="white" stroke-width="3" opacity="1"/>
-<text x="515.0" y="256.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">C</text>
-<circle cx="571.2916512459885" cy="282.5" r="15" fill="#6B7280" stroke="white" stroke-width="3" opacity="1"/>
-<text x="571.2916512459885" y="288.5" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">C</text>
-<circle cx="571.2916512459885" cy="347.5" r="15" fill="#6B7280" stroke="white" stroke-width="3" opacity="1"/>
-<text x="571.2916512459885" y="353.5" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">C</text>
-<circle cx="515.0" cy="380.0" r="15" fill="#6B7280" stroke="white" stroke-width="3" opacity="1"/>
-<text x="515.0" y="386.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">C</text>
-<circle cx="458.70834875401147" cy="347.5" r="15" fill="#6B7280" stroke="white" stroke-width="3" opacity="1"/>
-<text x="458.70834875401147" y="353.5" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">C</text>
-<circle cx="458.70834875401147" cy="282.5" r="15" fill="#6B7280" stroke="white" stroke-width="3" opacity="1"/>
-<text x="458.70834875401147" y="288.5" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">C</text>
-<line x1="580" y1="315" x2="650" y2="315" stroke="#6B7280" stroke-width="6"/>
-<circle cx="655" cy="315" r="17" fill="#6B7280" stroke="white" stroke-width="3" opacity="1"/>
-<text x="655" y="321" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">C</text>
-<line x1="670" y1="307" x2="715" y2="270" stroke="#6B7280" stroke-width="4"/>
-<line x1="670" y1="323" x2="715" y2="360" stroke="#6B7280" stroke-width="4"/>
-<circle cx="725" cy="263" r="17" fill="#0072B2" stroke="white" stroke-width="3" opacity="1"/>
-<text x="725" y="269" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">N</text>
-<circle cx="725" cy="367" r="17" fill="#0072B2" stroke="white" stroke-width="3" opacity="1"/>
-<text x="725" y="373" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">N</text>
-<text x="1000" y="145" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="bold" fill="#243447">LJ removed</text>
-<rect x="840" y="175" width="320" height="300" rx="16" fill="#F8FBFD" stroke="#B8C4CE" stroke-width="2" opacity="1"/>
-<line x1="915.0" y1="250.0" x2="971.2916512459885" y2="282.5" stroke="#6B7280" stroke-width="6"/>
-<line x1="971.2916512459885" y1="282.5" x2="971.2916512459885" y2="347.5" stroke="#6B7280" stroke-width="6"/>
-<line x1="971.2916512459885" y1="347.5" x2="915.0" y2="380.0" stroke="#6B7280" stroke-width="6"/>
-<line x1="915.0" y1="380.0" x2="858.7083487540115" y2="347.5" stroke="#6B7280" stroke-width="6"/>
-<line x1="858.7083487540115" y1="347.5" x2="858.7083487540115" y2="282.5" stroke="#6B7280" stroke-width="6"/>
-<line x1="858.7083487540115" y1="282.5" x2="915.0" y2="250.0" stroke="#6B7280" stroke-width="6"/>
-<circle cx="915.0" cy="250.0" r="15" fill="#6B7280" stroke="white" stroke-width="3" opacity="1"/>
-<text x="915.0" y="256.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">C</text>
-<circle cx="971.2916512459885" cy="282.5" r="15" fill="#6B7280" stroke="white" stroke-width="3" opacity="1"/>
-<text x="971.2916512459885" y="288.5" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">C</text>
-<circle cx="971.2916512459885" cy="347.5" r="15" fill="#6B7280" stroke="white" stroke-width="3" opacity="1"/>
-<text x="971.2916512459885" y="353.5" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">C</text>
-<circle cx="915.0" cy="380.0" r="15" fill="#6B7280" stroke="white" stroke-width="3" opacity="1"/>
-<text x="915.0" y="386.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">C</text>
-<circle cx="858.7083487540115" cy="347.5" r="15" fill="#6B7280" stroke="white" stroke-width="3" opacity="1"/>
-<text x="858.7083487540115" y="353.5" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">C</text>
-<circle cx="858.7083487540115" cy="282.5" r="15" fill="#6B7280" stroke="white" stroke-width="3" opacity="1"/>
-<text x="858.7083487540115" y="288.5" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">C</text>
-<line x1="980" y1="315" x2="1050" y2="315" stroke="#6B7280" stroke-width="6"/>
-<circle cx="1055" cy="315" r="17" fill="#6B7280" stroke="white" stroke-width="3" opacity="1"/>
-<text x="1055" y="321" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">C</text>
-<line x1="1070" y1="307" x2="1115" y2="270" stroke="#6B7280" stroke-width="4"/>
-<line x1="1070" y1="323" x2="1115" y2="360" stroke="#6B7280" stroke-width="4"/>
-<circle cx="1125" cy="263" r="17" fill="#0072B2" stroke="white" stroke-width="3" opacity="1"/>
-<text x="1125" y="269" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">N</text>
-<circle cx="1125" cy="367" r="17" fill="#0072B2" stroke="white" stroke-width="3" opacity="1"/>
-<text x="1125" y="373" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">N</text>
-<text x="345.0" y="315.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="normal" fill="#D55E00">+/−</text>
-<text x="302.5304832720494" y="396.31727983645294" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="normal" fill="#D55E00">+/−</text>
-<text x="200.0" y="430.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="normal" fill="#D55E00">+/−</text>
-<text x="97.46951672795062" y="396.31727983645294" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="normal" fill="#D55E00">+/−</text>
-<text x="55.0" y="315.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="normal" fill="#D55E00">+/−</text>
-<text x="97.46951672795059" y="233.68272016354706" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="normal" fill="#D55E00">+/−</text>
-<text x="199.99999999999997" y="200.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="normal" fill="#D55E00">+/−</text>
-<text x="302.53048327204937" y="233.682720163547" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="normal" fill="#D55E00">+/−</text>
-<text x="600" y="440" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#0072B2">crgmask=&#x27;:BEN&#x27;</text>
-<ellipse cx="1000" cy="315" rx="150" ry="105" fill="url(#hatch)" stroke="#6B7280" stroke-width="3" opacity="0.35"/>
-<text x="1000" y="440" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#6B7280">scmask1=&#x27;:BEN&#x27;</text>
-<line x1="365" y1="315" x2="430" y2="315" stroke="#0072B2" stroke-width="4" marker-end="url(#arrow)"/>
-<text x="398" y="285" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="normal" fill="#0072B2">electrostatics off</text>
-<line x1="765" y1="315" x2="830" y2="315" stroke="#6B7280" stroke-width="4" marker-end="url(#arrow)"/>
-<text x="798" y="285" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="normal" fill="#6B7280">LJ off</text>
-<rect x="170" y="535" width="860" height="80" rx="14" fill="#F4ECFA" stroke="#CC79A7" stroke-width="2" opacity="1"/>
-<text x="600" y="570" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#243447">Protein, water, ions and Boresch reference atoms are not decoupled.</text>
-<text x="600" y="600" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="normal" fill="#6B7280">Boresch restraints define the bound reference frame.</text>
+  <title>ABFE decoupling stages for JZ4</title>
+  <desc>Ball-and-stick schematic of electrostatic and Lennard-Jones decoupling for every atom of neutral 2-propylphenol JZ4.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#243447"/>
+    </marker>
+    <pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse">
+      <path d="M0 10 L10 0" stroke="#6B7280" stroke-width="2"/>
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="675" fill="#FFFFFF"/>
+  <text x="60" y="52" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#243447">ABFE decoupling of :JZ4</text>
+  <text x="60" y="86" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#6B7280">Neutral ligand: partial charges are removed before Lennard-Jones interactions</text>
+
+  <g font-family="Arial, Helvetica, sans-serif">
+    <g transform="translate(45 150)">
+      <rect width="310" height="325" rx="16" fill="#F8FBFD" stroke="#B8C4CE" stroke-width="2"/>
+      <text x="155" y="38" text-anchor="middle" font-size="21" font-weight="bold" fill="#243447">Interacting JZ4</text>
+      <g stroke="#CC79A7" stroke-width="6" fill="none">
+        <path d="M95 115 L150 85 L205 115 L205 180 L150 210 L95 180 Z"/>
+        <path d="M205 180 L240 215 L265 260"/>
+        <path d="M150 85 L150 55"/>
+      </g>
+      <g fill="#CC79A7" stroke="#FFFFFF" stroke-width="3">
+        <circle cx="95" cy="115" r="14"/><circle cx="150" cy="85" r="14"/>
+        <circle cx="205" cy="115" r="14"/><circle cx="205" cy="180" r="14"/>
+        <circle cx="150" cy="210" r="14"/><circle cx="95" cy="180" r="14"/>
+        <circle cx="240" cy="215" r="14"/><circle cx="265" cy="260" r="14"/>
+      </g>
+      <circle cx="150" cy="50" r="16" fill="#0072B2" stroke="#FFFFFF" stroke-width="3"/>
+      <text x="150" y="56" text-anchor="middle" font-size="16" font-weight="bold" fill="#FFFFFF">O</text>
+      <text x="155" y="305" text-anchor="middle" font-size="17" fill="#D55E00">partial charges + LJ</text>
+    </g>
+
+    <g transform="translate(445 150)">
+      <rect width="310" height="325" rx="16" fill="#F8FBFD" stroke="#B8C4CE" stroke-width="2"/>
+      <text x="155" y="38" text-anchor="middle" font-size="21" font-weight="bold" fill="#243447">Charge removed</text>
+      <g stroke="#6B7280" stroke-width="6" fill="none">
+        <path d="M95 115 L150 85 L205 115 L205 180 L150 210 L95 180 Z"/>
+        <path d="M205 180 L240 215 L265 260"/>
+        <path d="M150 85 L150 55"/>
+      </g>
+      <g fill="#6B7280" stroke="#FFFFFF" stroke-width="3">
+        <circle cx="95" cy="115" r="14"/><circle cx="150" cy="85" r="14"/>
+        <circle cx="205" cy="115" r="14"/><circle cx="205" cy="180" r="14"/>
+        <circle cx="150" cy="210" r="14"/><circle cx="95" cy="180" r="14"/>
+        <circle cx="240" cy="215" r="14"/><circle cx="265" cy="260" r="14"/>
+        <circle cx="150" cy="50" r="16"/>
+      </g>
+      <text x="155" y="305" text-anchor="middle" font-size="17" font-weight="bold" fill="#0072B2">crgmask=':JZ4'</text>
+    </g>
+
+    <g transform="translate(845 150)">
+      <rect width="310" height="325" rx="16" fill="#F8FBFD" stroke="#B8C4CE" stroke-width="2"/>
+      <g opacity="0.28">
+        <g stroke="#6B7280" stroke-width="6" fill="none">
+          <path d="M95 115 L150 85 L205 115 L205 180 L150 210 L95 180 Z"/>
+          <path d="M205 180 L240 215 L265 260"/><path d="M150 85 L150 55"/>
+        </g>
+        <g fill="#6B7280">
+          <circle cx="95" cy="115" r="14"/><circle cx="150" cy="85" r="14"/>
+          <circle cx="205" cy="115" r="14"/><circle cx="205" cy="180" r="14"/>
+          <circle cx="150" cy="210" r="14"/><circle cx="95" cy="180" r="14"/>
+          <circle cx="240" cy="215" r="14"/><circle cx="265" cy="260" r="14"/>
+          <circle cx="150" cy="50" r="16"/>
+        </g>
+      </g>
+      <text x="155" y="38" text-anchor="middle" font-size="21" font-weight="bold" fill="#243447">LJ removed</text>
+      <ellipse cx="155" cy="160" rx="135" ry="120" fill="url(#hatch)" stroke="#6B7280" stroke-width="3" opacity="0.45"/>
+      <text x="155" y="305" text-anchor="middle" font-size="17" font-weight="bold" fill="#6B7280">scmask1=':JZ4'</text>
+    </g>
+
+    <line x1="365" y1="315" x2="430" y2="315" stroke="#243447" stroke-width="4" marker-end="url(#arrow)"/>
+    <text x="398" y="288" text-anchor="middle" font-size="16" fill="#0072B2">electrostatics off</text>
+    <line x1="765" y1="315" x2="830" y2="315" stroke="#243447" stroke-width="4" marker-end="url(#arrow)"/>
+    <text x="798" y="288" text-anchor="middle" font-size="16" fill="#6B7280">LJ off</text>
+
+    <rect x="170" y="535" width="860" height="80" rx="14" fill="#F4ECFA" stroke="#CC79A7" stroke-width="2"/>
+    <text x="600" y="570" text-anchor="middle" font-size="18" fill="#243447">Protein, water and Boresch reference atoms remain interacting.</text>
+    <text x="600" y="600" text-anchor="middle" font-size="16" fill="#6B7280">The ligand net charge is zero, but its atom-centered partial charges are decoupled.</text>
+  </g>
 </svg>

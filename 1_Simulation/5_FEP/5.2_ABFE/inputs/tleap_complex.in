@@ -2,14 +2,12 @@ source leaprc.protein.ff19SB
 source leaprc.gaff2
 source leaprc.water.tip3p
 
-loadamberparams ben.frcmod
-BEN = loadmol2 ben.mol2
+loadamberparams jz4.frcmod
+JZ4 = loadmol2 jz4.mol2
 system = loadpdb complex.pdb
-source disulfides.leap
 
 solvatebox system TIP3PBOX 12.0
-addions system Na+ 0
-addions system Cl- 0
+addionsrand system Cl- 0
 
 saveamberparm system complex.parm7 complex.rst7
 savepdb system complex_solvated.pdb

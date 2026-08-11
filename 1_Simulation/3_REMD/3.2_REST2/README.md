@@ -25,6 +25,7 @@ effective-temperature ladder를 구성할 수 있습니다.
 | `prepare.py` | 1UAO의 첫 NMR model을 simulation PDB로 정리합니다. |
 | `convert_topology.py` | Tleap의 AMBER topology를 GROMACS 형식으로 변환합니다. |
 | `mark_hot.py` | Protein atom type에만 `partial_tempering` marker를 붙입니다. |
+| `scale_cmap.py` | Hot atom type에 맞춰 ff19SB CMAP을 구분하고 energy grid를 `lambda`로 scaling합니다. |
 | `build.sh` | 변환·scaling을 호출해 8개 topology/TPR를 만들고 scale-one energy를 검사합니다. |
 | `compare_energy.py` | 원본과 scale 1.0 rerun potential 차이를 허용 오차와 비교합니다. |
 | `run.sh` | 300 K pre-production과 PLUMED-patched GROMACS HREX를 실행합니다. |
@@ -58,6 +59,11 @@ atom type에만 `_` marker를 붙입니다. PLUMED `partial_tempering`으로
 energy를 한 frame rerun으로 비교합니다. 허용 오차는
 `ENERGY_TOLERANCE_KJ_MOL`로 바꿀 수 있습니다.
 
+ff19SB는 residue별 backbone CMAP을 사용합니다. `convert_topology.py`는
+ParmEd 변환 중 이 map들이 하나의 `XC` type으로 합쳐지지 않도록 C-alpha
+type을 `XC0`, `XC1`처럼 분리합니다. `scale_cmap.py`는 PLUMED가 처리하지
+않는 CMAP grid와 hot atom type 이름을 각 REST2 state에 맞게 보정합니다.
+
 `GROMACS`, `GROMACS_MPI`, `MPI_LAUNCHER`, `MPI_PROCESSES`,
 `MPI_OPTIONS`와 `GROMACS_OPTIONS`로 실행 환경을 지정합니다. Production은
 1 ns segment 하나이며 일부 replica만 완료된 segment에서는 resume하지
@@ -76,8 +82,8 @@ energy를 한 frame rerun으로 비교합니다. 허용 오차는
 
 ### Output
 
-- `work/replicas/NNN/topol.top`
-- `work/replicas/NNN/production.001.xtc` … `production.010.xtc`
+- `work/NNN/topol.top`
+- `work/NNN/production.001.xtc`
 - `work/exchange_summary.tsv`, `replica_visits.tsv`,
   `state_occupancy.tsv`
 - `work/structure_by_temperature.tsv`: Rg와 residue 1–10 CA distance
@@ -110,7 +116,8 @@ PLUMED 2.10.0 officially supplies a patch. Removing only `-hrex` would
 produce incorrect exchange acceptance between the separately scaled topologies.
 
 `convert_topology.py` performs the AMBER-to-GROMACS conversion, `mark_hot.py`
-marks protein atom types, `build.sh` generates and verifies eight states,
+marks protein atom types, and `scale_cmap.py` preserves residue-specific ff19SB
+CMAPs and scales their grids for each state. `build.sh` generates and verifies eight states,
 `run.sh` uses `-multidir -replex 1000`, and `anal.py` summarizes exchange and
 structure. All thermostats remain at `ref-t=300`; hydrogen bonds are constrained
 for a 2 fs timestep. `ENERGY_TOLERANCE_KJ_MOL` controls the scale-one check.

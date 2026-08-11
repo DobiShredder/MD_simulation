@@ -53,7 +53,7 @@ if (( dry_run )); then
     echo "ff19SB/TIP3P AMBER system을 GROMACS topology로 변환합니다."
     echo "고정 temperature/κ table로 8개 REST3 topology를 생성합니다."
     echo "Base identity와 water–water/ion–water interaction을 검사합니다."
-    echo "생성 위치: $work_dir/replicas/000 ... 007"
+    echo "생성 위치: $work_dir/000 ... 007"
     exit 0
 fi
 
@@ -93,7 +93,7 @@ echo "Published κ schedule로 REST3 topology를 생성합니다."
 if ! "$python_bin" "$script_dir/generate_rest3.py" \
     "$work_dir/processed.top" \
     "$states_file" \
-    "$work_dir/replicas"; then
+    "$work_dir"; then
     die "REST3 topology 생성에 실패했습니다."
 fi
 
@@ -102,7 +102,7 @@ while IFS=$'\t' read -r replica _ _ _ _ seed; do
         continue
     fi
 
-    replica_dir="$work_dir/replicas/$replica"
+    replica_dir="$work_dir/$replica"
     cp "$work_dir/system.gro" "$replica_dir/system.gro"
     cp "$script_dir/inputs/plumed.dat" "$replica_dir/plumed.dat"
 
@@ -120,9 +120,8 @@ cp "$states_file" "$work_dir/states.tsv"
 if ! "$python_bin" "$script_dir/verify_rest3.py" \
     "$work_dir/processed.top" \
     "$work_dir/states.tsv" \
-    "$work_dir/replicas"; then
+    "$work_dir"; then
     die "REST3 topology 보존 검사에 실패했습니다."
 fi
 
-echo "REST3 topology와 좌표: $work_dir/replicas"
-
+echo "REST3 topology와 좌표: $work_dir"

@@ -25,7 +25,7 @@ seed_dir=${SEED_DIR:-"$script_dir/../rmd/work/seeds"}
 seed_metadata="$seed_dir/seeds.tsv"
 topology=${TOPOLOGY:-"$script_dir/../work/system.parm7"}
 work_dir=${WORK_DIR:-"$script_dir/work"}
-window_root="$work_dir/windows"
+window_root="$work_dir"
 
 # Window 설정 읽기
 if [[ ! -s "$window_file" ]]; then

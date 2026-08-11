@@ -15,8 +15,7 @@ profile=$1
 simulation_work=$2
 cpptraj=${CPPTRAJ:-cpptraj}
 python=${PYTHON:-python3}
-tutorial_dir=$PWD
-output_dir=${OUTPUT_DIR:-"$tutorial_dir/output/$profile"}
+output_dir=${OUTPUT_DIR:-"output/$profile"}
 
 case "$profile" in
     chignolin | pepgamd)
@@ -42,7 +41,7 @@ fi
 mkdir -p "$output_dir"
 
 if ! "$python" \
-    "$tutorial_dir/prepare.py" \
+    prepare.py \
     "$profile" \
     "$simulation_work" \
     "$output_dir/cpptraj.in"; then
@@ -59,7 +58,7 @@ if [[ ! -s "$output_dir/cv.dat" ]]; then
 fi
 
 if ! "$python" \
-    "$tutorial_dir/reweight.py" \
+    reweight.py \
     --cv "$output_dir/cv.dat" \
     --log-directory "$simulation_work" \
     --components "$components" \

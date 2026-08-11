@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/env.sh"
+source ./env.sh
 
 dry_run=0
 if [[ "${1:-}" == "--dry-run" ]]; then
@@ -71,7 +71,6 @@ for executable in w_run "$AMBER_ENGINE" "$CPPTRAJ"; do
     fi
 done
 
-cd "$WEST_SIM_ROOT"
 if ! "${westpa_command[@]}" > "$WORK_DIR/west.log" 2>&1; then
     echo "오류: WESTPA 실행에 실패했습니다: $WORK_DIR/west.log" >&2
     exit 1

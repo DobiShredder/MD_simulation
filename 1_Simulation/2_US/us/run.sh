@@ -65,7 +65,7 @@ run_window() {
             run_command \
                 "$engine" \
                 -O \
-                -i "$script_dir/inputs/min.in" \
+                -i ../inputs/min.in \
                 -o min.out \
                 -p system.parm7 \
                 -c seed.rst7 \
@@ -86,7 +86,7 @@ run_window() {
             run_command \
                 "$engine" \
                 -O \
-                -i "$script_dir/inputs/heat.in" \
+                -i ../inputs/heat.in \
                 -o heat.out \
                 -p system.parm7 \
                 -c min.rst7 \
@@ -110,7 +110,7 @@ run_window() {
             run_command \
                 "$engine" \
                 -O \
-                -i "$script_dir/inputs/equil.in" \
+                -i ../inputs/equil.in \
                 -o equil.out \
                 -p system.parm7 \
                 -c heat.rst7 \
@@ -133,7 +133,7 @@ run_window() {
             run_command \
                 "$engine" \
                 -O \
-                -i "$script_dir/inputs/production.in" \
+                -i ../inputs/production.in \
                 -o production.out \
                 -p system.parm7 \
                 -c equil.rst7 \
@@ -155,9 +155,8 @@ run_window() {
 # 사용자 설정과 input/output 경로
 engine=${AMBER_ENGINE:-pmemd.cuda}
 
-script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-work_dir=${WORK_DIR:-"$script_dir/work"}
-window_root="$work_dir/windows"
+work_dir=${WORK_DIR:-work}
+window_root="$work_dir"
 
 processed_window_count=0
 skipped_window_count=0
@@ -171,6 +170,11 @@ fi
 
 if [[ ! -d "$window_root" ]]; then
     die "생성된 window가 없습니다. ./build.sh를 먼저 실행하세요."
+fi
+
+if (( ! dry_run )); then
+    mkdir -p "$work_dir/inputs"
+    cp inputs/*.in "$work_dir/inputs/"
 fi
 
 # 선택한 window 또는 전체 window 실행

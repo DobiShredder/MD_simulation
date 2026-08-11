@@ -16,14 +16,11 @@ die() {
     exit 1
 }
 
-script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-work_dir=${WORK_DIR:-"$script_dir/work"}
-if [[ "$work_dir" != /* ]]; then
-    work_dir="$(pwd)/$work_dir"
-fi
+work_dir=${WORK_DIR:-work}
 engine=${AMBER_ENGINE:-pmemd.cuda}
 random_seed=${RANDOM_SEED:-42001}
 production_segments=1
+topology=system.parm7
 read -r -a amber_options <<< "${AMBER_OPTIONS:-}"
 
 if [[ ! "$random_seed" =~ ^[1-9][0-9]*$ ]]; then
@@ -33,10 +30,6 @@ if (( ! dry_run )) && [[ "${ALLOW_UNVERIFIED_LIGAMD3:-0}" != 1 ]]; then
     die "Amber26 LiGaMD3 검증 전입니다. 실행하려면 ALLOW_UNVERIFIED_LIGAMD3=1을 지정하세요."
 fi
 
-topology="$work_dir/system.parm7"
-initial_restart="$work_dir/system.rst7"
-heat_input="$work_dir/heat.in"
-
 if (( ! dry_run )); then
     if ! command -v "$engine" >/dev/null 2>&1; then
         die "AMBER engine을 찾을 수 없습니다: $engine"
@@ -44,14 +37,19 @@ if (( ! dry_run )); then
     if [[ "$(basename "$engine")" != "pmemd.cuda" ]]; then
         die "Amber 26 LiGaMD3는 serial GPU pmemd.cuda에서만 지원됩니다: $engine"
     fi
-    for input in "$topology" "$initial_restart" "$work_dir/inputs/gamd_prepare.in" "$work_dir/inputs/production.in"; do
+    for input in "$work_dir/system.parm7" "$work_dir/system.rst7" \
+        "$work_dir/inputs/gamd_prepare.in" "$work_dir/inputs/production.in"; do
         if [[ ! -s "$input" ]]; then
             die "build.sh를 먼저 실행해야 합니다: $input"
         fi
     done
+
+    cp inputs/minimize.in "$work_dir/inputs/minimize.in"
+    cp inputs/equilibrate.in "$work_dir/inputs/equilibrate.in"
+
     sed "s/@RANDOM_SEED@/$random_seed/g" \
-        "$script_dir/inputs/heat.in.template" \
-        > "$heat_input"
+        inputs/heat.in.template \
+        > "$work_dir/inputs/heat.in"
 fi
 
 stage_state() {
@@ -81,11 +79,8 @@ run_command() {
         return
     fi
     echo "실행: $stage"
-    if ! (
-        cd "$work_dir"
-        "$@"
-    ); then
-        die "$stage 계산에 실패했습니다: $work_dir"
+    if ! "$@"; then
+        die "$stage 계산에 실패했습니다."
     fi
 }
 
@@ -95,8 +90,9 @@ run_md_stage() {
     local input_restart=$3
     local with_trajectory=$4
     local with_gamd_log=$5
-    local gamd_state_input=${6:-}
-    local prefix="$work_dir/$stage"
+    local with_reference=$6
+    local gamd_state_input=${7:-}
+    local prefix=$stage
     local required=("$prefix.out" "$prefix.rst7" "$prefix.info")
     local command=(
         "$engine" "${amber_options[@]}" -O
@@ -108,6 +104,9 @@ run_md_stage() {
         -inf "$prefix.info"
     )
 
+    if [[ "$with_reference" == yes ]]; then
+        command+=(-ref "$input_restart")
+    fi
     if [[ "$with_trajectory" == yes ]]; then
         required+=("$prefix.nc")
         command+=(-x "$prefix.nc")
@@ -121,6 +120,7 @@ run_md_stage() {
         return
     fi
 
+    local state
     state=$(stage_state "${required[@]}")
     if [[ "$state" == complete ]]; then
         return
@@ -132,14 +132,14 @@ run_md_stage() {
         if [[ ! -s "$gamd_state_input" ]]; then
             die "이전 GaMD state를 찾을 수 없습니다: $gamd_state_input"
         fi
-        cp "$gamd_state_input" "$work_dir/gamd-restart.dat"
+        cp "$gamd_state_input" gamd-restart.dat
     fi
     run_command "$stage" "${command[@]}"
     if [[ "$with_gamd_log" == yes ]]; then
-        if [[ ! -s "$work_dir/gamd-restart.dat" ]]; then
-            die "$stage GaMD state가 생성되지 않았습니다: $work_dir/gamd-restart.dat"
+        if [[ ! -s gamd-restart.dat ]]; then
+            die "$stage GaMD state가 생성되지 않았습니다: gamd-restart.dat"
         fi
-        cp "$work_dir/gamd-restart.dat" "$prefix.gamd.rst"
+        cp gamd-restart.dat "$prefix.gamd.rst"
     fi
     for output in "${required[@]}"; do
         if [[ ! -s "$output" ]]; then
@@ -150,24 +150,28 @@ run_md_stage() {
 
 if (( dry_run )); then
     echo "Experimental LiGaMD3: 200 ps heating + 100 ps NPT + 4 ns parameter preparation + 1 ns production"
+    printf '+ cd %q\n' "$work_dir"
+else
+    cd "$work_dir"
 fi
-run_md_stage minimize "$script_dir/inputs/minimize.in" "$initial_restart" no no
-run_md_stage heat "${heat_input:-$script_dir/inputs/heat.in.template}" "$work_dir/minimize.rst7" yes no
-run_md_stage equilibrate "$script_dir/inputs/equilibrate.in" "$work_dir/heat.rst7" yes no
-run_md_stage gamd_prepare "${work_dir}/inputs/gamd_prepare.in" "$work_dir/equilibrate.rst7" yes yes
+
+run_md_stage minimize inputs/minimize.in system.rst7 no no no
+run_md_stage heat inputs/heat.in minimize.rst7 yes no yes
+run_md_stage equilibrate inputs/equilibrate.in heat.rst7 yes no no
+run_md_stage gamd_prepare inputs/gamd_prepare.in equilibrate.rst7 yes yes no
 
 for segment_number in $(seq 1 "$production_segments"); do
     segment=$(printf 'production.%03d' "$segment_number")
     if [[ "$segment_number" -eq 1 ]]; then
-        input_restart="$work_dir/gamd_prepare.rst7"
-        gamd_state_input="$work_dir/gamd_prepare.gamd.rst"
+        input_restart=gamd_prepare.rst7
+        gamd_state_input=gamd_prepare.gamd.rst
     else
-        input_restart="$work_dir/$(printf 'production.%03d.rst7' "$((segment_number - 1))")"
-        gamd_state_input="$work_dir/$(printf 'production.%03d.gamd.rst' "$((segment_number - 1))")"
+        input_restart=$(printf 'production.%03d.rst7' "$((segment_number - 1))")
+        gamd_state_input=$(printf 'production.%03d.gamd.rst' "$((segment_number - 1))")
     fi
-    run_md_stage "$segment" "$work_dir/inputs/production.in" "$input_restart" yes yes "$gamd_state_input"
+    run_md_stage "$segment" inputs/production.in "$input_restart" yes yes no "$gamd_state_input"
 done
 
 if (( ! dry_run )); then
-    echo "1 ns LiGaMD3 production이 완료되었습니다: $work_dir"
+    echo "1 ns LiGaMD3 production이 완료되었습니다."
 fi

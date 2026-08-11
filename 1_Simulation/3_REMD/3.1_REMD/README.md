@@ -56,7 +56,7 @@ file이 있으면 해당 stage를 자동으로 덮어쓰지 않습니다.
 
 ### Output
 
-- `work/replicas/NNN/production.001.nc` … `production.010.nc`
+- `work/NNN/production.001.nc` … `production.010.nc`
 - `work/exchange.001.log` … `exchange.010.log`
 - `work/exchange_summary.tsv`
 - `work/replica_visits.tsv`

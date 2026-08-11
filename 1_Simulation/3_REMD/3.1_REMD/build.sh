@@ -46,7 +46,7 @@ fi
 if (( dry_run )); then
     echo "20개 replica용 ff19SB/TIP3P system을 생성합니다."
     printf '%q -f %q\n' "$tleap" "$script_dir/inputs/tleap.in"
-    echo "생성 위치: $work_dir/replicas/000 ... 019"
+    echo "생성 위치: $work_dir/000 ... 019"
     exit 0
 fi
 
@@ -74,7 +74,7 @@ while IFS=$'\t' read -r replica temperature_kelvin seed; do
         continue
     fi
 
-    replica_dir="$work_dir/replicas/$replica"
+    replica_dir="$work_dir/$replica"
     mkdir -p "$replica_dir"
 
     cp "$work_dir/system.parm7" "$replica_dir/system.parm7"
@@ -102,5 +102,4 @@ while IFS=$'\t' read -r replica temperature_kelvin seed; do
 done < "$states_file"
 
 cp "$states_file" "$work_dir/states.tsv"
-echo "Replica input과 topology: $work_dir/replicas"
-
+echo "Replica input과 topology: $work_dir"

@@ -30,7 +30,7 @@ cd 1_Simulation/2_US/us
 ./run.sh
 ```
 
-`build.sh`는 `../rmd/work/seeds/`에서 `work/windows/NNN/`을 만듭니다. 기존
+`build.sh`는 `../rmd/work/seeds/`에서 `work/NNN/`을 만듭니다. 기존
 window directory가 있으면 종료합니다. 각 window의 계산 순서는 아래와
 같습니다.
 
@@ -79,7 +79,7 @@ resumes the four restrained stages. `iat=2,132` selects the terminal Cα pair,
 restraint active. `--window N` limits execution to one window; `WINDOW_FILE`,
 `SEED_DIR`, and `WORK_DIR` replace the default inputs or output location.
 
-`build.sh` creates `work/windows/NNN/` only after validating every seed and
+`build.sh` creates `work/NNN/` only after validating every seed and
 refuses to overwrite an existing build. Each window runs restrained
 minimization, 200 ps NVT heating, 100 ps NPT equilibration, and 1 ns NPT
 production. Successful-stage markers allow `run.sh` to resume a partial local

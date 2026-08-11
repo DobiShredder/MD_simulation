@@ -47,7 +47,7 @@ fi
 if (( dry_run )); then
     echo "20개 GaREUS window용 ff19SB/TIP3P system을 생성합니다."
     echo "CV: :1@CA–:10@CA, 6–25 Å, 1 Å spacing"
-    echo "생성 위치: $work_dir/replicas/000 ... 019"
+    echo "생성 위치: $work_dir/000 ... 019"
     exit 0
 fi
 
@@ -74,14 +74,14 @@ done
     "$work_dir/system.parm7" \
     "$work_dir/system.rst7" \
     "$states_file" \
-    "$work_dir/replicas"
+    "$work_dir"
 
 while IFS=$'\t' read -r replica _ seed; do
     if [[ "$replica" == "replica" ]]; then
         continue
     fi
 
-    replica_dir="$work_dir/replicas/$replica"
+    replica_dir="$work_dir/$replica"
     restraint_file="$replica_dir/distance.RST"
 
     cp "$work_dir/system.parm7" "$replica_dir/system.parm7"
@@ -104,4 +104,4 @@ while IFS=$'\t' read -r replica _ seed; do
 done < "$states_file"
 
 cp "$states_file" "$work_dir/states.tsv"
-echo "GaREUS topology, restraint와 input: $work_dir/replicas"
+echo "GaREUS topology, restraint와 input: $work_dir"

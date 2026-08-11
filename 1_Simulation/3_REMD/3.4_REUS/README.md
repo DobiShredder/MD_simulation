@@ -69,7 +69,7 @@ segment에서만 이어서 실행합니다.
 
 ### Output
 
-- `work/replicas/NNN/production.001.nc` … `production.010.nc`
+- `work/NNN/production.001.nc` … `production.010.nc`
 - `work/exchange_summary.tsv`, `replica_visits.tsv`,
   `window_occupancy.tsv`
 - `work/restraint_sampling.tsv`

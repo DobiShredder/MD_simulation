@@ -9,7 +9,7 @@ from pathlib import Path
 
 
 TUTORIAL_DIR = Path.cwd()
-WINDOWS_DIR = TUTORIAL_DIR / "../../../1_Simulation/2_US/us/work/windows"
+WINDOWS_DIR = TUTORIAL_DIR / "../../../1_Simulation/2_US/us/work"
 OUTPUT_DIR = TUTORIAL_DIR / "output"
 
 TIME_COLUMN = 1

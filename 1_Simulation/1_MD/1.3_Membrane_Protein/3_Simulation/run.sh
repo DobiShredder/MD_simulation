@@ -18,18 +18,6 @@ die() {
     exit 1
 }
 
-make_absolute_path() {
-    local path=$1
-    local directory
-    local filename
-
-    directory=$(dirname "$path")
-    filename=$(basename "$path")
-    directory=$(cd "$directory" && pwd -P)
-
-    echo "$directory/$filename"
-}
-
 run_stage() {
     local stage=$1
     shift
@@ -51,10 +39,9 @@ run_stage() {
 # 사용자 설정과 input/output 경로
 engine=${AMBER_ENGINE:-pmemd.cuda}
 
-script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-topology=${TOPOLOGY:-"$script_dir/../2_Topology_Build/work/system.parm7"}
-coordinates=${COORDINATES:-"$script_dir/../2_Topology_Build/work/system.rst7"}
-work_dir=${WORK_DIR:-"$script_dir/work"}
+topology=${TOPOLOGY:-../2_Topology_Build/work/system.parm7}
+coordinates=${COORDINATES:-../2_Topology_Build/work/system.rst7}
+work_dir=${WORK_DIR:-work}
 
 # 실행 전 확인
 if (( ! dry_run )); then
@@ -70,10 +57,6 @@ if (( ! dry_run )); then
         die "restart file을 찾을 수 없습니다: $coordinates"
     fi
 
-    # Working directory로 이동해도 input 경로가 유지되도록
-    # topology와 restart file을 절대 경로로 바꿉니다.
-    topology=$(make_absolute_path "$topology")
-    coordinates=$(make_absolute_path "$coordinates")
 fi
 
 # Working directory 준비
@@ -82,6 +65,10 @@ if (( dry_run )); then
     printf '+ cd %q\n' "$work_dir"
 else
     mkdir -p "$work_dir"
+    mkdir -p "$work_dir/inputs"
+    cp "$topology" "$work_dir/system.parm7"
+    cp "$coordinates" "$work_dir/system.rst7"
+    cp inputs/*.in "$work_dir/inputs/"
     cd "$work_dir"
     echo "AMBER engine: $engine (기본값: pmemd.cuda)"
 fi
@@ -90,28 +77,28 @@ fi
 run_stage 'environment minimization' \
     "$engine" \
     -O \
-    -i "$script_dir/inputs/min-environment.in" \
+    -i inputs/min-environment.in \
     -o min-environment.out \
-    -p "$topology" \
-    -c "$coordinates" \
+    -p system.parm7 \
+    -c system.rst7 \
     -r min-environment.rst7 \
-    -ref "$coordinates"
+    -ref system.rst7
 
 run_stage '전체 system minimization' \
     "$engine" \
     -O \
-    -i "$script_dir/inputs/min-all.in" \
+    -i inputs/min-all.in \
     -o min-all.out \
-    -p "$topology" \
+    -p system.parm7 \
     -c min-environment.rst7 \
     -r min-all.rst7
 
 run_stage 'NVT 가열' \
     "$engine" \
     -O \
-    -i "$script_dir/inputs/heat.in" \
+    -i inputs/heat.in \
     -o heat.out \
-    -p "$topology" \
+    -p system.parm7 \
     -c min-all.rst7 \
     -r heat.rst7 \
     -x heat.nc \
@@ -121,9 +108,9 @@ run_stage 'NVT 가열' \
 run_stage 'NPT equilibration' \
     "$engine" \
     -O \
-    -i "$script_dir/inputs/equil.in" \
+    -i inputs/equil.in \
     -o equil.out \
-    -p "$topology" \
+    -p system.parm7 \
     -c heat.rst7 \
     -r equil.rst7 \
     -x equil.nc \
@@ -133,14 +120,14 @@ run_stage 'NPT equilibration' \
 run_stage '1 ns production' \
     "$engine" \
     -O \
-    -i "$script_dir/inputs/production.in" \
+    -i inputs/production.in \
     -o production.out \
-    -p "$topology" \
+    -p system.parm7 \
     -c equil.rst7 \
     -r production.rst7 \
     -x production.nc \
     -inf production.info
 
 if (( ! dry_run )); then
-    echo "Production trajectory: $work_dir/production.nc"
+    echo "Production trajectory: production.nc"
 fi

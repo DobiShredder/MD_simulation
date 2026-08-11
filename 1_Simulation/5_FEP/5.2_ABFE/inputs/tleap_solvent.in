@@ -1,11 +1,10 @@
 source leaprc.gaff2
 source leaprc.water.tip3p
 
-loadamberparams ben.frcmod
-BEN = loadmol2 ben.mol2
-system = combine { BEN }
+loadamberparams jz4.frcmod
+JZ4 = loadmol2 jz4.mol2
+system = combine { JZ4 }
 solvatebox system TIP3PBOX 12.0
-addions system Cl- 0
 
 saveamberparm system solvent.parm7 solvent.rst7
 savepdb system solvent_solvated.pdb

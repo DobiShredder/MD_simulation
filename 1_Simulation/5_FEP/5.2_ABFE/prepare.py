@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""3PTB에서 ABFE complex와 Boresch anchor metadata를 준비합니다."""
+"""3HTB에서 T4 lysozyme–JZ4 ABFE coordinate를 준비합니다."""
 
 from __future__ import annotations
 
@@ -7,14 +7,44 @@ import argparse
 from pathlib import Path
 
 
-ResidueKey = tuple[str, str, str]
+JZ4_ATOM_NAMES = {
+    "C4": "C1",
+    "C7": "C2",
+    "C8": "C3",
+    "C9": "C4",
+    "C10": "C5",
+    "C11": "C6",
+    "C12": "C7",
+    "C13": "C8",
+    "C14": "C9",
+    "OAB": "O1",
+}
 
 
 def parse_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="PDB 3PTB를 ABFE build용으로 전처리합니다.")
+    parser = argparse.ArgumentParser(
+        description="PDB 3HTB의 T4 lysozyme–JZ4 complex를 ABFE용으로 전처리합니다."
+    )
     parser.add_argument("input_pdb", type=Path)
     parser.add_argument("output_pdb", type=Path)
     return parser.parse_args()
+
+
+def first_conformer(line: str) -> str | None:
+    alternate_location = line[16:17]
+    if alternate_location not in {" ", "A"}:
+        return None
+    if alternate_location == "A":
+        return f"{line[:16]} {line[17:]}"
+    return line
+
+
+def rename_residue(line: str, residue_name: str) -> str:
+    return f"{line[:17]}{residue_name:>3}{line[20:]}"
+
+
+def rename_atom(line: str, atom_name: str) -> str:
+    return f"{line[:12]}{atom_name:>4}{line[16:]}"
 
 
 def main() -> None:
@@ -22,86 +52,55 @@ def main() -> None:
     if not args.input_pdb.is_file():
         raise SystemExit(f"입력 PDB를 찾을 수 없습니다: {args.input_pdb}")
 
-    lines = args.input_pdb.read_text(encoding="ascii").splitlines()
-    disulfides: list[tuple[ResidueKey, ResidueKey]] = []
-    for line in lines:
-        if line.startswith("SSBOND"):
-            first = (line[15:16], line[17:21].strip(), line[21:22])
-            second = (line[29:30], line[31:35].strip(), line[35:36])
-            disulfides.append((first, second))
-    if len(disulfides) != 6:
-        raise SystemExit(f"3PTB disulfide pair 6개가 필요합니다: {len(disulfides)}")
-
-    disulfide_residues = {residue for pair in disulfides for residue in pair}
     protein: list[str] = []
     ligand: list[str] = []
-    calcium: list[str] = []
-    residue_indices: dict[ResidueKey, int] = {}
-    counts = {"protein": 0, "BEN": 0, "CA": 0}
-    asp189_key: ResidueKey | None = None
 
-    for line in lines:
-        record = line[:6]
-        alternate = line[16:17]
-        residue_name = line[17:20].strip()
-        if alternate not in {" ", "A"}:
+    for raw_line in args.input_pdb.read_text(encoding="ascii").splitlines():
+        line = first_conformer(raw_line)
+        if line is None:
             continue
-        if record == "ATOM  ":
-            key = (line[21:22], line[22:26].strip(), line[26:27])
-            if key not in residue_indices:
-                residue_indices[key] = len(residue_indices) + 1
-            if residue_name == "ASP" and key[1] == "189":
-                asp189_key = key
-            if key in disulfide_residues:
-                line = f"{line[:17]}CYX{line[20:]}"
-            if alternate == "A":
-                line = f"{line[:16]} {line[17:]}"
-            line = f"{line[:22]}{residue_indices[key]:4d}{line[26:]}"
-            protein.append(line)
-            counts["protein"] += 1
-        elif record == "HETATM" and residue_name in {"BEN", "CA"}:
-            if residue_name == "BEN":
-                if line[12:16].strip() == "C":
-                    line = f"{line[:12]} C7 {line[16:]}"
-                ligand.append(line)
-            else:
-                calcium.append(line)
-            counts[residue_name] += 1
 
-    if counts["protein"] != 1629 or counts["BEN"] != 9 or counts["CA"] != 1:
-        raise SystemExit(f"예상하지 못한 3PTB 구성입니다: {counts}")
-    if asp189_key is None:
-        raise SystemExit("Asp189를 찾지 못했습니다.")
+        if line.startswith("ATOM  "):
+            if line[17:20].strip() == "HIS":
+                line = rename_residue(line, "HIE")
+            protein.append(line)
+            continue
+
+        if not line.startswith("HETATM") or line[17:20].strip() != "JZ4":
+            continue
+
+        source_name = line[12:16].strip()
+        if source_name not in JZ4_ATOM_NAMES:
+            raise SystemExit(f"알 수 없는 JZ4 atom name입니다: {source_name}")
+        line = rename_atom(line, JZ4_ATOM_NAMES[source_name])
+        ligand.append(f"{line[:22]}{164:4d}{line[26:]}")
+
+    protein_residues = {
+        (line[21:22], line[22:26], line[26:27])
+        for line in protein
+    }
+    ligand_names = {line[12:16].strip() for line in ligand}
+    if len(protein) != 1300 or len(protein_residues) != 163:
+        raise SystemExit(
+            "3HTB protein atom/residue 수가 예상과 다릅니다: "
+            f"{len(protein)} atoms, {len(protein_residues)} residues"
+        )
+    if ligand_names != set(JZ4_ATOM_NAMES.values()):
+        raise SystemExit(f"JZ4 heavy atom 10개를 확인하지 못했습니다: {ligand_names}")
 
     args.output_pdb.parent.mkdir(parents=True, exist_ok=True)
-    ligand = [
-        f"{line[:22]}{len(residue_indices) + 1:4d}{line[26:]}"
-        for line in ligand
-    ]
-    calcium = [
-        f"{line[:22]}{len(residue_indices) + 2:4d}{line[26:]}"
-        for line in calcium
-    ]
-    output_lines = protein + ["TER"] + ligand + ["TER"] + calcium + ["TER", "END"]
+    output_lines = protein + ["TER"] + ligand + ["TER", "END"]
     args.output_pdb.write_text("\n".join(output_lines) + "\n", encoding="ascii")
-
-    bond_lines = []
-    for first, second in disulfides:
-        bond_lines.append(
-            f"bond system.{residue_indices[first]}.SG system.{residue_indices[second]}.SG"
-        )
-    args.output_pdb.with_name("disulfides.leap").write_text(
-        "\n".join(bond_lines) + "\n", encoding="ascii"
-    )
     args.output_pdb.with_name("preparation.tsv").write_text(
         "field\tvalue\n"
-        f"protein_residues\t{len(residue_indices)}\n"
-        f"asp189_residue\t{residue_indices[asp189_key]}\n"
-        "protein_anchor_atoms\tCA,CB,CG\n"
-        "ligand_anchor_atoms\tC,C1,C2\n"
-        "ligand_residue\tBEN\n",
+        "protein_residues\t163\n"
+        "protein_anchor_residue\t102\n"
+        "protein_anchor_atoms\tCG,CB,CA\n"
+        "ligand_anchor_atoms\tC7,C8,C9\n"
+        "ligand_residue\tJZ4\n",
         encoding="utf-8",
     )
+
     print(f"ABFE coordinate: {args.output_pdb}")
 
 

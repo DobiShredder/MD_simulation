@@ -77,8 +77,8 @@ suffix를 붙입니다. Amber 26 GPU에서 replica별 state read/write가 분리
 
 ### Output
 
-- `work/replicas/NNN/production.001.nc` … `production.010.nc`
-- `work/replicas/NNN/gamd.production.001.log` …
+- `work/NNN/production.001.nc` … `production.010.nc`
+- `work/NNN/gamd.production.001.log` …
   `gamd.production.010.log`
 - `work/exchange_summary.tsv`, `replica_visits.tsv`,
   `window_occupancy.tsv`

@@ -25,7 +25,7 @@ def read_states() -> list[dict[str, str]]:
 
 def parse_exchanges(state_count: int) -> list[tuple[int, int, int]]:
     records: list[tuple[int, int, int]] = []
-    logs = sorted((WORK / "replicas" / "000").glob("production.*.log"))
+    logs = sorted((WORK / "000").glob("production.*.log"))
     event_index = 0
 
     for path in logs:
@@ -149,7 +149,7 @@ def structure_summary(states: list[dict[str, str]]) -> None:
 
         for state in states:
             replica = state["replica"]
-            replica_dir = WORK / "replicas" / replica
+            replica_dir = WORK / replica
             trajectories = sorted(replica_dir.glob("production.*.xtc"))
             if not trajectories:
                 raise SystemExit(f"trajectory를 찾을 수 없습니다: {replica_dir}")

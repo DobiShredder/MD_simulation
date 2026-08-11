@@ -23,8 +23,7 @@ coordinate_pdb=$1
 tleap=${TLEAP:-tleap}
 python=${PYTHON:-python3}
 
-script_dir=$(dirname "${BASH_SOURCE[0]}")
-work_dir=${WORK_DIR:-"$script_dir/work"}
+work_dir=${WORK_DIR:-work}
 amber_named_pdb="$work_dir/amber-named.pdb"
 generated_tleap="$work_dir/tleap.in"
 
@@ -48,9 +47,9 @@ if (( dry_run )); then
     printf 'cp %q %q\n' "$coordinate_pdb" "$amber_named_pdb"
     printf '%q %q %q %q %q\n' \
         "$python" \
-        "$script_dir/prepare_tleap.py" \
+        prepare_tleap.py \
         "$amber_named_pdb" \
-        "$script_dir/tleap.in" \
+        tleap.in \
         "$generated_tleap"
     printf 'cd %q\n' "$work_dir"
     printf '%q \\\n' "$tleap"
@@ -69,9 +68,9 @@ if [[ ! -s "$amber_named_pdb" ]]; then
 fi
 
 "$python" \
-    "$script_dir/prepare_tleap.py" \
+    prepare_tleap.py \
     "$amber_named_pdb" \
-    "$script_dir/tleap.in" \
+    tleap.in \
     "$generated_tleap"
 
 # 변환된 coordinate file에 ff19SB, Lipid21과 OPC를 적용합니다.

@@ -6,14 +6,13 @@ if [[ $# -ne 0 ]]; then
     exit 2
 fi
 
-tutorial_dir=$PWD
-simulation_dir="$tutorial_dir/../../../1_Simulation/1_MD/1.1_Soluble_Protein"
+simulation_dir="../../../1_Simulation/1_MD/1.1_Soluble_Protein"
 topology="$simulation_dir/work/system.parm7"
 trajectory="$simulation_dir/work/production.nc"
 
 cpptraj=cpptraj
-input_file="$tutorial_dir/inputs/cpptraj.in"
-output_dir="$tutorial_dir/output"
+input_file=inputs/cpptraj.in
+output_dir=output
 
 if ! command -v "$cpptraj" >/dev/null 2>&1; then
     echo "오류: cpptraj을 찾을 수 없습니다." >&2
@@ -34,6 +33,9 @@ fi
 
 mkdir -p "$output_dir"
 cd "$output_dir"
+topology="../$topology"
+trajectory="../$trajectory"
+input_file="../$input_file"
 
 if ! "$cpptraj" \
     -p "$topology" \

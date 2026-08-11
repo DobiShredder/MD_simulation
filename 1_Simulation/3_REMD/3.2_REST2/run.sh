@@ -18,8 +18,7 @@ die() {
     exit 1
 }
 
-script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-work_dir=${WORK_DIR:-"$script_dir/work"}
+work_dir=${WORK_DIR:-work}
 states_file="$work_dir/states.tsv"
 gmx=${GROMACS:-gmx}
 gmx_mpi=${GROMACS_MPI:-gmx_mpi}
@@ -64,7 +63,7 @@ stage_status() {
         if [[ "$replica" == "replica" ]]; then
             continue
         fi
-        if [[ -s "$work_dir/replicas/$replica/$filename" ]]; then
+        if [[ -s "$work_dir/$replica/$filename" ]]; then
             completed=$((completed + 1))
         fi
     done < "$states_file"
@@ -82,7 +81,7 @@ run_preproduction() {
         if [[ "$replica" == "replica" ]]; then
             continue
         fi
-        replica_dir="$work_dir/replicas/$replica"
+        replica_dir="$work_dir/$replica"
 
         if ! "$gmx" grompp \
             -f "$replica_dir/minimize.mdp" \
@@ -123,7 +122,7 @@ if (( dry_run )); then
     echo "HREX engine: $gmx_mpi"
     echo "8 replicas, effective 300–500 K, 2 ps exchange interval"
     echo "100 ps equilibration + 1 ns production"
-    printf '%q ' "$mpi_launcher" "${mpi_options[@]}" -np "$mpi_processes" "$gmx_mpi" mdrun -multidir "$work_dir/replicas/000" ... "$work_dir/replicas/007" -deffnm production.001 -hrex -replex "$exchange_steps" -plumed plumed.dat
+    printf '%q ' "$mpi_launcher" "${mpi_options[@]}" -np "$mpi_processes" "$gmx_mpi" mdrun -multidir "$work_dir/000" ... "$work_dir/007" -deffnm production.001 -hrex -replex "$exchange_steps" -plumed plumed.dat
     printf '\n'
     exit 0
 fi
@@ -140,7 +139,7 @@ while IFS=$'\t' read -r replica _; do
     if [[ "$replica" == "replica" ]]; then
         continue
     fi
-    replica_dirs+=("$work_dir/replicas/$replica")
+    replica_dirs+=("$work_dir/$replica")
 done < "$states_file"
 
 for segment in $(seq 1 "$production_segments"); do
@@ -165,7 +164,7 @@ for segment in $(seq 1 "$production_segments"); do
         if [[ "$replica" == "replica" ]]; then
             continue
         fi
-        replica_dir="$work_dir/replicas/$replica"
+        replica_dir="$work_dir/$replica"
 
         if ! "$gmx" grompp \
             -f "$replica_dir/production.mdp" \
@@ -195,4 +194,4 @@ for segment in $(seq 1 "$production_segments"); do
     fi
 done
 
-echo "1 ns REST2가 완료되었습니다: $work_dir/replicas"
+echo "1 ns REST2가 완료되었습니다: $work_dir"

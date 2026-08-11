@@ -14,9 +14,6 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from types import ModuleType
 
-import parmed
-
-
 ROOT = Path(__file__).resolve().parent
 WORK = Path(os.environ.get("WORK_DIR", ROOT / "work"))
 TEMPERATURE_K = 300.0
@@ -121,7 +118,7 @@ def add_trial(
 
 
 def write_edge_xml(path: Path, stage_data: dict[str, tuple[Path, list[str]]]) -> None:
-    edge = ET.Element("edge", name="benzamidine_decoupling")
+    edge = ET.Element("edge", name="jz4_decoupling")
     solvent = ET.SubElement(edge, "env", name="target")
     complex_environment = ET.SubElement(edge, "env", name="reference")
 
@@ -174,24 +171,6 @@ def standard_state_correction(restraints: list[dict[str, str]]) -> float:
     return -GAS_CONSTANT * TEMPERATURE_K * math.log(ratio)
 
 
-def box_length(path: Path) -> float:
-    restart = parmed.load_file(str(path))
-    if restart.box is None:
-        raise SystemExit(f"Periodic box 정보를 읽지 못했습니다: {path}")
-    volume = float(restart.box[0] * restart.box[1] * restart.box[2])
-    return volume ** (1.0 / 3.0)
-
-
-def leading_charge_correction(length_angstrom: float) -> float:
-    charge = 1.0
-    ewald_constant = -2.837297
-    coulomb = 332.06371
-    water_dielectric = 78.5
-    return -(charge**2 * ewald_constant * coulomb / (2.0 * length_angstrom)) * (
-        1.0 - 1.0 / water_dielectric
-    )
-
-
 def combine_binding_free_energy(
     contributions: dict[str, float],
     standard_state: float,
@@ -212,9 +191,7 @@ def write_free_energy(edge: object, results: dict[str, tuple[float, float]]) -> 
     contributions = {stage: value for stage, (value, _) in results.items()}
     restraints = read_tsv(WORK / "restraints.tsv")
     standard = standard_state_correction(restraints)
-    complex_charge = leading_charge_correction(box_length(WORK / "build" / "complex.rst7"))
-    solvent_charge = leading_charge_correction(box_length(WORK / "build" / "solvent.rst7"))
-    finite_size = solvent_charge - complex_charge
+    finite_size = 0.0
     raw_binding, corrected_binding = combine_binding_free_energy(
         contributions,
         standard,

@@ -7,16 +7,15 @@ if [[ $# -ne 0 ]]; then
 fi
 
 # 다른 protein-ligand system을 사용할 때는 아래 경로와 ligand mask를 수정합니다.
-tutorial_dir=$PWD
-simulation_dir="$tutorial_dir/../../../1_Simulation/1_MD/1.2_Protein_Ligand"
+simulation_dir="../../../1_Simulation/1_MD/1.2_Protein_Ligand"
 solvated_topology="$simulation_dir/work/system.parm7"
 trajectory="$simulation_dir/work/production.nc"
 ligand_mask=:JZ4
 
 ante_mmpbsa=ante-MMPBSA.py
 mmpbsa=MMPBSA.py
-input_file="$tutorial_dir/inputs/mmpbsa.in"
-output_dir="$tutorial_dir/output"
+input_file=inputs/mmpbsa.in
+output_dir=output
 
 for executable in "$ante_mmpbsa" "$mmpbsa"; do
     if ! command -v "$executable" >/dev/null 2>&1; then
@@ -39,6 +38,9 @@ fi
 
 mkdir -p "$output_dir"
 cd "$output_dir"
+solvated_topology="../$solvated_topology"
+trajectory="../$trajectory"
+input_file="../$input_file"
 
 echo "Complex, receptor와 ligand topology를 생성합니다."
 if ! "$ante_mmpbsa" \

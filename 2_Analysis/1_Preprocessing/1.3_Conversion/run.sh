@@ -7,8 +7,7 @@ if [[ $# -ne 0 ]]; then
 fi
 
 # 다른 system이나 frame 범위를 사용할 때는 아래 설정을 수정합니다.
-tutorial_dir=$PWD
-simulation_dir="$tutorial_dir/../../../1_Simulation/1_MD/1.1_Soluble_Protein"
+simulation_dir="../../../1_Simulation/1_MD/1.1_Soluble_Protein"
 topology="$simulation_dir/work/system.parm7"
 trajectory="$simulation_dir/work/production.nc"
 start_frame=1
@@ -16,8 +15,8 @@ stop_frame=last
 stride=1
 
 cpptraj=cpptraj
-input_file="$tutorial_dir/inputs/cpptraj.in"
-output_dir="$tutorial_dir/output"
+input_file=inputs/cpptraj.in
+output_dir=output
 trajectory_arguments="$start_frame $stop_frame $stride"
 
 if ! command -v "$cpptraj" >/dev/null 2>&1; then
@@ -41,6 +40,9 @@ mkdir -p "$output_dir"
 echo "선택한 frame을 NetCDF, DCD와 PDB로 변환합니다."
 
 cd "$output_dir"
+topology="../$topology"
+trajectory="../$trajectory"
+input_file="../$input_file"
 if ! "$cpptraj" \
     -p "$topology" \
     -y "$trajectory" \

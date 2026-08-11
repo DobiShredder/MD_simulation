@@ -12,6 +12,8 @@ import shutil
 from pathlib import Path
 from types import ModuleType
 
+from scale_cmap import install_scaled_cmap
+
 
 def load_parser_module() -> ModuleType:
     candidates = (
@@ -127,6 +129,12 @@ def main() -> None:
         target = args.output_directory / replica / "topol.top"
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source, target)
+        install_scaled_cmap(
+            args.processed_topology,
+            target,
+            lambda_pp,
+            type_prefix="s",
+        )
         shutil.rmtree(temporary)
 
     print(f"REST3 topology 8개를 생성했습니다: {args.output_directory}")

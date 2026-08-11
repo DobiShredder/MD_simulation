@@ -49,6 +49,7 @@ production은 `irest_gamd=1`로 이 값을 이어받습니다. 완료된 stage�
 | `ntave=50000` | Energy statistics update에 사용하는 averaging interval입니다. 2 fs 기준 100 ps입니다. |
 | `irest_gamd=0/1` | Preparation에서 state를 만들고 production에서 `gamd-restart.dat`을 이어받습니다. |
 | `ntwx=5000`, `-gamd` | Trajectory와 boost log를 10 ps 간격으로 맞춥니다. |
+| `ntr=1`, `-ref minimize.rst7` | Heating 동안 non-solvent atom을 minimization 구조에 restraint합니다. |
 
 기본 engine은 `pmemd.cuda`입니다. 다른 executable은 `AMBER_ENGINE`, 별도
 output directory는 `WORK_DIR`, heating seed는 `RANDOM_SEED`로 지정합니다.
@@ -73,7 +74,8 @@ target boost standard deviations. `ntcmdprep` prepares the initial estimate and
 boost introduction and `nteb` defines GaMD equilibration. These are overlapping
 schedule controls, not four durations to sum. `ntave=50000` gives a 100 ps
 averaging interval. Production uses `irest_gamd=1`; `ntwx=5000` and
-`-gamd` provide matched 10 ps records.
+`-gamd` provide matched 10 ps records. Heating uses `ntr=1` and explicitly
+passes `minimize.rst7` as the positional-restraint reference with `-ref`.
 
 Production continues with `irest_gamd=1`; each completed stage preserves a
 `*.gamd.rst` state snapshot beside its MD restart. Set `AMBER_ENGINE`,

@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-tutorial_dir=$PWD
-simulation_dir="$tutorial_dir/../../../1_Simulation/2_US/us"
-windows="$simulation_dir/work/windows"
-output="$tutorial_dir/output"
+simulation_dir="../../../1_Simulation/2_US/us"
+windows="$simulation_dir/work"
+output=output
 python=python3
 
 if [[ ! -d "$windows" ]]; then
@@ -17,6 +16,6 @@ if ! command -v "$python" >/dev/null 2>&1; then
     exit 1
 fi
 
-"$python" "$tutorial_dir/prepare.py"
+"$python" prepare.py
 
 echo "WHAM 입력을 생성했습니다: $output"

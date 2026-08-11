@@ -14,7 +14,7 @@ Alchemical calculation은 실제 결합·해리 경로 대신 Hamiltonian을 단
 | Tutorial | 계산 | System |
 | --- | --- | --- |
 | [5.1 RBFE](5.1_RBFE/) | 두 ligand의 상대 결합 자유에너지 | T4 lysozyme L99A, benzene → toluene |
-| [5.2 ABFE](5.2_ABFE/) | 한 ligand의 표준 결합 자유에너지 | Trypsin–benzamidine, PDB 3PTB |
+| [5.2 ABFE](5.2_ABFE/) | 한 ligand의 표준 결합 자유에너지 | T4 lysozyme–JZ4, PDB 3HTB |
 
 두 예제 모두 AMBER가 각 configuration을 모든 lambda state에서 다시 평가하도록
 `ifmbar=1`을 사용합니다. `anal.py`는 AmberTools 26 FE-ToolKit의
@@ -42,8 +42,8 @@ physical binding or unbinding path. Neighboring lambda states must sample
 overlapping configurations for reliable free-energy estimates.
 
 The RBFE example transforms benzene into toluene in T4 lysozyme L99A. The ABFE
-example applies a restrained double-decoupling cycle to benzamidine bound to
-trypsin. Both collect the full cross-state energy matrix with AMBER `ifmbar=1`
+example applies a restrained double-decoupling cycle to JZ4 bound to T4
+lysozyme L99A/M102Q. Both collect the full cross-state energy matrix with AMBER `ifmbar=1`
 and use the AmberTools 26 FE-ToolKit MBAR estimator. Two nanoseconds of
 production per window is a tutorial-scale default.
 

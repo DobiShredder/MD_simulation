@@ -17,8 +17,7 @@ die() {
     exit 1
 }
 
-script_dir=$(dirname "${BASH_SOURCE[0]}")
-work_dir=${WORK_DIR:-"$script_dir/work"}
+work_dir=${WORK_DIR:-work}
 states_file="$work_dir/states.tsv"
 amber_engine=${AMBER_ENGINE:-pmemd.cuda}
 amber_mpi_engine=${AMBER_MPI_ENGINE:-pmemd.cuda.MPI}
@@ -63,7 +62,7 @@ completed_stage_count() {
             continue
         fi
 
-        replica_dir="$work_dir/replicas/$replica"
+        replica_dir="$work_dir/$replica"
         required=(
             "$replica_dir/$stage.out"
             "$replica_dir/$stage.rst7"
@@ -103,7 +102,7 @@ run_stage() {
         if [[ "$replica" == "replica" ]]; then
             continue
         fi
-        replica_dir="$work_dir/replicas/$replica"
+        replica_dir="$work_dir/$replica"
 
         if ! (
             cd "$replica_dir"
@@ -144,7 +143,7 @@ run_stage_if_needed() {
 }
 
 prepare_common_gamd_state() {
-    local reference_dir="$work_dir/replicas/$gamd_reference_replica"
+    local reference_dir="$work_dir/$gamd_reference_replica"
     local completed_segments
     local existing=0
     local output
@@ -203,7 +202,7 @@ prepare_common_gamd_state() {
             continue
         fi
 
-        replica_dir="$work_dir/replicas/$replica"
+        replica_dir="$work_dir/$replica"
         if [[ "$replica" != "$gamd_reference_replica" ]]; then
             cp "$reference_dir/gamd-restart.dat" "$replica_dir/gamd-restart.dat"
         fi
@@ -233,7 +232,7 @@ write_group_file() {
         if [[ "$replica" == "replica" ]]; then
             continue
         fi
-        replica_dir="$work_dir/replicas/$replica"
+        replica_dir="$work_dir/$replica"
         dump_file="$replica_dir/restraint.$segment_name.dat"
         gamd_log="$replica_dir/gamd.$segment_name.log"
 
@@ -320,4 +319,4 @@ for segment in $(seq 1 "$production_segments"); do
     fi
 done
 
-echo "1 ns GaREUS가 완료되었습니다: $work_dir/replicas"
+echo "1 ns GaREUS가 완료되었습니다: $work_dir"

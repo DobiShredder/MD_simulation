@@ -16,8 +16,7 @@ die() {
     exit 1
 }
 
-script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-work_dir=${WORK_DIR:-"$script_dir/work"}
+work_dir=${WORK_DIR:-work}
 states_file="$work_dir/states.tsv"
 engine=${AMBER_ENGINE:-pmemd.cuda}
 read -r -a amber_options <<< "${AMBER_OPTIONS:-}"
@@ -60,21 +59,21 @@ run_stage() {
     local required=("$prefix.out" "$prefix.rst7" "$prefix.info")
     local command=(
         "$engine" "${amber_options[@]}" -O
-        -i "$directory/${stage%%.*}.in"
-        -o "$prefix.out"
-        -p "$directory/system.parm7"
-        -c "$directory/$input_restart"
-        -r "$prefix.rst7"
-        -inf "$prefix.info"
+        -i "${stage%%.*}.in"
+        -o "$stage.out"
+        -p system.parm7
+        -c "$input_restart"
+        -r "$stage.rst7"
+        -inf "$stage.info"
     )
     if [[ "$trajectory" == yes ]]; then
         required+=("$prefix.nc")
-        command+=(-x "$prefix.nc")
+        command+=(-x "$stage.nc")
     fi
     if (( dry_run )); then
-        printf '+ '
+        printf '+ (cd %q && ' "$directory"
         printf '%q ' "${command[@]}"
-        printf '\n'
+        printf ')\n'
         return
     fi
     local state
@@ -85,7 +84,10 @@ run_stage() {
     if [[ "$state" == partial ]]; then
         die "일부 output만 존재합니다: $prefix"
     fi
-    if ! (cd "$directory" && "${command[@]}"); then
+    if ! (
+        cd "$directory"
+        "${command[@]}"
+    ); then
         die "$stage 계산에 실패했습니다: $prefix.out"
     fi
     for output in "${required[@]}"; do
@@ -103,6 +105,7 @@ while IFS=$'\t' read -r method_stage leg window lambda seed directory; do
     if [[ "$method_stage" == stage ]]; then
         continue
     fi
+    directory="$work_dir/windows/$method_stage/$window"
     run_stage "$directory" minimize system.rst7 no
     run_stage "$directory" heat minimize.rst7 yes
     run_stage "$directory" equilibrate heat.rst7 yes

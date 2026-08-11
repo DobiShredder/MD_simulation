@@ -28,16 +28,15 @@ composition="POPC=90,POPE=5,CHOL=5"
 xy_padding=25
 water_padding=20
 protein_lipid_distance=2.0
-script_dir=$(dirname "${BASH_SOURCE[0]}")
-structure_dir="$script_dir/structure"
-work_dir=${WORK_DIR:-"$script_dir/work"}
+structure_dir=structure
+work_dir=${WORK_DIR:-work}
 output_pdb="$work_dir/system-coordinates.pdb"
 
 if (( dry_run )); then
     printf 'mkdir -p %q\n' "$work_dir"
     printf '%q %q %q %q %q %q %q \\\n' \
         "$python" \
-        "$script_dir/build_membrane.py" \
+        build_membrane.py \
         "$protein_pdb" \
         "$structure_dir/POPC.gro" \
         "$structure_dir/POPE.gro" \
@@ -73,7 +72,7 @@ fi
 mkdir -p "$work_dir"
 
 "$python" \
-    "$script_dir/build_membrane.py" \
+    build_membrane.py \
     "$protein_pdb" \
     "$structure_dir/POPC.gro" \
     "$structure_dir/POPE.gro" \

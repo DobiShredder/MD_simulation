@@ -16,17 +16,12 @@ die() {
     exit 1
 }
 
-script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-work_dir=${WORK_DIR:-"$script_dir/work"}
+work_dir=${WORK_DIR:-work}
 engine=${AMBER_ENGINE:-pmemd.cuda}
 plumed=${PLUMED:-plumed}
 seed_base=${RANDOM_SEED:-71000}
 production_segments=1
 read -r -a amber_options <<< "${AMBER_OPTIONS:-}"
-
-if [[ "$work_dir" != /* ]]; then
-    work_dir="$(pwd)/$work_dir"
-fi
 
 [[ "$seed_base" =~ ^[1-9][0-9]*$ ]] || die "RANDOM_SEED는 positive integer여야 합니다."
 
@@ -90,17 +85,17 @@ run_standard_stage() {
     local command=(
         "$engine" "${amber_options[@]}" -O
         -i "$input_file"
-        -o "$prefix.out"
-        -p "$topology"
+        -o "$stage.out"
+        -p system.parm7
         -c "$input_restart"
-        -r "$prefix.rst7"
-        -inf "$prefix.info"
+        -r "$stage.rst7"
+        -inf "$stage.info"
     )
     local state
 
     if [[ "$write_trajectory" == yes ]]; then
         required+=("$prefix.nc")
-        command+=(-x "$prefix.nc")
+        command+=(-x "$stage.nc")
     fi
     if [[ -n "$reference_restart" ]]; then
         command+=(-ref "$reference_restart")
@@ -127,11 +122,11 @@ render_plumed_input() {
 
     if [[ "$continuation" == yes ]]; then
         sed 's/@RESTART@/RESTART/' \
-            "$script_dir/inputs/plumed.dat.template" \
+            inputs/plumed.dat.template \
             > "$output"
     else
         sed 's/@RESTART@//' \
-            "$script_dir/inputs/plumed.dat.template" \
+            inputs/plumed.dat.template \
             > "$output"
     fi
 }
@@ -149,10 +144,10 @@ run_production_segment() {
     segment_dir="$work_dir/production/$segment"
 
     if [[ "$number" -eq 1 ]]; then
-        input_restart="$work_dir/equilibrate.rst7"
+        input_restart=../../equilibrate.rst7
     else
         previous_dir="$work_dir/production/$(printf '%03d' "$((number - 1))")"
-        input_restart="$previous_dir/md.rst7"
+        input_restart="../$(printf '%03d' "$((number - 1))")/md.rst7"
         continuation=yes
     fi
 
@@ -172,7 +167,7 @@ run_production_segment() {
 
         mkdir -p "$segment_dir"
         render_amber_input \
-            "$script_dir/inputs/production.in.template" \
+            inputs/production.in.template \
             "$segment_dir/production.in" \
             "$((seed_base + 100 + number))"
         render_plumed_input "$segment_dir/plumed.dat" "$continuation"
@@ -187,7 +182,7 @@ run_production_segment() {
         "$engine" "${amber_options[@]}" -O \
         -i production.in \
         -o md.out \
-        -p "$topology" \
+        -p ../../system.parm7 \
         -c "$input_restart" \
         -r md.rst7 \
         -x md.nc \
@@ -207,8 +202,10 @@ if (( ! dry_run )); then
     [[ -s "$work_dir/atom_count.txt" ]] || die "atom_count.txt가 없습니다. build.sh를 다시 실행하세요."
 
     mkdir -p "$work_dir"
-    render_amber_input "$script_dir/inputs/heat.in.template" "$work_dir/heat.in" "$((seed_base + 1))"
-    render_amber_input "$script_dir/inputs/equilibrate.in.template" "$work_dir/equilibrate.in" "$((seed_base + 2))"
+    mkdir -p "$work_dir/inputs"
+    cp inputs/minimize.in "$work_dir/inputs/minimize.in"
+    render_amber_input inputs/heat.in.template "$work_dir/inputs/heat.in" "$((seed_base + 1))"
+    render_amber_input inputs/equilibrate.in.template "$work_dir/inputs/equilibrate.in" "$((seed_base + 2))"
     render_plumed_input "$work_dir/plumed.parse.dat" no
     atom_count=$(<"$work_dir/atom_count.txt")
     (
@@ -220,9 +217,9 @@ if (( ! dry_run )); then
     )
 fi
 
-run_standard_stage minimize "$script_dir/inputs/minimize.in" "$initial_restart" no
-run_standard_stage heat "${work_dir}/heat.in" "$work_dir/minimize.rst7" yes "$work_dir/minimize.rst7"
-run_standard_stage equilibrate "${work_dir}/equilibrate.in" "$work_dir/heat.rst7" yes
+run_standard_stage minimize inputs/minimize.in system.rst7 no
+run_standard_stage heat inputs/heat.in minimize.rst7 yes minimize.rst7
+run_standard_stage equilibrate inputs/equilibrate.in heat.rst7 yes
 
 for segment_number in $(seq 1 "$production_segments"); do
     run_production_segment "$segment_number"

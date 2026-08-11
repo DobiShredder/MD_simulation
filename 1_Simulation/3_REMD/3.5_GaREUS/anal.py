@@ -158,7 +158,7 @@ def write_restraint_sampling(states: list[dict[str, str]]) -> None:
         )
 
         for state in states:
-            values = read_distances(WORK / "replicas" / state["replica"])
+            values = read_distances(WORK / state["replica"])
             if not values:
                 raise SystemExit(
                     f"restraint DUMPAVE를 찾지 못했습니다: replica {state['replica']}"
@@ -188,7 +188,7 @@ def write_boost_range(states: list[dict[str, str]]) -> None:
         )
 
         for state in states:
-            replica_dir = WORK / "replicas" / state["replica"]
+            replica_dir = WORK / state["replica"]
             values: list[float] = []
 
             for path in sorted(replica_dir.glob("gamd.production.*.log")):
@@ -231,4 +231,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

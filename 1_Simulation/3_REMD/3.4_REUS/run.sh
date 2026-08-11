@@ -17,8 +17,7 @@ die() {
     exit 1
 }
 
-script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-work_dir=${WORK_DIR:-"$script_dir/work"}
+work_dir=${WORK_DIR:-work}
 states_file="$work_dir/states.tsv"
 amber_engine=${AMBER_ENGINE:-pmemd.cuda}
 amber_mpi_engine=${AMBER_MPI_ENGINE:-pmemd.cuda.MPI}
@@ -54,7 +53,7 @@ stage_status() {
         if [[ "$replica" == "replica" ]]; then
             continue
         fi
-        if [[ -s "$work_dir/replicas/$replica/$filename" ]]; then
+        if [[ -s "$work_dir/$replica/$filename" ]]; then
             completed=$((completed + 1))
         fi
     done < "$states_file"
@@ -73,7 +72,7 @@ run_stage() {
         if [[ "$replica" == "replica" ]]; then
             continue
         fi
-        replica_dir="$work_dir/replicas/$replica"
+        replica_dir="$work_dir/$replica"
 
         if ! "$amber_engine" \
             "${amber_options[@]}" \
@@ -121,7 +120,7 @@ write_group_file() {
         if [[ "$replica" == "replica" ]]; then
             continue
         fi
-        replica_dir="$work_dir/replicas/$replica"
+        replica_dir="$work_dir/$replica"
         dump_file="$replica_dir/restraint.$segment_name.dat"
 
         sed \
@@ -185,4 +184,4 @@ for segment in $(seq 1 "$production_segments"); do
     fi
 done
 
-echo "1 ns REUS가 완료되었습니다: $work_dir/replicas"
+echo "1 ns REUS가 완료되었습니다: $work_dir"

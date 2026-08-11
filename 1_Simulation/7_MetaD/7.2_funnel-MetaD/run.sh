@@ -17,11 +17,7 @@ die() {
     exit 1
 }
 
-script_dir=$(dirname "${BASH_SOURCE[0]}")
-if [[ "$script_dir" != /* ]]; then
-    script_dir="$PWD/$script_dir"
-fi
-work_dir=${WORK_DIR:-"$script_dir/work"}
+work_dir=${WORK_DIR:-work}
 engine=${AMBER_ENGINE:-pmemd.cuda}
 plumed=${PLUMED:-plumed}
 seed_base=${RANDOM_SEED:-72000}
@@ -94,17 +90,17 @@ run_standard_stage() {
     local command=(
         "$engine" "${amber_options[@]}" -O
         -i "$input_file"
-        -o "$prefix.out"
-        -p "$topology"
+        -o "$stage.out"
+        -p system.parm7
         -c "$input_restart"
-        -r "$prefix.rst7"
-        -inf "$prefix.info"
+        -r "$stage.rst7"
+        -inf "$stage.info"
     )
     local state
 
     if [[ "$write_trajectory" == yes ]]; then
         required+=("$prefix.nc")
-        command+=(-x "$prefix.nc")
+        command+=(-x "$stage.nc")
     fi
     if [[ -n "$reference_restart" ]]; then
         command+=(-ref "$reference_restart")
@@ -143,10 +139,10 @@ run_production_segment() {
     segment_dir="$work_dir/production/$segment"
 
     if [[ "$segment_number" -eq 1 ]]; then
-        input_restart="$work_dir/equilibrate.rst7"
+        input_restart=../../equilibrate.rst7
     else
         previous_dir="$work_dir/production/$(printf '%03d' "$((segment_number - 1))")"
-        input_restart="$previous_dir/md.rst7"
+        input_restart="../$(printf '%03d' "$((segment_number - 1))")/md.rst7"
     fi
 
     local required=(
@@ -170,7 +166,7 @@ run_production_segment() {
 
         mkdir -p "$segment_dir"
         render_amber_input \
-            "$script_dir/inputs/production.in.template" \
+            inputs/production.in.template \
             "$segment_dir/production.in" \
             "$((seed_base + 100 + segment_number))"
         cp "$work_dir/funnel-reference.pdb" "$segment_dir/funnel-reference.pdb"
@@ -190,7 +186,7 @@ run_production_segment() {
         "$engine" "${amber_options[@]}" -O \
         -i production.in \
         -o md.out \
-        -p "$topology" \
+        -p ../../system.parm7 \
         -c "$input_restart" \
         -r md.rst7 \
         -x md.nc \
@@ -223,8 +219,11 @@ if (( ! dry_run )); then
         fi
     done
 
-    render_amber_input "$script_dir/inputs/heat.in.template" "$work_dir/heat.in" "$((seed_base + 1))"
-    render_amber_input "$script_dir/inputs/equilibrate.in.template" "$work_dir/equilibrate.in" "$((seed_base + 2))"
+    mkdir -p "$work_dir/inputs"
+    cp inputs/minimize-solvent.in "$work_dir/inputs/minimize-solvent.in"
+    cp inputs/minimize-all.in "$work_dir/inputs/minimize-all.in"
+    render_amber_input inputs/heat.in.template "$work_dir/inputs/heat.in" "$((seed_base + 1))"
+    render_amber_input inputs/equilibrate.in.template "$work_dir/inputs/equilibrate.in" "$((seed_base + 2))"
 
     atom_count=$(<"$work_dir/atom_count.txt")
     (
@@ -236,10 +235,10 @@ if (( ! dry_run )); then
     )
 fi
 
-run_standard_stage minimize-solvent "$script_dir/inputs/minimize-solvent.in" "$initial_restart" no "$initial_restart"
-run_standard_stage minimize-all "$script_dir/inputs/minimize-all.in" "$work_dir/minimize-solvent.rst7" no
-run_standard_stage heat "$work_dir/heat.in" "$work_dir/minimize-all.rst7" yes "$work_dir/minimize-all.rst7"
-run_standard_stage equilibrate "$work_dir/equilibrate.in" "$work_dir/heat.rst7" yes "$work_dir/heat.rst7"
+run_standard_stage minimize-solvent inputs/minimize-solvent.in system.rst7 no system.rst7
+run_standard_stage minimize-all inputs/minimize-all.in minimize-solvent.rst7 no
+run_standard_stage heat inputs/heat.in minimize-all.rst7 yes minimize-all.rst7
+run_standard_stage equilibrate inputs/equilibrate.in heat.rst7 yes heat.rst7
 
 for segment_number in $(seq 1 "$production_segments"); do
     run_production_segment "$segment_number"

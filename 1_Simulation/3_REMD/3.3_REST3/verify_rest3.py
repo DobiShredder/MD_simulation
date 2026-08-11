@@ -33,7 +33,7 @@ def topology_data(path: Path) -> tuple[dict[str, tuple[float, float]], dict[tupl
             section = stripped.strip("[] ").lower()
             continue
 
-        fields = stripped.split()
+        fields = stripped.replace("\\", " \\ ").split()
 
         if section == "atomtypes" and len(fields) >= 3:
             try:
@@ -88,6 +88,88 @@ def close_pair(reference: tuple[float, float], observed: tuple[float, float]) ->
     )
 
 
+def cmap_data(path: Path) -> list[tuple[tuple[str, ...], list[float]]]:
+    """[ cmaptypes ]에서 atom type과 energy grid를 읽습니다."""
+    maps: list[tuple[tuple[str, ...], list[float]]] = []
+    section = ""
+    atom_types: tuple[str, ...] | None = None
+    values: list[float] = []
+    expected = 0
+
+    for line in path.read_text(encoding="utf-8").splitlines():
+        stripped = line.split(";", 1)[0].strip()
+        if not stripped:
+            continue
+
+        if stripped.startswith("[") and stripped.endswith("]"):
+            if section == "cmaptypes" and expected:
+                raise SystemExit(f"CMAP grid 값이 부족합니다: {path}")
+            section = stripped.strip("[] ").lower()
+            continue
+
+        if section != "cmaptypes":
+            continue
+
+        fields = stripped.split()
+        is_header = (
+            len(fields) >= 8
+            and fields[5].isdigit()
+            and fields[6].isdigit()
+            and fields[7].isdigit()
+        )
+        if is_header:
+            if expected:
+                raise SystemExit(f"CMAP grid 값이 부족합니다: {path}")
+            atom_types = tuple(fields[:5])
+            values = []
+            expected = int(fields[6]) * int(fields[7])
+            continue
+
+        if atom_types is None:
+            raise SystemExit(f"CMAP header를 해석하지 못했습니다: {path}")
+
+        values.extend(float(field) for field in fields if field != "\\")
+        if len(values) == expected:
+            maps.append((atom_types, values))
+            atom_types = None
+            values = []
+            expected = 0
+        elif len(values) > expected:
+            raise SystemExit(f"CMAP grid 값이 너무 많습니다: {path}")
+
+    if expected:
+        raise SystemExit(f"CMAP grid 값이 부족합니다: {path}")
+    if not maps:
+        raise SystemExit(f"CMAP map을 찾지 못했습니다: {path}")
+
+    return maps
+
+
+def verify_cmap_scaling(base: Path, observed: Path, scale: float) -> None:
+    base_maps = cmap_data(base)
+    observed_maps = cmap_data(observed)
+
+    if len(base_maps) != len(observed_maps):
+        raise SystemExit(f"CMAP map 수가 바뀌었습니다: {observed}")
+
+    for (base_types, base_values), (types, values) in zip(base_maps, observed_maps):
+        if scale == 1.0:
+            expected_types = base_types
+        else:
+            expected_types = tuple(f"s{name}" for name in base_types)
+        if types != expected_types:
+            raise SystemExit(f"CMAP atom type이 REST3 hot type과 다릅니다: {observed}")
+
+        for reference, value in zip(base_values, values):
+            if not math.isclose(
+                reference * scale,
+                value,
+                rel_tol=1.0e-9,
+                abs_tol=1.0e-9,
+            ):
+                raise SystemExit(f"CMAP energy가 lambda_pp로 scaling되지 않았습니다: {observed}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("base_topology", type=Path)
@@ -117,6 +199,11 @@ def main() -> None:
 
     for state in states:
         topology = args.replica_directory / state["replica"] / "topol.top"
+        verify_cmap_scaling(
+            args.base_topology,
+            topology,
+            float(state["lambda_pp"]),
+        )
         atomtypes, pairs, water_type, ion_types = topology_data(topology)
 
         if water_type != base_water:
@@ -135,9 +222,8 @@ def main() -> None:
                     f"replica {state['replica']}, {first}-{second}"
                 )
 
-    print("REST3 base identity와 solvent interaction 보존을 확인했습니다.")
+    print("REST3 base identity, CMAP scaling과 solvent interaction 보존을 확인했습니다.")
 
 
 if __name__ == "__main__":
     main()
-

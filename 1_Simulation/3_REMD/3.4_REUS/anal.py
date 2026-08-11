@@ -158,7 +158,7 @@ def write_restraint_sampling(states: list[dict[str, str]]) -> None:
         )
 
         for state in states:
-            values = read_distances(WORK / "replicas" / state["replica"])
+            values = read_distances(WORK / state["replica"])
             if not values:
                 raise SystemExit(
                     f"restraint DUMPAVE를 찾지 못했습니다: replica {state['replica']}"
@@ -187,4 +187,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

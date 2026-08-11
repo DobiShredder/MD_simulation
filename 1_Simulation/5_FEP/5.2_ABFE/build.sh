@@ -7,7 +7,7 @@ if [[ "${1:-}" == "--dry-run" ]]; then
     shift
 fi
 if [[ $# -ne 2 ]]; then
-    echo "사용법: $0 [--dry-run] COMPLEX.pdb BEN_ideal.sdf" >&2
+    echo "사용법: $0 [--dry-run] COMPLEX.pdb JZ4_ideal.sdf" >&2
     exit 2
 fi
 
@@ -19,7 +19,7 @@ die() {
 complex_pdb=$1
 ligand_sdf=$2
 structure_dir=$(dirname "$complex_pdb")
-script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+script_dir=$(dirname "${BASH_SOURCE[0]}")
 work_dir=${WORK_DIR:-"$script_dir/work"}
 build_dir="$work_dir/build"
 antechamber=${ANTECHAMBER:-antechamber}
@@ -28,14 +28,13 @@ tleap=${TLEAP:-tleap}
 python=${PYTHON:-python3}
 
 if (( dry_run )); then
-    echo "Build: 3PTB ff19SB/GAFF2/AM1-BCC/TIP3P ABFE"
-    printf '%q %q %q %q\n' "$python" "$script_dir/protonate_benzamidine.py" "$ligand_sdf" "$build_dir/ben-protonated.sdf"
-    printf '%q -i %q -fi sdf -o %q -fo mol2 -at gaff2 -c bcc -nc 1 -rn BEN\n' "$antechamber" "$build_dir/ben-protonated.sdf" "$build_dir/ben.mol2"
-    printf '%q %q %q %q %q\n' "$python" "$script_dir/generate_inputs.py" "$work_dir" "$script_dir/inputs" ASP189_RESIDUE
+    echo "Build: 3HTB ff19SB/GAFF2/AM1-BCC/TIP3P ABFE"
+    printf '%q -i %q -fi sdf -o %q -fo mol2 -at gaff2 -c bcc -nc 0 -rn JZ4\n' "$antechamber" "$ligand_sdf" "$build_dir/jz4.mol2"
+    printf '%q %q %q %q %q\n' "$python" "$script_dir/generate_inputs.py" "$work_dir" "$script_dir/inputs" GLN102_RESIDUE
     exit 0
 fi
 
-for input_file in "$complex_pdb" "$ligand_sdf" "$structure_dir/disulfides.leap" "$structure_dir/preparation.tsv"; do
+for input_file in "$complex_pdb" "$ligand_sdf" "$structure_dir/preparation.tsv"; do
     if [[ ! -s "$input_file" ]]; then
         die "필수 input을 찾을 수 없습니다: $input_file"
     fi
@@ -49,33 +48,29 @@ if ! "$python" -c 'import parmed' >/dev/null 2>&1; then
     die "ParmEd Python module이 필요합니다."
 fi
 
-asp_residue=$(awk -F '\t' '$1 == "asp189_residue" {print $2}' "$structure_dir/preparation.tsv")
-if [[ ! "$asp_residue" =~ ^[1-9][0-9]*$ ]]; then
-    die "Asp189 output residue 번호를 읽지 못했습니다: $structure_dir/preparation.tsv"
+anchor_residue=$(awk -F '\t' '$1 == "protein_anchor_residue" {print $2}' "$structure_dir/preparation.tsv")
+if [[ ! "$anchor_residue" =~ ^[1-9][0-9]*$ ]]; then
+    die "Protein anchor residue 번호를 읽지 못했습니다: $structure_dir/preparation.tsv"
 fi
 
 mkdir -p "$build_dir"
 cp "$complex_pdb" "$build_dir/complex.pdb"
-cp "$structure_dir/disulfides.leap" "$build_dir/disulfides.leap"
 
-echo "BEN을 GAFF2/AM1-BCC로 parameterize합니다."
-"$python" \
-    "$script_dir/protonate_benzamidine.py" \
-    "$ligand_sdf" \
-    "$build_dir/ben-protonated.sdf"
+echo "JZ4를 GAFF2/AM1-BCC로 parameterize합니다."
+cp "$ligand_sdf" "$build_dir/JZ4_ideal.sdf"
 (
     cd "$build_dir"
     "$antechamber" \
-        -i ben-protonated.sdf -fi sdf \
-        -o ben.mol2 -fo mol2 \
-        -at gaff2 -c bcc -nc 1 -rn BEN -s 2 \
+        -i JZ4_ideal.sdf -fi sdf \
+        -o jz4.mol2 -fo mol2 \
+        -at gaff2 -c bcc -nc 0 -rn JZ4 -s 2 \
         > antechamber.log 2>&1
 )
 (
     cd "$build_dir"
     "$parmchk2" \
-        -i ben.mol2 -f mol2 \
-        -o ben.frcmod -s gaff2 \
+        -i jz4.mol2 -f mol2 \
+        -o jz4.frcmod -s gaff2 \
         > parmchk2.log 2>&1
 )
 
@@ -96,6 +91,6 @@ done
     "$script_dir/generate_inputs.py" \
     "$work_dir" \
     "$script_dir/inputs" \
-    "$asp_residue"
+    "$anchor_residue"
 
 echo "ABFE window 65개를 생성했습니다: $work_dir/windows"

@@ -27,7 +27,7 @@ def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("work_dir", type=Path)
     parser.add_argument("input_dir", type=Path)
-    parser.add_argument("asp_residue", type=int)
+    parser.add_argument("protein_anchor_residue", type=int)
     return parser.parse_args()
 
 
@@ -72,14 +72,21 @@ def atom_by_name(residue: object, name: str) -> object:
     return matches[0]
 
 
-def restraint_records(topology: object, asp_residue: int) -> list[tuple[str, list[object], float, float]]:
-    protein = topology.residues[asp_residue - 1]
-    ligand_matches = [residue for residue in topology.residues if residue.name == "BEN"]
+def restraint_records(
+    topology: object,
+    protein_anchor_residue: int,
+) -> list[tuple[str, list[object], float, float]]:
+    protein = topology.residues[protein_anchor_residue - 1]
+    if protein.name != "GLN":
+        raise SystemExit(
+            f"Protein anchor residue가 GLN이 아닙니다: {protein_anchor_residue} {protein.name}"
+        )
+    ligand_matches = [residue for residue in topology.residues if residue.name == "JZ4"]
     if len(ligand_matches) != 1:
-        raise SystemExit(f"BEN residue를 하나만 찾지 못했습니다: {len(ligand_matches)}")
+        raise SystemExit(f"JZ4 residue를 하나만 찾지 못했습니다: {len(ligand_matches)}")
     ligand = ligand_matches[0]
-    p1, p2, p3 = [atom_by_name(protein, name) for name in ("CA", "CB", "CG")]
-    l1, l2, l3 = [atom_by_name(ligand, name) for name in ("C7", "C1", "C2")]
+    p1, p2, p3 = [atom_by_name(protein, name) for name in ("CG", "CB", "CA")]
+    l1, l2, l3 = [atom_by_name(ligand, name) for name in ("C7", "C8", "C9")]
     xyz = lambda atom: list(topology.coordinates[atom.idx])
     return [
         ("distance", [p1, l1], distance(xyz(p1), xyz(l1)), 5.0),
@@ -121,9 +128,9 @@ def relative_link(target: Path, link: Path) -> None:
 
 def write_uncharged_topology(source: Path, destination: Path) -> None:
     topology = parmed.load_file(str(source))
-    ligand_residues = [residue for residue in topology.residues if residue.name == "BEN"]
+    ligand_residues = [residue for residue in topology.residues if residue.name == "JZ4"]
     if len(ligand_residues) != 1:
-        raise SystemExit(f"{source}에서 BEN residue를 하나만 찾지 못했습니다.")
+        raise SystemExit(f"{source}에서 JZ4 residue를 하나만 찾지 못했습니다.")
     for atom in ligand_residues[0].atoms:
         atom.charge = 0.0
     topology.save(str(destination), overwrite=True)
@@ -135,7 +142,7 @@ def alchemical_options(
     schedule: list[float],
     collect_mbar: bool,
 ) -> str:
-    common = f"icfe=1, clambda={lambda_value:.6f}, timask1=':BEN', timask2='', "
+    common = f"icfe=1, clambda={lambda_value:.6f}, timask1=':JZ4', timask2='', "
     if stage == "restraint":
         common += (
             " ifsc=0, aces26=1, gti_nmropt=1,"
@@ -143,12 +150,12 @@ def alchemical_options(
         )
     elif stage.endswith("vdw"):
         common += (
-            " ifsc=1, scmask1=':BEN', scmask2='', scalpha=0.5, scbeta=12.0,"
+            " ifsc=1, scmask1=':JZ4', scmask2='', scalpha=0.5, scbeta=12.0,"
             " aces26=1, gti_sc_cc_energy_terms='ele,vdw,ele14,vdw14',"
             " gti_sc_sc_energy_terms='', gti_nmropt=0,"
         )
     else:
-        common += " crgmask=':BEN', ifsc=0,"
+        common += " crgmask=':JZ4', ifsc=0,"
     if collect_mbar:
         mbar_lambda = ",".join(f"{value:.6f}" for value in schedule)
         common += (
@@ -169,10 +176,13 @@ def main() -> None:
             args.work_dir / "build" / f"{leg}.parm7",
             args.work_dir / "build" / f"{leg}_uncharged.parm7",
         )
-    records = restraint_records(topology, args.asp_residue)
+    records = restraint_records(topology, args.protein_anchor_residue)
     metadata = ["restraint\treference\tforce_constant\tatom_indices"]
     for kind, atoms, reference, force in records:
-        metadata.append(f"{kind}\t{reference:.8f}\t{force:.8f}\t" + ",".join(str(atom.idx + 1) for atom in atoms))
+        atom_indices = ",".join(str(atom.idx + 1) for atom in atoms)
+        metadata.append(
+            f"{kind}\t{reference:.8f}\t{force:.8f}\t{atom_indices}"
+        )
     (args.work_dir / "restraints.tsv").write_text("\n".join(metadata) + "\n", encoding="utf-8")
 
     states = ["stage\tleg\twindow\tlambda\tseed\tdirectory"]
@@ -206,7 +216,10 @@ def main() -> None:
             (directory / "minimize.in").write_text(
                 (args.input_dir / "minimize.in").read_text(encoding="utf-8"), encoding="utf-8"
             )
-            states.append(f"{stage}\t{leg}\t{window_index:03d}\t{lambda_value:.6f}\t{61000+state_index}\t{directory}")
+            states.append(
+                f"{stage}\t{leg}\t{window_index:03d}\t{lambda_value:.6f}\t"
+                f"{61000 + state_index}\t{directory}"
+            )
     (args.work_dir / "states.tsv").write_text("\n".join(states) + "\n", encoding="utf-8")
 
 

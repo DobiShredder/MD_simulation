@@ -113,7 +113,7 @@ trajectory이며 대부분의 후속 분석을 배우는 출발점입니다.
 | 시스템 | 시작 구조 | 학습 목표 | 기본 AMBER model |
 | --- | --- | --- | --- |
 | Chignolin | PDB 1UAO | 수용성 단백질 build와 기본 구조·ensemble 분석 | ff19SB + TIP3P |
-| T4 lysozyme–JZ4 | PDB 3HTB | ligand parameterization, interaction와 end-state energy | ff19SB + GAFF2 + TIP3P |
+| T4 lysozyme–JZ4 | PDB 3HTB | ligand parameterization, interaction, ABFE와 end-state energy | ff19SB + GAFF2 + TIP3P |
 | KcsA | PDB 1K4C | 막 단백질 좌표·topology build와 membrane analysis | ff19SB + Lipid21 + OPC |
 
 ff19SB 개발 논문에서는 TIP3P와 OPC를 모두 평가했고, OPC에서 더 나은
@@ -205,7 +205,7 @@ FEP는 직접적인 물리적 transition 대신 alchemical intermediate를 정�
 FEP input에는 lambda schedule, atom mapping, charge change, soft-core 설정과
 window별 equilibration이 들어갑니다. ABFE는 ligand position/orientation
 restraint와 standard-state correction도 포함합니다. RBFE는 T4 lysozyme L99A의
-benzene→toluene transformation, ABFE는 3PTB trypsin–benzamidine을 사용합니다.
+benzene→toluene transformation, ABFE는 3HTB T4 lysozyme–JZ4를 사용합니다.
 두 예제는 AMBER가 기록한 cross-state energy matrix를 FE-ToolKit MBAR로 분석하며
 production은 2 ns/window입니다. State overlap과 bootstrap uncertainty를 함께
 확인합니다.

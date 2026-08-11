@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-tutorial_dir=$PWD
-simulation_dir="$tutorial_dir/../../../1_Simulation/3_REMD/3.5_GaREUS"
+simulation_dir="../../../1_Simulation/3_REMD/3.5_GaREUS"
 simulation_work="$simulation_dir/work"
-output="$tutorial_dir/output"
+output=output
 python=python3
 
 if [[ ! -s "$simulation_work/states.tsv" ]]; then
@@ -17,6 +16,6 @@ if ! command -v "$python" >/dev/null 2>&1; then
     exit 1
 fi
 
-"$python" "$tutorial_dir/prepare.py"
+"$python" prepare.py
 
 echo "GaREUS reweighting 입력을 생성했습니다: $output"

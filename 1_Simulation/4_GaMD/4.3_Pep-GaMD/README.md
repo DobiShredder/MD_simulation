@@ -53,6 +53,7 @@ python3 anal.py
 | `sigma0P=sigma0D=6.0` | 두 boost component의 target standard deviation 상한(kcal/mol)입니다. |
 | `ntcmd*`, `nteb*`, `ntave=50000` | Initial conventional statistics와 GaMD equilibration schedule, 100 ps averaging interval을 정의합니다. `*prep`과 전체 step 값을 독립 구간처럼 더하지 않습니다. |
 | `WORK_DIR`, `RANDOM_SEED` | Independent run의 output/state와 heating velocity를 분리합니다. |
+| `ntr=1`, `-ref minimize.rst7` | Heating restraint의 reference로 minimization restart를 사용합니다. |
 
 Amber 26 manual은 Pep-GaMD를 serial GPU `pmemd.cuda` 전용으로 설명합니다.
 `AMBER_ENGINE`을 CPU 또는 MPI executable로 바꾸면 `run.sh`가 계산 전에
@@ -81,6 +82,7 @@ Generated `timask1`/`scmask1=':58-65'` identify the resolved peptide;
 `sigma0P/D=6.0` limit boost fluctuations. The `ntcmd*`/`nteb*` controls define
 overlapping conventional-statistics and GaMD-equilibration schedules rather
 than four durations to sum; `ntave=50000` gives a 100 ps average.
+Heating passes `minimize.rst7` to `-ref` for the `ntr=1` positional restraint.
 Amber 26 documents Pep-GaMD only for serial GPU `pmemd.cuda`; `run.sh` rejects
 CPU and MPI engine overrides.
 `WORK_DIR` and `RANDOM_SEED` values define independent runs.
