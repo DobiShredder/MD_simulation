@@ -10,12 +10,12 @@ while [[ $# -gt 0 ]]; do
             dry_run=1
             ;;
         -*)
-            echo "사용법: $0 [--dry-run] [states.tsv]" >&2
+            echo "Usage: $0 [--dry-run] [states.tsv]" >&2
             exit 2
             ;;
         *)
             if [[ -n "$states_argument" ]]; then
-                echo "사용법: $0 [--dry-run] [states.tsv]" >&2
+                echo "Usage: $0 [--dry-run] [states.tsv]" >&2
                 exit 2
             fi
             states_argument=$1
@@ -25,7 +25,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 die() {
-    echo "오류: $*" >&2
+    echo "Error: $*" >&2
     exit 1
 }
 
@@ -35,7 +35,7 @@ validate_states() {
 
     IFS= read -r actual_header < "$states_file"
     if [[ "$actual_header" != "$expected_header" ]]; then
-        die "state table header가 올바르지 않습니다: $expected_header"
+        die "Invalid state-table header: $expected_header"
     fi
 
     if ! awk -F '\t' '
@@ -56,7 +56,7 @@ validate_states() {
         { previous_temperature = $2; count++ }
         END { if (count < 2) exit 1 }
     ' "$states_file"; then
-        die "REST3 state table에는 000/300 K/κ=1 기준 state, 증가하는 effective temperature, lambda_pp=300/T, lambda_pw=sqrt(lambda_pp), positive κ, 고유 replica와 positive integer seed가 필요합니다: $states_file"
+        die "REST3 state table requires a 000/300 K/kappa=1 reference state, increasing effective temperatures, lambda_pp=300/T, lambda_pw=sqrt(lambda_pp), positive kappa values, unique replicas, and positive integer seeds: $states_file"
     fi
 }
 
@@ -69,7 +69,7 @@ python_bin=${PYTHON:-python3}
 
 for input_file in "$input_pdb" "$states_file"; do
     if [[ ! -s "$input_file" ]]; then
-        die "필요한 input을 찾을 수 없습니다: $input_file"
+        die "Required input not found: $input_file"
     fi
 done
 
@@ -78,12 +78,12 @@ validate_states
 if (( ! dry_run )); then
     for executable in "$tleap" "$gmx" "$python_bin"; do
         if ! command -v "$executable" >/dev/null 2>&1; then
-            die "실행 파일을 찾을 수 없습니다: $executable"
+            die "Executable not found: $executable"
         fi
     done
 
     if ! "$python_bin" -c "import parmed" >/dev/null 2>&1; then
-        die "ParmEd가 필요합니다: $python_bin -m pip install -r requirements.txt"
+        die "ParmEd is required: $python_bin -m pip install -r requirements.txt"
     fi
 fi
 
@@ -91,15 +91,15 @@ replica_count=$(awk 'NR > 1 {count++} END {print count + 0}' "$states_file")
 last_replica=$(awk 'END {print $1}' "$states_file")
 
 if (( dry_run )); then
-    echo "ff19SB/TIP3P AMBER system을 GROMACS topology로 변환합니다."
-    echo "지정한 temperature/κ table로 $replica_count 개 REST3 topology를 생성합니다."
-    echo "Base identity와 water–water/ion–water interaction을 검사합니다."
+    echo "Converting the ff19SB/TIP3P AMBER system to GROMACS topology."
+    echo "Generating $replica_count REST3 topologies from the specified temperature/kappa table."
+    echo "Checking base identity and water-water/ion-water interactions."
     echo "State table: $states_file"
-    echo "생성 위치: $work_dir/000 ... $last_replica"
+    echo "Output directories: $work_dir/000 ... $last_replica"
     exit 0
 fi
 
-echo "ff19SB/TIP3P AMBER system을 생성합니다."
+echo "Generating an ff19SB/TIP3P AMBER system."
 mkdir -p "$work_dir"
 cp "$input_pdb" "$work_dir/input.pdb"
 cp inputs/tleap.in "$work_dir/tleap.in"
@@ -110,7 +110,7 @@ if ! (
         -f tleap.in \
         > leap.log 2>&1
 ); then
-    die "tleap 실행에 실패했습니다. 확인할 파일: $work_dir/leap.log"
+    die "tleap failed. See log: $work_dir/leap.log"
 fi
 
 if ! "$python_bin" "convert_topology.py" \
@@ -118,7 +118,7 @@ if ! "$python_bin" "convert_topology.py" \
     "$work_dir/system.rst7" \
     "$work_dir/topol.top" \
     "$work_dir/system.gro"; then
-    die "ParmEd topology 변환에 실패했습니다."
+    die "ParmEd topology conversion failed."
 fi
 
 if ! "$gmx" grompp \
@@ -128,23 +128,23 @@ if ! "$gmx" grompp \
     -pp "$work_dir/processed.top" \
     -o "$work_dir/preprocess.tpr" \
     > "$work_dir/grompp_preprocess.log" 2>&1; then
-    die "processed topology 생성에 실패했습니다: $work_dir/grompp_preprocess.log"
+    die "processed topology generation failed: $work_dir/grompp_preprocess.log"
 fi
 
 if ! "$python_bin" "scale_cmap.py" \
     "$work_dir/topol.top" \
     "$work_dir/processed.top" \
     1.0; then
-    die "processed topology의 residue-specific CMAP 복원에 실패했습니다."
+    die "Failed to restore residue-specific CMAPs in the processed topology."
 fi
 
-echo "Published κ schedule로 REST3 topology를 생성합니다."
+echo "Generating REST3 topologies with the published κ schedule."
 
 if ! "$python_bin" "generate_rest3.py" \
     "$work_dir/processed.top" \
     "$states_file" \
     "$work_dir"; then
-    die "REST3 topology 생성에 실패했습니다."
+    die "REST3 topology generation failed."
 fi
 
 while IFS=$'\t' read -r replica _ _ _ _ seed; do
@@ -171,7 +171,7 @@ if ! "$python_bin" "verify_rest3.py" \
     "$work_dir/processed.top" \
     "$work_dir/states.tsv" \
     "$work_dir"; then
-    die "REST3 topology 보존 검사에 실패했습니다."
+    die "REST3 topology-preservation check failed."
 fi
 
-echo "REST3 topology와 좌표: $work_dir"
+echo "REST3 topologies and coordinates: $work_dir"

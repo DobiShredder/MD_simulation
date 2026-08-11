@@ -7,12 +7,12 @@ if [[ "${1:-}" == "--dry-run" ]]; then
     shift
 fi
 if [[ $# -ne 1 ]]; then
-    echo "사용법: $0 [--dry-run] CHIGNOLIN.pdb" >&2
+    echo "Usage: $0 [--dry-run] CHIGNOLIN.pdb" >&2
     exit 2
 fi
 
 die() {
-    echo "오류: $*" >&2
+    echo "Error: $*" >&2
     exit 1
 }
 
@@ -30,11 +30,11 @@ if (( dry_run )); then
 fi
 
 if [[ ! -s "$input_pdb" ]]; then
-    die "Chignolin PDB를 찾을 수 없습니다: $input_pdb"
+    die "Chignolin PDB not found: $input_pdb"
 fi
 for executable in "$tleap" "$AMBER_ENGINE" "$CPPTRAJ"; do
     if ! command -v "$executable" >/dev/null 2>&1; then
-        die "실행 파일을 찾을 수 없습니다: $executable"
+        die "Executable not found: $executable"
     fi
 done
 
@@ -42,9 +42,9 @@ mkdir -p "$build_dir" "$basis_dir"
 cp "$input_pdb" "$build_dir/input.pdb"
 cp "$WEST_SIM_ROOT/inputs/leap.in" "$build_dir/leap.in"
 
-echo "Chignolin topology와 basis state를 생성합니다."
+echo "Generating the Chignolin topology and basis state."
 if ! (cd "$build_dir" && "$tleap" -f leap.in > leap.log 2>&1); then
-    die "tleap 실행에 실패했습니다: $build_dir/leap.log"
+    die "tleap failed: $build_dir/leap.log"
 fi
 
 if ! "$AMBER_ENGINE" \
@@ -55,7 +55,7 @@ if ! "$AMBER_ENGINE" \
     -c "$build_dir/system.rst7" \
     -r "$build_dir/minimize.rst7" \
     -inf "$build_dir/minimize.info"; then
-    die "Basis-state minimization에 실패했습니다: $build_dir/minimize.out"
+    die "Basis-state minimization failed: $build_dir/minimize.out"
 fi
 
 cp "$build_dir/minimize.rst7" "$build_dir/reference.rst7"
@@ -69,7 +69,7 @@ if ! "$AMBER_ENGINE" \
     -r "$build_dir/heat.rst7" \
     -ref "$build_dir/minimize.rst7" \
     -inf "$build_dir/heat.info"; then
-    die "Basis-state heating에 실패했습니다: $build_dir/heat.out"
+    die "Basis-state heating failed: $build_dir/heat.out"
 fi
 
 if ! "$AMBER_ENGINE" \
@@ -81,7 +81,7 @@ if ! "$AMBER_ENGINE" \
     -r "$basis_dir/basis.rst7" \
     -x "$build_dir/equilibrate.nc" \
     -inf "$build_dir/equilibrate.info"; then
-    die "Basis-state equilibration에 실패했습니다: $build_dir/equilibrate.out"
+    die "Basis-state equilibration failed: $build_dir/equilibrate.out"
 fi
 
 for output in \
@@ -89,7 +89,7 @@ for output in \
     "$build_dir/reference.rst7" \
     "$basis_dir/basis.rst7"; do
     if [[ ! -s "$output" ]]; then
-        die "Basis-state output이 생성되지 않았습니다: $output"
+        die "Basis-state Output was not created: $output"
     fi
 done
 echo "WESTPA basis state: $basis_dir/basis.rst7"

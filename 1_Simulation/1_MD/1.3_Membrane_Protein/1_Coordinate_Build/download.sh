@@ -2,16 +2,16 @@
 set -euo pipefail
 
 die() {
-    echo "오류: $*" >&2
+    echo "Error: $*" >&2
     exit 1
 }
 
 if [[ $# -ne 0 ]]; then
-    echo "사용법: $0" >&2
+    echo "Usage: $0" >&2
     exit 2
 fi
 
-# 사용자 설정과 output 경로
+# User settings and output paths
 curl_bin=${CURL:-curl}
 
 structure_dir="structure"
@@ -23,52 +23,52 @@ popc_url="https://zenodo.org/records/14776136/files/POPC.gro"
 pope_url="https://zenodo.org/records/14776136/files/POPE.gro"
 cholesterol_url="https://zenodo.org/records/14776136/files/CHOL15.gro"
 
-# 실행 전 확인
+# Input and dependency checks
 if ! command -v "$curl_bin" >/dev/null 2>&1; then
-    die "curl을 찾을 수 없습니다: $curl_bin"
+    die "curl not found: $curl_bin"
 fi
 
-echo "OPM에서 membrane에 정렬된 KcsA를 다운로드합니다 (PDB 1K4C)."
+echo "Downloading membrane-oriented KcsA from OPM (PDB 1K4C)."
 mkdir -p "$structure_dir"
 
-# OPM PDB에는 protein orientation과 z=±15 Å membrane boundary가 들어 있습니다.
+# The OPM PDB contains the protein orientation and membrane boundaries at z=±15 Å.
 if ! "$curl_bin" \
     -fsSL \
     "$opm_pdb_url" \
     -o "$structure_dir/1K4C-opm.pdb"; then
-    die "OPM PDB 다운로드에 실패했습니다: $opm_pdb_url"
+    die "OPM Failed to download PDB: $opm_pdb_url"
 fi
 
-# 1K4C에서 빠진 Ser22와 Arg117 side-chain은 closed KcsA 3EFF에서 복원합니다.
+# Restore the missing Ser22 and Arg117 side chains in 1K4C from closed KcsA 3EFF.
 if ! "$curl_bin" \
     -fsSL \
     "$sidechain_template_url" \
     -o "$structure_dir/3EFF-opm.pdb"; then
-    die "side-chain template 다운로드에 실패했습니다: $sidechain_template_url"
+    die "side-chain template Download failed: $sidechain_template_url"
 fi
 
-# Lipid21로 평형화한 128-lipid bilayer coordinate를 받습니다.
+# Download the 128-lipid bilayer coordinates equilibrated with Lipid21.
 if ! "$curl_bin" -fsSL --retry 3 "$popc_url" -o "$structure_dir/POPC.gro"; then
-    die "POPC coordinate 다운로드에 실패했습니다: $popc_url"
+    die "POPC coordinate Download failed: $popc_url"
 fi
 
 if ! "$curl_bin" -fsSL --retry 3 "$pope_url" -o "$structure_dir/POPE.gro"; then
-    die "POPE coordinate 다운로드에 실패했습니다: $pope_url"
+    die "POPE coordinate Download failed: $pope_url"
 fi
 
 if ! "$curl_bin" -fsSL --retry 3 "$cholesterol_url" -o "$structure_dir/CHOL15.gro"; then
-    die "cholesterol coordinate 다운로드에 실패했습니다: $cholesterol_url"
+    die "cholesterol coordinate Download failed: $cholesterol_url"
 fi
 
-# 원본 assembly와 metadata를 확인할 mmCIF를 함께 받습니다.
+# Also download the mmCIF for source-assembly and metadata checks.
 if ! "$curl_bin" \
     -fsSL \
     "$assembly_cif_url" \
     -o "$structure_dir/1K4C-assembly1.cif"; then
-    die "assembly mmCIF 다운로드에 실패했습니다: $assembly_cif_url"
+    die "assembly Failed to download mmCIF: $assembly_cif_url"
 fi
 
-# Linux와 macOS의 checksum command 차이를 처리합니다.
+# Handle checksum command differences between Linux and macOS.
 if command -v sha256sum >/dev/null 2>&1; then
     (
         cd "$structure_dir"
@@ -96,4 +96,4 @@ else
     )
 fi
 
-echo "다운로드 결과와 checksum: $structure_dir"
+echo "Downloaded files and checksums: $structure_dir"

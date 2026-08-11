@@ -9,33 +9,33 @@ if [[ "${1:-}" == "--dry-run" ]]; then
 fi
 
 if [[ $# -ne 1 ]]; then
-    echo "사용법: $0 [--dry-run] CHIGNOLIN.pdb" >&2
+    echo "Usage: $0 [--dry-run] CHIGNOLIN.pdb" >&2
     exit 2
 fi
 
 die() {
-    echo "오류: $*" >&2
+    echo "Error: $*" >&2
     exit 1
 }
 
-# Input과 사용자 설정
+# Inputs and user settings
 input=$1
 tleap=${TLEAP:-tleap}
 
 work_dir=${WORK_DIR:-"work"}
 
-# 실행 전 확인
+# Input and dependency checks
 if (( ! dry_run )); then
     if [[ ! -f "$input" ]]; then
-        die "입력 PDB를 찾을 수 없습니다: $input"
+        die "Input PDB not found: $input"
     fi
 
     if ! command -v "$tleap" >/dev/null 2>&1; then
-        die "tleap을 찾을 수 없습니다: $tleap"
+        die "tleap not found: $tleap"
     fi
 fi
 
-# Dry-run에서는 파일을 생성하지 않고 command만 보여줍니다.
+# Dry run prints commands without creating files.
 if (( dry_run )); then
     printf 'mkdir -p %q\n' "$work_dir"
     printf 'cp %q %q\n' "$input" "$work_dir/input.pdb"
@@ -46,7 +46,7 @@ if (( dry_run )); then
 fi
 
 # AMBER system build
-echo "ff19SB/TIP3P로 chignolin system을 생성합니다."
+echo "Generating a Chignolin system with ff19SB/TIP3P."
 
 mkdir -p "$work_dir"
 cp "$input" "$work_dir/input.pdb"
@@ -58,15 +58,15 @@ if ! (
         -f "tleap.in" \
         > leap.log 2>&1
 ); then
-    die "tleap 실행에 실패했습니다. 확인할 파일: $work_dir/leap.log"
+    die "tleap failed. See log: $work_dir/leap.log"
 fi
 
 if [[ ! -s "$work_dir/system.parm7" ]]; then
-    die "topology가 생성되지 않았습니다. 확인할 파일: $work_dir/leap.log"
+    die "Topology was not created. See log: $work_dir/leap.log"
 fi
 
 if [[ ! -s "$work_dir/system.rst7" ]]; then
-    die "restart file이 생성되지 않았습니다. 확인할 파일: $work_dir/leap.log"
+    die "Restart file was not created. See log: $work_dir/leap.log"
 fi
 
-echo "AMBER topology와 restart: $work_dir"
+echo "AMBER topology and restart: $work_dir"

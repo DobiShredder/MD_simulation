@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""AMBER DUMPAVE에서 window별 distance series를 준비합니다."""
+"""Prepare per-window distance series from AMBER DUMPAVE files."""
 
 from __future__ import annotations
 
@@ -28,13 +28,13 @@ class Window:
 def read_window(directory: Path) -> Window:
     metadata = directory / "window.tsv"
     if not metadata.is_file():
-        raise ValueError(f"window metadata를 찾을 수 없습니다: {metadata}")
+        raise ValueError(f"window metadata not found: {metadata}")
 
     with metadata.open(encoding="utf-8", newline="") as handle:
         rows = list(csv.DictReader(handle, delimiter="\t"))
 
     if len(rows) != 1:
-        raise ValueError(f"window metadata 형식이 잘못되었습니다: {metadata}")
+        raise ValueError(f"Invalid window metadata format: {metadata}")
 
     row = rows[0]
     return Window(
@@ -52,11 +52,11 @@ def discover_windows(root: Path) -> list[Window]:
             windows.append(read_window(directory))
 
     if not windows:
-        raise ValueError(f"umbrella window를 찾을 수 없습니다: {root}")
+        raise ValueError(f"umbrella window not found: {root}")
 
     centers = [window.center_angstrom for window in windows]
     if centers != sorted(centers) or len(centers) != len(set(centers)):
-        raise ValueError("window center는 중복 없이 증가해야 합니다.")
+        raise ValueError("Window centers must be unique and increasing.")
 
     return windows
 
@@ -84,7 +84,7 @@ def read_dumpave(path: Path) -> list[tuple[float, float]]:
             values.append((time_ps, distance_angstrom))
 
     if not values:
-        raise ValueError(f"DUMPAVE numeric record를 읽지 못했습니다: {path}")
+        raise ValueError(f"DUMPAVE numeric record could not be read: {path}")
 
     return values
 
@@ -108,7 +108,7 @@ def prepare_windows(windows_dir: Path, output_dir: Path) -> int:
     for window in windows:
         source = window.directory / "distance.dat"
         if not source.is_file():
-            raise ValueError(f"DUMPAVE output을 찾을 수 없습니다: {source}")
+            raise ValueError(f"DUMPAVE output not found: {source}")
 
         values = read_dumpave(source)
         first_production_time = values[0][0] + DISCARD_PS
@@ -118,7 +118,7 @@ def prepare_windows(windows_dir: Path, output_dir: Path) -> int:
                 kept.append((time_ps, distance_angstrom))
 
         if not kept:
-            raise ValueError(f"discard 이후 frame이 없습니다: {source}")
+            raise ValueError(f"No frames remain after discarding data: {source}")
 
         series_file = series_dir / f"window_{window.name}.dat"
         with series_file.open("w", encoding="utf-8") as handle:
@@ -147,9 +147,9 @@ def main() -> None:
     try:
         window_count = prepare_windows(WINDOWS_DIR, OUTPUT_DIR)
     except (OSError, KeyError, ValueError) as error:
-        raise SystemExit(f"WHAM input 준비에 실패했습니다: {error}") from error
+        raise SystemExit(f"WHAM input preparation failed: {error}") from error
 
-    print(f"{window_count}개 window를 정리했습니다.")
+    print(f"Organized {window_count} windows.")
 
 
 if __name__ == "__main__":

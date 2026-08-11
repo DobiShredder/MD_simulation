@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Backbone fitting 전후 RMSD를 비교한다."""
+"""Compare RMSD before and after backbone fitting."""
 
 from __future__ import annotations
 
@@ -14,9 +14,9 @@ def main() -> int:
     before = np.loadtxt(output_dir / "rmsd_before.dat", comments="#", ndmin=2)
     after = np.loadtxt(output_dir / "rmsd_after.dat", comments="#", ndmin=2)
     if before.shape[1] < 2 or after.shape[1] < 2:
-        raise ValueError("RMSD output column이 부족합니다.")
+        raise ValueError("RMSD output has too few columns.")
     if not np.array_equal(before[:, 0], after[:, 0]):
-        raise ValueError("RMSD output의 frame 번호가 일치하지 않습니다.")
+        raise ValueError("RMSD output frame indices do not match.")
 
     figure, axis = plt.subplots(figsize=(8, 4.5))
     axis.plot(before[:, 0], before[:, 1], label="Before fitting")

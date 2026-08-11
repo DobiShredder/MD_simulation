@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""NumPy로 1D WHAM PMF와 neighboring-window overlap을 계산합니다."""
+"""Calculate a 1D WHAM PMF and neighboring-window overlap with NumPy."""
 
 from __future__ import annotations
 
@@ -37,13 +37,13 @@ def read_inputs(
 ) -> tuple[np.ndarray, np.ndarray, list[np.ndarray], list[str]]:
     summary = output_dir / "summary.tsv"
     if not summary.is_file():
-        raise ValueError("./run.sh를 먼저 실행해야 합니다: output/summary.tsv")
+        raise ValueError("Run ./run.sh first: output/summary.tsv")
 
     with summary.open(encoding="utf-8", newline="") as handle:
         rows = list(csv.DictReader(handle, delimiter="\t"))
 
     if len(rows) < 2:
-        raise ValueError("WHAM에는 두 개 이상의 window가 필요합니다.")
+        raise ValueError("WHAM requires at least two windows.")
 
     centers = []
     forces = []
@@ -54,11 +54,11 @@ def read_inputs(
         name = row["window"]
         path = output_dir / "series" / f"window_{name}.dat"
         if not path.is_file():
-            raise ValueError(f"distance series를 찾을 수 없습니다: {path}")
+            raise ValueError(f"distance series not found: {path}")
 
         values = np.loadtxt(path, skiprows=1, usecols=1, ndmin=1)
         if values.size == 0 or not np.all(np.isfinite(values)):
-            raise ValueError(f"distance series가 비었거나 유효하지 않습니다: {path}")
+            raise ValueError(f"Distance series is empty or invalid: {path}")
 
         names.append(name)
         centers.append(float(row["center_A"]))
@@ -78,9 +78,9 @@ def solve_wham(
     maximum_iterations: int,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, int, float]:
     if temperature_kelvin <= 0.0:
-        raise ValueError("temperature는 positive value여야 합니다.")
+        raise ValueError("Temperature must be positive.")
     if tolerance_kcal_mol <= 0.0 or maximum_iterations < 1:
-        raise ValueError("WHAM tolerance와 maximum iterations를 확인하십시오.")
+        raise ValueError("Check the WHAM tolerance and maximum iteration count.")
 
     counts = np.asarray(
         [np.histogram(values, bins=edges)[0] for values in series],
@@ -90,9 +90,9 @@ def solve_wham(
     expected_counts = np.asarray([len(values) for values in series], dtype=float)
 
     if not np.array_equal(sample_counts, expected_counts):
-        raise ValueError("PMF 범위 밖의 frame이 있습니다. PMF_MIN/MAX를 수정하십시오.")
+        raise ValueError("Frames fall outside the PMF range. Adjust PMF_MIN/MAX.")
     if np.any(sample_counts == 0):
-        raise ValueError("sample이 없는 window가 있습니다.")
+        raise ValueError("At least one window contains no samples.")
 
     bin_centers = 0.5 * (edges[:-1] + edges[1:])
     bias = forces[:, None] * (bin_centers[None, :] - centers[:, None]) ** 2
@@ -123,8 +123,8 @@ def solve_wham(
             return bin_centers, probability, counts, offsets, iteration, residual
 
     raise ValueError(
-        f"WHAM이 {maximum_iterations} iterations 안에 수렴하지 않았습니다. "
-        f"마지막 residual={residual:.3e} kcal/mol"
+        f"WHAM did not converge within {maximum_iterations} iterations. "
+        f"final residual={residual:.3e} kcal/mol"
     )
 
 
@@ -282,9 +282,9 @@ def main() -> None:
             residual,
         )
     except (OSError, KeyError, ValueError) as error:
-        raise SystemExit(f"WHAM 계산에 실패했습니다: {error}") from error
+        raise SystemExit(f"WHAM Calculation failed: {error}") from error
 
-    print(f"WHAM이 {iterations} iterations에서 수렴했습니다: {OUTPUT_DIR}/pmf.tsv")
+    print(f"WHAM converged in {iterations} iterations: {OUTPUT_DIR}/pmf.tsv")
     plot_results(bin_centers, pmf, centers, overlap)
 
 

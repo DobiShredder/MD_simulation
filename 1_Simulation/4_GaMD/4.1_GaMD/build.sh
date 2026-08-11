@@ -8,12 +8,12 @@ if [[ "${1:-}" == "--dry-run" ]]; then
 fi
 
 if [[ $# -ne 1 ]]; then
-    echo "사용법: $0 [--dry-run] CHIGNOLIN.pdb" >&2
+    echo "Usage: $0 [--dry-run] CHIGNOLIN.pdb" >&2
     exit 2
 fi
 
 die() {
-    echo "오류: $*" >&2
+    echo "Error: $*" >&2
     exit 1
 }
 
@@ -30,28 +30,28 @@ if (( dry_run )); then
 fi
 
 if [[ ! -s "$input_pdb" ]]; then
-    die "전처리 PDB를 찾을 수 없습니다: $input_pdb"
+    die "preparation PDB not found: $input_pdb"
 fi
 if ! command -v "$tleap" >/dev/null 2>&1; then
-    die "tleap을 찾을 수 없습니다: $tleap"
+    die "tleap not found: $tleap"
 fi
 
 mkdir -p "$work_dir"
 cp "$input_pdb" "$work_dir/input.pdb"
 cp inputs/tleap.in "$work_dir/tleap.in"
 
-echo "ff19SB/TIP3P Chignolin topology를 생성합니다."
+echo "Generating the ff19SB/TIP3P Chignolin topology."
 if ! (
     cd "$work_dir"
     "$tleap" -f tleap.in > leap.log 2>&1
 ); then
-    die "tleap 실행에 실패했습니다: $work_dir/leap.log"
+    die "tleap failed: $work_dir/leap.log"
 fi
 
 for output in system.parm7 system.rst7 system.pdb; do
     if [[ ! -s "$work_dir/$output" ]]; then
-        die "build output이 생성되지 않았습니다: $work_dir/$output"
+        die "build Output was not created: $work_dir/$output"
     fi
 done
 
-echo "AMBER topology와 restart: $work_dir"
+echo "AMBER topology and restart: $work_dir"

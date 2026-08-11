@@ -1,4 +1,4 @@
-# 첫 frame에서 정의한 heavy-atom contact와 새로 생기는 contact를 추적합니다.
+# Track heavy-atom contacts defined in the first frame and newly formed contacts.
 autoimage anchor :1-10
 
 nativecontacts name Contacts :1-10&!@H= \

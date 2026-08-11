@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""AMBER T-REMD remlog에서 교환과 temperature 방문 통계를 계산합니다."""
+"""Calculate exchange and temperature-visit statistics from an AMBER T-REMD remlog."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ EXPLICIT = re.compile(
 def read_states() -> list[dict[str, str]]:
     path = WORK / "states.tsv"
     if not path.is_file():
-        raise SystemExit(f"state table을 찾을 수 없습니다: {path}")
+        raise SystemExit(f"state table not found: {path}")
 
     with path.open(encoding="utf-8", newline="") as handle:
         return list(csv.DictReader(handle, delimiter="\t"))
@@ -29,7 +29,7 @@ def temperature_state(value: float, temperatures: list[float]) -> int:
     state = min(range(len(temperatures)), key=lambda index: abs(temperatures[index] - value))
 
     if abs(temperatures[state] - value) > 0.1:
-        raise ValueError(f"temperature ladder에 없는 target temperature입니다: {value}")
+        raise ValueError(f"Target temperature is not present in the temperature ladder: {value}")
 
     return state
 
@@ -129,7 +129,7 @@ def parse_logs(
 
     if not records:
         raise SystemExit(
-            "exchange record를 찾지 못했습니다. work/exchange.*.log를 확인하세요."
+            "Exchange record not found. Check work/exchange.*.log."
         )
 
     return records, visits if found_temperature_rows else None
@@ -244,9 +244,8 @@ def main() -> None:
 
     write_exchange_summary(records, len(states))
     write_visit_outputs(visits, states)
-    print(f"Exchange와 temperature 방문 요약: {WORK}")
+    print(f"Exchange and temperature-visit summary: {WORK}")
 
 
 if __name__ == "__main__":
     main()
-

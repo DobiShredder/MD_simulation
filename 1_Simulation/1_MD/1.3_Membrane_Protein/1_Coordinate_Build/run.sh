@@ -2,11 +2,11 @@
 set -euo pipefail
 
 usage() {
-    echo "사용법: $0 [--dry-run] KCSA.pdb" >&2
+    echo "Usage: $0 [--dry-run] KCSA.pdb" >&2
 }
 
 die() {
-    echo "오류: $*" >&2
+    echo "Error: $*" >&2
     exit 1
 }
 
@@ -21,7 +21,7 @@ if [[ $# -ne 1 ]]; then
     exit 2
 fi
 
-# Input과 output 경로
+# Input and output paths
 protein_pdb=$1
 python=${PYTHON:-python3}
 composition="POPC=90,POPE=5,CHOL=5"
@@ -49,26 +49,26 @@ if (( dry_run )); then
     exit 0
 fi
 
-# 실행 전 확인
+# Input and dependency checks
 if [[ ! -f "$protein_pdb" ]]; then
-    die "KcsA PDB를 찾을 수 없습니다: $protein_pdb"
+    die "KcsA PDB not found: $protein_pdb"
 fi
 
 if ! command -v "$python" >/dev/null 2>&1; then
-    die "Python을 찾을 수 없습니다: $python"
+    die "Python executable not found: $python"
 fi
 
 for coordinate in POPC.gro POPE.gro CHOL15.gro; do
     if [[ ! -f "$structure_dir/$coordinate" ]]; then
-        die "bilayer coordinate가 없습니다. 먼저 ./download.sh를 실행하세요."
+        die "Bilayer coordinates are missing. Run ./download.sh first."
     fi
 done
 
 if ! "$python" -c "import numpy" >/dev/null 2>&1; then
-    die "NumPy를 import할 수 없습니다. ambertools26 환경을 활성화하세요."
+    die "Cannot import NumPy. Activate the ambertools26 environment."
 fi
 
-# 평형화한 Lipid21 patch를 복제하고 KcsA를 삽입합니다.
+# Replicate the equilibrated Lipid21 patch and insert KcsA.
 mkdir -p "$work_dir"
 
 "$python" \
@@ -83,4 +83,4 @@ mkdir -p "$work_dir"
     --water-padding "$water_padding" \
     --protein-lipid-distance "$protein_lipid_distance"
 
-echo "Coordinate build 결과: $output_pdb"
+echo "Coordinate build output: $output_pdb"

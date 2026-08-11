@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Chignolin backbone dihedral feature에 PCA를 적용한다."""
+"""Apply PCA to Chignolin backbone-dihedral features."""
 
 from __future__ import annotations
 
@@ -13,8 +13,8 @@ try:
     from sklearn.preprocessing import StandardScaler
 except ModuleNotFoundError as error:
     raise SystemExit(
-        "필요한 Python package가 없습니다. ambertools26 환경에 "
-        "scikit-learn과 matplotlib을 설치하세요."
+        "required Python package is missing. ambertools26 environment "
+        "Install scikit-learn and matplotlib."
     ) from error
 
 
@@ -23,7 +23,7 @@ def read_dihedrals(path: Path) -> tuple[np.ndarray, list[str], np.ndarray]:
         header = handle.readline().lstrip("#").split()
     data = np.loadtxt(path, comments="#", ndmin=2)
     if data.shape[1] < 3 or len(header) != data.shape[1]:
-        raise ValueError("phi_psi.dat 형식을 확인하세요.")
+        raise ValueError("Check the format of phi_psi.dat.")
     return data[:, 0], header[1:], data[:, 1:]
 
 

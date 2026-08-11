@@ -7,12 +7,12 @@ if [[ "${1:-}" == "--dry-run" ]]; then
     shift
 fi
 if [[ $# -ne 0 ]]; then
-    echo "사용법: $0 [--dry-run]" >&2
+    echo "Usage: $0 [--dry-run]" >&2
     exit 2
 fi
 
 die() {
-    echo "오류: $*" >&2
+    echo "Error: $*" >&2
     exit 1
 }
 
@@ -22,14 +22,14 @@ engine=${AMBER_ENGINE:-pmemd.cuda}
 read -r -a amber_options <<< "${AMBER_OPTIONS:-}"
 
 if [[ ! -s "$states_file" ]]; then
-    die "build.sh를 먼저 실행해야 합니다: $states_file"
+    die "Run build.sh first: $states_file"
 fi
 if (( ! dry_run )); then
     if ! command -v "$engine" >/dev/null 2>&1; then
-        die "AMBER engine을 찾을 수 없습니다: $engine"
+        die "AMBER engine not found: $engine"
     fi
     if [[ "$(basename "$engine")" != "pmemd.cuda" ]]; then
-        die "ACES26 soft-core input은 pmemd.cuda로 실행해야 합니다: $engine"
+        die "ACES26 soft-core inputs must run with pmemd.cuda: $engine"
     fi
 fi
 
@@ -83,24 +83,24 @@ run_stage() {
         return
     fi
     if [[ "$state" == partial ]]; then
-        die "일부 output만 존재합니다: $prefix"
+        die "Partial output detected: $prefix"
     fi
-    echo "실행: $calculation - $stage"
+    echo "Running: $calculation - $stage"
     if ! (
         cd "$directory"
         "${command[@]}"
     ); then
-        die "$stage 계산에 실패했습니다: $prefix.out"
+        die "$stage Calculation failed: $prefix.out"
     fi
     for output in "${required[@]}"; do
         if [[ ! -s "$output" ]]; then
-            die "$stage output이 생성되지 않았습니다: $output"
+            die "$stage Output was not created: $output"
         fi
     done
 }
 
 if (( dry_run )); then
-    echo "ABFE: restraint/charge/LJ 65 windows, window당 1 ns production"
+    echo "ABFE: 65 restraint/charge/LJ windows, 1 ns production per window"
 fi
 
 while IFS=$'\t' read -r method_stage environment window lambda seed directory; do
@@ -116,5 +116,5 @@ while IFS=$'\t' read -r method_stage environment window lambda seed directory; d
 done < "$states_file"
 
 if (( ! dry_run )); then
-    echo "ABFE production이 완료되었습니다: $work_dir/restraint, $work_dir/charge, $work_dir/vdw"
+    echo "ABFE production completed: $work_dir/restraint, $work_dir/charge, $work_dir/vdw"
 fi

@@ -1,4 +1,4 @@
-# Imaging 뒤 backbone을 첫 frame에 fitting하고 solvent와 ion을 제거합니다.
+# Fit the backbone to the first frame after imaging, then remove solvent and ions.
 autoimage anchor :1-10
 
 rms BeforeFit first :1-10@CA,C,N nofit out rmsd_before.dat

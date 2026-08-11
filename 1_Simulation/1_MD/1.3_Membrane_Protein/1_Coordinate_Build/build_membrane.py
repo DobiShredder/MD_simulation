@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""OPM에서 배향한 단백질을 평형화된 Lipid21 bilayer에 삽입한다."""
+"""Insert an OPM-oriented protein into an equilibrated Lipid21 bilayer."""
 
 from __future__ import annotations
 
@@ -36,41 +36,41 @@ class Residue:
 
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="OPM 배향 단백질을 Lipid21 bilayer patch에 삽입합니다."
+        description="Insert an OPM-oriented protein into a Lipid21 bilayer patch."
     )
-    parser.add_argument("protein", type=Path, help="prepare.py로 만든 KcsA PDB")
+    parser.add_argument("protein", type=Path, help="KcsA PDB created by prepare.py")
     parser.add_argument("popc", type=Path, help="Lipid21 POPC.gro")
     parser.add_argument("pope", type=Path, help="Lipid21 POPE.gro")
     parser.add_argument("cholesterol", type=Path, help="Lipid21 CHOL15.gro")
-    parser.add_argument("output", type=Path, help="생성할 membrane system PDB")
+    parser.add_argument("output", type=Path, help="to create membrane system PDB")
     parser.add_argument(
         "--composition",
         default="POPC=90,POPE=5,CHOL=5",
-        help="leaflet에 적용할 지질 비율(기본값: POPC=90,POPE=5,CHOL=5)",
+        help="Lipid ratio for each leaflet (default: POPC=90,POPE=5,CHOL=5)",
     )
     parser.add_argument(
         "--xy-padding",
         type=float,
         default=DEFAULT_XY_PADDING,
-        help="단백질 x/y 경계와 box 경계 사이의 최소 거리(A)",
+        help="Minimum distance between the protein x/y bounds and box edges (A)",
     )
     parser.add_argument(
         "--water-padding",
         type=float,
         default=DEFAULT_WATER_PADDING,
-        help="단백질 z 경계와 box 경계 사이의 최소 거리(A)",
+        help="Minimum distance between the protein z bounds and box edges (A)",
     )
     parser.add_argument(
         "--protein-lipid-distance",
         type=float,
         default=DEFAULT_PROTEIN_LIPID_DISTANCE,
-        help="삭제할 protein-lipid heavy-atom overlap 거리(A)",
+        help="Protein-lipid heavy-atom overlap distance used for deletion (A)",
     )
     return parser.parse_args()
 
 
 def parse_composition(text: str) -> dict[str, float]:
-    """POPC=90,POPE=5,CHOL=5 형식을 비율로 변환한다."""
+    """Convert POPC=90,POPE=5,CHOL=5 syntax to normalized fractions."""
     values: dict[str, float] = {}
 
     for field in text.split(","):
@@ -78,19 +78,19 @@ def parse_composition(text: str) -> dict[str, float]:
             name, value = field.split("=", 1)
             values[name.strip().upper()] = float(value)
         except ValueError as error:
-            raise SystemExit(f"지질 비율 형식이 잘못되었습니다: {field}") from error
+            raise SystemExit(f"Invalid lipid-ratio format: {field}") from error
 
     if set(values) != set(DEFAULT_COMPOSITION):
-        raise SystemExit("composition에는 POPC, POPE, CHOL을 각각 적어야 합니다.")
+        raise SystemExit("Composition must specify POPC, POPE, and CHOL.")
     if any(value < 0.0 for value in values.values()) or sum(values.values()) <= 0.0:
-        raise SystemExit("지질 비율은 0 이상이고 합은 0보다 커야 합니다.")
+        raise SystemExit("Lipid ratios must be nonnegative and have a positive sum.")
 
     total = sum(values.values())
     return {name: value / total for name, value in values.items()}
 
 
 def read_gro(path: Path) -> tuple[list[Residue], np.ndarray]:
-    """GROMACS coordinate를 residue 목록과 box 길이(angstrom)로 읽는다."""
+    """Read GROMACS coordinates as residues and box lengths in angstrom."""
     lines = path.read_text(encoding="ascii").splitlines()
     atom_count = int(lines[1])
     atom_lines = lines[2 : 2 + atom_count]
@@ -124,7 +124,7 @@ def copy_residue(residue: Residue) -> Residue:
 
 
 def unwrap_residue(residue: Residue, box: np.ndarray) -> Residue:
-    """Periodic boundary를 가로지른 residue의 좌표를 한 덩어리로 모은다."""
+    """Reassemble coordinates of residues split across periodic boundaries."""
     result = copy_residue(residue)
     reference = result.atoms[0].xyz
 
@@ -137,7 +137,7 @@ def unwrap_residue(residue: Residue, box: np.ndarray) -> Residue:
 
 
 def collect_lipids(residues: list[Residue], box: np.ndarray) -> list[list[Residue]]:
-    """PA-headgroup-OL 세 residue를 POPC 또는 POPE 한 분자로 묶는다."""
+    """Group PA, headgroup, and OL residues into one POPC or POPE molecule."""
     lipids: list[list[Residue]] = []
     index = 0
 
@@ -153,7 +153,7 @@ def collect_lipids(residues: list[Residue], box: np.ndarray) -> list[list[Residu
             for offset in range(3)
         ]
 
-        # 세 modular residue가 PBC를 서로 다르게 통과한 경우도 모은다.
+        # Also group modular residues that cross the PBC differently.
         reference = molecule[0].atoms[0].xyz
         for residue in molecule[1:]:
             shift = residue.atoms[0].xyz - reference
@@ -181,7 +181,7 @@ def find_atom(residues: list[Residue], atom_name: str) -> np.ndarray:
         for atom in residue.atoms:
             if atom.name == atom_name:
                 return atom.xyz
-    raise ValueError(f"atom을 찾을 수 없습니다: {atom_name}")
+    raise ValueError(f"atom not found: {atom_name}")
 
 
 def membrane_center(lipids: list[list[Residue]], box: np.ndarray) -> np.ndarray:
@@ -215,7 +215,7 @@ def read_protein(path: Path) -> tuple[list[str], np.ndarray]:
 
 
 def opm_half_thickness(lines: list[str]) -> float:
-    """prepare.py가 남긴 OPM membrane half-thickness를 읽는다."""
+    """Read the OPM membrane half-thickness recorded by prepare.py."""
     prefix = "REMARK OPM MEMBRANE HALF-THICKNESS"
 
     for line in lines:
@@ -223,8 +223,8 @@ def opm_half_thickness(lines: list[str]) -> float:
             return float(line.split()[4])
 
     raise SystemExit(
-        "OPM membrane 배향 기록이 없습니다. "
-        "OPM PDB를 prepare.py로 먼저 처리하세요."
+        "OPM membrane orientation records are missing. "
+        "Process the OPM PDB with prepare.py first."
     )
 
 
@@ -234,7 +234,7 @@ def target_box_size(
     xy_padding: float,
     water_padding: float,
 ) -> np.ndarray:
-    """Bilayer unit cell을 잘라내지 않는 target box를 계산한다."""
+    """Calculate a target box without cutting the bilayer unit cell."""
     protein_width = np.ptp(protein, axis=0)
     required_xy = protein_width[:2] + 2.0 * xy_padding
     repeats_xy = np.ceil(required_xy / source_box[:2]).astype(int)
@@ -261,7 +261,7 @@ def tile_equilibrated_bilayer(
     protein: np.ndarray,
     cutoff: float,
 ) -> list[list[Residue]]:
-    """평형화된 POPC unit cell을 target box 크기만큼 복제한다."""
+    """Replicate the equilibrated POPC unit cell to fill the target box."""
     center = membrane_center(lipids, source_box)
     result = []
     repeat_x = round(target_box[0] / source_box[0])
@@ -283,7 +283,7 @@ def tile_equilibrated_bilayer(
 
 
 def kabsch_transform(source: np.ndarray, target: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """source point를 target point에 겹치는 회전과 이동을 계산한다."""
+    """Calculate the rotation and translation that align source and target points."""
     source_center = source.mean(axis=0)
     target_center = target.mean(axis=0)
     covariance = (source - source_center).T @ (target - target_center)
@@ -299,7 +299,7 @@ def kabsch_transform(source: np.ndarray, target: np.ndarray) -> tuple[np.ndarray
 
 
 def mutate_to_pope(lipid: list[Residue], pope_template: list[Residue]) -> list[Residue]:
-    """POPC의 PC headgroup을 같은 위치의 PE headgroup으로 바꾼다."""
+    """Replace a POPC PC headgroup with a PE headgroup at the same position."""
     pa = copy_residue(lipid[0])
     pc = lipid[1]
     ol = copy_residue(lipid[2])
@@ -364,7 +364,7 @@ def replace_with_cholesterol(
     reference_all: np.ndarray,
     box: np.ndarray,
 ) -> list[Residue]:
-    """POPC 한 분자를 같은 leaflet의 cholesterol 한 분자로 치환한다."""
+    """Replace one POPC molecule with one cholesterol in the same leaflet."""
     result = [copy_residue(template[0])]
     oxygen = find_atom(result, "O1")
     phosphorus = find_atom(lipid, "P31")
@@ -414,7 +414,7 @@ def replace_with_cholesterol(
         or best_atom_distance < CHOLESTEROL_ALL_ATOM_DISTANCE
     ):
         raise RuntimeError(
-            "cholesterol을 겹침 없이 놓지 못했습니다: "
+            "Could not place cholesterol without overlaps: "
             f"heavy={best_distance:.3f} A, all={best_atom_distance:.3f} A"
         )
 
@@ -425,7 +425,7 @@ def replace_with_cholesterol(
 
 
 def evenly_spaced_indices(indices: list[int], count: int, offset: int = 0) -> list[int]:
-    """특정 위치에 몰리지 않도록 leaflet 전체에서 index를 고른다."""
+    """Choose indices across the leaflet to avoid spatial clustering."""
     if count == 0:
         return []
     positions = np.linspace(0, len(indices), count, endpoint=False, dtype=int)
@@ -439,7 +439,7 @@ def apply_composition(
     composition: dict[str, float],
     box: np.ndarray,
 ) -> tuple[list[list[Residue]], dict[str, tuple[int, int]]]:
-    """각 leaflet에 지정한 POPC, POPE, cholesterol 비율을 적용한다."""
+    """Apply the specified POPC, POPE, and cholesterol ratios to each leaflet."""
     result = list(lipids)
     counts: dict[str, tuple[int, int]] = {}
     leaflet_indices = {
@@ -471,7 +471,7 @@ def apply_composition(
             < box[1] / 2.0 - STEROL_BOUNDARY_PADDING
         ]
         if len(cholesterol_candidates) < cholesterol_count:
-            raise RuntimeError("Box 경계에서 먼 cholesterol 치환 위치가 부족합니다.")
+            raise RuntimeError("Too few cholesterol replacement sites are far from the box edges.")
         cholesterol_indices = evenly_spaced_indices(
             cholesterol_candidates, cholesterol_count
         )
@@ -549,7 +549,7 @@ def tile_water(
     target_box: np.ndarray,
     protein: np.ndarray,
 ) -> list[Residue]:
-    """평형화된 water slab을 target box까지 반복하고 protein overlap을 제거한다."""
+    """Tile the equilibrated water slab to the target box and remove protein overlaps."""
     result: list[Residue] = []
     repeat = np.ceil(target_box / (2.0 * source_box)).astype(int)
 
@@ -584,7 +584,7 @@ def tile_water(
 def remove_water_lipid_overlaps(
     waters: list[Residue], lipids: list[list[Residue]], box: np.ndarray
 ) -> list[Residue]:
-    """Lipid 치환으로 새로 생긴 water overlap을 제거한다."""
+    """Remove water overlaps introduced by lipid replacement."""
     cell_counts = np.floor(box / SOLUTE_WATER_DISTANCE).astype(int)
     cells: dict[tuple[int, int, int], list[np.ndarray]] = {}
 
@@ -637,7 +637,7 @@ def remove_water_lipid_overlaps(
 def remove_water_water_overlaps(
     waters: list[Residue], box: np.ndarray
 ) -> list[Residue]:
-    """Source water patch가 새 box boundary에서 겹치는 경우 한쪽을 제거한다."""
+    """Remove one copy when the source water patch overlaps across new box boundaries."""
     cutoff = 2.4
     cell_counts = np.floor(box / cutoff).astype(int)
     cells: dict[tuple[int, int, int], list[np.ndarray]] = {}
@@ -762,12 +762,12 @@ def main() -> None:
     args = parse_arguments()
     for path in (args.protein, args.popc, args.pope, args.cholesterol):
         if not path.is_file():
-            raise SystemExit(f"input file을 찾을 수 없습니다: {path}")
+            raise SystemExit(f"input file not found: {path}")
 
     if args.xy_padding <= 0.0 or args.water_padding <= 0.0:
-        raise SystemExit("xy-padding과 water-padding은 0보다 커야 합니다.")
+        raise SystemExit("xy-padding and water-padding must be greater than zero.")
     if args.protein_lipid_distance <= 0.0:
-        raise SystemExit("protein-lipid-distance는 0보다 커야 합니다.")
+        raise SystemExit("protein-lipid-distance must be greater than zero.")
 
     composition = parse_composition(args.composition)
     protein_lines, protein_heavy = read_protein(args.protein)

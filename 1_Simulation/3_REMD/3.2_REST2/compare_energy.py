@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""두 GROMACS XVG의 potential energy가 수치 오차 안에서 같은지 검사합니다."""
+"""Check whether two GROMACS XVG potential energies agree within numerical tolerance."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ def last_value(path: Path) -> float:
         values.append(float(fields[-1]))
 
     if not values:
-        raise SystemExit(f"energy 값을 찾지 못했습니다: {path}")
+        raise SystemExit(f"energy value not found: {path}")
 
     return values[-1]
 
@@ -36,7 +36,7 @@ def main() -> None:
 
     if difference > args.tolerance:
         raise SystemExit(
-            "scale 1.0 energy가 원본과 다릅니다: "
+            "Scale 1.0 energy differs from the original: "
             f"|ΔE|={difference:.8g} kJ/mol, tolerance={args.tolerance}"
         )
 

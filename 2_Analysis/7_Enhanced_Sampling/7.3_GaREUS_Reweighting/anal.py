@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MBAR와 2차 cumulant expansion으로 GaREUS 1D PMF를 계산합니다."""
+"""Calculate the GaREUS 1D PMF with MBAR and second-order cumulant expansion."""
 
 from __future__ import annotations
 
@@ -27,7 +27,7 @@ def read_inputs(
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     summary_file = output_dir / "summary.tsv"
     if not summary_file.is_file():
-        raise ValueError("./run.sh를 먼저 실행해야 합니다: output/summary.tsv")
+        raise ValueError("Run ./run.sh first: output/summary.tsv")
 
     with summary_file.open(encoding="utf-8", newline="") as handle:
         states = list(csv.DictReader(handle, delimiter="\t"))
@@ -42,11 +42,11 @@ def read_inputs(
         window = state["window"]
         path = output_dir / "series" / f"window_{window}.tsv"
         if not path.is_file():
-            raise ValueError(f"window series를 찾을 수 없습니다: {path}")
+            raise ValueError(f"window series not found: {path}")
 
         data = np.loadtxt(path, skiprows=1, usecols=(2, 3), ndmin=2)
         if data.shape[0] == 0 or not np.all(np.isfinite(data)):
-            raise ValueError(f"window series가 비었거나 유효하지 않습니다: {path}")
+            raise ValueError(f"Window series is empty or invalid: {path}")
 
         centers.append(float(state["center_A"]))
         forces.append(float(state["amber_rk_kcal_mol_A2"]))
@@ -73,7 +73,7 @@ def umbrella_weights(
         import pymbar
     except ImportError as error:
         raise ValueError(
-            "PyMBAR가 필요합니다. conda install -c conda-forge 'pymbar>=4,<5'"
+            "PyMBAR is required. conda install -c conda-forge 'pymbar>=4,<5'"
         ) from error
 
     beta = 1.0 / (GAS_CONSTANT_KCAL_MOL_K * TEMPERATURE_KELVIN)
@@ -83,7 +83,7 @@ def umbrella_weights(
     sampled_mbar = pymbar.MBAR(reduced_energy, sample_counts, verbose=False)
     overlap = np.asarray(sampled_mbar.compute_overlap()["matrix"], dtype=float)
 
-    # 마지막 state는 umbrella bias가 없는 target이며 sample 수는 0입니다.
+    # The final state is the unbiased target and contains zero samples.
     reduced_energy_with_target = np.vstack(
         [reduced_energy, np.zeros(len(distances))]
     )
@@ -120,7 +120,7 @@ def calculate_pmf(
     bin_index = np.digitize(distances, edges) - 1
 
     if np.any((bin_index < 0) | (bin_index >= len(bin_centers))):
-        raise ValueError("PMF 범위 밖의 frame이 있습니다. PMF_MIN/MAX를 수정하십시오.")
+        raise ValueError("Frames fall outside the PMF range. Adjust PMF_MIN/MAX.")
 
     beta = 1.0 / (GAS_CONSTANT_KCAL_MOL_K * TEMPERATURE_KELVIN)
     rows = []
@@ -319,9 +319,9 @@ def main() -> None:
             overlap,
         )
     except (OSError, KeyError, ValueError) as error:
-        raise SystemExit(f"GaREUS reweighting에 실패했습니다: {error}") from error
+        raise SystemExit(f"GaREUS reweighting failed: {error}") from error
 
-    print(f"GaREUS 1D PMF를 계산했습니다: {OUTPUT_DIR}/pmf.tsv")
+    print(f"GaREUS 1D PMF calculated: {OUTPUT_DIR}/pmf.tsv")
     plot_pmf(bin_centers, mbar_pmf, reweighted_pmf)
 
 

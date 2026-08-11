@@ -1,4 +1,4 @@
-# 첫 frame RMSD와 average structure를 계산합니다.
+# Calculate first-frame RMSD and the average structure.
 autoimage anchor :1-10
 rms ToFirst first :1-10@CA,C,N out rmsd_first.dat
 average crdset Average :1-10
@@ -6,7 +6,7 @@ run
 
 crdout Average average.pdb pdb
 
-# Average structure에 다시 fitting한 뒤 RMSD, RMSF와 Rg를 계산합니다.
+# Refit to the average structure, then calculate RMSD, RMSF, and Rg.
 autoimage anchor :1-10
 rms ToAverage ref Average :1-10@CA,C,N out rmsd_average.dat
 atomicfluct RMSF :1-10@CA,C,N byres out rmsf_byres.dat

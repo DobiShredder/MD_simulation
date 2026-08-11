@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""RBFE environment/window directory와 AMBER input을 생성합니다."""
+"""Generate RBFE environment/window directories and AMBER inputs."""
 
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ def render(template: Path, output: Path, replacements: dict[str, str]) -> None:
     for marker, value in replacements.items():
         text = text.replace(marker, value)
     if "@" in text:
-        raise SystemExit(f"치환되지 않은 marker가 있습니다: {output}")
+        raise SystemExit(f"Unreplaced marker found: {output}")
     output.write_text(text, encoding="utf-8")
 
 

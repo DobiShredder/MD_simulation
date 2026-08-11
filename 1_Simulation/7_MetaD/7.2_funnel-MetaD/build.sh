@@ -8,12 +8,12 @@ if [[ "${1:-}" == "--dry-run" ]]; then
 fi
 
 if [[ $# -ne 2 ]]; then
-    echo "사용법: $0 [--dry-run] COMPLEX.pdb BEN_ideal.sdf" >&2
+    echo "Usage: $0 [--dry-run] COMPLEX.pdb BEN_ideal.sdf" >&2
     exit 2
 fi
 
 die() {
-    echo "오류: $*" >&2
+    echo "Error: $*" >&2
     exit 1
 }
 
@@ -37,13 +37,13 @@ fi
 
 for input in "$complex_pdb" "$ligand_sdf" "$disulfides" "$residue_map"; do
     if [[ ! -s "$input" ]]; then
-        die "build input을 찾을 수 없습니다: $input"
+        die "Build input not found: $input"
     fi
 done
 
 for executable in "$python" "$antechamber" "$parmchk2" "$tleap"; do
     if ! command -v "$executable" >/dev/null 2>&1; then
-        die "실행 파일을 찾을 수 없습니다: $executable"
+        die "Executable not found: $executable"
     fi
 done
 
@@ -52,7 +52,7 @@ cp "$complex_pdb" "$work_dir/complex.pdb"
 cp "$disulfides" "$work_dir/disulfides.leap"
 cp inputs/tleap.in "$work_dir/tleap.in"
 
-echo "BEN을 benzamidinium(+1)으로 만들고 GAFF2/AM1-BCC를 적용합니다."
+echo "Converting BEN to benzamidinium (+1) and applying GAFF2/AM1-BCC."
 "$python" \
     "protonate_benzamidine.py" \
     "$ligand_sdf" \
@@ -66,7 +66,7 @@ if ! (
         -at gaff2 -c bcc -nc 1 -rn BEN -s 2 \
         > antechamber.log 2>&1
 ); then
-    die "antechamber 실행에 실패했습니다: $work_dir/antechamber.log"
+    die "antechamber failed: $work_dir/antechamber.log"
 fi
 
 if ! (
@@ -76,20 +76,20 @@ if ! (
         -o ben.frcmod -s gaff2 \
         > parmchk2.log 2>&1
 ); then
-    die "parmchk2 실행에 실패했습니다: $work_dir/parmchk2.log"
+    die "parmchk2 failed: $work_dir/parmchk2.log"
 fi
 
-echo "ff19SB/GAFF2/TIP3P topology를 생성합니다."
+echo "Generating an ff19SB/GAFF2/TIP3P topology."
 if ! (
     cd "$work_dir"
     "$tleap" -f tleap.in > leap.log 2>&1
 ); then
-    die "tleap 실행에 실패했습니다: $work_dir/leap.log"
+    die "tleap failed: $work_dir/leap.log"
 fi
 
 for output in system.parm7 system.rst7 system.pdb; do
     if [[ ! -s "$work_dir/$output" ]]; then
-        die "build output이 없습니다: $work_dir/$output"
+        die "build Output not found: $work_dir/$output"
     fi
 done
 
@@ -101,4 +101,4 @@ done
     "inputs/plumed.dat.template" \
     "$work_dir"
 
-echo "Funnel MetaD topology와 geometry: $work_dir"
+echo "Funnel MetaD topology and geometry: $work_dir"

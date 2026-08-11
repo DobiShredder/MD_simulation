@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""GaMD production log의 boost distribution과 segment continuity를 점검합니다."""
+"""Check boost distributions and segment continuity in GaMD production logs."""
 
 from __future__ import annotations
 
@@ -32,10 +32,10 @@ def parse_log(path: Path) -> list[tuple[int, list[float]]]:
 
     if len(records) != EXPECTED_FRAMES:
         raise SystemExit(
-            f"{path.name}: {EXPECTED_FRAMES} GaMD records가 필요합니다: {len(records)}"
+            f"{path.name}: {EXPECTED_FRAMES} GaMD records is required: {len(records)}"
         )
     if any(current[0] <= previous[0] for previous, current in zip(records, records[1:])):
-        raise SystemExit(f"{path.name}: timestep이 증가하지 않습니다.")
+        raise SystemExit(f"{path.name}: timestep does not increase.")
     return records
 
 
@@ -77,7 +77,7 @@ def main() -> None:
     for segment in range(1, EXPECTED_SEGMENTS + 1):
         path = WORK / f"production.{segment:03d}.gamd.log"
         if not path.is_file():
-            raise SystemExit(f"GaMD log를 찾을 수 없습니다: {path}")
+            raise SystemExit(f"GaMD log not found: {path}")
         records = parse_log(path)
         series = {
             f"boost_{index + 1}": [components[index] for _, components in records]
@@ -110,7 +110,7 @@ def main() -> None:
         writer.writerow(["segment", "component", "frames", "min_kcal_mol", "mean_kcal_mol", "std_kcal_mol", "max_kcal_mol", "anharmonicity", "effective_sample_size"])
         writer.writerows(summaries)
 
-    print(f"GaMD boost 진단: {WORK / 'boost_summary.tsv'}")
+    print(f"GaMD boost diagnostics: {WORK / 'boost_summary.tsv'}")
 
 
 if __name__ == "__main__":

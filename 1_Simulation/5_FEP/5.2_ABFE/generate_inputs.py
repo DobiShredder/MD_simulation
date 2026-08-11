@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ABFE restraint와 65개 alchemical window input을 생성합니다."""
+"""Generate ABFE restraints and inputs for 65 alchemical windows."""
 
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ def window_directory(
     elif stage.endswith("_vdw"):
         interaction = "vdw"
     else:
-        raise SystemExit(f"지원하지 않는 ABFE stage입니다: {stage}")
+        raise SystemExit(f"Unsupported ABFE stage: {stage}")
     return work_dir / interaction / environment / window
 
 
@@ -85,7 +85,7 @@ def dihedral(a: list[float], b: list[float], c: list[float], d: list[float]) -> 
 def atom_by_name(residue: object, name: str) -> object:
     matches = [atom for atom in residue.atoms if atom.name == name]
     if len(matches) != 1:
-        raise SystemExit(f"{residue.name}에서 atom {name}을 하나만 찾지 못했습니다.")
+        raise SystemExit(f"Expected exactly one atom named {name} in {residue.name}.")
     return matches[0]
 
 
@@ -96,11 +96,11 @@ def restraint_records(
     protein = topology.residues[protein_anchor_residue - 1]
     if protein.name != "GLN":
         raise SystemExit(
-            f"Protein anchor residue가 GLN이 아닙니다: {protein_anchor_residue} {protein.name}"
+            f"Protein anchor residue is not GLN: {protein_anchor_residue} {protein.name}"
         )
     ligand_matches = [residue for residue in topology.residues if residue.name == "JZ4"]
     if len(ligand_matches) != 1:
-        raise SystemExit(f"JZ4 residue를 하나만 찾지 못했습니다: {len(ligand_matches)}")
+        raise SystemExit(f"Expected exactly one JZ4 residue, found {len(ligand_matches)}")
     ligand = ligand_matches[0]
     p1, p2, p3 = [atom_by_name(protein, name) for name in ("CG", "CB", "CA")]
     l1, l2, l3 = [atom_by_name(ligand, name) for name in ("C7", "C8", "C9")]
@@ -133,7 +133,7 @@ def render(template: Path, output: Path, replacements: dict[str, str]) -> None:
     for marker, value in replacements.items():
         text = text.replace(marker, value)
     if "@" in text:
-        raise SystemExit(f"치환되지 않은 marker가 있습니다: {output}")
+        raise SystemExit(f"Unreplaced marker found: {output}")
     output.write_text(text, encoding="utf-8")
 
 
@@ -147,7 +147,7 @@ def write_uncharged_topology(source: Path, destination: Path) -> None:
     topology = parmed.load_file(str(source))
     ligand_residues = [residue for residue in topology.residues if residue.name == "JZ4"]
     if len(ligand_residues) != 1:
-        raise SystemExit(f"{source}에서 JZ4 residue를 하나만 찾지 못했습니다.")
+        raise SystemExit(f"Expected exactly one JZ4 residue in {source}.")
     for atom in ligand_residues[0].atoms:
         atom.charge = 0.0
     topology.save(str(destination), overwrite=True)

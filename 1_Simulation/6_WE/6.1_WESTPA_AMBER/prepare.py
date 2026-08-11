@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""1UAO NMR ensemble에서 Chignolin의 첫 번째 coordinate model을 추출합니다."""
+"""Extract the first Chignolin coordinate model from the 1UAO NMR ensemble."""
 
 from __future__ import annotations
 
@@ -9,10 +9,10 @@ from pathlib import Path
 
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="PDB 1UAO에서 첫 번째 coordinate model을 추출합니다."
+        description="Extract the first coordinate model from PDB 1UAO."
     )
-    parser.add_argument("input_pdb", type=Path, help="다운로드한 1UAO PDB")
-    parser.add_argument("output_pdb", type=Path, help="전처리 결과 PDB")
+    parser.add_argument("input_pdb", type=Path, help="Downloaded 1UAO PDB")
+    parser.add_argument("output_pdb", type=Path, help="Prepared PDB")
     return parser.parse_args()
 
 
@@ -48,20 +48,20 @@ def select_first_model_atom_records(lines: list[str]) -> list[str]:
 def main() -> None:
     args = parse_arguments()
     if not args.input_pdb.is_file():
-        raise SystemExit(f"입력 PDB를 찾을 수 없습니다: {args.input_pdb}")
+        raise SystemExit(f"Input PDB not found: {args.input_pdb}")
 
     atom_records = select_first_model_atom_records(
         args.input_pdb.read_text(encoding="ascii").splitlines()
     )
     if not atom_records:
-        raise SystemExit("첫 번째 model에서 ATOM record를 찾지 못했습니다.")
+        raise SystemExit("No ATOM records found in the first model.")
 
     args.output_pdb.parent.mkdir(parents=True, exist_ok=True)
     args.output_pdb.write_text(
         "\n".join(atom_records + ["TER", "END"]) + "\n",
         encoding="ascii",
     )
-    print(f"Chignolin 전처리 결과: {args.output_pdb} ({len(atom_records)} atoms)")
+    print(f"Prepared Chignolin structure: {args.output_pdb} ({len(atom_records)} atoms)")
 
 
 if __name__ == "__main__":

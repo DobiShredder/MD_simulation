@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Chignolin 내부 및 water hydrogen bond의 수와 점유율을 표시한다."""
+"""Plot counts and occupancies of intraprotein and water hydrogen bonds in Chignolin."""
 
 from __future__ import annotations
 
@@ -37,7 +37,7 @@ def read_hbond_counts(path: Path, numeric_columns: int) -> np.ndarray:
             except ValueError:
                 continue
     if not rows:
-        raise ValueError(f"hydrogen bond count data가 없습니다: {path}")
+        raise ValueError(f"hydrogen bond count data is missing: {path}")
     return np.asarray(rows, dtype=float)
 
 
@@ -49,9 +49,9 @@ def main() -> int:
     water = read_hbond_counts(output_dir / "water_hbond_count.dat", 4)
 
     if protein.shape[1] < 2 or water.shape[1] < 4:
-        raise ValueError("hydrogen bond count output column이 부족합니다.")
+        raise ValueError("Hydrogen-bond count output has too few columns.")
     if not np.array_equal(protein[:, 0], water[:, 0]):
-        raise ValueError("Hydrogen bond output의 frame 번호가 일치하지 않습니다.")
+        raise ValueError("Frame indices in the hydrogen-bond outputs do not match.")
 
     occupancy = read_hbond_occupancy(output_dir / "protein_hbond_average.dat")[:10]
 

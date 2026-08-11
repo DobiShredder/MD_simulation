@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Processed GROMACS topology에서 protein atom type만 hot으로 표시합니다."""
+"""Mark only protein atom types as hot in a processed GROMACS topology."""
 
 from __future__ import annotations
 
@@ -67,10 +67,10 @@ def main() -> None:
             nonprotein_marked += 1
 
     if marked == 0:
-        raise SystemExit("hot region으로 표시한 protein atom이 없습니다.")
+        raise SystemExit("No protein atoms were marked as the hot region.")
 
     if nonprotein_marked:
-        raise SystemExit("solvent 또는 ion atom이 hot region에 포함되었습니다.")
+        raise SystemExit("The hot region contains solvent or ion atoms.")
 
     args.output_topology.write_text("\n".join(output) + "\n", encoding="utf-8")
     print(f"Protein hot-region marker: {marked} atoms")
@@ -78,4 +78,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

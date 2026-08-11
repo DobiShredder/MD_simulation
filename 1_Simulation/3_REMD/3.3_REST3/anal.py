@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""REST3 exchange와 구조 지표를 effective temperature별로 요약합니다."""
+"""Summarize REST3 exchanges and structural metrics by effective temperature."""
 
 from __future__ import annotations
 
@@ -62,7 +62,7 @@ def parse_exchanges(state_count: int) -> list[tuple[int, int, int]]:
             event_index += 1
 
     if not records:
-        raise SystemExit("GROMACS replica-exchange record를 찾지 못했습니다.")
+        raise SystemExit("GROMACS replica-exchange record not found.")
 
     return records
 
@@ -152,7 +152,7 @@ def structure_summary(states: list[dict[str, str]]) -> None:
             replica_dir = WORK / replica
             trajectories = sorted(replica_dir.glob("production.*.xtc"))
             if not trajectories:
-                raise SystemExit(f"trajectory를 찾을 수 없습니다: {replica_dir}")
+                raise SystemExit(f"trajectory not found: {replica_dir}")
 
             universe = mda.Universe(
                 str(replica_dir / "system.gro"),
@@ -163,7 +163,7 @@ def structure_summary(states: list[dict[str, str]]) -> None:
             last_ca = universe.select_atoms("protein and resid 10 and name CA")
 
             if len(first_ca) != 1 or len(last_ca) != 1:
-                raise SystemExit("residue 1/10의 CA atom을 하나씩 선택하지 못했습니다.")
+                raise SystemExit("Could not select exactly one CA atom from each of residues 1 and 10.")
 
             radii: list[float] = []
             distances: list[float] = []
@@ -190,7 +190,7 @@ def main() -> None:
     records = parse_exchanges(len(states))
     write_exchange_outputs(records, states)
     structure_summary(states)
-    print(f"REST3 분석 결과: {WORK}")
+    print(f"REST3 Analysis results: {WORK}")
 
 
 if __name__ == "__main__":

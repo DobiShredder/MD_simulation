@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""3PTB protein, BEN, Ca2+와 funnel axis residue mapping을 준비한다."""
+"""Prepare 3PTB protein, BEN, Ca2+, and funnel-axis residue mappings."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ AXIS_RESIDUES = {
 
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="PDB 3PTB를 Funnel MetaD build용으로 전처리합니다."
+        description="Prepare PDB 3PTB for the Funnel MetaD build."
     )
     parser.add_argument("input_pdb", type=Path)
     parser.add_argument("output_pdb", type=Path)
@@ -47,13 +47,13 @@ def main() -> None:
     args = parse_arguments()
 
     if not args.input_pdb.is_file():
-        raise SystemExit(f"입력 PDB를 찾을 수 없습니다: {args.input_pdb}")
+        raise SystemExit(f"Input PDB not found: {args.input_pdb}")
 
     lines = args.input_pdb.read_text(encoding="ascii").splitlines()
     disulfide_pairs = read_disulfides(lines)
 
     if len(disulfide_pairs) != 6:
-        raise SystemExit(f"3PTB SSBOND 6개가 필요합니다: {len(disulfide_pairs)}")
+        raise SystemExit(f"Expected 6 SSBOND records in 3PTB, found {len(disulfide_pairs)}")
 
     disulfide_residues = {
         residue
@@ -98,7 +98,7 @@ def main() -> None:
 
     if len(protein) != 1629 or len(ligand) != 9 or len(calcium) != 1:
         raise SystemExit(
-            "예상하지 못한 3PTB atom 구성입니다: "
+            "Unexpected 3PTB atom composition: "
             f"protein={len(protein)}, BEN={len(ligand)}, CA={len(calcium)}"
         )
 
@@ -108,7 +108,7 @@ def main() -> None:
     ]
 
     if missing_axis_residues:
-        raise SystemExit(f"Funnel axis residue를 찾지 못했습니다: {missing_axis_residues}")
+        raise SystemExit(f"Funnel axis residue not found: {missing_axis_residues}")
 
     protein_residues = len(residue_indices)
     ligand = [
@@ -145,8 +145,8 @@ def main() -> None:
     )
 
     print(
-        f"Funnel MetaD 전처리 결과: {args.output_pdb} "
-        f"({protein_residues} protein residues, BEN 9 atoms, Ca2+ 1개)"
+        f"Prepared Funnel MetaD structure: {args.output_pdb} "
+        f"({protein_residues} protein residues, 9 BEN atoms, 1 Ca2+ ion)"
     )
 
 

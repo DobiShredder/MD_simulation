@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""REUS exchange와 restraint sampling을 TSV로 요약합니다."""
+"""Summarize REUS exchanges and restraint sampling as TSV."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ EXPLICIT = re.compile(
 def read_states() -> list[dict[str, str]]:
     path = WORK / "states.tsv"
     if not path.is_file():
-        raise SystemExit(f"window table을 찾을 수 없습니다: {path}")
+        raise SystemExit(f"window table not found: {path}")
     with path.open(encoding="utf-8", newline="") as handle:
         return list(csv.DictReader(handle, delimiter="\t"))
 
@@ -58,7 +58,7 @@ def parse_exchanges(state_count: int) -> list[tuple[int, int, int]]:
                 )
 
     if not records:
-        raise SystemExit("AMBER replica-exchange record를 찾지 못했습니다.")
+        raise SystemExit("AMBER replica-exchange record not found.")
 
     return records
 
@@ -161,7 +161,7 @@ def write_restraint_sampling(states: list[dict[str, str]]) -> None:
             values = read_distances(WORK / state["replica"])
             if not values:
                 raise SystemExit(
-                    f"restraint DUMPAVE를 찾지 못했습니다: replica {state['replica']}"
+                    f"restraint DUMPAVE not found: replica {state['replica']}"
                 )
 
             writer.writerow(
@@ -182,7 +182,7 @@ def main() -> None:
     records = parse_exchanges(len(states))
     write_exchange_outputs(records, states)
     write_restraint_sampling(states)
-    print(f"REUS 분석 결과: {WORK}")
+    print(f"REUS Analysis results: {WORK}")
 
 
 if __name__ == "__main__":

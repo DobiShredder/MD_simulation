@@ -7,12 +7,12 @@ if [[ "${1:-}" == "--dry-run" ]]; then
     shift
 fi
 if [[ $# -ne 1 ]]; then
-    echo "사용법: $0 [--dry-run] SH3-PEPTIDE.pdb" >&2
+    echo "Usage: $0 [--dry-run] SH3-PEPTIDE.pdb" >&2
     exit 2
 fi
 
 die() {
-    echo "오류: $*" >&2
+    echo "Error: $*" >&2
     exit 1
 }
 
@@ -32,12 +32,12 @@ fi
 
 for input in "$input_pdb" "$metadata"; do
     if [[ ! -s "$input" ]]; then
-        die "build input을 찾을 수 없습니다: $input"
+        die "Build input not found: $input"
     fi
 done
 for executable in "$tleap" "$python"; do
     if ! command -v "$executable" >/dev/null 2>&1; then
-        die "실행 파일을 찾을 수 없습니다: $executable"
+        die "Executable not found: $executable"
     fi
 done
 
@@ -46,20 +46,20 @@ cp "$input_pdb" "$work_dir/input.pdb"
 cp "$metadata" "$work_dir/system_metadata.tsv"
 cp inputs/tleap.in "$work_dir/tleap.in"
 
-echo "ff19SB/TIP3P SH3–peptide topology를 생성합니다."
+echo "Generating the ff19SB/TIP3P SH3-peptide topology."
 if ! (
     cd "$work_dir"
     "$tleap" -f tleap.in > leap.log 2>&1
 ); then
-    die "tleap 실행에 실패했습니다: $work_dir/leap.log"
+    die "tleap failed: $work_dir/leap.log"
 fi
 for output in system.parm7 system.rst7 system.pdb; do
     if [[ ! -s "$work_dir/$output" ]]; then
-        die "build output이 생성되지 않았습니다: $work_dir/$output"
+        die "build Output was not created: $work_dir/$output"
     fi
 done
 if ! "$python" "render_inputs.py" "$metadata" "inputs" "$work_dir/inputs"; then
-    die "Pep-GaMD input 생성에 실패했습니다."
+    die "Pep-GaMD input generation failed."
 fi
 
-echo "Pep-GaMD topology, restart와 generated input: $work_dir"
+echo "Pep-GaMD topology, restart, and generated inputs: $work_dir"

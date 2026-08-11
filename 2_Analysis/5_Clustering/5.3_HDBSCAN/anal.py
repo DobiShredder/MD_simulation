@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Backbone dihedral PCA feature를 HDBSCAN으로 clustering한다."""
+"""Cluster backbone-dihedral PCA features with HDBSCAN."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ try:
     from sklearn.preprocessing import StandardScaler
 except (ImportError, ModuleNotFoundError) as error:
     raise SystemExit(
-        "sklearn.cluster.HDBSCAN이 필요합니다. 다음을 실행하세요: "
+        "sklearn.cluster.HDBSCAN is required. Run: "
         "conda install -n ambertools26 -c conda-forge 'scikit-learn>=1.5,<2'"
     ) from error
 
@@ -43,7 +43,7 @@ def main() -> int:
     output_dir = Path(__file__).resolve().parent / "output"
     frames, projection, feature = pca_features(output_dir / "phi_psi.dat")
     if len(frames) < MIN_CLUSTER_SIZE:
-        raise ValueError(f"HDBSCAN에는 최소 {MIN_CLUSTER_SIZE}개 frame이 필요합니다.")
+        raise ValueError(f"HDBSCAN requires at least {MIN_CLUSTER_SIZE} frames.")
 
     model = HDBSCAN(
         min_cluster_size=MIN_CLUSTER_SIZE,

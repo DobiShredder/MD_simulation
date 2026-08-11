@@ -7,12 +7,12 @@ if [[ "${1:-}" == "--dry-run" ]]; then
     shift
 fi
 if [[ $# -ne 2 ]]; then
-    echo "사용법: $0 [--dry-run] COMPLEX.pdb JZ4_ideal.sdf" >&2
+    echo "Usage: $0 [--dry-run] COMPLEX.pdb JZ4_ideal.sdf" >&2
     exit 2
 fi
 
 die() {
-    echo "오류: $*" >&2
+    echo "Error: $*" >&2
     exit 1
 }
 
@@ -35,27 +35,27 @@ fi
 
 for input_file in "$complex_pdb" "$ligand_sdf" "$structure_dir/preparation.tsv"; do
     if [[ ! -s "$input_file" ]]; then
-        die "필수 input을 찾을 수 없습니다: $input_file"
+        die "Required input not found: $input_file"
     fi
 done
 for executable in "$antechamber" "$parmchk2" "$tleap" "$python"; do
     if ! command -v "$executable" >/dev/null 2>&1; then
-        die "실행 파일을 찾을 수 없습니다: $executable"
+        die "Executable not found: $executable"
     fi
 done
 if ! "$python" -c 'import parmed' >/dev/null 2>&1; then
-    die "ParmEd Python module이 필요합니다."
+    die "ParmEd Python module is required."
 fi
 
 anchor_residue=$(awk -F '\t' '$1 == "protein_anchor_residue" {print $2}' "$structure_dir/preparation.tsv")
 if [[ ! "$anchor_residue" =~ ^[1-9][0-9]*$ ]]; then
-    die "Protein anchor residue 번호를 읽지 못했습니다: $structure_dir/preparation.tsv"
+    die "Protein anchor residue index could not be read: $structure_dir/preparation.tsv"
 fi
 
 mkdir -p "$build_dir"
 cp "$complex_pdb" "$build_dir/complex.pdb"
 
-echo "JZ4를 GAFF2/AM1-BCC로 parameterize합니다."
+echo "Parameterizing JZ4 with GAFF2/AM1-BCC."
 cp "$ligand_sdf" "$build_dir/JZ4_ideal.sdf"
 (
     cd "$build_dir"
@@ -73,15 +73,15 @@ cp "$ligand_sdf" "$build_dir/JZ4_ideal.sdf"
         > parmchk2.log 2>&1
 )
 
-echo "Complex와 solvent topology를 생성합니다."
+echo "Generating complex and solvent topologies."
 for environment in complex solvent; do
     cp "inputs/tleap_${environment}.in" "$build_dir/tleap_${environment}.in"
     if ! (cd "$build_dir" && "$tleap" -f "tleap_${environment}.in" > "tleap_${environment}.log" 2>&1); then
-        die "$environment topology build에 실패했습니다: $build_dir/tleap_${environment}.log"
+        die "$environment topology build failed: $build_dir/tleap_${environment}.log"
     fi
     for suffix in parm7 rst7; do
         if [[ ! -s "$build_dir/$environment.$suffix" ]]; then
-            die "$environment build output이 없습니다: $build_dir/$environment.$suffix"
+            die "$environment build Output not found: $build_dir/$environment.$suffix"
         fi
     done
 done
@@ -92,4 +92,4 @@ done
     "inputs" \
     "$anchor_residue"
 
-echo "ABFE window 65개를 생성했습니다: $work_dir/restraint, $work_dir/charge, $work_dir/vdw"
+echo "Created 65 ABFE windows: $work_dir/restraint, $work_dir/charge, $work_dir/vdw"

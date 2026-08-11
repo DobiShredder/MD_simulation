@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Chignolin RMSD, residue RMSF와 radius of gyration을 표시한다."""
+"""Plot Chignolin RMSD, residue RMSF, and radius of gyration."""
 
 from __future__ import annotations
 
@@ -19,9 +19,9 @@ def main() -> int:
     rg = np.loadtxt(output_dir / "rg.dat", comments="#", ndmin=2)
 
     if not np.array_equal(rmsd_first[:, 0], rmsd_average[:, 0]):
-        raise ValueError("RMSD output의 frame 번호가 일치하지 않습니다.")
+        raise ValueError("RMSD output frame indices do not match.")
     if not np.array_equal(rmsd_first[:, 0], rg[:, 0]):
-        raise ValueError("RMSD와 Rg output의 frame 번호가 일치하지 않습니다.")
+        raise ValueError("Frame indices in the RMSD and Rg outputs do not match.")
 
     figure, axes = plt.subplots(3, 1, figsize=(8, 9))
     axes[0].plot(rmsd_first[:, 0], rmsd_first[:, 1], label="First frame")

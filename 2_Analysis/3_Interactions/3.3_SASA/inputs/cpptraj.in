@@ -1,4 +1,4 @@
-# 전체 protein SASA와 residue별 기여도를 LCPO로 계산합니다.
+# Calculate total protein SASA and per-residue contributions with LCPO.
 autoimage anchor :1-10
 
 surf Total :1-10 out sasa_total.dat offset 1.4

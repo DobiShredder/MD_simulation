@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""WT-MetaD segment와 sampling 범위를 요약한다."""
+"""Summarize WT-MetaD segments and the sampled range."""
 
 import argparse
 import os
@@ -19,7 +19,7 @@ def read_colvar(path: Path) -> dict[str, np.ndarray]:
         elif line and not line.startswith("#"):
             rows.append([float(value) for value in line.split()])
     if fields is None or not rows:
-        raise ValueError(f"COLVAR header 또는 data가 없습니다: {path}")
+        raise ValueError(f"COLVAR header or data not found: {path}")
     data = np.asarray(rows, dtype=float)
     return {name: data[:, index] for index, name in enumerate(fields)}
 
@@ -30,14 +30,14 @@ def main() -> int:
     parser.add_argument(
         "--skip-fes",
         action="store_true",
-        help="plumed sum_hills를 실행하지 않고 diagnostic TSV만 만듭니다.",
+        help="Create only the diagnostic TSV without running plumed sum_hills.",
     )
     args = parser.parse_args()
 
     segment_dirs = sorted((args.work_dir / "production").glob("[0-9][0-9][0-9]"))
     if len(segment_dirs) != 1:
         raise ValueError(
-            f"완료된 production segment가 1개가 아닙니다: {len(segment_dirs)}"
+            f"Expected exactly one completed production segment: {len(segment_dirs)}"
         )
 
     output_dir = args.work_dir / "analysis"
@@ -50,10 +50,10 @@ def main() -> int:
         values = read_colvar(segment_dir / "COLVAR")
         required = {"time", "phi", "psi", "metad.bias", "metad.rbias"}
         if not required.issubset(values):
-            raise ValueError(f"COLVAR field가 부족합니다: {segment_dir / 'COLVAR'}")
+            raise ValueError(f"Required COLVAR fields are missing: {segment_dir / 'COLVAR'}")
         if np.any(np.diff(values["time"]) <= 0):
             raise ValueError(
-                f"segment 내부 time이 증가하지 않습니다: {segment_dir.name}"
+                f"Time does not increase within segment: {segment_dir.name}"
             )
 
         phi = values["phi"]
@@ -98,8 +98,8 @@ def main() -> int:
         plumed = os.environ.get("PLUMED", "plumed")
         if shutil.which(plumed) is None:
             message = (
-                f"plumed를 찾을 수 없습니다: {plumed}. "
-                "--skip-fes로 TSV만 만들 수 있습니다."
+                f"plumed not found: {plumed}. "
+                "Use --skip-fes to create only the TSV."
             )
             raise FileNotFoundError(message)
         for segment_number in (1,):
@@ -116,7 +116,7 @@ def main() -> int:
             ]
             subprocess.run(command, check=True)
 
-    print(f"WT-MetaD 진단 결과: {output_dir}")
+    print(f"WT-MetaD diagnostics results: {output_dir}")
     return 0
 
 

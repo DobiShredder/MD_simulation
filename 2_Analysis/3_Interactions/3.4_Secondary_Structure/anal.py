@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Chignolin secondary structure의 residue-time map과 전체 분율을 표시한다."""
+"""Plot the Chignolin secondary-structure residue-time map and overall fractions."""
 
 from __future__ import annotations
 
@@ -29,9 +29,9 @@ def main() -> int:
     )
     totals = np.loadtxt(output_dir / "secondary_total.dat", comments="#", ndmin=2)
     if assignments.shape[1] != 11 or totals.shape[1] != 8:
-        raise ValueError("secondary structure output column이 예상한 형식과 다릅니다.")
+        raise ValueError("Secondary-structure output columns do not match the expected format.")
     if not np.array_equal(assignments[:, 0], totals[:, 0]):
-        raise ValueError("Secondary structure output의 frame 번호가 일치하지 않습니다.")
+        raise ValueError("Frame indices in the secondary-structure outputs do not match.")
 
     frames = assignments[:, 0]
     map_values = assignments[:, 1:].T

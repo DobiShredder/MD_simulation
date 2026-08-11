@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""OPES_METAD bias와 adaptive kernel 상태를 요약한다."""
+"""Summarize OPES_METAD bias and adaptive-kernel state."""
 
 import argparse
 from pathlib import Path
@@ -15,7 +15,7 @@ def read_colvar(path: Path) -> dict[str, np.ndarray]:
         elif line and not line.startswith("#"):
             rows.append([float(value) for value in line.split()])
     if fields is None or not rows:
-        raise ValueError(f"COLVAR header 또는 data가 없습니다: {path}")
+        raise ValueError(f"COLVAR header or data not found: {path}")
     data = np.asarray(rows)
     return {name: data[:, index] for index, name in enumerate(fields)}
 
@@ -26,7 +26,7 @@ def main() -> int:
     args = parser.parse_args()
     segments = sorted((args.work_dir / "production").glob("[0-9][0-9][0-9]"))
     if len(segments) != 1:
-        raise ValueError(f"완료된 production segment가 1개가 아닙니다: {len(segments)}")
+        raise ValueError(f"Expected exactly one completed production segment: {len(segments)}")
 
     output_dir = args.work_dir / "analysis"
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -35,7 +35,7 @@ def main() -> int:
         values = read_colvar(segment / "COLVAR")
         required = {"time", "phi", "psi", "opes.bias", "opes.neff", "opes.nker"}
         if not required.issubset(values):
-            raise ValueError(f"COLVAR field가 부족합니다: {segment / 'COLVAR'}")
+            raise ValueError(f"Required COLVAR fields are missing: {segment / 'COLVAR'}")
         rows.append((
             segment.name,
             len(values["time"]),
@@ -52,7 +52,7 @@ def main() -> int:
         )
         for row in rows:
             handle.write("\t".join(map(str, row)) + "\n")
-    print(f"OPES_METAD 진단 결과: {output_dir}")
+    print(f"OPES_METAD diagnostics results: {output_dir}")
     return 0
 
 

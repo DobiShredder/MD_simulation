@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Chignolin backbone dihedral feature를 UMAP으로 투영한다."""
+"""Project Chignolin backbone-dihedral features with UMAP."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ try:
     import umap
 except (ModuleNotFoundError, RuntimeError) as error:
     raise SystemExit(
-        "UMAP dependency를 사용할 수 없습니다. 다음을 실행하세요: "
+        "UMAP dependency is unavailable. Run: "
         "conda install -n ambertools26 -c conda-forge 'umap-learn>=0.5.7,<0.6'"
     ) from error
 
@@ -31,7 +31,7 @@ RANDOM_STATE = 20260809
 def read_features(path: Path) -> tuple[np.ndarray, np.ndarray]:
     data = np.loadtxt(path, comments="#", ndmin=2)
     if data.shape[1] < 3:
-        raise ValueError("phi_psi.dat 형식을 확인하세요.")
+        raise ValueError("Check the format of phi_psi.dat.")
     angles = np.deg2rad(data[:, 1:])
     features = np.column_stack((np.sin(angles), np.cos(angles)))
     return data[:, 0], StandardScaler().fit_transform(features)
@@ -42,7 +42,7 @@ def main() -> int:
     frames, features = read_features(output_dir / "phi_psi.dat")
     if len(frames) <= N_NEIGHBORS:
         raise ValueError(
-            f"UMAP은 n_neighbors보다 많은 frame이 필요합니다: "
+            f"UMAP requires more frames than the n_neighbors value: "
             f"frames={len(frames)}, n_neighbors={N_NEIGHBORS}"
         )
 

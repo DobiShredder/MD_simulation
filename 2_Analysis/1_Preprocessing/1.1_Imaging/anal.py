@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Imaging 전후 Chignolin center displacement를 표시한다."""
+"""Plot Chignolin center displacement before and after imaging."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ import numpy as np
 def vector_coordinates(path: Path) -> tuple[np.ndarray, np.ndarray]:
     data = np.loadtxt(path, comments="#", ndmin=2)
     if data.shape[1] < 4:
-        raise ValueError(f"vector output column이 부족합니다: {path}")
+        raise ValueError(f"Vector output has too few columns: {path}")
     return data[:, 0], data[:, 1:4]
 
 
@@ -26,7 +26,7 @@ def main() -> int:
     if not np.array_equal(frames, imaged_frames) or not np.array_equal(
         frames, box_frames
     ):
-        raise ValueError("Imaging output의 frame 번호가 일치하지 않습니다.")
+        raise ValueError("Frame indices in the imaging outputs do not match.")
 
     raw_displacement = np.linalg.norm(raw_center - box_center, axis=1)
     imaged_displacement = np.linalg.norm(imaged_center - box_center, axis=1)

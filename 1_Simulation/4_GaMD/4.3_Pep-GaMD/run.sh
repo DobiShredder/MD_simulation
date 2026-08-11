@@ -7,12 +7,12 @@ if [[ "${1:-}" == "--dry-run" ]]; then
     shift
 fi
 if [[ $# -ne 0 ]]; then
-    echo "사용법: $0 [--dry-run]" >&2
+    echo "Usage: $0 [--dry-run]" >&2
     exit 2
 fi
 
 die() {
-    echo "오류: $*" >&2
+    echo "Error: $*" >&2
     exit 1
 }
 
@@ -24,20 +24,20 @@ topology=system.parm7
 read -r -a amber_options <<< "${AMBER_OPTIONS:-}"
 
 if [[ ! "$random_seed" =~ ^[1-9][0-9]*$ ]]; then
-    die "RANDOM_SEED는 positive integer여야 합니다: $random_seed"
+    die "RANDOM_SEED must be a positive integer: $random_seed"
 fi
 
 if (( ! dry_run )); then
     if ! command -v "$engine" >/dev/null 2>&1; then
-        die "AMBER engine을 찾을 수 없습니다: $engine"
+        die "AMBER engine not found: $engine"
     fi
     if [[ "$(basename "$engine")" != "pmemd.cuda" ]]; then
-        die "Amber 26 Pep-GaMD는 serial GPU pmemd.cuda에서만 지원됩니다: $engine"
+        die "Amber 26 Pep-GaMD supports only the serial GPU pmemd.cuda engine: $engine"
     fi
     for input in "$work_dir/system.parm7" "$work_dir/system.rst7" \
         "$work_dir/inputs/gamd_prepare.in" "$work_dir/inputs/production.in"; do
         if [[ ! -s "$input" ]]; then
-            die "build.sh를 먼저 실행해야 합니다: $input"
+            die "Run build.sh first: $input"
         fi
     done
 
@@ -75,9 +75,9 @@ run_command() {
         printf '\n'
         return
     fi
-    echo "실행: $stage"
+    echo "Running: $stage"
     if ! "$@"; then
-        die "$stage 계산에 실패했습니다."
+        die "$stage calculation failed."
     fi
 }
 
@@ -123,24 +123,24 @@ run_md_stage() {
         return
     fi
     if [[ "$state" == partial ]]; then
-        die "$stage output이 일부만 존재합니다. 해당 stage output을 확인하세요."
+        die "Partial output detected for $stage. Check the stage output."
     fi
     if [[ -n "$gamd_state_input" ]]; then
         if [[ ! -s "$gamd_state_input" ]]; then
-            die "이전 GaMD state를 찾을 수 없습니다: $gamd_state_input"
+            die "Previous GaMD state not found: $gamd_state_input"
         fi
         cp "$gamd_state_input" gamd-restart.dat
     fi
     run_command "$stage" "${command[@]}"
     if [[ "$with_gamd_log" == yes ]]; then
         if [[ ! -s gamd-restart.dat ]]; then
-            die "$stage GaMD state가 생성되지 않았습니다: gamd-restart.dat"
+            die "$stage GaMD state was not created: gamd-restart.dat"
         fi
         cp gamd-restart.dat "$prefix.gamd.rst"
     fi
     for output in "${required[@]}"; do
         if [[ ! -s "$output" ]]; then
-            die "$stage output이 생성되지 않았습니다: $output"
+            die "$stage Output was not created: $output"
         fi
     done
 }
@@ -170,5 +170,5 @@ for segment_number in $(seq 1 "$production_segments"); do
 done
 
 if (( ! dry_run )); then
-    echo "1 ns Pep-GaMD production이 완료되었습니다."
+    echo "1 ns Pep-GaMD production completed."
 fi

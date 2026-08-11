@@ -8,12 +8,12 @@ if [[ "${1:-}" == "--dry-run" ]]; then
 fi
 
 if [[ $# -ne 0 ]]; then
-    echo "사용법: $0 [--dry-run]" >&2
+    echo "Usage: $0 [--dry-run]" >&2
     exit 2
 fi
 
 die() {
-    echo "오류: $*" >&2
+    echo "Error: $*" >&2
     exit 1
 }
 
@@ -25,7 +25,7 @@ production_segments=1
 read -r -a amber_options <<< "${AMBER_OPTIONS:-}"
 
 if [[ ! "$seed_base" =~ ^[1-9][0-9]*$ ]]; then
-    die "RANDOM_SEED는 positive integer여야 합니다."
+    die "RANDOM_SEED must be a positive integer."
 fi
 
 topology="$work_dir/system.parm7"
@@ -70,12 +70,12 @@ run_command() {
         return
     fi
 
-    echo "실행: $stage"
+    echo "Running: $stage"
     if ! (
         cd "$directory"
         "$@"
     ); then
-        die "$stage 계산에 실패했습니다: $directory"
+        die "$stage Calculation failed: $directory"
     fi
 }
 
@@ -112,7 +112,7 @@ run_standard_stage() {
             return 0
         fi
         if [[ "$state" == partial ]]; then
-            die "$stage output이 일부만 존재합니다."
+            die "$stage Partial output detected."
         fi
     fi
 
@@ -121,7 +121,7 @@ run_standard_stage() {
     if (( ! dry_run )); then
         for output in "${required[@]}"; do
             if [[ ! -s "$output" ]]; then
-                die "$stage output이 없습니다: $output"
+                die "$stage Output not found: $output"
             fi
         done
     fi
@@ -161,7 +161,7 @@ run_production_segment() {
             return 0
         fi
         if [[ "$state" == partial ]]; then
-            die "production $segment output이 일부만 존재합니다."
+            die "production $segment Partial output detected."
         fi
 
         mkdir -p "$segment_dir"
@@ -175,7 +175,7 @@ run_production_segment() {
             cp "$work_dir/plumed.initial.dat" "$segment_dir/plumed.dat"
         else
             if [[ ! -s "$previous_dir/HILLS" ]]; then
-                die "이전 HILLS가 없습니다: $previous_dir/HILLS"
+                die "previous HILLS is missing: $previous_dir/HILLS"
             fi
             cp "$work_dir/plumed.restart.dat" "$segment_dir/plumed.dat"
             cp "$previous_dir/HILLS" "$segment_dir/HILLS"
@@ -195,7 +195,7 @@ run_production_segment() {
     if (( ! dry_run )); then
         for output in "${required[@]}"; do
             if [[ ! -s "$output" ]]; then
-                die "production $segment output이 없습니다: $output"
+                die "production $segment Output not found: $output"
             fi
         done
     fi
@@ -204,7 +204,7 @@ run_production_segment() {
 if (( ! dry_run )); then
     for executable in "$engine" "$plumed"; do
         if ! command -v "$executable" >/dev/null 2>&1; then
-            die "실행 파일을 찾을 수 없습니다: $executable"
+            die "Executable not found: $executable"
         fi
     done
 
@@ -215,7 +215,7 @@ if (( ! dry_run )); then
         "$work_dir/plumed.initial.dat" \
         "$work_dir/atom_count.txt"; do
         if [[ ! -s "$input" ]]; then
-            die "build.sh를 먼저 실행하세요: $input"
+            die "Run build.sh first. $input"
         fi
     done
 
@@ -245,5 +245,5 @@ for segment_number in $(seq 1 "$production_segments"); do
 done
 
 if (( ! dry_run )); then
-    echo "1 ns Funnel MetaD production 완료: $work_dir/production"
+    echo "1 ns Funnel MetaD production Completed: $work_dir/production"
 fi

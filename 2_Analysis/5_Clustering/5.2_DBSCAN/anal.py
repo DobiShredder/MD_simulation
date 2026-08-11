@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Backbone dihedral PCA feature를 DBSCAN으로 clustering한다."""
+"""Cluster backbone-dihedral PCA features with DBSCAN."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ try:
     from sklearn.neighbors import NearestNeighbors
     from sklearn.preprocessing import StandardScaler
 except ModuleNotFoundError as error:
-    raise SystemExit("ambertools26 환경에 scikit-learn과 matplotlib을 설치하세요.") from error
+    raise SystemExit("Install scikit-learn and matplotlib in the ambertools26 environment.") from error
 
 
 EPS = 1.2
@@ -39,7 +39,7 @@ def main() -> int:
     output_dir = Path(__file__).resolve().parent / "output"
     frames, projection, feature = pca_features(output_dir / "phi_psi.dat")
     if len(frames) < MIN_SAMPLES:
-        raise ValueError(f"DBSCAN에는 최소 {MIN_SAMPLES}개 frame이 필요합니다.")
+        raise ValueError(f"DBSCAN requires at least {MIN_SAMPLES} frames.")
 
     labels = DBSCAN(eps=EPS, min_samples=MIN_SAMPLES).fit_predict(feature)
     neighbors = NearestNeighbors(n_neighbors=MIN_SAMPLES).fit(feature)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""RCSB neutral BEN SDF에 proton을 하나 추가해 benzamidinium(+1)을 만듭니다."""
+"""Add one proton to the neutral RCSB BEN SDF to create benzamidinium (+1)."""
 
 from __future__ import annotations
 
@@ -55,7 +55,7 @@ def main() -> None:
     args = parse_arguments()
     lines = args.input_sdf.read_text(encoding="utf-8").splitlines()
     if len(lines) < 5 or "V2000" not in lines[3]:
-        raise SystemExit("V2000 BEN SDF만 지원합니다.")
+        raise SystemExit("Only V2000 BEN SDF files are supported.")
 
     atom_count = int(lines[3][0:3])
     bond_count = int(lines[3][3:6])
@@ -83,7 +83,7 @@ def main() -> None:
             central_candidates.append((atom_index, bonded_nitrogens))
 
     if len(central_candidates) != 1:
-        raise SystemExit("BEN amidine carbon을 하나만 찾지 못했습니다.")
+        raise SystemExit("Could not identify exactly one BEN amidine carbon.")
 
     central_carbon, nitrogens = central_candidates[0]
     imine_candidates = []
@@ -101,7 +101,7 @@ def main() -> None:
             imine_candidates.append((nitrogen, bonded_hydrogens[0]))
 
     if len(imine_candidates) != 1:
-        raise SystemExit("Proton을 추가할 imine nitrogen을 하나만 찾지 못했습니다.")
+        raise SystemExit("Expected exactly one imine nitrogen for protonation.")
 
     nitrogen, existing_hydrogen = imine_candidates[0]
     new_xyz = reflected_hydrogen(
@@ -117,7 +117,7 @@ def main() -> None:
     new_bond = f"{nitrogen:3d}{new_atom_index:3d}{1:3d}  0  0  0"
 
     if any(line.startswith("M  CHG") for line in property_lines):
-        raise SystemExit("Input SDF에 이미 formal charge가 있습니다.")
+        raise SystemExit("Formal charges already exist in the input SDF.")
 
     output = lines[:3]
     output.append(f"{new_atom_index:3d}{bond_count + 1:3d}" + lines[3][6:])
@@ -134,7 +134,7 @@ def main() -> None:
         output.append(line)
 
     if not inserted_charge:
-        raise SystemExit("SDF의 M  END record를 찾지 못했습니다.")
+        raise SystemExit("M  END record not found in SDF.")
 
     args.output_sdf.parent.mkdir(parents=True, exist_ok=True)
     args.output_sdf.write_text("\n".join(output) + "\n", encoding="utf-8")
@@ -143,4 +143,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

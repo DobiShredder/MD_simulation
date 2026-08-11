@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""REST3 base identity와 solvent interaction 보존을 검사합니다."""
+"""Check REST3 base identity and preservation of solvent interactions."""
 
 from __future__ import annotations
 
@@ -59,7 +59,7 @@ def topology_data(path: Path) -> tuple[dict[str, tuple[float, float]], dict[tupl
                 ion_types.add(atom_type)
 
     if not water_type:
-        raise SystemExit(f"TIP3P oxygen type을 찾지 못했습니다: {path}")
+        raise SystemExit(f"TIP3P oxygen type not found: {path}")
 
     return atomtypes, pairs, water_type, ion_types
 
@@ -89,7 +89,7 @@ def close_pair(reference: tuple[float, float], observed: tuple[float, float]) ->
 
 
 def cmap_data(path: Path) -> list[tuple[tuple[str, ...], list[float]]]:
-    """[ cmaptypes ]에서 atom type과 energy grid를 읽습니다."""
+    """Read atom types and energy grids from [ cmaptypes ]."""
     maps: list[tuple[tuple[str, ...], list[float]]] = []
     section = ""
     atom_types: tuple[str, ...] | None = None
@@ -103,7 +103,7 @@ def cmap_data(path: Path) -> list[tuple[tuple[str, ...], list[float]]]:
 
         if stripped.startswith("[") and stripped.endswith("]"):
             if section == "cmaptypes" and expected:
-                raise SystemExit(f"CMAP grid 값이 부족합니다: {path}")
+                raise SystemExit(f"Insufficient CMAP grid values: {path}")
             section = stripped.strip("[] ").lower()
             continue
 
@@ -119,14 +119,14 @@ def cmap_data(path: Path) -> list[tuple[tuple[str, ...], list[float]]]:
         )
         if is_header:
             if expected:
-                raise SystemExit(f"CMAP grid 값이 부족합니다: {path}")
+                raise SystemExit(f"Insufficient CMAP grid values: {path}")
             atom_types = tuple(fields[:5])
             values = []
             expected = int(fields[6]) * int(fields[7])
             continue
 
         if atom_types is None:
-            raise SystemExit(f"CMAP header를 해석하지 못했습니다: {path}")
+            raise SystemExit(f"Could not parse CMAP header: {path}")
 
         values.extend(float(field) for field in fields if field != "\\")
         if len(values) == expected:
@@ -135,12 +135,12 @@ def cmap_data(path: Path) -> list[tuple[tuple[str, ...], list[float]]]:
             values = []
             expected = 0
         elif len(values) > expected:
-            raise SystemExit(f"CMAP grid 값이 너무 많습니다: {path}")
+            raise SystemExit(f"CMAP grid contains too many values: {path}")
 
     if expected:
-        raise SystemExit(f"CMAP grid 값이 부족합니다: {path}")
+        raise SystemExit(f"Insufficient CMAP grid values: {path}")
     if not maps:
-        raise SystemExit(f"CMAP map을 찾지 못했습니다: {path}")
+        raise SystemExit(f"CMAP map not found: {path}")
 
     return maps
 
@@ -150,11 +150,11 @@ def verify_cmap_scaling(base: Path, observed: Path, scale: float) -> None:
     observed_maps = cmap_data(observed)
 
     if len(base_maps) != len(observed_maps):
-        raise SystemExit(f"CMAP map 수가 바뀌었습니다: {observed}")
+        raise SystemExit(f"CMAP map count changed: {observed}")
 
     for (base_types, base_values), (types, values) in zip(base_maps, observed_maps):
         if types != base_types:
-            raise SystemExit(f"CMAP bonded type이 바뀌었습니다: {observed}")
+            raise SystemExit(f"CMAP bonded type changed: {observed}")
 
         for reference, value in zip(base_values, values):
             if not math.isclose(
@@ -163,7 +163,7 @@ def verify_cmap_scaling(base: Path, observed: Path, scale: float) -> None:
                 rel_tol=1.0e-9,
                 abs_tol=1.0e-9,
             ):
-                raise SystemExit(f"CMAP energy가 lambda_pp로 scaling되지 않았습니다: {observed}")
+                raise SystemExit(f"CMAP energy was not scaled by lambda_pp: {observed}")
 
 
 def main() -> None:
@@ -175,7 +175,7 @@ def main() -> None:
 
     replica_zero = args.replica_directory / "000" / "topol.top"
     if digest(args.base_topology) != digest(replica_zero):
-        raise SystemExit("REST3 replica 000 topology가 base topology와 다릅니다.")
+        raise SystemExit("REST3 replica 000 topology differs from the base topology.")
 
     base_atomtypes, base_pairs, base_water, base_ions = topology_data(
         args.base_topology
@@ -204,21 +204,21 @@ def main() -> None:
 
         if water_type != base_water:
             raise SystemExit(
-                f"TIP3P oxygen type이 바뀌었습니다: {state['replica']}"
+                f"TIP3P oxygen type changed: {state['replica']}"
             )
 
         if ion_types != base_ions:
-            raise SystemExit(f"ion atom type이 바뀌었습니다: {state['replica']}")
+            raise SystemExit(f"Ion atom type changed: {state['replica']}")
 
         for (first, second), reference in reference_pairs.items():
             observed = pair_parameters(atomtypes, pairs, first, second)
             if not close_pair(reference, observed):
                 raise SystemExit(
-                    "water–water 또는 ion–water interaction이 바뀌었습니다: "
+                    "Water-water or ion-water interaction changed: "
                     f"replica {state['replica']}, {first}-{second}"
                 )
 
-    print("REST3 base identity, CMAP scaling과 solvent interaction 보존을 확인했습니다.")
+    print("Verified REST3 base identity, CMAP scaling, and preservation of solvent interactions.")
 
 
 if __name__ == "__main__":

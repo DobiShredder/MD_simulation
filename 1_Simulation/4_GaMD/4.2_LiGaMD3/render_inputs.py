@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""최종 topology에서 LiGaMD3 receptor atom 범위를 찾아 input을 생성합니다."""
+"""Find the LiGaMD3 receptor atom range in the final topology and generate inputs."""
 
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ def main() -> None:
 
     ben_indices = [index for index, label in enumerate(labels) if label == "BEN"]
     if len(ben_indices) != 1:
-        raise SystemExit(f"BEN residue를 하나만 찾지 못했습니다: {ben_indices}")
+        raise SystemExit(f"Expected exactly one BEN residue, found {ben_indices}")
     ben_index = ben_indices[0]
     receptor_first_atom = 1
     receptor_last_atom = structure.residues[ben_index].atoms[0].idx
@@ -36,7 +36,7 @@ def main() -> None:
         if line
     )
     if ben_index != int(metadata["receptor_residues"]):
-        raise SystemExit("BEN 앞의 receptor residue 수가 preparation metadata와 다릅니다.")
+        raise SystemExit("Receptor residue count before BEN differs from the preparation metadata.")
 
     args.output_directory.mkdir(parents=True, exist_ok=True)
     replacements = {

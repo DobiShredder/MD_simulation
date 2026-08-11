@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""1CKB chain A receptor와 resolved chain B peptide를 준비합니다."""
+"""Prepare the chain-A receptor and resolved chain-B peptide from 1CKB."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ EXPECTED_PEPTIDE = ["PRO", "PRO", "PRO", "VAL", "PRO", "PRO", "ARG", "ARG"]
 
 
 def arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="PDB 1CKB를 Pep-GaMD build용으로 전처리합니다.")
+    parser = argparse.ArgumentParser(description="Prepare PDB 1CKB for the Pep-GaMD build.")
     parser.add_argument("input_pdb", type=Path)
     parser.add_argument("output_pdb", type=Path)
     return parser.parse_args()
@@ -23,7 +23,7 @@ def residue_key(line: str) -> tuple[str, str, str]:
 def main() -> None:
     args = arguments()
     if not args.input_pdb.is_file():
-        raise SystemExit(f"입력 PDB를 찾을 수 없습니다: {args.input_pdb}")
+        raise SystemExit(f"Input PDB not found: {args.input_pdb}")
 
     selected: list[tuple[str, tuple[str, str, str]]] = []
     residue_order: list[tuple[str, str, str]] = []
@@ -47,9 +47,9 @@ def main() -> None:
     peptide = [key for key in residue_order if key[0] == "B"]
     peptide_sequence = [residue_names[key] for key in peptide]
     if len(receptor) != 57:
-        raise SystemExit(f"1CKB chain A는 57 resolved residues여야 합니다: {len(receptor)}")
+        raise SystemExit(f"1CKB chain A must contain 57 resolved residues: {len(receptor)}")
     if peptide_sequence != EXPECTED_PEPTIDE:
-        raise SystemExit(f"1CKB resolved peptide가 PPPVPPRR과 다릅니다: {peptide_sequence}")
+        raise SystemExit(f"Resolved 1CKB peptide differs from PPPVPPRR: {peptide_sequence}")
 
     new_index = {key: index for index, key in enumerate(residue_order, start=1)}
     output_lines: list[str] = []
@@ -77,7 +77,7 @@ def main() -> None:
         "peptide_sequence\tPPPVPPRR\n",
         encoding="utf-8",
     )
-    print(f"Pep-GaMD 전처리 결과: {args.output_pdb} (peptide :{peptide_start}-{peptide_end})")
+    print(f"Prepared Pep-GaMD structure: {args.output_pdb} (peptide: {peptide_start}-{peptide_end})")
 
 
 if __name__ == "__main__":

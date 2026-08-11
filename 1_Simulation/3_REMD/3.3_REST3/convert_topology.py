@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""AMBER topology와 restart file을 GROMACS 형식으로 변환합니다."""
+"""Convert AMBER topology and restart files to GROMACS format."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ import parmed
 
 
 def preserve_residue_specific_cmaps(structure: parmed.Structure) -> dict[str, str]:
-    """ff19SB CMAP grid와 residue 조합마다 C-alpha atom type을 지정합니다."""
+    """Assign C-alpha atom types for each ff19SB CMAP grid and residue combination."""
     cmap_names: dict[tuple[int, str], str] = {}
     atom_names: dict[int, str] = {}
 
@@ -22,7 +22,7 @@ def preserve_residue_specific_cmaps(structure: parmed.Structure) -> dict[str, st
         atom_key = id(cmap.atom3)
 
         if atom_key in atom_names and atom_names[atom_key] != cmap_name:
-            raise SystemExit("하나의 C-alpha atom에 서로 다른 CMAP이 지정되어 있습니다.")
+            raise SystemExit("Different CMAPs are assigned to one C-alpha atom.")
 
         if atom_key not in atom_names:
             cmap.atom3.atom_type = copy.copy(cmap.atom3.atom_type)
@@ -31,7 +31,7 @@ def preserve_residue_specific_cmaps(structure: parmed.Structure) -> dict[str, st
             atom_names[atom_key] = cmap_name
 
     if structure.cmaps and len(cmap_names) < 2:
-        raise SystemExit("ff19SB residue-specific CMAP을 분리하지 못했습니다.")
+        raise SystemExit("Could not separate ff19SB residue-specific CMAPs.")
 
     return {name: residue for (_, residue), name in cmap_names.items()}
 
@@ -46,7 +46,7 @@ def main() -> None:
 
     for path in (args.topology, args.coordinates):
         if not path.is_file():
-            raise SystemExit(f"입력 파일을 찾을 수 없습니다: {path}")
+            raise SystemExit(f"Input file not found: {path}")
 
     structure = parmed.load_file(str(args.topology), xyz=str(args.coordinates))
     cmap_types = preserve_residue_specific_cmaps(structure)
@@ -54,7 +54,7 @@ def main() -> None:
     structure.save(str(args.output_coordinates), overwrite=True)
 
     print(
-        "GROMACS 변환 결과: "
+        "GROMACS Conversion output: "
         f"{args.output_topology}, {args.output_coordinates} "
         f"(residue-specific CMAP types: {len(cmap_types)})"
     )

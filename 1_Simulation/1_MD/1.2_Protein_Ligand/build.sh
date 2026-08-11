@@ -9,16 +9,16 @@ if [[ "${1:-}" == "--dry-run" ]]; then
 fi
 
 if [[ $# -ne 1 ]]; then
-    echo "사용법: $0 [--dry-run] COMPLEX.pdb" >&2
+    echo "Usage: $0 [--dry-run] COMPLEX.pdb" >&2
     exit 2
 fi
 
 die() {
-    echo "오류: $*" >&2
+    echo "Error: $*" >&2
     exit 1
 }
 
-# Input과 사용자 설정
+# Inputs and user settings
 complex_pdb=$1
 tleap=${TLEAP:-tleap}
 
@@ -27,26 +27,26 @@ work_dir=${WORK_DIR:-"work"}
 ligand_mol2="$work_dir/jz4.mol2"
 ligand_frcmod="$work_dir/jz4.frcmod"
 
-# 실행 전 확인
+# Input and dependency checks
 if (( ! dry_run )); then
     if [[ ! -f "$complex_pdb" ]]; then
-        die "complex PDB를 찾을 수 없습니다: $complex_pdb"
+        die "complex PDB not found: $complex_pdb"
     fi
 
     if [[ ! -s "$ligand_mol2" ]]; then
-        die "ligand mol2가 없습니다. ./prepare.sh를 먼저 실행하세요."
+        die "Ligand mol2 is missing. Run ./prepare.sh first."
     fi
 
     if [[ ! -s "$ligand_frcmod" ]]; then
-        die "ligand frcmod이 없습니다. ./prepare.sh를 먼저 실행하세요."
+        die "Ligand frcmod is missing. Run ./prepare.sh first."
     fi
 
     if ! command -v "$tleap" >/dev/null 2>&1; then
-        die "tleap을 찾을 수 없습니다: $tleap"
+        die "tleap not found: $tleap"
     fi
 fi
 
-# Dry-run에서는 파일을 생성하지 않고 command만 보여줍니다.
+# Dry run prints commands without creating files.
 if (( dry_run )); then
     printf 'mkdir -p %q\n' "$work_dir"
     printf 'cp %q %q\n' "$complex_pdb" "$work_dir/complex.pdb"
@@ -57,8 +57,8 @@ if (( dry_run )); then
     exit 0
 fi
 
-# Protein과 ligand를 하나의 solvated system으로 만듭니다.
-echo "ff19SB/GAFF2/TIP3P로 T4 lysozyme–JZ4 system을 생성합니다."
+# Combine the protein and ligand into one solvated system.
+echo "Generating the T4 lysozyme–JZ4 system with ff19SB/GAFF2/TIP3P."
 
 mkdir -p "$work_dir"
 cp "$complex_pdb" "$work_dir/complex.pdb"
@@ -70,15 +70,15 @@ if ! (
         -f tleap.in \
         > leap.log 2>&1
 ); then
-    die "tleap 실행에 실패했습니다. 확인할 파일: $work_dir/leap.log"
+    die "tleap failed. See log: $work_dir/leap.log"
 fi
 
 if [[ ! -s "$work_dir/system.parm7" ]]; then
-    die "topology가 생성되지 않았습니다. 확인할 파일: $work_dir/leap.log"
+    die "Topology was not created. See log: $work_dir/leap.log"
 fi
 
 if [[ ! -s "$work_dir/system.rst7" ]]; then
-    die "restart file이 생성되지 않았습니다. 확인할 파일: $work_dir/leap.log"
+    die "Restart file was not created. See log: $work_dir/leap.log"
 fi
 
-echo "AMBER topology와 restart: $work_dir"
+echo "AMBER topology and restart: $work_dir"

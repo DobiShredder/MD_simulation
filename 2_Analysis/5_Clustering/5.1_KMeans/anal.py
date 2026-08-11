@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Backbone dihedral PCA feature를 K-means로 clustering한다."""
+"""Cluster backbone-dihedral PCA features with K-means."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ try:
     from sklearn.metrics import silhouette_score
     from sklearn.preprocessing import StandardScaler
 except ModuleNotFoundError as error:
-    raise SystemExit("ambertools26 환경에 scikit-learn과 matplotlib을 설치하세요.") from error
+    raise SystemExit("Install scikit-learn and matplotlib in the ambertools26 environment.") from error
 
 
 CLUSTER_COUNT = 3
@@ -40,7 +40,7 @@ def main() -> int:
     output_dir = Path(__file__).resolve().parent / "output"
     frames, projection, feature = pca_features(output_dir / "phi_psi.dat")
     if len(frames) < 9:
-        raise ValueError("K-means diagnostic에는 9개 이상의 frame이 필요합니다.")
+        raise ValueError("K-means diagnostics require at least 9 frames.")
 
     model = KMeans(
         n_clusters=CLUSTER_COUNT,

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""1CKB preparation metadata로 Pep-GaMD mask를 채웁니다."""
+"""Populate the Pep-GaMD mask from 1CKB preparation metadata."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ def main() -> None:
     start = int(metadata["peptide_start_residue"])
     end = int(metadata["peptide_end_residue"])
     if metadata["peptide_sequence"] != "PPPVPPRR" or end - start + 1 != 8:
-        raise SystemExit("Pep-GaMD peptide metadata가 PPPVPPRR 8 residues와 다릅니다.")
+        raise SystemExit("Pep-GaMD peptide metadata does not match the 8-residue PPPVPPRR peptide.")
 
     mask = f":{start}-{end}"
     args.output_directory.mkdir(parents=True, exist_ok=True)

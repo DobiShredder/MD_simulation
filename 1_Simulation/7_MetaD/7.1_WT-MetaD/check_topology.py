@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generated topology에서 tutorial CV atom을 확인한다."""
+"""Validate tutorial CV atoms in the generated topology."""
 
 from pathlib import Path
 import sys
@@ -18,7 +18,7 @@ EXPECTED = {
 
 def main() -> int:
     if len(sys.argv) != 3:
-        print("사용법: check_topology.py SYSTEM.parm7 ATOM_MAP.tsv", file=sys.stderr)
+        print("Usage: check_topology.py SYSTEM.parm7 ATOM_MAP.tsv", file=sys.stderr)
         return 2
 
     topology_path = Path(sys.argv[1])
@@ -44,7 +44,7 @@ def main() -> int:
         f"{len(topology.atoms)}\n",
         encoding="ascii",
     )
-    print(f"CV atom 검증 완료: {output_path}")
+    print(f"CV atom validation Completed: {output_path}")
     return 0
 
 

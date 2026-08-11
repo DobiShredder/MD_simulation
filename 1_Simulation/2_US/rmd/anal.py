@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Ratchet MD trajectory에서 순서가 유지된 umbrella seed를 선택한다."""
+"""Select ordered umbrella seeds from a ratchet MD trajectory."""
 
 from __future__ import annotations
 
@@ -12,10 +12,10 @@ from pathlib import Path
 
 
 def parse_arguments() -> argparse.Namespace:
-    """Command-line argument와 tutorial 기본 경로를 읽는다."""
+    """Read command-line arguments and tutorial default paths."""
     script_dir = Path(__file__).resolve().parent
     parser = argparse.ArgumentParser(
-        description="증가하는 US center에 가까운 frame을 선택해 AMBER restart로 추출합니다."
+        description="Select frames near increasing US centers and extract AMBER restart files."
     )
     parser.add_argument(
         "--topology",
@@ -43,14 +43,14 @@ def parse_arguments() -> argparse.Namespace:
         dest="max_error_angstrom",
         type=float,
         default=0.75,
-        help="target center와 frame distance 차이의 허용치 (Å)",
+        help="Tolerance for the difference between the target center and frame distance (Å)",
     )
     parser.add_argument("--dry-run", action="store_true")
     return parser.parse_args()
 
 
 def read_centers(path: Path) -> list[float]:
-    """Window center를 읽고 양수·중복·순서를 확인한다."""
+    """Read window centers and validate positivity, uniqueness, and order."""
     centers: list[float] = []
     with path.open(encoding="utf-8") as handle:
         for line_number, raw_line in enumerate(handle, start=1):
@@ -59,21 +59,21 @@ def read_centers(path: Path) -> list[float]:
                 continue
             fields = line.split()
             if len(fields) != 2:
-                raise ValueError(f"{path}:{line_number}: CENTER_A FORCE 두 열이 필요합니다.")
+                raise ValueError(f"{path}:{line_number}: expected two columns: CENTER_A FORCE.")
             center = float(fields[0])
             force = float(fields[1])
             if center <= 0 or force <= 0:
-                raise ValueError(f"{path}:{line_number}: center와 force는 양수여야 합니다.")
+                raise ValueError(f"{path}:{line_number}: center and force must be positive.")
             centers.append(center)
     if not centers:
-        raise ValueError(f"window center가 없습니다: {path}")
+        raise ValueError(f"window center is missing: {path}")
     if centers != sorted(centers) or len(centers) != len(set(centers)):
-        raise ValueError("window center는 중복 없이 증가해야 합니다.")
+        raise ValueError("Window centers must be unique and increasing.")
     return centers
 
 
 def run_cpptraj(executable: str, topology: Path, commands: str) -> None:
-    """Command block을 cpptraj stdin으로 넘기고 실패 output을 보존한다."""
+    """Pass a command block to cpptraj stdin and preserve failure output."""
     result = subprocess.run(
         [executable, "-p", str(topology)],
         input=commands,
@@ -83,7 +83,7 @@ def run_cpptraj(executable: str, topology: Path, commands: str) -> None:
     )
     if result.returncode != 0:
         detail = result.stderr.strip() or result.stdout.strip()
-        raise RuntimeError(f"cpptraj 실행에 실패했습니다: {detail}")
+        raise RuntimeError(f"cpptraj failed: {detail}")
 
 
 def calculate_distances(
@@ -92,7 +92,7 @@ def calculate_distances(
     trajectory: Path,
     output: Path,
 ) -> list[tuple[int, float]]:
-    """Trajectory의 frame별 terminal Cα distance를 계산한다."""
+    """Calculate the terminal C-alpha distance for each trajectory frame."""
     commands = (
         f"trajin {trajectory}\n"
         f"distance end_to_end :1@CA :10@CA out {output} noimage\n"
@@ -109,7 +109,7 @@ def calculate_distances(
             fields = line.split()
             values.append((int(float(fields[0])), float(fields[1])))
     if not values:
-        raise RuntimeError("cpptraj end-to-end distance output이 비어 있습니다.")
+        raise RuntimeError("cpptraj end-to-end distance output is empty.")
     return values
 
 
@@ -118,7 +118,7 @@ def select_crossings(
     centers_angstrom: list[float],
     max_error_angstrom: float,
 ) -> list[tuple[int, float, float]]:
-    """Center 순서를 유지하며 first-crossing 주변 frame을 선택한다."""
+    """Select frames near first crossings while preserving center order."""
     selected: list[tuple[int, float, float]] = []
     start = 0
 
@@ -143,7 +143,7 @@ def select_crossings(
             )
         except ValueError as exc:
             raise RuntimeError(
-                f"trajectory에 {center_angstrom:.3f} Å window의 frame이 없습니다."
+                f"Trajectory has no frame for the {center_angstrom:.3f} Å window."
             ) from exc
 
         frame, observed = values[best]
@@ -151,9 +151,9 @@ def select_crossings(
 
         if error > max_error_angstrom:
             raise RuntimeError(
-                f"center {center_angstrom:.3f} Å의 허용 오차 "
-                f"{max_error_angstrom:.3f} Å 안에 frame이 없습니다. "
-                f"가장 가까운 ordered frame은 {frame}번, {observed:.3f} Å입니다."
+                f"No frame is within the {max_error_angstrom:.3f} Å tolerance of "
+                f"center {center_angstrom:.3f} Å. The nearest ordered frame is "
+                f"{frame} at {observed:.3f} Å."
             )
         selected.append((frame, observed, error))
         start = best + 1
@@ -168,7 +168,7 @@ def extract_restarts(
     output_dir: Path,
     selected: list[tuple[int, float, float]],
 ) -> None:
-    """Selected frame을 window별 AMBER restart file로 추출한다."""
+    """Extract selected frames as per-window AMBER restart files."""
     commands = [f"trajin {trajectory}"]
     for window, (frame, _, _) in enumerate(selected, start=1):
         seed = output_dir / f"seed_{window:03d}.rst7"
@@ -182,7 +182,7 @@ def extract_restarts(
         if not (output_dir / f"seed_{window:03d}.rst7").is_file()
     ]
     if missing:
-        raise RuntimeError(f"cpptraj seed restart가 생성되지 않았습니다: {missing[0]}")
+        raise RuntimeError(f"cpptraj seed restart was not created: {missing[0]}")
 
 
 def write_metadata(
@@ -190,7 +190,7 @@ def write_metadata(
     centers_angstrom: list[float],
     selected: list[tuple[int, float, float]],
 ) -> None:
-    """Window target과 선택한 frame·distance·error를 TSV로 저장한다."""
+    """Write window targets, selected frames, distances, and errors as TSV."""
     with path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle, delimiter="\t", lineterminator="\n")
         writer.writerow(["window", "target_A", "frame", "observed_A", "error_A"])
@@ -208,15 +208,15 @@ def main() -> int:
     args = parse_arguments()
 
     if not args.windows.is_file():
-        raise SystemExit(f"window 설정을 찾을 수 없습니다: {args.windows}")
+        raise SystemExit(f"window settings not found: {args.windows}")
 
     if args.max_error_angstrom <= 0:
-        raise SystemExit("--max-error는 0보다 커야 합니다.")
+        raise SystemExit("--max-error must be greater than zero.")
 
     try:
         centers_angstrom = read_centers(args.windows)
     except (OSError, ValueError) as error:
-        raise SystemExit(f"window 설정 오류: {error}") from None
+        raise SystemExit(f"window settings Error: {error}") from None
 
     if args.dry_run:
         print(f"topology: {args.topology}")
@@ -225,12 +225,12 @@ def main() -> int:
         return 0
 
     if shutil.which(args.cpptraj) is None:
-        raise SystemExit(f"cpptraj을 찾을 수 없습니다: {args.cpptraj}")
+        raise SystemExit(f"cpptraj not found: {args.cpptraj}")
     for path in (args.topology, args.trajectory, args.windows):
         if not path.is_file():
-            raise SystemExit(f"필수 input을 찾을 수 없습니다: {path}")
+            raise SystemExit(f"Required input not found: {path}")
     if args.output.exists():
-        raise SystemExit(f"output directory가 이미 존재합니다: {args.output}")
+        raise SystemExit(f"Output directory already exists: {args.output}")
 
     args.output.mkdir(parents=True)
     try:
@@ -255,9 +255,9 @@ def main() -> int:
     except (OSError, RuntimeError, ValueError) as error:
         if args.output.exists() and not any(args.output.iterdir()):
             args.output.rmdir()
-        raise SystemExit(f"오류: {error}") from None
+        raise SystemExit(f"Error: {error}") from None
 
-    print(f"US seed restart {len(centers_angstrom)}개를 생성했습니다: {args.output}")
+    print(f"Created {len(centers_angstrom)} US seed restarts: {args.output}")
     return 0
 
 

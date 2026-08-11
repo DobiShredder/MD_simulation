@@ -2,12 +2,12 @@
 set -euo pipefail
 
 die() {
-    echo "오류: $*" >&2
+    echo "Error: $*" >&2
     exit 1
 }
 
 if [[ $# -ne 0 ]]; then
-    echo "사용법: $0" >&2
+    echo "Usage: $0" >&2
     exit 2
 fi
 
@@ -18,18 +18,18 @@ cif_url="https://files.rcsb.org/download/3PTB.cif"
 ligand_url="https://files.rcsb.org/ligands/download/BEN_ideal.sdf"
 
 if ! command -v "$curl_bin" >/dev/null 2>&1; then
-    die "curl을 찾을 수 없습니다: $curl_bin"
+    die "curl not found: $curl_bin"
 fi
 mkdir -p "$structure_dir"
 
 if ! "$curl_bin" -fsSL "$pdb_url" -o "$structure_dir/3PTB.raw.pdb"; then
-    die "PDB 다운로드에 실패했습니다: $pdb_url"
+    die "Failed to download PDB: $pdb_url"
 fi
 if ! "$curl_bin" -fsSL "$cif_url" -o "$structure_dir/3PTB.cif"; then
-    die "mmCIF 다운로드에 실패했습니다: $cif_url"
+    die "Failed to download mmCIF: $cif_url"
 fi
 if ! "$curl_bin" -fsSL "$ligand_url" -o "$structure_dir/BEN_ideal.sdf"; then
-    die "BEN SDF 다운로드에 실패했습니다: $ligand_url"
+    die "BEN SDF Download failed: $ligand_url"
 fi
 
 if command -v sha256sum >/dev/null 2>&1; then
@@ -44,4 +44,4 @@ else
     )
 fi
 
-echo "Funnel geometry 검토용 3PTB 구조: $structure_dir"
+echo "3PTB structure for reviewing funnel geometry: $structure_dir"

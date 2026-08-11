@@ -7,12 +7,12 @@ if [[ "${1:-}" == "--dry-run" ]]; then
     shift
 fi
 if [[ $# -ne 0 ]]; then
-    echo "사용법: $0 [--dry-run]" >&2
+    echo "Usage: $0 [--dry-run]" >&2
     exit 2
 fi
 
 die() {
-    echo "오류: $*" >&2
+    echo "Error: $*" >&2
     exit 1
 }
 
@@ -23,7 +23,7 @@ seed_base=${RANDOM_SEED:-73000}
 production_segments=1
 read -r -a amber_options <<< "${AMBER_OPTIONS:-}"
 
-[[ "$seed_base" =~ ^[1-9][0-9]*$ ]] || die "RANDOM_SEED는 positive integer여야 합니다."
+[[ "$seed_base" =~ ^[1-9][0-9]*$ ]] || die "RANDOM_SEED must be a positive integer."
 topology="$work_dir/system.parm7"
 initial_restart="$work_dir/system.rst7"
 
@@ -59,12 +59,12 @@ run_command() {
         printf ')\n'
         return
     fi
-    echo "실행: $stage"
+    echo "Running: $stage"
     if ! (
         cd "$directory"
         "$@"
     ); then
-        die "$stage 계산에 실패했습니다: $directory"
+        die "$stage Calculation failed: $directory"
     fi
 }
 
@@ -94,12 +94,12 @@ run_standard_stage() {
     if (( ! dry_run )); then
         state=$(stage_state "${required[@]}")
         [[ "$state" != complete ]] || return 0
-        [[ "$state" != partial ]] || die "$stage output이 일부만 존재합니다."
+        [[ "$state" != partial ]] || die "$stage Partial output detected."
     fi
     run_command "$stage" "$work_dir" "${command[@]}"
     if (( ! dry_run )); then
         for output in "${required[@]}"; do
-            [[ -s "$output" ]] || die "$stage output이 없습니다: $output"
+            [[ -s "$output" ]] || die "$stage Output not found: $output"
         done
     fi
 }
@@ -151,15 +151,15 @@ run_production_segment() {
     if (( ! dry_run )); then
         state=$(stage_state "${required[@]}")
         [[ "$state" != complete ]] || return 0
-        [[ "$state" != partial ]] || die "production $segment output이 일부만 존재합니다."
+        [[ "$state" != partial ]] || die "production $segment Partial output detected."
         mkdir -p "$segment_dir"
         render_amber_input inputs/production.in.template \
             "$segment_dir/production.in" "$((seed_base + 100 + number))"
         render_plumed_input "$segment_dir/plumed.dat" "$continuation"
 
         if [[ "$continuation" == yes ]]; then
-            [[ -s "$previous_dir/opes.state" ]] || die "이전 OPES state가 없습니다."
-            [[ -s "$previous_dir/KERNELS" ]] || die "이전 KERNELS가 없습니다."
+            [[ -s "$previous_dir/opes.state" ]] || die "Previous OPES state not found."
+            [[ -s "$previous_dir/KERNELS" ]] || die "previous KERNELS is missing."
             cp "$previous_dir/opes.state" "$segment_dir/opes.state"
             cp "$previous_dir/KERNELS" "$segment_dir/KERNELS"
         fi
@@ -173,16 +173,16 @@ run_production_segment() {
 
     if (( ! dry_run )); then
         for output in "${required[@]}"; do
-            [[ -s "$output" ]] || die "production $segment output이 없습니다: $output"
+            [[ -s "$output" ]] || die "production $segment Output not found: $output"
         done
     fi
 }
 
 if (( ! dry_run )); then
-    command -v "$engine" >/dev/null 2>&1 || die "AMBER engine을 찾을 수 없습니다: $engine"
-    command -v "$plumed" >/dev/null 2>&1 || die "PLUMED를 찾을 수 없습니다: $plumed"
-    [[ -s "$topology" && -s "$initial_restart" ]] || die "build.sh를 먼저 실행하세요: $work_dir"
-    [[ -s "$work_dir/atom_count.txt" ]] || die "atom_count.txt가 없습니다. build.sh를 다시 실행하세요."
+    command -v "$engine" >/dev/null 2>&1 || die "AMBER engine not found: $engine"
+    command -v "$plumed" >/dev/null 2>&1 || die "PLUMED not found: $plumed"
+    [[ -s "$topology" && -s "$initial_restart" ]] || die "Run build.sh first. $work_dir"
+    [[ -s "$work_dir/atom_count.txt" ]] || die "atom_count.txt not found. Run build.sh again."
     mkdir -p "$work_dir"
     mkdir -p "$work_dir/inputs"
     cp inputs/minimize.in "$work_dir/inputs/minimize.in"
@@ -208,5 +208,5 @@ for segment_number in $(seq 1 "$production_segments"); do
 done
 
 if (( ! dry_run )); then
-    echo "1 ns OPES_METAD production 완료: $work_dir/production"
+    echo "1 ns OPES_METAD production Completed: $work_dir/production"
 fi

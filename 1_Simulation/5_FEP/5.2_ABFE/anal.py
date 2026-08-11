@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Amber FE-ToolKit으로 ABFE MBAR cycle과 correction을 계산합니다."""
+"""Calculate the ABFE MBAR cycle and corrections with Amber FE-ToolKit."""
 
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ STANDARD_VOLUME_A3 = 1660.539
 
 def read_tsv(path: Path) -> list[dict[str, str]]:
     if not path.is_file():
-        raise SystemExit(f"input을 찾을 수 없습니다: {path}")
+        raise SystemExit(f"input not found: {path}")
     with path.open(encoding="utf-8") as handle:
         return list(csv.DictReader(handle, delimiter="\t"))
 
@@ -33,7 +33,7 @@ def require_program(name: str) -> str:
     executable = shutil.which(name)
     if executable is None:
         raise SystemExit(
-            f"{name}을 찾을 수 없습니다. AmberTools 26 environment를 활성화하세요."
+            f"{name} not found. Activate the AmberTools 26 environment."
         )
     return executable
 
@@ -42,7 +42,7 @@ def run_command(command: list[str], log_file: Path) -> None:
     with log_file.open("a", encoding="utf-8") as log:
         result = subprocess.run(command, stdout=log, stderr=subprocess.STDOUT)
     if result.returncode != 0:
-        raise SystemExit(f"MBAR command가 실패했습니다. log를 확인하세요: {log_file}")
+        raise SystemExit(f"MBAR command failed. Check the log: {log_file}")
 
 
 def extract_window(
@@ -57,7 +57,7 @@ def extract_window(
     for segment_number in (1, 2):
         mdout = window_directory / f"production.{segment_number:03d}.out"
         if not mdout.is_file():
-            raise SystemExit(f"production output을 찾을 수 없습니다: {mdout}")
+            raise SystemExit(f"production output not found: {mdout}")
 
         segment_directory = data_directory / f"segment_{state['window']}_{segment_number:03d}"
         segment_directory.mkdir(parents=True)
@@ -69,7 +69,7 @@ def extract_window(
         pattern = f"efep_{trajectory_lambda:.8f}_*.dat"
         extracted_files = sorted(segment_directory.glob(pattern))
         if not extracted_files:
-            raise SystemExit(f"MBAR energy를 추출하지 못했습니다: {mdout}")
+            raise SystemExit(f"MBAR energy could not be extracted: {mdout}")
 
         for source in extracted_files:
             destination = data_directory / source.name
@@ -98,7 +98,7 @@ def prepare_stage_data(
     observed_files = len(list(data_directory.glob("efep_*.dat")))
     if observed_files != expected_files:
         raise SystemExit(
-            f"{stage} MBAR energy matrix가 불완전합니다: "
+            f"{stage} MBAR energy matrix is incomplete: "
             f"expected={expected_files}, observed={observed_files}"
         )
     return data_directory, lambdas
@@ -135,7 +135,7 @@ def write_edge_xml(path: Path, stage_data: dict[str, tuple[Path, list[str]]]) ->
 def load_report(path: Path) -> ModuleType:
     specification = importlib.util.spec_from_file_location("abfe_mbar_report", path)
     if specification is None or specification.loader is None:
-        raise SystemExit(f"MBAR report를 읽을 수 없습니다: {path}")
+        raise SystemExit(f"MBAR report could not be read: {path}")
     report = importlib.util.module_from_spec(specification)
     specification.loader.exec_module(report)
     return report
@@ -313,7 +313,7 @@ def main() -> None:
     write_diagnostics(report.edge)
     run_command([sys.executable, str(report_path), "--html"], mbar_directory / "report.log")
 
-    print(f"ABFE MBAR 결과: {WORK / 'free_energy.tsv'}")
+    print(f"ABFE MBAR results: {WORK / 'free_energy.tsv'}")
 
 
 if __name__ == "__main__":

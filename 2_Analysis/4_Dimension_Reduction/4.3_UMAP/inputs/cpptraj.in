@@ -1,4 +1,4 @@
-# Chignolin backbone을 정렬하고 residue 2-9의 phi/psi를 계산합니다.
+# Align the Chignolin backbone and calculate phi/psi for residues 2-9.
 autoimage anchor :1-10
 rms ToFirst first :1-10@CA,C,N
 multidihedral Dihedrals phi psi resrange 2-9 out phi_psi.dat

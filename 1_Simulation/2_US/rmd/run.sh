@@ -9,7 +9,7 @@ while [[ $# -gt 0 ]]; do
         dry_run=1
         ;;
     *)
-        echo "사용법: $0 [--dry-run]" >&2
+        echo "Usage: $0 [--dry-run]" >&2
         exit 2
         ;;
     esac
@@ -17,7 +17,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 die() {
-    echo "오류: $*" >&2
+    echo "Error: $*" >&2
     exit 1
 }
 
@@ -32,14 +32,14 @@ run_stage() {
         return
     fi
 
-    echo "실행: $stage ($engine)"
+    echo "Running: $stage ($engine)"
 
     if ! "$@"; then
-        die "$stage 단계가 실패했습니다. 확인할 경로: $work_dir"
+        die "$stage stage failed. Check: $work_dir"
     fi
 }
 
-# 사용자 설정과 input/output 경로
+# User settings and input/output paths
 engine=${AMBER_ENGINE:-pmemd.cuda}
 
 system_dir=${SYSTEM_DIR:-../work}
@@ -48,24 +48,24 @@ work_dir=${WORK_DIR:-work}
 source_topology="$system_dir/system.parm7"
 source_coordinates="$system_dir/system.rst7"
 
-# 실행 전 확인
+# Input and dependency checks
 if (( ! dry_run )); then
     if ! command -v "$engine" >/dev/null 2>&1; then
-        die "AMBER engine을 찾을 수 없습니다: $engine"
+        die "AMBER engine not found: $engine"
     fi
 
     if [[ ! -s "$source_topology" ]]; then
-        die "공통 topology를 찾을 수 없습니다: $source_topology" \
-            "상위 directory에서 ./prepare.sh를 먼저 실행하세요."
+        die "shared topology not found: $source_topology" \
+            "Run ./prepare.sh from the parent directory first."
     fi
 
     if [[ ! -s "$source_coordinates" ]]; then
-        die "공통 restart file을 찾을 수 없습니다: $source_coordinates" \
-            "상위 directory에서 ./prepare.sh를 먼저 실행하세요."
+        die "shared restart file not found: $source_coordinates" \
+            "Run ./prepare.sh from the parent directory first."
     fi
 fi
 
-# Working directory에 PLUMED input을 고정된 이름으로 둡니다.
+# Place the PLUMED input in the working directory under a fixed name.
 if (( dry_run )); then
     printf '+ mkdir -p %q\n' "$work_dir"
     printf '+ cp %q %q\n' "$source_topology" "$work_dir/system.parm7"
@@ -81,7 +81,7 @@ else
     cp inputs/*.in "$work_dir/inputs/"
     cp inputs/plumed.dat "$work_dir/plumed.dat"
     cd "$work_dir"
-    echo "Ratchet MD를 실행합니다: $engine"
+    echo "Running ratchet MD with: $engine"
 fi
 
 # Main workflow
@@ -95,7 +95,7 @@ run_stage 'solvent minimization' \
     -r min-solvent.rst7 \
     -ref system.rst7
 
-run_stage '전체 system minimization' \
+run_stage 'Whole-system minimization' \
     "$engine" \
     -O \
     -i inputs/min-all.in \
@@ -104,7 +104,7 @@ run_stage '전체 system minimization' \
     -c min-solvent.rst7 \
     -r min-all.rst7
 
-run_stage 'NVT 가열' \
+run_stage 'NVT heating' \
     "$engine" \
     -O \
     -i inputs/heat.in \
@@ -136,17 +136,17 @@ if (( ! dry_run )); then
     ' equil.out)
 
     if [[ -z "$final_density" ]]; then
-        die "equil.out에서 최종 density를 읽지 못했습니다: $work_dir/equil.out"
+        die "Could not read the final density from equil.out: $work_dir/equil.out"
     fi
 
     if ! awk \
         -v density="$final_density" \
         'BEGIN { exit !(density >= 0.90 && density <= 1.10) }'; then
-        die "NPT 후 density가 확인 범위를 벗어났습니다: " \
-            "${final_density} g/cm^3. ratchet MD를 시작하지 않습니다."
+        die "Density after NPT is outside the validation range: " \
+            "${final_density} g/cm^3. Ratchet MD will not start."
     fi
 
-    echo "NPT 최종 density: ${final_density} g/cm^3"
+    echo "NPT final density: ${final_density} g/cm^3"
 fi
 
 run_stage '1 ns ratchet MD' \

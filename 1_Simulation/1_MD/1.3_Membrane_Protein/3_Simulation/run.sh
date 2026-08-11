@@ -9,12 +9,12 @@ if [[ "${1:-}" == "--dry-run" ]]; then
 fi
 
 if [[ $# -ne 0 ]]; then
-    echo "사용법: $0 [--dry-run]" >&2
+    echo "Usage: $0 [--dry-run]" >&2
     exit 2
 fi
 
 die() {
-    echo "오류: $*" >&2
+    echo "Error: $*" >&2
     exit 1
 }
 
@@ -29,37 +29,37 @@ run_stage() {
         return
     fi
 
-    echo "실행: $stage ($engine)"
+    echo "Running: $stage ($engine)"
 
     if ! "$@"; then
-        die "$stage 단계가 실패했습니다. 확인할 경로: $work_dir"
+        die "$stage stage failed. Check: $work_dir"
     fi
 }
 
-# 사용자 설정과 input/output 경로
+# User settings and input/output paths
 engine=${AMBER_ENGINE:-pmemd.cuda}
 
 topology=${TOPOLOGY:-../2_Topology_Build/work/system.parm7}
 coordinates=${COORDINATES:-../2_Topology_Build/work/system.rst7}
 work_dir=${WORK_DIR:-work}
 
-# 실행 전 확인
+# Input and dependency checks
 if (( ! dry_run )); then
     if ! command -v "$engine" >/dev/null 2>&1; then
-        die "AMBER engine을 찾을 수 없습니다: $engine"
+        die "AMBER engine not found: $engine"
     fi
 
     if [[ ! -s "$topology" ]]; then
-        die "topology를 찾을 수 없습니다: $topology"
+        die "topology not found: $topology"
     fi
 
     if [[ ! -s "$coordinates" ]]; then
-        die "restart file을 찾을 수 없습니다: $coordinates"
+        die "restart file not found: $coordinates"
     fi
 
 fi
 
-# Working directory 준비
+# Working directory setup
 if (( dry_run )); then
     printf '+ mkdir -p %q\n' "$work_dir"
     printf '+ cd %q\n' "$work_dir"
@@ -70,7 +70,7 @@ else
     cp "$coordinates" "$work_dir/system.rst7"
     cp inputs/*.in "$work_dir/inputs/"
     cd "$work_dir"
-    echo "AMBER engine: $engine (기본값: pmemd.cuda)"
+    echo "AMBER engine: $engine (default: pmemd.cuda)"
 fi
 
 # Main workflow
@@ -84,7 +84,7 @@ run_stage 'environment minimization' \
     -r min-environment.rst7 \
     -ref system.rst7
 
-run_stage '전체 system minimization' \
+run_stage 'Whole-system minimization' \
     "$engine" \
     -O \
     -i inputs/min-all.in \
@@ -93,7 +93,7 @@ run_stage '전체 system minimization' \
     -c min-environment.rst7 \
     -r min-all.rst7
 
-run_stage 'NVT 가열' \
+run_stage 'NVT heating' \
     "$engine" \
     -O \
     -i inputs/heat.in \

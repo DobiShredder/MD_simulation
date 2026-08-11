@@ -9,16 +9,16 @@ if [[ "${1:-}" == "--dry-run" ]]; then
 fi
 
 if [[ $# -ne 0 ]]; then
-    echo "사용법: $0 [--dry-run]" >&2
+    echo "Usage: $0 [--dry-run]" >&2
     exit 2
 fi
 
 die() {
-    echo "오류: $*" >&2
+    echo "Error: $*" >&2
     exit 1
 }
 
-# 사용자 설정과 input/output 경로
+# User settings and input/output paths
 window_file=${WINDOW_FILE:-"windows.tsv"}
 seed_dir=${SEED_DIR:-"../rmd/work/seeds"}
 seed_metadata="$seed_dir/seeds.tsv"
@@ -26,9 +26,9 @@ topology=${TOPOLOGY:-"../work/system.parm7"}
 work_dir=${WORK_DIR:-"work"}
 window_root="$work_dir"
 
-# Window 설정 읽기
+# Read window settings
 if [[ ! -s "$window_file" ]]; then
-    die "window 설정을 찾을 수 없습니다: $window_file"
+    die "window settings not found: $window_file"
 fi
 
 window_rows=()
@@ -44,22 +44,22 @@ while read -r center_angstrom force_kcal_mol_angstrom2 extra_field; do
     fi
 
     if [[ -n "${extra_field:-}" ]]; then
-        die "${window_file}에는 CENTER_A와 FORCE 두 열만 허용됩니다."
+        die "${window_file} must contain exactly two columns: CENTER_A and FORCE."
     fi
 
     if [[ ! "$center_angstrom" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
-        die "window center는 숫자여야 합니다: $center_angstrom"
+        die "Window center must be numeric: $center_angstrom"
     fi
 
     if [[ ! "$force_kcal_mol_angstrom2" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
-        die "window force constant는 숫자여야 합니다: $force_kcal_mol_angstrom2"
+        die "Window force constant must be numeric: $force_kcal_mol_angstrom2"
     fi
 
     if ! awk \
         -v center="$center_angstrom" \
         -v force="$force_kcal_mol_angstrom2" \
         'BEGIN { exit !(center > 0 && force > 0) }'; then
-        die "window center와 force constant는 양수여야 합니다:" \
+        die "Window center and force constant must be positive:" \
             "$center_angstrom $force_kcal_mol_angstrom2"
     fi
 
@@ -68,7 +68,7 @@ while read -r center_angstrom force_kcal_mol_angstrom2 extra_field; do
             -v previous="$previous_center" \
             -v center="$center_angstrom" \
             'BEGIN { exit !(center > previous) }'; then
-            die "window center는 중복 없이 증가해야 합니다: $previous_center -> $center_angstrom"
+            die "Window centers must be unique and increasing: $previous_center -> $center_angstrom"
         fi
     fi
 
@@ -77,21 +77,21 @@ while read -r center_angstrom force_kcal_mol_angstrom2 extra_field; do
 done < "$window_file"
 
 if (( ${#window_rows[@]} == 0 )); then
-    die "${window_file}에 window가 없습니다."
+    die "No windows found in ${window_file}."
 fi
 
-# Seed와 공통 topology 확인
+# Check seeds and the shared topology
 if (( ! dry_run )); then
     if [[ ! -s "$topology" ]]; then
-        die "공통 topology를 찾을 수 없습니다: $topology"
+        die "shared topology not found: $topology"
     fi
 
     if [[ ! -s "$seed_metadata" ]]; then
-        die "seed metadata를 찾을 수 없습니다: $seed_metadata"
+        die "seed metadata not found: $seed_metadata"
     fi
 
     if [[ -e "$window_root" ]]; then
-        die "window output이 이미 존재합니다: $window_root"
+        die "Window output already exists: $window_root"
     fi
 
     for row_index in "${!window_rows[@]}"; do
@@ -105,13 +105,13 @@ if (( ! dry_run )); then
             "$seed_metadata")
 
         if [[ -z "$metadata_row" ]]; then
-            die "${seed_metadata}에 $window_id window가 없습니다."
+            die "$window_id is missing from ${seed_metadata}."
         fi
 
         read -r metadata_window metadata_center _ <<< "$metadata_row"
 
         if [[ "$metadata_window" != "$window_number" ]]; then
-            die "${seed_metadata}의 window 순서가 windows.tsv와 다릅니다: $window_id"
+            die "Window order in ${seed_metadata} differs from windows.tsv: $window_id"
         fi
 
         read -r configured_center _ <<< "${window_rows[$row_index]}"
@@ -124,26 +124,26 @@ if (( ! dry_run )); then
                 if (difference < 0) difference = -difference
                 exit !(difference < 1e-6)
             }'; then
-            die "$window_id center가 seed metadata와 다릅니다: $configured_center vs $metadata_center"
+            die "$window_id center differs from seed metadata: $configured_center vs $metadata_center"
         fi
 
         seed_restart="$seed_dir/seed_${window_id}.rst7"
 
         if [[ ! -s "$seed_restart" ]]; then
-            die "seed restart를 찾을 수 없습니다: $seed_restart"
+            die "seed restart not found: $seed_restart"
         fi
     done
 fi
 
-# Dry-run에서는 생성할 규모와 경로만 보여줍니다.
+# Dry run reports the number of files and output paths without creating them.
 if (( dry_run )); then
-    echo "공통 topology: $topology"
+    echo "shared topology: $topology"
     echo "Seed directory: $seed_dir"
-    echo "생성할 umbrella window: ${#window_rows[@]}개 ($window_root)"
+    echo "Umbrella windows to create: ${#window_rows[@]} ($window_root)"
     exit 0
 fi
 
-# Window별 topology, seed, restraint와 metadata를 생성합니다.
+# Generate topology, seed, restraint, and metadata for each window.
 mkdir -p "$window_root"
 
 for row_index in "${!window_rows[@]}"; do
@@ -170,5 +170,5 @@ for row_index in "${!window_rows[@]}"; do
         > "$window_dir/window.tsv"
 done
 
-echo "동일 topology를 사용하는 umbrella window ${#window_rows[@]}개를 생성했습니다:" \
+echo "Created ${#window_rows[@]} umbrella windows using the same topology:" \
     "$window_root"

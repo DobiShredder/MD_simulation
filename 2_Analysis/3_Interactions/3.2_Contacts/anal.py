@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Chignolin residue contact frequency map과 contact 수를 표시한다."""
+"""Plot the Chignolin residue-contact frequency map and contact counts."""
 
 from __future__ import annotations
 
@@ -45,7 +45,7 @@ def contact_frequency(header: list[str], data: np.ndarray) -> np.ndarray:
             pair_series[ordered_pair] = present.copy()
 
     if not pair_series:
-        raise ValueError(f"residue contact label을 해석하지 못했습니다: {header}")
+        raise ValueError(f"Could not parse residue-contact label: {header}")
 
     frequency = np.zeros((RESIDUE_COUNT, RESIDUE_COUNT), dtype=float)
     for pair, present in pair_series.items():
@@ -72,9 +72,9 @@ def main() -> int:
     _, counts = read_table(output_dir / "contact_count.dat")
     series_header, series = read_table(output_dir / "contact_residue_series.dat")
     if counts.shape[1] < 3:
-        raise ValueError("contact count output column이 부족합니다.")
+        raise ValueError("Contact-count output has too few columns.")
     if not np.array_equal(counts[:, 0], series[:, 0]):
-        raise ValueError("Contact output의 frame 번호가 일치하지 않습니다.")
+        raise ValueError("Frame indices in the contact outputs do not match.")
 
     frequency = contact_frequency(series_header, series)
     write_frequency(output_dir / "contact_frequency.tsv", frequency)

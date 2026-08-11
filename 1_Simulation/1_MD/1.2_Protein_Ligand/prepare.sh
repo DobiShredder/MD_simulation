@@ -2,7 +2,7 @@
 set -euo pipefail
 
 die() {
-    echo "오류: $*" >&2
+    echo "Error: $*" >&2
     exit 1
 }
 
@@ -14,11 +14,11 @@ if [[ "${1:-}" == "--dry-run" ]]; then
 fi
 
 if [[ $# -ne 1 ]]; then
-    echo "사용법: $0 [--dry-run] JZ4_ideal.sdf" >&2
+    echo "Usage: $0 [--dry-run] JZ4_ideal.sdf" >&2
     exit 2
 fi
 
-# Input과 사용자 설정
+# Inputs and user settings
 ligand_sdf=$1
 antechamber=${ANTECHAMBER:-antechamber}
 parmchk2=${PARMCHK2:-parmchk2}
@@ -29,29 +29,29 @@ work_dir=${WORK_DIR:-"work"}
 ligand_mol2="$work_dir/jz4.mol2"
 ligand_frcmod="$work_dir/jz4.frcmod"
 
-# 사용자 설정 확인
+# Configuration checks
 if [[ ! "$ligand_charge" =~ ^-?[0-9]+$ ]]; then
-    echo "오류: LIGAND_CHARGE는 정수여야 합니다: $ligand_charge" >&2
+    echo "Error: LIGAND_CHARGE must be an integer: $ligand_charge" >&2
     exit 2
 fi
 
-# 실행 전 확인
+# Input and dependency checks
 if (( ! dry_run )); then
     if [[ ! -f "$ligand_sdf" ]]; then
-        die "ligand SDF를 찾을 수 없습니다: $ligand_sdf"
+        die "ligand SDF not found: $ligand_sdf"
     fi
 
     if ! command -v "$antechamber" >/dev/null 2>&1; then
-        die "antechamber를 찾을 수 없습니다: $antechamber"
+        die "antechamber not found: $antechamber"
     fi
 
     if ! command -v "$parmchk2" >/dev/null 2>&1; then
-        die "parmchk2를 찾을 수 없습니다: $parmchk2"
+        die "parmchk2 not found: $parmchk2"
     fi
 
 fi
 
-# Dry-run에서는 파일을 생성하지 않고 command만 보여줍니다.
+# Dry run prints commands without creating files.
 if (( dry_run )); then
     printf 'mkdir -p %q\n' "$work_dir"
     printf 'cp %q %q\n' "$ligand_sdf" "$work_dir/JZ4_ideal.sdf"
@@ -74,8 +74,8 @@ if (( dry_run )); then
     exit 0
 fi
 
-# GAFF2 atom type과 AM1-BCC charge를 적용합니다.
-echo "JZ4를 GAFF2/AM1-BCC로 parameterize합니다 (net charge: $ligand_charge)."
+# Assign GAFF2 atom types and AM1-BCC charges.
+echo "Parameterizing JZ4 with GAFF2/AM1-BCC (net charge: $ligand_charge)."
 mkdir -p "$work_dir"
 cp "$ligand_sdf" "$work_dir/JZ4_ideal.sdf"
 
@@ -93,10 +93,10 @@ if ! (
         -s 2 \
         > antechamber.log 2>&1
 ); then
-    die "antechamber 실행에 실패했습니다. 확인할 파일: $work_dir/antechamber.log"
+    die "antechamber run failed. See log: $work_dir/antechamber.log"
 fi
 
-# Mol2에 없는 GAFF2 parameter를 frcmod로 만듭니다.
+# Generate an frcmod file for GAFF2 parameters missing from the Mol2 file.
 if ! (
     cd "$work_dir"
     "$parmchk2" \
@@ -106,15 +106,15 @@ if ! (
         -s gaff2 \
         > parmchk2.log 2>&1
 ); then
-    die "parmchk2 실행에 실패했습니다. 확인할 파일: $work_dir/parmchk2.log"
+    die "parmchk2 run failed. See log: $work_dir/parmchk2.log"
 fi
 
 if [[ ! -s "$ligand_mol2" ]]; then
-    die "ligand mol2가 생성되지 않았습니다: $ligand_mol2"
+    die "ligand mol2 was not created: $ligand_mol2"
 fi
 
 if [[ ! -s "$ligand_frcmod" ]]; then
-    die "ligand frcmod가 생성되지 않았습니다: $ligand_frcmod"
+    die "ligand frcmod was not created: $ligand_frcmod"
 fi
 
 echo "Ligand parameter: $work_dir"

@@ -1,4 +1,4 @@
-# Chignolin과 solvent를 같은 primary unit cell에 배치합니다.
+# Place Chignolin and solvent in the same primary unit cell.
 vector RawCenter center :1-10 out center_raw.dat
 vector BoxCenter boxcenter out box_center.dat
 

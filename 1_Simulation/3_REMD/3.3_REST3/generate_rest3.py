@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""고정 temperature/κ table에 맞춰 ssREST3 topology를 생성합니다."""
+"""Generate ssREST3 topologies from a fixed temperature/kappa table."""
 
 from __future__ import annotations
 
@@ -35,7 +35,7 @@ def load_parser_module() -> ModuleType:
 
         if not source.is_file():
             raise SystemExit(
-                "REPEX_TOPOLOGY_PARSER_SOURCE에서 parser를 찾지 못했습니다: "
+                "Parser was not found in REPEX_TOPOLOGY_PARSER_SOURCE: "
                 f"{source}"
             )
 
@@ -43,15 +43,15 @@ def load_parser_module() -> ModuleType:
             "repex_topology_parser_external", source
         )
         if spec is None or spec.loader is None:
-            raise SystemExit(f"parser module을 불러올 수 없습니다: {source}")
+            raise SystemExit(f"Could not load parser module: {source}")
 
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         return module
 
     raise SystemExit(
-        "repex-topology-parser 0.2.2 module을 찾지 못했습니다. "
-        "README의 source-package 안내와 REPEX_TOPOLOGY_PARSER_SOURCE를 확인하세요."
+        "repex-topology-parser 0.2.2 module not found. "
+        "Check the README source-package instructions and REPEX_TOPOLOGY_PARSER_SOURCE."
     )
 
 
@@ -67,7 +67,7 @@ def generated_hot_topology(
 
     if len(candidates) != 1:
         raise SystemExit(
-            "target λ/κ topology를 하나로 식별하지 못했습니다: "
+            "Could not identify exactly one target lambda/kappa topology: "
             f"suffix={expected_suffix}, found={len(candidates)}"
         )
 
@@ -88,7 +88,7 @@ def main() -> None:
         states = list(csv.DictReader(handle, delimiter="\t"))
 
     if len(states) < 2:
-        raise SystemExit(f"REST3 state는 두 개 이상이어야 합니다: {len(states)}")
+        raise SystemExit(f"REST3 requires at least two states: {len(states)}")
 
     base_target = args.output_directory / "000" / "topol.top"
     base_target.parent.mkdir(parents=True, exist_ok=True)
@@ -108,7 +108,7 @@ def main() -> None:
         protein_name = str(molecules.get(0, "")).lower()
         if "protein" not in protein_name:
             raise SystemExit(
-                "hot molecule index 0이 protein이 아닙니다: "
+                "Hot molecule at index 0 is not a protein: "
                 f"{molecules.get(0, '<unknown>')}"
             )
 
@@ -136,7 +136,7 @@ def main() -> None:
         )
         shutil.rmtree(temporary)
 
-    print(f"REST3 topology {len(states)}개를 생성했습니다: {args.output_directory}")
+    print(f"Created {len(states)} REST3 topologies: {args.output_directory}")
 
 
 if __name__ == "__main__":

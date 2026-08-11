@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MMPBSA.py energy와 residue decomposition을 요약한다."""
+"""Summarize MMPBSA.py energies and residue decomposition."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ try:
     import matplotlib.pyplot as plt
     import numpy as np
 except ModuleNotFoundError as error:
-    raise SystemExit("ambertools26 환경에 NumPy와 matplotlib을 설치하세요.") from error
+    raise SystemExit("Install NumPy and matplotlib in the ambertools26 environment.") from error
 
 
 def model_name(line: str) -> str | None:
@@ -35,7 +35,7 @@ def read_energy(path: Path) -> dict[str, tuple[list[str], np.ndarray]]:
 
         if lines[index].strip() == "DELTA Energy Terms":
             if model is None:
-                raise ValueError("Energy model 이름을 찾지 못했습니다.")
+                raise ValueError("Energy model name not found.")
             header = next(csv.reader([lines[index + 1]]))
             rows: list[list[float]] = []
             index += 2
@@ -46,7 +46,7 @@ def read_energy(path: Path) -> dict[str, tuple[list[str], np.ndarray]]:
         index += 1
 
     if not datasets:
-        raise ValueError(f"DELTA Energy Terms가 없습니다: {path}")
+        raise ValueError(f"DELTA Energy Terms is missing: {path}")
     return datasets
 
 
@@ -63,7 +63,7 @@ def read_decomposition(path: Path) -> dict[str, list[tuple[str, float]]]:
 
         if lines[index].strip() == "DELTAS:":
             if model is None:
-                raise ValueError("Decomposition model 이름을 찾지 못했습니다.")
+                raise ValueError("Decomposition model name not found.")
             index += 1
             while index < len(lines) and not lines[index].startswith("Frame #"):
                 index += 1
@@ -77,7 +77,7 @@ def read_decomposition(path: Path) -> dict[str, list[tuple[str, float]]]:
         index += 1
 
     if not values:
-        raise ValueError(f"DELTA decomposition이 없습니다: {path}")
+        raise ValueError(f"DELTA decomposition is missing: {path}")
     return values
 
 

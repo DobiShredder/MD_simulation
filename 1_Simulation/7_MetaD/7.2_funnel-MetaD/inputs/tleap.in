@@ -9,7 +9,7 @@ system = loadpdb complex.pdb
 source disulfides.leap
 check system
 
-# MAXS=3.7 nm 범위에서 protein periodic image와의 접촉을 줄인다.
+# Reduce contacts with protein periodic images within MAXS=3.7 nm.
 solvatebox system TIP3PBOX 20.0
 addionsrand system Na+ 0
 addionsrand system Cl- 0

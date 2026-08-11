@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Funnel MetaD segment, funnel sampling과 bias 범위를 요약한다."""
+"""Summarize Funnel MetaD segments, funnel sampling, and bias range."""
 
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ def read_colvar(path: Path) -> dict[str, np.ndarray]:
             rows.append([float(value) for value in line.split()])
 
     if fields is None or not rows:
-        raise ValueError(f"COLVAR header 또는 data가 없습니다: {path}")
+        raise ValueError(f"COLVAR header or data not found: {path}")
 
     data = np.asarray(rows, dtype=float)
     return {name: data[:, index] for index, name in enumerate(fields)}
@@ -43,7 +43,7 @@ def main() -> int:
     segment_dirs = sorted((args.work_dir / "production").glob("[0-9][0-9][0-9]"))
 
     if len(segment_dirs) != 1:
-        raise ValueError(f"Production segment가 1개가 아닙니다: {len(segment_dirs)}")
+        raise ValueError(f"Expected exactly one production segment: {len(segment_dirs)}")
 
     required_fields = {
         "time",
@@ -65,7 +65,7 @@ def main() -> int:
 
         if not required_fields.issubset(values):
             missing = sorted(required_fields - values.keys())
-            raise ValueError(f"{segment_dir.name} COLVAR field가 부족합니다: {missing}")
+            raise ValueError(f"{segment_dir.name} Required COLVAR fields are missing: {missing}")
 
         lp = values["fps.lp"]
         ld = values["fps.ld"]
@@ -121,7 +121,7 @@ def main() -> int:
 
         if shutil.which(plumed) is None:
             raise FileNotFoundError(
-                f"plumed를 찾을 수 없습니다: {plumed}. --skip-fes를 사용하세요."
+                f"plumed not found: {plumed}. --skip-fesuse."
             )
 
         hills = segment_dirs[-1] / "HILLS"
@@ -138,7 +138,7 @@ def main() -> int:
             check=True,
         )
 
-    print(f"Funnel MetaD 진단 결과: {output_dir}")
+    print(f"Funnel MetaD diagnostics results: {output_dir}")
     return 0
 
 

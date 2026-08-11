@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""4W53에서 protein과 bound benzene/toluene coordinate를 준비합니다."""
+"""Prepare protein and bound benzene/toluene coordinates from 4W53."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 def parse_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="PDB 4W53을 RBFE build용으로 전처리합니다.")
+    parser = argparse.ArgumentParser(description="Prepare PDB 4W53 for the RBFE build.")
     parser.add_argument("input_pdb", type=Path)
     parser.add_argument("protein_pdb", type=Path)
     return parser.parse_args()
@@ -26,7 +26,7 @@ def write_pdb(path: Path, records: list[str]) -> None:
 def main() -> None:
     args = parse_arguments()
     if not args.input_pdb.is_file():
-        raise SystemExit(f"입력 PDB를 찾을 수 없습니다: {args.input_pdb}")
+        raise SystemExit(f"Input PDB not found: {args.input_pdb}")
 
     protein: list[str] = []
     toluene: list[str] = []
@@ -37,13 +37,13 @@ def main() -> None:
             toluene.append(pdb_line_with_residue(line, "MBN"))
 
     if len(protein) < 1000:
-        raise SystemExit(f"4W53 protein atom 수가 예상보다 적습니다: {len(protein)}")
+        raise SystemExit(f"4W53 protein has fewer atoms than expected: {len(protein)}")
     if len(toluene) != 7:
-        raise SystemExit(f"4W53 MBN heavy atom 7개가 필요합니다: {len(toluene)}")
+        raise SystemExit(f"Expected 7 MBN heavy atoms in 4W53, found {len(toluene)}")
 
     methyl_atoms = [line for line in toluene if line[12:16].strip() == "C"]
     if len(methyl_atoms) != 1:
-        raise SystemExit("Toluene methyl carbon C를 하나만 찾지 못했습니다.")
+        raise SystemExit("Expected exactly one toluene methyl carbon named C.")
 
     benzene = [
         pdb_line_with_residue(line, "BNZ")

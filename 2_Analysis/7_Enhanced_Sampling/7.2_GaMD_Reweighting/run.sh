@@ -2,12 +2,12 @@
 set -euo pipefail
 
 if [[ $# -ne 2 ]]; then
-    echo "사용법: $0 {chignolin|ligamd3|pepgamd} SIMULATION_WORK_DIR" >&2
+    echo "Usage: $0 {chignolin|ligamd3|pepgamd} SIMULATION_WORK_DIR" >&2
     exit 2
 fi
 
 die() {
-    echo "오류: $*" >&2
+    echo "Error: $*" >&2
     exit 1
 }
 
@@ -25,17 +25,17 @@ case "$profile" in
         components=3
         ;;
     *)
-        die "지원하지 않는 profile입니다: $profile"
+        die "Unsupported profile: $profile"
         ;;
 esac
 
 for executable in "$cpptraj" "$python"; do
     if ! command -v "$executable" >/dev/null 2>&1; then
-        die "실행 파일을 찾을 수 없습니다: $executable"
+        die "Executable not found: $executable"
     fi
 done
 if ! "$python" -c 'import numpy' >/dev/null 2>&1; then
-    die "NumPy를 import할 수 없습니다."
+    die "Cannot import NumPy."
 fi
 
 mkdir -p "$output_dir"
@@ -45,16 +45,16 @@ if ! "$python" \
     "$profile" \
     "$simulation_work" \
     "$output_dir/cpptraj.in"; then
-    die "cpptraj input 생성에 실패했습니다."
+    die "cpptraj input generation failed."
 fi
 
 if ! "$cpptraj" \
     -i "$output_dir/cpptraj.in" \
     > "$output_dir/cpptraj.log" 2>&1; then
-    die "cpptraj CV 계산에 실패했습니다: $output_dir/cpptraj.log"
+    die "cpptraj CV Calculation failed: $output_dir/cpptraj.log"
 fi
 if [[ ! -s "$output_dir/cv.dat" ]]; then
-    die "CV output이 생성되지 않았습니다: $output_dir/cv.dat"
+    die "CV Output was not created: $output_dir/cv.dat"
 fi
 
 if ! "$python" \
@@ -65,7 +65,7 @@ if ! "$python" \
     --temperature 300 \
     --bin-width 0.25 \
     --output "$output_dir/pmf.tsv"; then
-    die "GaMD reweighting에 실패했습니다."
+    die "GaMD reweighting failed."
 fi
 
-echo "GaMD reweighting 결과: $output_dir"
+echo "GaMD reweighting results: $output_dir"

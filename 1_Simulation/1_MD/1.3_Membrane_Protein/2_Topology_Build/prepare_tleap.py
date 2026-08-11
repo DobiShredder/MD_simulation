@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Coordinate PDB의 box와 water 수를 tleap input에 반영한다."""
+"""Apply the coordinate PDB box and water count to the tleap input."""
 
 from __future__ import annotations
 
@@ -38,9 +38,9 @@ def read_box_and_water_count(path: Path) -> tuple[tuple[float, float, float], in
             water_count += 1
 
     if box is None:
-        raise SystemExit("coordinate PDB에 CRYST1 box 기록이 없습니다.")
+        raise SystemExit("Coordinate PDB is missing a CRYST1 box record.")
     if water_count == 0:
-        raise SystemExit("coordinate PDB에 WAT oxygen이 없습니다.")
+        raise SystemExit("Coordinate PDB contains no WAT oxygen atoms.")
 
     return box, water_count
 

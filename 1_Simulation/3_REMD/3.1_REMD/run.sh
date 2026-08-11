@@ -9,12 +9,12 @@ if [[ "${1:-}" == "--dry-run" ]]; then
 fi
 
 if [[ $# -ne 0 ]]; then
-    echo "사용법: $0 [--dry-run]" >&2
+    echo "Usage: $0 [--dry-run]" >&2
     exit 2
 fi
 
 die() {
-    echo "오류: $*" >&2
+    echo "Error: $*" >&2
     exit 1
 }
 
@@ -29,7 +29,7 @@ read -r -a mpi_options <<< "${MPI_OPTIONS:-}"
 read -r -a amber_options <<< "${AMBER_OPTIONS:-}"
 
 if [[ ! -s "$states_file" ]]; then
-    die "build.sh를 먼저 실행해야 합니다: $states_file"
+    die "Run build.sh first: $states_file"
 fi
 
 replica_count=$(awk 'NR > 1 {count++} END {print count + 0}' "$states_file")
@@ -38,13 +38,13 @@ temperature_min=$(awk 'NR == 2 {print $2}' "$states_file")
 temperature_max=$(awk 'END {print $2}' "$states_file")
 
 if [[ "$mpi_processes" -ne "$replica_count" ]]; then
-    die "MPI_PROCESSES는 replica 수와 같아야 합니다: $replica_count"
+    die "MPI_PROCESSES must equal the replica count: $replica_count"
 fi
 
 if (( ! dry_run )); then
     for executable in "$amber_engine" "$amber_mpi_engine" "$mpi_launcher"; do
         if ! command -v "$executable" >/dev/null 2>&1; then
-            die "실행 파일을 찾을 수 없습니다: $executable"
+            die "Executable not found: $executable"
         fi
     done
 fi
@@ -73,7 +73,7 @@ run_single_replica_stage() {
     local replica
     local replica_dir
 
-    echo "$stage stage를 실행합니다."
+    echo "Running $stage stage."
 
     while IFS=$'\t' read -r replica _; do
         if [[ "$replica" == "replica" ]]; then
@@ -92,7 +92,7 @@ run_single_replica_stage() {
             -r "$replica_dir/$stage.rst7" \
             -x "$replica_dir/$stage.nc" \
             -inf "$replica_dir/$stage.info"; then
-            die "$stage 계산에 실패했습니다: $replica_dir/$stage.out"
+            die "$stage Calculation failed: $replica_dir/$stage.out"
         fi
     done < "$states_file"
 }
@@ -109,7 +109,7 @@ run_stage_if_needed() {
     fi
 
     if [[ "$completed" -ne 0 ]]; then
-        die "$stage stage가 일부 replica에서만 완료되었습니다 ($completed/$replica_count)."
+        die "$stage stage is complete for only some replicas ($completed/$replica_count)."
     fi
 
     run_single_replica_stage "$stage" "$input_restart"
@@ -161,7 +161,7 @@ for segment in $(seq 1 "$production_segments"); do
     fi
 
     if [[ "$completed" -ne 0 ]]; then
-        die "$segment_name segment가 일부 replica에서만 완료되었습니다 ($completed/$replica_count)."
+        die "Only some replicas completed $segment_name ($completed/$replica_count)."
     fi
 
     if [[ "$segment" -eq 1 ]]; then
@@ -175,7 +175,7 @@ for segment in $(seq 1 "$production_segments"); do
     exchange_log="$work_dir/exchange.$(printf '%03d' "$segment").log"
     write_group_file "$segment" "$input_restart" "$group_file"
 
-    echo "T-REMD production segment $segment/$production_segments 을 실행합니다."
+    echo "Running T-REMD production segment $segment/$production_segments."
 
     if ! "$mpi_launcher" \
         "${mpi_options[@]}" \
@@ -186,8 +186,8 @@ for segment in $(seq 1 "$production_segments"); do
         -groupfile "$group_file" \
         -rem 1 \
         -remlog "$exchange_log"; then
-        die "T-REMD segment $segment 실행에 실패했습니다: $exchange_log"
+        die "T-REMD segment $segment Run failed: $exchange_log"
     fi
 done
 
-echo "1 ns T-REMD가 완료되었습니다: $work_dir"
+echo "Completed 1 ns T-REMD: $work_dir"

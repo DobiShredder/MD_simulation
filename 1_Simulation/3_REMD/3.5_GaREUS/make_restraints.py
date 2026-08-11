@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Chignolin terminal Cα distance restraint를 window별로 생성합니다."""
+"""Generate Chignolin terminal C-alpha distance restraints for each window."""
 
 from __future__ import annotations
 
@@ -31,7 +31,7 @@ def main() -> None:
     ]
 
     if len(first) != 1 or len(last) != 1:
-        raise SystemExit("residue 1/10의 CA atom을 하나씩 선택하지 못했습니다.")
+        raise SystemExit("Could not select exactly one CA atom from each of residues 1 and 10.")
 
     args.output_directory.mkdir(parents=True, exist_ok=True)
 

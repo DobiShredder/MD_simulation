@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""GaREUS window별 distance와 GaMD boost를 frame 단위로 맞춥니다."""
+"""Align per-window GaREUS distances and GaMD boosts by frame."""
 
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ def read_last_column(path: Path) -> list[float]:
             continue
 
     if not values:
-        raise ValueError(f"numeric record를 읽지 못했습니다: {path}")
+        raise ValueError(f"numeric record could not be read: {path}")
 
     return values
 
@@ -57,7 +57,7 @@ def read_boost(path: Path) -> list[float]:
         values.append(boost)
 
     if not values:
-        raise ValueError(f"GaMD boost record를 읽지 못했습니다: {path}")
+        raise ValueError(f"GaMD boost record could not be read: {path}")
 
     return values
 
@@ -67,7 +67,7 @@ def read_states(path: Path) -> list[dict[str, str]]:
         states = list(csv.DictReader(handle, delimiter="\t"))
 
     if len(states) != 20:
-        raise ValueError(f"20개 GaREUS state가 필요합니다: {len(states)}")
+        raise ValueError(f"Expected 20 GaREUS states, found {len(states)}")
 
     return states
 
@@ -82,16 +82,16 @@ def prepare_window(replica: str, replica_dir: Path, output_file: Path) -> int:
         boost_file = replica_dir / f"gamd.{segment_name}.log"
 
         if not distance_file.is_file():
-            raise ValueError(f"restraint output을 찾을 수 없습니다: {distance_file}")
+            raise ValueError(f"restraint output not found: {distance_file}")
         if not boost_file.is_file():
-            raise ValueError(f"GaMD log를 찾을 수 없습니다: {boost_file}")
+            raise ValueError(f"GaMD log not found: {boost_file}")
 
         distances = read_last_column(distance_file)
         boosts = read_boost(boost_file)
         if len(distances) != len(boosts):
             raise ValueError(
-                f"replica {replica}, segment {segment:03d}: distance와 boost record 수가 "
-                f"다릅니다 ({len(distances)} != {len(boosts)})."
+                f"replica {replica}, segment {segment:03d}: distance and boost record "
+                f"counts differ ({len(distances)} != {len(boosts)})."
             )
 
         for distance, boost in zip(distances, boosts):
@@ -140,9 +140,9 @@ def main() -> None:
     try:
         state_count = prepare_inputs(SIMULATION_WORK, OUTPUT_DIR)
     except (OSError, KeyError, ValueError) as error:
-        raise SystemExit(f"GaREUS input 준비에 실패했습니다: {error}") from error
+        raise SystemExit(f"GaREUS input preparation failed: {error}") from error
 
-    print(f"{state_count}개 GaREUS state의 distance와 boost를 정리했습니다.")
+    print(f"Organized distances and boosts for {state_count} GaREUS states.")
 
 
 if __name__ == "__main__":

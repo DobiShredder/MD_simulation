@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""GROMACS topology의 ff19SB CMAP type과 energy grid를 scaling합니다."""
+"""Scale ff19SB CMAP types and energy grids in a GROMACS topology."""
 
 from __future__ import annotations
 
@@ -26,7 +26,7 @@ def section_bounds(lines: list[str], name: str) -> tuple[int, int]:
     if start >= 0:
         return start, len(lines)
 
-    raise ValueError(f"[{name}] section을 찾지 못했습니다.")
+    raise ValueError(f"Section [{name}] not found.")
 
 
 def scaled_cmap_section(
@@ -53,7 +53,7 @@ def scaled_cmap_section(
         )
         if is_header:
             if remaining:
-                raise ValueError("CMAP grid가 끝나기 전에 다음 header가 나타났습니다.")
+                raise ValueError("A new header appeared before the CMAP grid ended.")
 
             atom_types = []
             for name in fields[:5]:
@@ -72,7 +72,7 @@ def scaled_cmap_section(
             continue
 
         if remaining == 0:
-            raise ValueError(f"CMAP header가 아닌 값을 해석할 수 없습니다: {stripped}")
+            raise ValueError(f"Cannot parse a non-CMAP-header value: {stripped}")
 
         values: list[str] = []
         continuation = False
@@ -81,7 +81,7 @@ def scaled_cmap_section(
                 continuation = True
                 continue
             if remaining == 0:
-                raise ValueError("CMAP grid 값이 예상한 개수보다 많습니다.")
+                raise ValueError("CMAP grid contains more values than expected.")
             values.append(f"{float(field) * scale:.12g}")
             remaining -= 1
 
@@ -91,9 +91,9 @@ def scaled_cmap_section(
         output.append(line + "\n")
 
     if remaining:
-        raise ValueError(f"CMAP grid 값 {remaining}개가 부족합니다.")
+        raise ValueError(f"CMAP grid is short by {remaining} values.")
     if map_count == 0:
-        raise ValueError("CMAP map을 찾지 못했습니다.")
+        raise ValueError("CMAP map not found.")
 
     return output, map_count
 
@@ -138,7 +138,7 @@ def main() -> None:
         args.type_prefix,
         args.type_suffix,
     )
-    print(f"CMAP {count}개를 scaling했습니다: {args.target}")
+    print(f"Scaled {count} CMAP entries: {args.target}")
 
 
 if __name__ == "__main__":

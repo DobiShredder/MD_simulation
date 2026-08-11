@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""OPM 1K4C에서 oriented KcsA tetramer와 pore 성분을 추출한다."""
+"""Extract the oriented KcsA tetramer and pore components from OPM 1K4C."""
 
 from __future__ import annotations
 
@@ -28,15 +28,15 @@ MISSING_ATOMS = {
 
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="OPM 1K4C에서 oriented KcsA tetramer를 준비합니다."
+        description="Prepare the oriented KcsA tetramer from OPM 1K4C."
     )
-    parser.add_argument("opm_pdb", type=Path, help="OPM에서 받은 1K4C PDB")
-    parser.add_argument("output_pdb", type=Path, help="전처리한 KcsA PDB")
+    parser.add_argument("opm_pdb", type=Path, help="1K4C PDB downloaded from OPM")
+    parser.add_argument("output_pdb", type=Path, help="prepared KcsA PDB")
     parser.add_argument(
         "sidechain_template",
         type=Path,
         nargs="?",
-        help="missing side chain을 가져올 OPM 3EFF PDB",
+        help="OPM 3EFF PDB used to restore missing side chains",
     )
     return parser.parse_args()
 
@@ -50,7 +50,7 @@ def membrane_half_thickness(lines: list[str]) -> float:
         if match is not None:
             return float(match.group(1))
 
-    raise SystemExit("OPM membrane thickness REMARK를 찾을 수 없습니다.")
+    raise SystemExit("OPM membrane thickness REMARK not found.")
 
 
 def rename_residue(line: str, residue_name: str) -> str:
@@ -84,7 +84,7 @@ def collect_protein(lines: list[str]) -> dict[str, list[str]]:
         residue_number = int(line[22:26])
         alternate_location = line[16:17]
 
-        # H124에는 imidazole side-chain 좌표가 없어 residue 전체를 제외합니다.
+        # Exclude H124 because its imidazole side-chain coordinates are missing.
         if residue_number == 124 or alternate_location not in {" ", "A"}:
             continue
 
@@ -147,7 +147,7 @@ def local_transform(
 def restore_missing_sidechains(
     chains: dict[str, list[str]], template: list[str]
 ) -> None:
-    """3EFF side chain을 1K4C residue의 local backbone에 맞춰 추가한다."""
+    """Add a 3EFF side chain by fitting it to the local 1K4C backbone."""
     for residue_number, missing_names in MISSING_ATOMS.items():
         source_atoms = residue_atoms(template, residue_number)
 
@@ -172,7 +172,7 @@ def restore_missing_sidechains(
 
 
 def collect_filter_ions(lines: list[str]) -> list[str]:
-    # OPM assembly의 C/F/I/L chain에 같은 ion site가 네 번 겹칩니다.
+    # The same ion site is duplicated across chains C, F, I, and L in the OPM assembly.
     return [
         line
         for line in lines
@@ -208,18 +208,18 @@ def validate_selection(
 ) -> None:
     empty_chains = [chain for chain, records in chains.items() if not records]
     if empty_chains:
-        raise SystemExit(f"OPM KcsA chain을 찾을 수 없습니다: {empty_chains}")
+        raise SystemExit(f"OPM KcsA chain not found: {empty_chains}")
 
     if residue_count(chains) != 408 or len(ions) != 7 or len(waters) != 16:
         raise SystemExit(
-            "예상하지 못한 OPM 1K4C 구성입니다: "
+            "Unexpected OPM 1K4C composition: "
             f"residues={residue_count(chains)}, K={len(ions)}, "
             f"pore waters={len(waters)}"
         )
 
     if abs(half_thickness - 15.0) > 0.1:
         raise SystemExit(
-            "OPM membrane half-thickness가 tutorial 기준과 다릅니다: "
+            "OPM membrane half-thickness differs from the tutorial value: "
             f"{half_thickness:.3f} A"
         )
 
@@ -228,7 +228,7 @@ def validate_selection(
             present = set(residue_atoms(records, residue_number))
             if not atom_names <= present:
                 raise SystemExit(
-                    f"residue {residue_number} side chain을 복원하지 못했습니다."
+                    f"Could not restore the side chain of residue {residue_number}."
                 )
 
 
@@ -266,14 +266,14 @@ def build_output(
 def main() -> None:
     args = parse_arguments()
     if not args.opm_pdb.is_file():
-        raise SystemExit(f"OPM PDB를 찾을 수 없습니다: {args.opm_pdb}")
+        raise SystemExit(f"OPM PDB not found: {args.opm_pdb}")
 
     sidechain_template = args.sidechain_template
     if sidechain_template is None:
         sidechain_template = args.opm_pdb.with_name("3EFF-opm.pdb")
     if not sidechain_template.is_file():
         raise SystemExit(
-            f"side-chain template을 찾을 수 없습니다: {sidechain_template}"
+            f"side-chain template not found: {sidechain_template}"
         )
 
     lines = args.opm_pdb.read_text(encoding="ascii").splitlines()
@@ -289,9 +289,9 @@ def main() -> None:
     args.output_pdb.parent.mkdir(parents=True, exist_ok=True)
     args.output_pdb.write_text("\n".join(output) + "\n", encoding="ascii")
 
-    print(f"OPM KcsA 전처리 결과: {args.output_pdb}")
+    print(f"Prepared OPM KcsA structure: {args.output_pdb}")
     print(
-        "408 residues, filter K+ 7개, pore water 16개, "
+        "408 residues, 7 filter K+ ions, 16 pore waters, "
         "3EFF side chain, boundary z=±15.0 A"
     )
 

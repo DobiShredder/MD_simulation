@@ -1,6 +1,6 @@
 @RESTART@
 
-# Protein과 ligand를 각각 하나의 periodic molecule로 복원한다.
+# Reconstruct the protein and ligand as separate whole periodic molecules.
 WHOLEMOLECULES ENTITY0=1-@PROTEIN_LAST@ ENTITY1=@LIGAND_ALL@
 
 ligand: COM ATOMS=@LIGAND_HEAVY@

@@ -13,7 +13,7 @@ while [[ $# -gt 0 ]]; do
             allow_unverified=1
             ;;
         *)
-            echo "사용법: $0 [--dry-run] [--allow-unverified]" >&2
+            echo "Usage: $0 [--dry-run] [--allow-unverified]" >&2
             exit 2
             ;;
     esac
@@ -21,7 +21,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 die() {
-    echo "오류: $*" >&2
+    echo "Error: $*" >&2
     exit 1
 }
 
@@ -39,19 +39,19 @@ read -r -a mpi_options <<< "${MPI_OPTIONS:-}"
 read -r -a amber_options <<< "${AMBER_OPTIONS:-}"
 
 if [[ ! -s "$states_file" ]]; then
-    die "build.sh를 먼저 실행해야 합니다: $states_file"
+    die "Run build.sh first: $states_file"
 fi
 if [[ "$mpi_processes" -ne "$replica_count" ]]; then
-    die "MPI_PROCESSES는 window 수와 같아야 합니다: $replica_count"
+    die "MPI_PROCESSES must equal the window count: $replica_count"
 fi
 if (( ! dry_run && ! allow_unverified )); then
-    die "GaMD state와 multipmemd replica suffix 검증 전입니다. 실행하려면 --allow-unverified를 지정하세요."
+    die "GaMD state and multipmemd replica suffixes are not validated. Specify --allow-unverified to run."
 fi
 
 if (( ! dry_run )); then
     for executable in "$amber_engine" "$amber_mpi_engine" "$mpi_launcher"; do
         if ! command -v "$executable" >/dev/null 2>&1; then
-            die "실행 파일을 찾을 수 없습니다: $executable"
+            die "Executable not found: $executable"
         fi
     done
 fi
@@ -91,7 +91,7 @@ completed_stage_count() {
         if [[ "$existing" -eq "${#required[@]}" ]]; then
             completed=$((completed + 1))
         elif [[ "$existing" -ne 0 ]]; then
-            die "$stage output이 일부만 존재합니다: $replica_dir"
+            die "$stage output is only partially present: $replica_dir"
         fi
     done < "$states_file"
 
@@ -104,7 +104,7 @@ run_stage() {
     local replica
     local replica_dir
 
-    echo "$stage stage를 실행합니다."
+    echo "Running $stage stage."
 
     while IFS=$'\t' read -r replica _; do
         if [[ "$replica" == "replica" ]]; then
@@ -125,7 +125,7 @@ run_stage() {
                 -x "$stage.nc" \
                 -inf "$stage.info"
         ); then
-            die "$stage 계산에 실패했습니다: $replica_dir/$stage.out"
+            die "$stage Calculation failed: $replica_dir/$stage.out"
         fi
     done < "$states_file"
 }
@@ -140,13 +140,13 @@ run_stage_if_needed() {
         return
     fi
     if [[ "$completed" -ne 0 ]]; then
-        die "$stage stage가 일부 window에서만 완료되었습니다 ($completed/$replica_count)."
+        die "Only some windows completed $stage ($completed/$replica_count)."
     fi
     run_stage "$stage" "$input_restart"
 
     completed=$(completed_stage_count "$stage")
     if [[ "$completed" -ne "$replica_count" ]]; then
-        die "$stage output이 완성되지 않았습니다 ($completed/$replica_count)."
+        die "$stage output is incomplete ($completed/$replica_count)."
     fi
 }
 
@@ -177,11 +177,11 @@ prepare_common_gamd_state() {
         fi
     done
     if [[ "$existing" -ne 0 && "$existing" -ne "${#required[@]}" ]]; then
-        die "GaMD preparation output이 일부만 존재합니다: $reference_dir"
+        die "GaMD preparation output is only partially present: $reference_dir"
     fi
 
     if [[ "$existing" -eq 0 ]]; then
-        echo "Replica $gamd_reference_replica 에서 공통 GaMD parameter를 준비합니다."
+        echo "Prepared shared GaMD parameters from replica $gamd_reference_replica."
 
         if ! (
             cd "$reference_dir"
@@ -197,12 +197,12 @@ prepare_common_gamd_state() {
                 -inf gamd_prepare.info \
                 -gamd gamd.prepare.log
         ); then
-            die "GaMD parameter preparation에 실패했습니다: $reference_dir/gamd_prepare.out"
+            die "GaMD parameter preparation failed: $reference_dir/gamd_prepare.out"
         fi
     fi
 
     if [[ ! -s "$reference_dir/gamd-restart.dat" ]]; then
-        die "공통 GaMD state가 생성되지 않았습니다: $reference_dir/gamd-restart.dat"
+        die "shared GaMD state was not created: $reference_dir/gamd-restart.dat"
     fi
 
     while IFS=$'\t' read -r replica _; do
@@ -217,7 +217,7 @@ prepare_common_gamd_state() {
         cp "$replica_dir/equilibrate.rst7" "$replica_dir/production_start.rst7"
 
         if ! cmp -s "$reference_dir/gamd-restart.dat" "$replica_dir/gamd-restart.dat"; then
-            die "replica에 공통 GaMD state를 배치하지 못했습니다: $replica_dir"
+            die "Could not place the shared GaMD state in replica: $replica_dir"
         fi
     done < "$states_file"
 }
@@ -294,7 +294,7 @@ for segment in $(seq 1 "$production_segments"); do
         continue
     fi
     if [[ "$completed" -ne 0 ]]; then
-        die "$segment_name segment가 일부 window에서만 완료되었습니다 ($completed/$replica_count)."
+        die "Only some windows completed $segment_name ($completed/$replica_count)."
     fi
 
     if [[ "$segment" -eq 1 ]]; then
@@ -307,7 +307,7 @@ for segment in $(seq 1 "$production_segments"); do
     exchange_log="$work_dir/exchange.$(printf '%03d' "$segment").log"
     write_group_file "$segment" "$input_restart" "$group_file"
 
-    echo "GaREUS production segment $segment/$production_segments 을 실행합니다."
+    echo "Running GaREUS production segment $segment/$production_segments."
 
     if ! "$mpi_launcher" \
         "${mpi_options[@]}" \
@@ -318,13 +318,13 @@ for segment in $(seq 1 "$production_segments"); do
         -groupfile "$group_file" \
         -rem 3 \
         -remlog "$exchange_log"; then
-        die "GaREUS segment $segment 실행에 실패했습니다: $exchange_log"
+        die "GaREUS segment $segment Run failed: $exchange_log"
     fi
 
     completed=$(completed_stage_count "$segment_name" yes)
     if [[ "$completed" -ne "$replica_count" ]]; then
-        die "$segment_name output이 완성되지 않았습니다 ($completed/$replica_count)."
+        die "$segment_name output is incomplete ($completed/$replica_count)."
     fi
 done
 
-echo "1 ns GaREUS가 완료되었습니다: $work_dir"
+echo "Completed 1 ns GaREUS: $work_dir"

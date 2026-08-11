@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""1UAO NMR ensemble에서 첫 번째 좌표 model을 추출한다."""
+"""Extract the first coordinate model from the 1UAO NMR ensemble."""
 
 from __future__ import annotations
 
@@ -8,18 +8,18 @@ from pathlib import Path
 
 
 def parse_arguments() -> argparse.Namespace:
-    """Command-line argument를 읽는다."""
+    """Read command-line arguments."""
     parser = argparse.ArgumentParser(
-        description="PDB 1UAO에서 첫 번째 좌표 model을 추출합니다."
+        description="Extract the first coordinate model from PDB 1UAO."
     )
-    parser.add_argument("input_pdb", type=Path, help="다운로드한 1UAO PDB")
-    parser.add_argument("output_pdb", type=Path, help="전처리 결과 PDB")
+    parser.add_argument("input_pdb", type=Path, help="Downloaded 1UAO PDB")
+    parser.add_argument("output_pdb", type=Path, help="Prepared PDB")
 
     return parser.parse_args()
 
 
 def select_first_model_atom_records(lines: list[str]) -> list[str]:
-    """First model의 ATOM record와 primary alternate location만 선택한다."""
+    """Select ATOM records and primary alternate locations from the first model."""
     has_model_records = any(line.startswith("MODEL ") for line in lines)
 
     selected_records: list[str] = []
@@ -58,7 +58,7 @@ def select_first_model_atom_records(lines: list[str]) -> list[str]:
 
 
 def write_prepared_pdb(output_pdb: Path, atom_records: list[str]) -> None:
-    """Selected ATOM record를 하나의 PDB coordinate file로 저장한다."""
+    """Write selected ATOM records to one PDB coordinate file."""
     output_pdb.parent.mkdir(parents=True, exist_ok=True)
 
     output_lines = atom_records + ["TER", "END"]
@@ -71,17 +71,17 @@ def main() -> None:
     args = parse_arguments()
 
     if not args.input_pdb.is_file():
-        raise SystemExit(f"입력 PDB를 찾을 수 없습니다: {args.input_pdb}")
+        raise SystemExit(f"Input PDB not found: {args.input_pdb}")
 
     input_lines = args.input_pdb.read_text(encoding="ascii").splitlines()
     atom_records = select_first_model_atom_records(input_lines)
 
     if not atom_records:
-        raise SystemExit("첫 번째 model에서 ATOM record를 찾지 못했습니다.")
+        raise SystemExit("No ATOM records found in the first model.")
 
     write_prepared_pdb(args.output_pdb, atom_records)
 
-    print(f"첫 번째 model 전처리 결과: {args.output_pdb} ({len(atom_records)} atoms)")
+    print(f"Prepared first-model structure: {args.output_pdb} ({len(atom_records)} atoms)")
 
 
 if __name__ == "__main__":

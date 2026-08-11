@@ -1,4 +1,4 @@
-# DSSP 규칙으로 residue별 secondary structure를 계산합니다.
+# Calculate per-residue secondary structure using DSSP rules.
 autoimage anchor :1-10
 
 secstruct DSSP :1-10 \

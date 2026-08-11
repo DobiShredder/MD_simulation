@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Chignolin distance, angle과 residue 5 phi/psi를 표시한다."""
+"""Plot Chignolin distances, angles, and residue-5 phi/psi."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ def residue_five_columns(header: list[str]) -> tuple[int, int]:
         if "psi" in name.lower() and name.endswith(":5")
     ]
     if len(phi) != 1 or len(psi) != 1:
-        raise ValueError(f"residue 5 phi/psi column을 찾지 못했습니다: {header}")
+        raise ValueError(f"residue 5 phi/psi column not found: {header}")
     return phi[0], psi[0]
 
 
@@ -37,9 +37,9 @@ def main() -> int:
     _, geometry = read_table(output_dir / "geometry.dat")
     torsion_header, torsions = read_table(output_dir / "phi_psi.dat")
     if geometry.shape[1] < 4:
-        raise ValueError("geometry.dat column이 부족합니다.")
+        raise ValueError("geometry.dat has too few columns.")
     if not np.array_equal(geometry[:, 0], torsions[:, 0]):
-        raise ValueError("Geometry output의 frame 번호가 일치하지 않습니다.")
+        raise ValueError("Frame indices in the geometry outputs do not match.")
 
     phi_column, psi_column = residue_five_columns(torsion_header)
 

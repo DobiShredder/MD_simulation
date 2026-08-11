@@ -14,7 +14,7 @@ if [[ -s "$WEST_PCOORD_RETURN" ]]; then
     existing=$((existing + 1))
 fi
 if [[ "$existing" -ne 0 ]]; then
-    echo "오류: segment directory가 비어 있지 않습니다: $WEST_CURRENT_SEG_DATA_REF" >&2
+    echo "Error: Segment directory is not empty: $WEST_CURRENT_SEG_DATA_REF" >&2
     exit 1
 fi
 
@@ -26,13 +26,13 @@ case "$WEST_CURRENT_SEG_INITPOINT_TYPE" in
         parent_restart=$WEST_PARENT_DATA_REF/seg.rst7
         ;;
     *)
-        echo "오류: 알 수 없는 initial-point type입니다: $WEST_CURRENT_SEG_INITPOINT_TYPE" >&2
+        echo "Error: unknown initial-point type: $WEST_CURRENT_SEG_INITPOINT_TYPE" >&2
         exit 2
         ;;
 esac
 
 if [[ ! -s "$parent_restart" ]]; then
-    echo "오류: parent restart를 찾을 수 없습니다: $parent_restart" >&2
+    echo "Error: parent restart not found: $parent_restart" >&2
     exit 1
 fi
 
@@ -49,11 +49,11 @@ if ! "$AMBER_ENGINE" \
     -c "$parent_restart" \
     -r seg.rst7 \
     -inf segment.info; then
-    echo "오류: AMBER propagation에 실패했습니다: $WEST_CURRENT_SEG_DATA_REF/segment.out" >&2
+    echo "Error: AMBER propagation failed: $WEST_CURRENT_SEG_DATA_REF/segment.out" >&2
     exit 1
 fi
 if [[ ! -s seg.rst7 || ! -s segment.out || ! -s segment.info ]]; then
-    echo "오류: segment output이 완전하지 않습니다: $WEST_CURRENT_SEG_DATA_REF" >&2
+    echo "Error: Segment output is incomplete: $WEST_CURRENT_SEG_DATA_REF" >&2
     exit 1
 fi
 end_pcoord=$("$WEST_SIM_ROOT/westpa_scripts/calc_pcoord.sh" seg.rst7)

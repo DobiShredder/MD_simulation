@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""AMBER GaMD boost와 1D CV를 2차 cumulant expansion으로 reweight합니다."""
+"""Reweight AMBER GaMD boosts and a 1D CV with second-order cumulant expansion."""
 
 from __future__ import annotations
 
@@ -35,14 +35,14 @@ def read_cv(path: Path) -> np.ndarray:
         except ValueError:
             continue
     if not values:
-        raise SystemExit(f"CV data를 읽지 못했습니다: {path}")
+        raise SystemExit(f"CV data could not be read: {path}")
     return np.asarray(values, dtype=float)
 
 
 def read_boosts(directory: Path, components: int) -> np.ndarray:
     path = directory / "production.001.gamd.log"
     if not path.is_file():
-        raise SystemExit(f"GaMD log를 찾을 수 없습니다: {path}")
+        raise SystemExit(f"GaMD log not found: {path}")
 
     values = []
     for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
@@ -55,7 +55,7 @@ def read_boosts(directory: Path, components: int) -> np.ndarray:
             continue
 
     if len(values) != 100:
-        raise SystemExit(f"{path.name}: 100 GaMD records가 필요합니다: {len(values)}")
+        raise SystemExit(f"{path.name}: 100 GaMD records is required: {len(values)}")
     return np.asarray(values, dtype=float)
 
 
@@ -68,14 +68,14 @@ def stable_ess(log_weights: np.ndarray) -> float:
 def main() -> None:
     args = arguments()
     if args.temperature <= 0.0 or args.bin_width <= 0.0:
-        raise SystemExit("temperature와 bin width는 positive value여야 합니다.")
+        raise SystemExit("Temperature and bin width must be positive.")
 
     cv = read_cv(args.cv)
     boosts = read_boosts(args.log_directory, args.components)
     if len(cv) != len(boosts):
-        raise SystemExit(f"CV와 GaMD frame 수가 다릅니다: {len(cv)} != {len(boosts)}")
+        raise SystemExit(f"CV and GaMD frame counts differ: {len(cv)} != {len(boosts)}")
     if not np.all(np.isfinite(cv)) or not np.all(np.isfinite(boosts)):
-        raise SystemExit("CV 또는 boost data에 non-finite value가 있습니다.")
+        raise SystemExit("CV or boost data contains non-finite values.")
 
     low = math.floor(float(np.min(cv)) / args.bin_width) * args.bin_width
     high = math.ceil(float(np.max(cv)) / args.bin_width) * args.bin_width
@@ -131,7 +131,7 @@ def main() -> None:
                 f"{unbiased_pmf[index]:.6f}", f"{row['boost_mean']:.6f}",
                 f"{row['boost_variance']:.6f}", f"{row['ess']:.3f}",
             ])
-    print(f"2차 cumulant PMF: {args.output}")
+    print(f"Second-order cumulant PMF: {args.output}")
 
 
 if __name__ == "__main__":

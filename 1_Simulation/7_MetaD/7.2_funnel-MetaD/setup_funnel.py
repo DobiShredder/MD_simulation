@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Built 3PTB topology에서 Funnel MetaD atom group과 axis를 계산한다."""
+"""Calculate Funnel MetaD atom groups and axis from the built 3PTB topology."""
 
 from __future__ import annotations
 
@@ -76,7 +76,7 @@ def find_atom(topology, residue_number: int, atom_name: str):
 
     if len(matches) != 1:
         raise ValueError(
-            f"residue {residue_number}의 {atom_name} atom을 하나만 찾지 못했습니다."
+            f"Expected exactly one {atom_name} atom in residue {residue_number}."
         )
 
     return matches[0]
@@ -100,7 +100,7 @@ def write_reference(path: Path, protein_residues) -> None:
         )
 
     if len(lines) < 100:
-        raise ValueError(f"Alignment CA atom이 너무 적습니다: {len(lines)}")
+        raise ValueError(f"Too few CA atoms for alignment: {len(lines)}")
 
     path.write_text("\n".join(lines + ["END"]) + "\n", encoding="ascii")
 
@@ -115,7 +115,7 @@ def main() -> None:
 
     if ligand.name != "BEN":
         raise ValueError(
-            f"BEN residue mapping이 일치하지 않습니다: {ligand.name}"
+            f"BEN residue mapping does not match: {ligand.name}"
         )
 
     point_a_atoms = [
@@ -162,10 +162,10 @@ def main() -> None:
     allowed_radius_nm = RCYL_NM + math.tan(ALPHA_RAD) * (ZCC_NM - initial_lp_nm)
 
     if not (MINS_NM < initial_lp_nm < ZCC_NM):
-        raise ValueError(f"Initial BEN lp가 cone 범위 밖입니다: {initial_lp_nm:.3f} nm")
+        raise ValueError(f"Initial BEN lp is outside the cone range: {initial_lp_nm:.3f} nm")
     if initial_ld_nm >= allowed_radius_nm:
         raise ValueError(
-            "Initial BEN COM이 funnel 밖에 있습니다: "
+            "Initial BEN COM is outside the funnel: "
             f"ld={initial_ld_nm:.3f}, radius={allowed_radius_nm:.3f} nm"
         )
 

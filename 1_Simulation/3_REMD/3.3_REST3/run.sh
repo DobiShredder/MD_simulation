@@ -9,12 +9,12 @@ if [[ "${1:-}" == "--dry-run" ]]; then
 fi
 
 if [[ $# -ne 0 ]]; then
-    echo "사용법: $0 [--dry-run]" >&2
+    echo "Usage: $0 [--dry-run]" >&2
     exit 2
 fi
 
 die() {
-    echo "오류: $*" >&2
+    echo "Error: $*" >&2
     exit 1
 }
 
@@ -30,7 +30,7 @@ read -r -a mpi_options <<< "${MPI_OPTIONS:-}"
 read -r -a gromacs_options <<< "${GROMACS_OPTIONS:-}"
 
 if [[ ! -s "$states_file" ]]; then
-    die "build.sh를 먼저 실행해야 합니다: $states_file"
+    die "Run build.sh first: $states_file"
 fi
 
 replica_count=$(awk 'NR > 1 {count++} END {print count + 0}' "$states_file")
@@ -40,25 +40,25 @@ temperature_max=$(awk 'END {print $2}' "$states_file")
 last_replica=$(awk 'END {print $1}' "$states_file")
 
 if [[ "$mpi_processes" -ne "$replica_count" ]]; then
-    die "MPI_PROCESSES는 replica 수와 같아야 합니다: $replica_count"
+    die "MPI_PROCESSES must equal the replica count: $replica_count"
 fi
 
 if (( ! dry_run )); then
     for executable in "$gmx" "$gmx_mpi" "$mpi_launcher"; do
         if ! command -v "$executable" >/dev/null 2>&1; then
-            die "실행 파일을 찾을 수 없습니다: $executable"
+            die "Executable not found: $executable"
         fi
     done
 
     option_check_log="$work_dir/mdrun_option_check.log"
     if ! "$gmx_mpi" mdrun -h -hrex > "$option_check_log" 2>&1; then
-        die "GROMACS MPI build가 -hrex option을 인식하지 못합니다: $option_check_log"
+        die "GROMACS MPI build does not recognize the -hrex option: $option_check_log"
     fi
     if ! "$gmx_mpi" mdrun \
         -h \
         -plumed "$work_dir/000/plumed.dat" \
         >> "$option_check_log" 2>&1; then
-        die "GROMACS MPI build가 -plumed option을 인식하지 못합니다: $option_check_log"
+        die "GROMACS MPI build does not recognize the -plumed option: $option_check_log"
     fi
 fi
 
@@ -83,7 +83,7 @@ run_preproduction() {
     local replica
     local replica_dir
 
-    echo "Minimization과 100 ps equilibration을 실행합니다."
+    echo "Running minimization and 100 ps equilibration."
 
     while IFS=$'\t' read -r replica _; do
         if [[ "$replica" == "replica" ]]; then
@@ -98,14 +98,14 @@ run_preproduction() {
             -o "$replica_dir/minimize.tpr" \
             -maxwarn 1 \
             > "$replica_dir/minimize.grompp.log" 2>&1; then
-            die "minimization tpr 생성에 실패했습니다: $replica_dir/minimize.grompp.log"
+            die "minimization tpr generation failed: $replica_dir/minimize.grompp.log"
         fi
 
         if ! "$gmx" mdrun \
             -deffnm "$replica_dir/minimize" \
             "${gromacs_options[@]}" \
             > "$replica_dir/minimize.mdrun.log" 2>&1; then
-            die "minimization에 실패했습니다: $replica_dir/minimize.mdrun.log"
+            die "minimization failed: $replica_dir/minimize.mdrun.log"
         fi
 
         if ! "$gmx" grompp \
@@ -115,14 +115,14 @@ run_preproduction() {
             -o "$replica_dir/equilibrate.tpr" \
             -maxwarn 1 \
             > "$replica_dir/equilibrate.grompp.log" 2>&1; then
-            die "equilibration tpr 생성에 실패했습니다: $replica_dir/equilibrate.grompp.log"
+            die "equilibration tpr generation failed: $replica_dir/equilibrate.grompp.log"
         fi
 
         if ! "$gmx" mdrun \
             -deffnm "$replica_dir/equilibrate" \
             "${gromacs_options[@]}" \
             > "$replica_dir/equilibrate.mdrun.log" 2>&1; then
-            die "equilibration에 실패했습니다: $replica_dir/equilibrate.mdrun.log"
+            die "equilibration failed: $replica_dir/equilibrate.mdrun.log"
         fi
     done < "$states_file"
 }
@@ -141,7 +141,7 @@ equilibrated=$(stage_status equilibrate.cpt)
 if [[ "$equilibrated" -eq 0 ]]; then
     run_preproduction
 elif [[ "$equilibrated" -ne "$replica_count" ]]; then
-    die "equilibration이 일부 replica에서만 완료되었습니다 ($equilibrated/$replica_count)."
+    die "Only some replicas completed equilibration ($equilibrated/$replica_count)."
 fi
 
 replica_dirs=()
@@ -161,7 +161,7 @@ for segment in $(seq 1 "$production_segments"); do
     fi
 
     if [[ "$completed" -ne 0 ]]; then
-        die "$segment_name segment가 일부 replica에서만 완료되었습니다 ($completed/$replica_count)."
+        die "Only some replicas completed $segment_name ($completed/$replica_count)."
     fi
 
     if [[ "$segment" -eq 1 ]]; then
@@ -184,11 +184,11 @@ for segment in $(seq 1 "$production_segments"); do
             -o "$replica_dir/$segment_name.tpr" \
             -maxwarn 1 \
             > "$replica_dir/$segment_name.grompp.log" 2>&1; then
-            die "production tpr 생성에 실패했습니다: $replica_dir/$segment_name.grompp.log"
+            die "production tpr generation failed: $replica_dir/$segment_name.grompp.log"
         fi
     done < "$states_file"
 
-    echo "REST3 production segment $segment/$production_segments 을 실행합니다."
+    echo "Running REST3 production segment $segment/$production_segments."
 
     if ! "$mpi_launcher" \
         "${mpi_options[@]}" \
@@ -201,8 +201,8 @@ for segment in $(seq 1 "$production_segments"); do
         -replex "$exchange_steps" \
         -plumed plumed.dat \
         "${gromacs_options[@]}"; then
-        die "REST3 segment $segment 실행에 실패했습니다."
+        die "REST3 segment $segment run failed."
     fi
 done
 
-echo "1 ns REST3가 완료되었습니다: $work_dir"
+echo "Completed 1 ns REST3: $work_dir"

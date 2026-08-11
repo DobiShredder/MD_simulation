@@ -1,4 +1,4 @@
-# Protein 내부와 protein-water hydrogen bond를 나누어 계산합니다.
+# Calculate intraprotein and protein-water hydrogen bonds separately.
 autoimage anchor :1-10
 
 hbond ProteinHB :1-10 \

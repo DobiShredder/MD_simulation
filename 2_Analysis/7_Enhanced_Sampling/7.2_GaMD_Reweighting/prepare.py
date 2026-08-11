@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""GaMD profile과 simulation metadata로 cpptraj CV input을 생성합니다."""
+"""Generate cpptraj CV input from a GaMD profile and simulation metadata."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ def arguments() -> argparse.Namespace:
 
 def metadata(path: Path) -> dict[str, str]:
     if not path.is_file():
-        raise SystemExit(f"system metadata를 찾을 수 없습니다: {path}")
+        raise SystemExit(f"system metadata not found: {path}")
     return dict(
         line.split("\t", 1)
         for line in path.read_text(encoding="utf-8").splitlines()[1:]
@@ -30,12 +30,12 @@ def main() -> None:
     work = args.simulation_work.resolve()
     topology = work / "system.parm7"
     if not topology.is_file():
-        raise SystemExit(f"topology를 찾을 수 없습니다: {topology}")
+        raise SystemExit(f"topology not found: {topology}")
 
     trajectories = [work / "production.001.nc"]
     missing = [path for path in trajectories if not path.is_file()]
     if missing:
-        raise SystemExit(f"production trajectory를 찾을 수 없습니다: {missing[0]}")
+        raise SystemExit(f"production trajectory not found: {missing[0]}")
 
     lines = [f'parm "{topology}"']
     lines.extend(f'trajin "{path}"' for path in trajectories)

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 die() {
-    echo "오류: $*" >&2
+    echo "Error: $*" >&2
     exit 1
 }
 
@@ -13,8 +13,8 @@ if [[ "$work_dir" != /* ]]; then
     work_dir="$(pwd)/$work_dir"
 fi
 
-command -v "$tleap" >/dev/null 2>&1 || die "tleap을 찾을 수 없습니다: $tleap"
-command -v python3 >/dev/null 2>&1 || die "python3를 찾을 수 없습니다."
+command -v "$tleap" >/dev/null 2>&1 || die "tleap not found: $tleap"
+command -v python3 >/dev/null 2>&1 || die "python3 not found."
 
 mkdir -p "$work_dir"
 cp inputs/tleap.in "$work_dir/tleap.in"
@@ -23,15 +23,15 @@ if ! (
     cd "$work_dir"
     "$tleap" -f tleap.in > leap.log 2>&1
 ); then
-    die "tleap 실행에 실패했습니다: $work_dir/leap.log"
+    die "tleap failed: $work_dir/leap.log"
 fi
 
 for output in system.parm7 system.rst7 system.pdb; do
-    [[ -s "$work_dir/$output" ]] || die "build output이 없습니다: $work_dir/$output"
+    [[ -s "$work_dir/$output" ]] || die "build Output not found: $work_dir/$output"
 done
 
 python3 "check_topology.py" \
     "$work_dir/system.parm7" \
     "$work_dir/cv_atoms.tsv"
 
-echo "Topology build 완료: $work_dir"
+echo "Topology build Completed: $work_dir"

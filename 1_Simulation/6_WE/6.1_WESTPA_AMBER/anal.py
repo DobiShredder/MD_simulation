@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""WESTPA HDF5에서 weight 보존과 progress-coordinate sampling을 점검합니다."""
+"""Check weight conservation and progress-coordinate sampling in WESTPA HDF5."""
 
 from __future__ import annotations
 
@@ -31,7 +31,7 @@ BINS = [
 def main() -> None:
     west_file = WORK / "west.h5"
     if not west_file.is_file():
-        raise SystemExit(f"WESTPA HDF5를 찾을 수 없습니다: {west_file}")
+        raise SystemExit(f"WESTPA HDF5 not found: {west_file}")
 
     iteration_rows: list[list[str]] = []
     occupancy_rows: list[list[str]] = []
@@ -40,7 +40,7 @@ def main() -> None:
     with h5py.File(west_file, "r") as handle:
         iterations = handle.get("iterations")
         if iterations is None:
-            raise SystemExit("west.h5에 iterations group이 없습니다.")
+            raise SystemExit("west.h5 is missing the iterations group.")
 
         for iteration_name in sorted(iterations):
             group = iterations[iteration_name]
@@ -53,11 +53,11 @@ def main() -> None:
                 continue
             final_coordinates = [float(values[-1][0]) for values in pcoord]
             if len(final_coordinates) != len(weights):
-                raise SystemExit(f"{iteration_name}: segment와 pcoord 수가 다릅니다.")
+                raise SystemExit(f"{iteration_name}: segment and pcoord counts differ.")
             total_weight = sum(weights)
             squared_weight_sum = sum(weight * weight for weight in weights)
             if squared_weight_sum == 0.0:
-                raise SystemExit(f"{iteration_name}: walker weight 합을 계산할 수 없습니다.")
+                raise SystemExit(f"{iteration_name}: could not calculate the total walker weight.")
             ess = total_weight * total_weight / squared_weight_sum
             iteration_number = int(iteration_name.split("_")[-1])
             target_count = sum(
@@ -86,7 +86,7 @@ def main() -> None:
                 ])
 
     if not iteration_rows:
-        raise SystemExit("완료된 WESTPA iteration을 찾지 못했습니다.")
+        raise SystemExit("No completed WESTPA iteration was found.")
 
     with (WORK / "iteration_summary.tsv").open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle, delimiter="\t")
@@ -101,7 +101,7 @@ def main() -> None:
         writer.writerow(["iteration", "target_segments", "target_weight"])
         writer.writerows(target_rows)
 
-    print(f"WESTPA weight 진단: {WORK / 'iteration_summary.tsv'}")
+    print(f"WESTPA weight diagnostics: {WORK / 'iteration_summary.tsv'}")
 
 
 if __name__ == "__main__":

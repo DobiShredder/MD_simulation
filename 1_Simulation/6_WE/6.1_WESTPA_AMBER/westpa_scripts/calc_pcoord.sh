@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if [[ $# -ne 1 ]]; then
-    echo "사용법: $0 RESTART_FILE" >&2
+    echo "Usage: $0 RESTART_FILE" >&2
     exit 2
 fi
 
@@ -11,19 +11,19 @@ topology_file="$WORK_DIR/common_files/system.parm7"
 reference_file="$WORK_DIR/common_files/reference.rst7"
 
 if [[ ! -s "$restart_file" ]]; then
-    echo "오류: progress coordinate용 restart를 찾을 수 없습니다: $restart_file" >&2
+    echo "Error: progress-coordinate restart not found: $restart_file" >&2
     exit 1
 fi
 if [[ ! -s "$topology_file" ]]; then
-    echo "오류: progress coordinate용 topology를 찾을 수 없습니다: $topology_file" >&2
+    echo "Error: progress-coordinate topology not found: $topology_file" >&2
     exit 1
 fi
 if [[ ! -s "$reference_file" ]]; then
-    echo "오류: RMSD reference를 찾을 수 없습니다: $reference_file" >&2
+    echo "Error: RMSD reference not found: $reference_file" >&2
     exit 1
 fi
 if ! command -v "$CPPTRAJ" >/dev/null 2>&1; then
-    echo "오류: $CPPTRAJ 실행 파일을 찾을 수 없습니다." >&2
+    echo "Error: executable not found: $CPPTRAJ" >&2
     exit 1
 fi
 

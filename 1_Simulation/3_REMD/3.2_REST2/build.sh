@@ -10,12 +10,12 @@ while [[ $# -gt 0 ]]; do
             dry_run=1
             ;;
         -*)
-            echo "사용법: $0 [--dry-run] [states.tsv]" >&2
+            echo "Usage: $0 [--dry-run] [states.tsv]" >&2
             exit 2
             ;;
         *)
             if [[ -n "$states_argument" ]]; then
-                echo "사용법: $0 [--dry-run] [states.tsv]" >&2
+                echo "Usage: $0 [--dry-run] [states.tsv]" >&2
                 exit 2
             fi
             states_argument=$1
@@ -25,7 +25,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 die() {
-    echo "오류: $*" >&2
+    echo "Error: $*" >&2
     exit 1
 }
 
@@ -35,7 +35,7 @@ validate_states() {
 
     IFS= read -r actual_header < "$states_file"
     if [[ "$actual_header" != "$expected_header" ]]; then
-        die "state table header가 올바르지 않습니다: $expected_header"
+        die "Invalid state-table header: $expected_header"
     fi
 
     if ! awk -F '\t' '
@@ -55,7 +55,7 @@ validate_states() {
         { previous_temperature = $2; count++ }
         END { if (count < 2) exit 1 }
     ' "$states_file"; then
-        die "REST2 state table에는 000/300 K 기준 state, 증가하는 effective temperature, lambda_pp=300/T, lambda_pw=sqrt(lambda_pp), 고유 replica와 positive integer seed가 필요합니다: $states_file"
+        die "REST2 state table requires a 000/300 K reference state, increasing effective temperatures, lambda_pp=300/T, lambda_pw=sqrt(lambda_pp), unique replicas, and positive integer seeds: $states_file"
     fi
 }
 
@@ -70,7 +70,7 @@ energy_tolerance=${ENERGY_TOLERANCE_KJ_MOL:-0.1}
 
 for input_file in "$input_pdb" "$states_file"; do
     if [[ ! -s "$input_file" ]]; then
-        die "필요한 input을 찾을 수 없습니다: $input_file"
+        die "Required input not found: $input_file"
     fi
 done
 
@@ -79,12 +79,12 @@ validate_states
 if (( ! dry_run )); then
     for executable in "$tleap" "$gmx" "$plumed" "$python_bin"; do
         if ! command -v "$executable" >/dev/null 2>&1; then
-            die "실행 파일을 찾을 수 없습니다: $executable"
+            die "Executable not found: $executable"
         fi
     done
 
     if ! "$python_bin" -c "import parmed" >/dev/null 2>&1; then
-        die "ParmEd가 필요합니다: $python_bin -m pip install -r requirements.txt"
+        die "ParmEd is required: $python_bin -m pip install -r requirements.txt"
     fi
 fi
 
@@ -92,15 +92,15 @@ replica_count=$(awk 'NR > 1 {count++} END {print count + 0}' "$states_file")
 last_replica=$(awk 'END {print $1}' "$states_file")
 
 if (( dry_run )); then
-    echo "ff19SB/TIP3P AMBER system을 GROMACS topology로 변환합니다."
-    echo "Protein atom만 표시하고 $replica_count 개 REST2 topology를 생성합니다."
-    echo "Scale 1.0 topology와 원본 topology의 potential energy를 비교합니다."
+    echo "Converting the ff19SB/TIP3P AMBER system to GROMACS topology."
+    echo "Marking only protein atoms and generating $replica_count REST2 topologies."
+    echo "Comparing potential energies of the scale-1.0 and original topologies."
     echo "State table: $states_file"
-    echo "생성 위치: $work_dir/000 ... $last_replica"
+    echo "Output directories: $work_dir/000 ... $last_replica"
     exit 0
 fi
 
-echo "ff19SB/TIP3P AMBER system을 생성합니다."
+echo "Generating an ff19SB/TIP3P AMBER system."
 mkdir -p "$work_dir"
 cp "$input_pdb" "$work_dir/input.pdb"
 cp inputs/tleap.in "$work_dir/tleap.in"
@@ -111,7 +111,7 @@ if ! (
         -f tleap.in \
         > leap.log 2>&1
 ); then
-    die "tleap 실행에 실패했습니다. 확인할 파일: $work_dir/leap.log"
+    die "tleap failed. See log: $work_dir/leap.log"
 fi
 
 if ! "$python_bin" "convert_topology.py" \
@@ -119,10 +119,10 @@ if ! "$python_bin" "convert_topology.py" \
     "$work_dir/system.rst7" \
     "$work_dir/topol.top" \
     "$work_dir/system.gro"; then
-    die "ParmEd topology 변환에 실패했습니다."
+    die "ParmEd topology conversion failed."
 fi
 
-echo "Protein hot region과 REST2 topology를 생성합니다."
+echo "Generating the protein hot region and REST2 topology."
 
 if ! "$gmx" grompp \
     -f "inputs/energy_check.mdp" \
@@ -131,20 +131,20 @@ if ! "$gmx" grompp \
     -pp "$work_dir/processed.top" \
     -o "$work_dir/preprocess.tpr" \
     > "$work_dir/grompp_preprocess.log" 2>&1; then
-    die "processed topology 생성에 실패했습니다: $work_dir/grompp_preprocess.log"
+    die "processed topology generation failed: $work_dir/grompp_preprocess.log"
 fi
 
 if ! "$python_bin" "scale_cmap.py" \
     "$work_dir/topol.top" \
     "$work_dir/processed.top" \
     1.0; then
-    die "processed topology의 residue-specific CMAP 복원에 실패했습니다."
+    die "Failed to restore residue-specific CMAPs in the processed topology."
 fi
 
 if ! "$python_bin" "mark_hot.py" \
     "$work_dir/processed.top" \
     "$work_dir/processed.hot.top"; then
-    die "protein hot-region marker 생성에 실패했습니다."
+    die "protein hot-region marker generation failed."
 fi
 
 while IFS=$'\t' read -r replica effective_temperature lambda_pp _ seed; do
@@ -158,14 +158,14 @@ while IFS=$'\t' read -r replica effective_temperature lambda_pp _ seed; do
     if ! "$plumed" partial_tempering "$lambda_pp" \
         < "$work_dir/processed.hot.top" \
         > "$replica_dir/topol.top"; then
-        die "REST2 topology 생성에 실패했습니다: replica $replica"
+        die "REST2 topology generation failed: replica $replica"
     fi
 
     if ! "$python_bin" "scale_cmap.py" \
         "$work_dir/processed.top" \
         "$replica_dir/topol.top" \
         "$lambda_pp"; then
-        die "REST2 CMAP scaling에 실패했습니다: replica $replica"
+        die "REST2 CMAP scaling failed: replica $replica"
     fi
 
     cp "$work_dir/system.gro" "$replica_dir/system.gro"
@@ -182,7 +182,7 @@ done < "$states_file"
 
 cp "$states_file" "$work_dir/states.tsv"
 
-# scale=1은 원본과 같은 Hamiltonian이어야 하므로 한 frame의 energy를 비교합니다.
+# At scale=1 the Hamiltonian must match the original, so compare the energy of one frame.
 energy_dir="$work_dir/energy_check"
 mkdir -p "$energy_dir"
 
@@ -199,7 +199,7 @@ for variant in unscaled scale_one; do
         -c "$work_dir/system.gro" \
         -o "$energy_dir/$variant.tpr" \
         > "$energy_dir/$variant.grompp.log" 2>&1; then
-        die "energy check용 tpr 생성에 실패했습니다: $energy_dir/$variant.grompp.log"
+        die "Failed to generate the tpr for the energy check: $energy_dir/$variant.grompp.log"
     fi
 
     if ! "$gmx" mdrun \
@@ -207,7 +207,7 @@ for variant in unscaled scale_one; do
         -rerun "$work_dir/system.gro" \
         -deffnm "$energy_dir/$variant" \
         > "$energy_dir/$variant.mdrun.log" 2>&1; then
-        die "energy rerun에 실패했습니다: $energy_dir/$variant.mdrun.log"
+        die "energy rerun failed: $energy_dir/$variant.mdrun.log"
     fi
 
     if ! "$gmx" energy \
@@ -215,7 +215,7 @@ for variant in unscaled scale_one; do
         -o "$energy_dir/$variant.xvg" \
         < "inputs/energy_selection.txt" \
         > "$energy_dir/$variant.energy.log" 2>&1; then
-        die "Potential energy 추출에 실패했습니다: $energy_dir/$variant.energy.log"
+        die "Failed to extract potential energy: $energy_dir/$variant.energy.log"
     fi
 done
 
@@ -224,4 +224,4 @@ done
     "$energy_dir/scale_one.xvg" \
     "$energy_tolerance"
 
-echo "REST2 topology와 좌표: $work_dir"
+echo "REST2 topologies and coordinates: $work_dir"

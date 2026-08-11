@@ -12,7 +12,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         --window)
             if [[ $# -lt 2 ]]; then
-                echo "오류: --window에는 번호가 필요합니다." >&2
+                echo "Error: --window requires an index." >&2
                 exit 2
             fi
 
@@ -20,14 +20,14 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         *)
-            echo "사용법: $0 [--dry-run] [--window N]" >&2
+            echo "Usage: $0 [--dry-run] [--window N]" >&2
             exit 2
             ;;
     esac
 done
 
 die() {
-    echo "오류: $*" >&2
+    echo "Error: $*" >&2
     exit 1
 }
 
@@ -49,7 +49,7 @@ run_window() {
 
     for required_file in system.parm7 seed.rst7 restraint.RST; do
         if [[ ! -s "$window_dir/$required_file" ]]; then
-            die "$window_id window의 필수 input이 없습니다: $required_file"
+            die "Required input is missing for $window_id: $required_file"
         fi
     done
 
@@ -71,7 +71,7 @@ run_window() {
                 -c seed.rst7 \
                 -r min.rst7
         ); then
-            die "$window_id window minimization이 실패했습니다: $window_dir/min.out"
+            die "$window_id window minimization failed: $window_dir/min.out"
         fi
 
         if (( ! dry_run )); then
@@ -95,7 +95,7 @@ run_window() {
                 -inf heat.info \
                 -ref min.rst7
         ); then
-            die "$window_id window heating이 실패했습니다: $window_dir/heat.out"
+            die "$window_id window heating failed: $window_dir/heat.out"
         fi
 
         if (( ! dry_run )); then
@@ -118,7 +118,7 @@ run_window() {
                 -x equil.nc \
                 -inf equil.info
         ); then
-            die "$window_id window equilibration이 실패했습니다: $window_dir/equil.out"
+            die "$window_id window equilibration failed: $window_dir/equil.out"
         fi
 
         if (( ! dry_run )); then
@@ -141,7 +141,7 @@ run_window() {
                 -x production.nc \
                 -inf production.info
         ); then
-            die "$window_id window production이 실패했습니다: $window_dir/production.out"
+            die "$window_id window production failed: $window_dir/production.out"
         fi
 
         if (( ! dry_run )); then
@@ -152,7 +152,7 @@ run_window() {
     processed_window_count=$((processed_window_count + 1))
 }
 
-# 사용자 설정과 input/output 경로
+# User settings and input/output paths
 engine=${AMBER_ENGINE:-pmemd.cuda}
 
 work_dir=${WORK_DIR:-work}
@@ -161,15 +161,15 @@ window_root="$work_dir"
 processed_window_count=0
 skipped_window_count=0
 
-# 실행 전 확인
+# Input and dependency checks
 if (( ! dry_run )); then
     if ! command -v "$engine" >/dev/null 2>&1; then
-        die "AMBER engine을 찾을 수 없습니다: $engine"
+        die "AMBER engine not found: $engine"
     fi
 fi
 
 if [[ ! -d "$window_root" ]]; then
-    die "생성된 window가 없습니다. ./build.sh를 먼저 실행하세요."
+    die "generated window is missing. Run ./build.sh first."
 fi
 
 if (( ! dry_run )); then
@@ -177,21 +177,21 @@ if (( ! dry_run )); then
     cp inputs/*.in "$work_dir/inputs/"
 fi
 
-# 선택한 window 또는 전체 window 실행
+# Run the selected window or all windows
 if [[ -n "$selected_window" ]]; then
     if [[ ! "$selected_window" =~ ^[0-9]+$ ]]; then
-        die "window 번호는 양의 정수여야 합니다: $selected_window"
+        die "Window index must be a positive integer: $selected_window"
     fi
 
     if (( 10#$selected_window == 0 )); then
-        die "window 번호는 1 이상이어야 합니다: $selected_window"
+        die "Window index must be at least 1: $selected_window"
     fi
 
     printf -v selected_window_id '%03d' "$((10#$selected_window))"
     selected_window_dir="$window_root/$selected_window_id"
 
     if [[ ! -d "$selected_window_dir" ]]; then
-        die "window를 찾을 수 없습니다: $selected_window_id"
+        die "window not found: $selected_window_id"
     fi
 
     run_window "$selected_window_dir"
@@ -208,11 +208,11 @@ else
     done
 
     if (( found_window_count == 0 )); then
-        die "${window_root}에 실행할 window가 없습니다."
+        die "No runnable windows were found in ${window_root}."
     fi
 fi
 
 if (( ! dry_run )); then
-    echo "Umbrella window 실행 완료: ${processed_window_count}개 실행," \
-        "${skipped_window_count}개 기존 완료 ($window_root)"
+    echo "Completed umbrella-window runs: ${processed_window_count} run," \
+        "${skipped_window_count} already completed ($window_root)"
 fi

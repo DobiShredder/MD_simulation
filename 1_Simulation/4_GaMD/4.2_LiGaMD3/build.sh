@@ -7,12 +7,12 @@ if [[ "${1:-}" == "--dry-run" ]]; then
     shift
 fi
 if [[ $# -ne 2 ]]; then
-    echo "사용법: $0 [--dry-run] COMPLEX.pdb BEN_ideal.sdf" >&2
+    echo "Usage: $0 [--dry-run] COMPLEX.pdb BEN_ideal.sdf" >&2
     exit 2
 fi
 
 die() {
-    echo "오류: $*" >&2
+    echo "Error: $*" >&2
     exit 1
 }
 
@@ -28,7 +28,7 @@ ligand_charge=${LIGAND_CHARGE:-1}
 work_dir=${WORK_DIR:-"work"}
 
 if [[ ! "$ligand_charge" =~ ^-?[0-9]+$ ]]; then
-    die "LIGAND_CHARGE는 정수여야 합니다: $ligand_charge"
+    die "LIGAND_CHARGE must be an integer: $ligand_charge"
 fi
 
 if (( dry_run )); then
@@ -53,13 +53,13 @@ fi
 
 for input in "$complex_pdb" "$ligand_sdf" "$metadata" "$disulfides"; do
     if [[ ! -s "$input" ]]; then
-        die "build input을 찾을 수 없습니다: $input"
+        die "Build input not found: $input"
     fi
 done
 ligand_sdf=$(cd "$(dirname "$ligand_sdf")" && pwd -P)/$(basename "$ligand_sdf")
 for executable in "$antechamber" "$parmchk2" "$tleap" "$python"; do
     if ! command -v "$executable" >/dev/null 2>&1; then
-        die "실행 파일을 찾을 수 없습니다: $executable"
+        die "Executable not found: $executable"
     fi
 done
 
@@ -68,7 +68,7 @@ cp "$complex_pdb" "$work_dir/complex.pdb"
 cp "$disulfides" "$work_dir/disulfides.leap"
 cp inputs/tleap.in "$work_dir/tleap.in"
 
-echo "BEN을 GAFF2/AM1-BCC로 parameterize합니다."
+echo "Parameterizing BEN with GAFF2/AM1-BCC."
 parameter_sdf=$ligand_sdf
 if [[ "$ligand_charge" -eq 1 ]]; then
     protonated_sdf="$work_dir/ben-protonated.sdf"
@@ -86,7 +86,7 @@ if ! (
         -at gaff2 -c bcc -nc "$ligand_charge" -rn BEN -s 2 \
         > antechamber.log 2>&1
 ); then
-    die "antechamber 실행에 실패했습니다: $work_dir/antechamber.log"
+    die "antechamber failed: $work_dir/antechamber.log"
 fi
 if ! (
     cd "$work_dir"
@@ -95,19 +95,19 @@ if ! (
         -o ben.frcmod -s gaff2 \
         > parmchk2.log 2>&1
 ); then
-    die "parmchk2 실행에 실패했습니다: $work_dir/parmchk2.log"
+    die "parmchk2 failed: $work_dir/parmchk2.log"
 fi
 
-echo "ff19SB/GAFF2/TIP3P topology를 생성합니다."
+echo "Generating an ff19SB/GAFF2/TIP3P topology."
 if ! (
     cd "$work_dir"
     "$tleap" -f tleap.in > leap.log 2>&1
 ); then
-    die "tleap 실행에 실패했습니다: $work_dir/leap.log"
+    die "tleap failed: $work_dir/leap.log"
 fi
 for output in system.parm7 system.rst7 system.pdb; do
     if [[ ! -s "$work_dir/$output" ]]; then
-        die "build output이 생성되지 않았습니다: $work_dir/$output"
+        die "build Output was not created: $work_dir/$output"
     fi
 done
 
@@ -117,7 +117,7 @@ if ! "$python" \
     "$metadata" \
     "inputs" \
     "$work_dir/inputs"; then
-    die "LiGaMD3 input 생성에 실패했습니다."
+    die "LiGaMD3 input generation failed."
 fi
 
-echo "LiGaMD3 topology, restart와 generated input: $work_dir"
+echo "LiGaMD3 topology, restart, and generated inputs: $work_dir"
