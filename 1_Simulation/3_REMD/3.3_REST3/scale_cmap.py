@@ -55,7 +55,13 @@ def scaled_cmap_section(
             if remaining:
                 raise ValueError("CMAP grid가 끝나기 전에 다음 header가 나타났습니다.")
 
-            atom_types = [f"{type_prefix}{name}{type_suffix}" for name in fields[:5]]
+            atom_types = []
+            for name in fields[:5]:
+                atom_type, separator, residue_type = name.partition("-")
+                marked_type = f"{type_prefix}{atom_type}{type_suffix}"
+                atom_types.append(
+                    f"{marked_type}{separator}{residue_type}" if separator else marked_type
+                )
             remaining = int(fields[6]) * int(fields[7])
             map_count += 1
             output.append(" ".join(atom_types + fields[5:]) + "\n")

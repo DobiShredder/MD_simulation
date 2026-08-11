@@ -156,7 +156,11 @@ def verify_cmap_scaling(base: Path, observed: Path, scale: float) -> None:
         if scale == 1.0:
             expected_types = base_types
         else:
-            expected_types = tuple(f"s{name}" for name in base_types)
+            expected_types = tuple(
+                f"s{atom_type}{separator}{residue_type}"
+                for name in base_types
+                for atom_type, separator, residue_type in [name.partition("-")]
+            )
         if types != expected_types:
             raise SystemExit(f"CMAP atom type이 REST3 hot type과 다릅니다: {observed}")
 

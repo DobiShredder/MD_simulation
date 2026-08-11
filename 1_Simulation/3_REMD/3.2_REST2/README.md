@@ -61,8 +61,10 @@ energy를 한 frame rerun으로 비교합니다. 허용 오차는
 
 ff19SB는 residue별 backbone CMAP을 사용합니다. `convert_topology.py`는
 ParmEd 변환 중 이 map들이 하나의 `XC` type으로 합쳐지지 않도록 C-alpha
-type을 `XC0`, `XC1`처럼 분리합니다. `scale_cmap.py`는 PLUMED가 처리하지
-않는 CMAP grid와 hot atom type 이름을 각 REST2 state에 맞게 보정합니다.
+type을 `XC0`, `XC1`처럼 분리합니다. GROMACS 2025의 AMBER19SB 형식에 맞춰
+`XC0-TYR`처럼 residue selector도 붙입니다. `scale_cmap.py`는 PLUMED가
+처리하지 않는 CMAP grid와 hot atom type 이름을 각 REST2 state에 맞게
+보정합니다.
 
 `GROMACS`, `GROMACS_MPI`, `MPI_LAUNCHER`, `MPI_PROCESSES`,
 `MPI_OPTIONS`와 `GROMACS_OPTIONS`로 실행 환경을 지정합니다. Production은
@@ -117,7 +119,8 @@ produce incorrect exchange acceptance between the separately scaled topologies.
 
 `convert_topology.py` performs the AMBER-to-GROMACS conversion, `mark_hot.py`
 marks protein atom types, and `scale_cmap.py` preserves residue-specific ff19SB
-CMAPs and scales their grids for each state. `build.sh` generates and verifies eight states,
+CMAPs using GROMACS 2025 residue selectors such as `XC0-TYR`, then scales their
+grids for each state. `build.sh` generates and verifies eight states,
 `run.sh` uses `-multidir -replex 1000`, and `anal.py` summarizes exchange and
 structure. All thermostats remain at `ref-t=300`; hydrogen bonds are constrained
 for a 2 fs timestep. `ENERGY_TOLERANCE_KJ_MOL` controls the scale-one check.

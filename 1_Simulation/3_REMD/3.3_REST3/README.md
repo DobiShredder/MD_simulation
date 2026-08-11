@@ -77,10 +77,11 @@ replica 0 topology가 base topology와 byte 단위로 같은지 확인하고
 water–water 및 ion–water Lennard-Jones parameter가 보존되는지 검사합니다.
 
 ff19SB의 residue-specific CMAP은 ParmEd 변환 전에 서로 다른 C-alpha
-atom type으로 분리합니다. `repex-topology-parser` 0.2.2는 CMAP section을
-생성하지 않으므로 `scale_cmap.py`가 hot type 이름을 적용한 CMAP을 넣고
-energy grid를 `lambda_pp`로 scaling합니다. `verify_rest3.py`는 이 값도
-base topology와 비교합니다.
+atom type으로 분리하고 GROMACS 2025 형식의 residue selector를 붙입니다.
+`repex-topology-parser` 0.2.2는 CMAP section을 생성하지 않으므로
+`scale_cmap.py`가 hot type 이름을 적용한 CMAP을 넣고 energy grid를
+`lambda_pp`로 scaling합니다. `verify_rest3.py`는 이 값도 base topology와
+비교합니다.
 
 Equilibration은 100 ps, production은 1 ns segment 하나이며 교환은 2 ps마다
 시도합니다. 실행 환경 변수와 resume 규칙은 REST2 예제와 같습니다.
@@ -131,7 +132,8 @@ root or `src/repex_topology_parser.py`.
 
 `convert_topology.py` creates the base topology, `generate_rest3.py` applies
 the `states.tsv` lambda/kappa schedule, and `scale_cmap.py` restores and scales
-the residue-specific ff19SB CMAP section omitted by parser 0.2.2. `verify_rest3.py` checks base, CMAP, and
+the residue-specific ff19SB CMAP section with GROMACS 2025 residue selectors;
+parser 0.2.2 omits this section. `verify_rest3.py` checks base, CMAP, and
 solvent invariants, `run.sh` performs HREX with `-replex 1000`, and `anal.py`
 summarizes exchange and structure. `kappa_atom_names=['OW']` targets the TIP3P
 oxygen type. The physical thermostat remains at 300 K.
