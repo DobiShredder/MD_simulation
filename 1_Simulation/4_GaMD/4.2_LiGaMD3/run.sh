@@ -2,14 +2,23 @@
 set -euo pipefail
 
 dry_run=0
-if [[ "${1:-}" == "--dry-run" ]]; then
-    dry_run=1
+allow_unverified=0
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --dry-run)
+            dry_run=1
+            ;;
+        --allow-unverified)
+            allow_unverified=1
+            ;;
+        *)
+            echo "사용법: $0 [--dry-run] [--allow-unverified]" >&2
+            exit 2
+            ;;
+    esac
     shift
-fi
-if [[ $# -ne 0 ]]; then
-    echo "사용법: $0 [--dry-run]" >&2
-    exit 2
-fi
+done
 
 die() {
     echo "오류: $*" >&2
@@ -26,8 +35,8 @@ read -r -a amber_options <<< "${AMBER_OPTIONS:-}"
 if [[ ! "$random_seed" =~ ^[1-9][0-9]*$ ]]; then
     die "RANDOM_SEED는 positive integer여야 합니다: $random_seed"
 fi
-if (( ! dry_run )) && [[ "${ALLOW_UNVERIFIED_LIGAMD3:-0}" != 1 ]]; then
-    die "Amber26 LiGaMD3 검증 전입니다. 실행하려면 ALLOW_UNVERIFIED_LIGAMD3=1을 지정하세요."
+if (( ! dry_run && ! allow_unverified )); then
+    die "Amber26 LiGaMD3 검증 전입니다. 실행하려면 --allow-unverified를 지정하세요."
 fi
 
 if (( ! dry_run )); then

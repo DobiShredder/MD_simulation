@@ -49,7 +49,7 @@ if [[ "$WESTPA_WORK_MANAGER" == "processes" ]]; then
 fi
 
 if (( dry_run )); then
-    echo "WESTPA 2: Na+/Cl- distance, bin당 walker 4개, 1 ps × 20 iterations"
+    echo "WESTPA 2: Chignolin Cα RMSD, bin당 walker 4개, 1 ps × 20 iterations"
     printf 'AMBER engine: %s\n' "$AMBER_ENGINE"
     printf 'Work manager: %s, worker 수: %s\n' \
         "$WESTPA_WORK_MANAGER" \
@@ -73,6 +73,10 @@ done
 
 if ! "${westpa_command[@]}" > "$WORK_DIR/west.log" 2>&1; then
     echo "오류: WESTPA 실행에 실패했습니다: $WORK_DIR/west.log" >&2
+    exit 1
+fi
+if grep -q -- '-- ERROR' "$WORK_DIR/west.log"; then
+    echo "오류: WESTPA log에 실행 오류가 기록되었습니다: $WORK_DIR/west.log" >&2
     exit 1
 fi
 

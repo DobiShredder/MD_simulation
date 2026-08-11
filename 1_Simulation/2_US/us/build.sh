@@ -19,12 +19,11 @@ die() {
 }
 
 # 사용자 설정과 input/output 경로
-script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-window_file=${WINDOW_FILE:-"$script_dir/windows.tsv"}
-seed_dir=${SEED_DIR:-"$script_dir/../rmd/work/seeds"}
+window_file=${WINDOW_FILE:-"windows.tsv"}
+seed_dir=${SEED_DIR:-"../rmd/work/seeds"}
 seed_metadata="$seed_dir/seeds.tsv"
-topology=${TOPOLOGY:-"$script_dir/../work/system.parm7"}
-work_dir=${WORK_DIR:-"$script_dir/work"}
+topology=${TOPOLOGY:-"../work/system.parm7"}
+work_dir=${WORK_DIR:-"work"}
 window_root="$work_dir"
 
 # Window 설정 읽기
@@ -161,7 +160,7 @@ for row_index in "${!window_rows[@]}"; do
     sed \
         -e "s/CENTER/$center_angstrom/g" \
         -e "s/FORCE/$force_kcal_mol_angstrom2/g" \
-        "$script_dir/inputs/restraint.RST.template" \
+        "inputs/restraint.RST.template" \
         > "$window_dir/restraint.RST"
 
     printf 'window\tcenter_A\tforce_kcal_mol_A2\n%s\t%s\t%s\n' \

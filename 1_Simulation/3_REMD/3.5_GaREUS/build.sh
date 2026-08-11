@@ -17,10 +17,9 @@ die() {
     exit 1
 }
 
-script_dir=$(dirname "${BASH_SOURCE[0]}")
-input_pdb="$script_dir/structure/chignolin.pdb"
-states_file="$script_dir/inputs/states.tsv"
-work_dir=${WORK_DIR:-"$script_dir/work"}
+input_pdb="structure/chignolin.pdb"
+states_file="inputs/states.tsv"
+work_dir=${WORK_DIR:-"work"}
 tleap=${TLEAP:-tleap}
 python_bin=${PYTHON:-python3}
 
@@ -54,11 +53,12 @@ fi
 echo "20개 GaREUS window용 ff19SB/TIP3P system을 생성합니다."
 mkdir -p "$work_dir"
 cp "$input_pdb" "$work_dir/input.pdb"
+cp inputs/tleap.in "$work_dir/tleap.in"
 
 if ! (
     cd "$work_dir"
     "$tleap" \
-        -f "$script_dir/inputs/tleap.in" \
+        -f tleap.in \
         > leap.log 2>&1
 ); then
     die "tleap 실행에 실패했습니다. 확인할 파일: $work_dir/leap.log"
@@ -70,7 +70,7 @@ for output in system.parm7 system.rst7; do
     fi
 done
 
-"$python_bin" "$script_dir/make_restraints.py" \
+"$python_bin" "make_restraints.py" \
     "$work_dir/system.parm7" \
     "$work_dir/system.rst7" \
     "$states_file" \
@@ -82,24 +82,22 @@ while IFS=$'\t' read -r replica _ seed; do
     fi
 
     replica_dir="$work_dir/$replica"
-    restraint_file="$replica_dir/distance.RST"
-
     cp "$work_dir/system.parm7" "$replica_dir/system.parm7"
     cp "$work_dir/system.rst7" "$replica_dir/system.rst7"
 
     for stage in minimize heat equilibrate gamd_prepare; do
         sed \
             -e "s|@SEED@|$seed|g" \
-            -e "s|@DISANG@|$restraint_file|g" \
-            -e "s|@DUMPAVE@|$replica_dir/restraint.$stage.dat|g" \
-            "$script_dir/inputs/$stage.in" \
+            -e "s|@DISANG@|distance.RST|g" \
+            -e "s|@DUMPAVE@|restraint.$stage.dat|g" \
+            "inputs/$stage.in" \
             > "$replica_dir/$stage.in"
     done
 
     sed \
         -e "s|@SEED@|$seed|g" \
-        -e "s|@DISANG@|$restraint_file|g" \
-        "$script_dir/inputs/production.in" \
+        -e "s|@DISANG@|$replica_dir/distance.RST|g" \
+        "inputs/production.in" \
         > "$replica_dir/production.template.in"
 done < "$states_file"
 

@@ -19,14 +19,13 @@ die() {
 
 input_pdb=$1
 tleap=${TLEAP:-tleap}
-script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-work_dir=${WORK_DIR:-"$script_dir/work"}
+work_dir=${WORK_DIR:-"work"}
 
 if (( dry_run )); then
     printf 'mkdir -p %q\n' "$work_dir"
     printf 'cp %q %q\n' "$input_pdb" "$work_dir/input.pdb"
     printf 'cd %q\n' "$work_dir"
-    printf '%q -f %q\n' "$tleap" "$script_dir/inputs/tleap.in"
+    printf '%q -f %q\n' "$tleap" "inputs/tleap.in"
     exit 0
 fi
 
@@ -39,11 +38,12 @@ fi
 
 mkdir -p "$work_dir"
 cp "$input_pdb" "$work_dir/input.pdb"
+cp inputs/tleap.in "$work_dir/tleap.in"
 
 echo "ff19SB/TIP3P Chignolin topology를 생성합니다."
 if ! (
     cd "$work_dir"
-    "$tleap" -f "$script_dir/inputs/tleap.in" > leap.log 2>&1
+    "$tleap" -f tleap.in > leap.log 2>&1
 ); then
     die "tleap 실행에 실패했습니다: $work_dir/leap.log"
 fi

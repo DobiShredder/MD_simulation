@@ -14,8 +14,7 @@ fi
 # 사용자 설정과 output 경로
 curl_bin=${CURL:-curl}
 
-script_dir=$(dirname "${BASH_SOURCE[0]}")
-structure_dir="$script_dir/structure"
+structure_dir="structure"
 
 opm_pdb_url="https://opm-assets.storage.googleapis.com/pdb/1k4c.pdb"
 sidechain_template_url="https://opm-assets.storage.googleapis.com/pdb/3eff.pdb"

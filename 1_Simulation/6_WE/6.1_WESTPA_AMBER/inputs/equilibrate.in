@@ -1,8 +1,30 @@
-Generate a thermalized basis state
+Equilibrate the Chignolin basis state for 100 ps at 300 K and 1 bar
 &cntrl
-  imin=0, irest=0, ntx=1, ntxo=2,
-  ntb=0, igb=1, cut=999.0, rgbmax=999.0,
-  nstlim=5000, dt=0.002,
-  ntt=3, gamma_ln=5.0, tempi=300.0, temp0=300.0, ig=20260804,
-  ntc=1, ntf=1, ntpr=500, ntwx=0, ntwr=5000,
+  imin=0,
+  irest=1,
+  ntx=5,
+  ntxo=2,
+  ig=20260811,
+
+  nstlim=50000,
+  dt=0.002,
+
+  temp0=300.0,
+  ntt=3,
+  gamma_ln=1.0,
+
+  ntb=2,
+  ntp=1,
+  barostat=2,
+  pres0=1.0,
+  taup=2.0,
+
+  ntc=2,
+  ntf=2,
+  cut=10.0,
+  ntr=0,
+
+  ntpr=5000,
+  ntwx=0,
+  ntwr=50000,
 /

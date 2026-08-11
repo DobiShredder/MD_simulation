@@ -60,10 +60,9 @@ validate_states() {
     fi
 }
 
-script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-input_pdb="$script_dir/structure/chignolin.pdb"
-states_file=${states_argument:-"$script_dir/inputs/states.tsv"}
-work_dir=${WORK_DIR:-"$script_dir/work"}
+input_pdb="structure/chignolin.pdb"
+states_file=${states_argument:-"inputs/states.tsv"}
+work_dir=${WORK_DIR:-"work"}
 tleap=${TLEAP:-tleap}
 gmx=${GROMACS:-gmx}
 python_bin=${PYTHON:-python3}
@@ -103,17 +102,18 @@ fi
 echo "ff19SB/TIP3P AMBER system을 생성합니다."
 mkdir -p "$work_dir"
 cp "$input_pdb" "$work_dir/input.pdb"
+cp inputs/tleap.in "$work_dir/tleap.in"
 
 if ! (
     cd "$work_dir"
     "$tleap" \
-        -f "$script_dir/inputs/tleap.in" \
+        -f tleap.in \
         > leap.log 2>&1
 ); then
     die "tleap 실행에 실패했습니다. 확인할 파일: $work_dir/leap.log"
 fi
 
-if ! "$python_bin" "$script_dir/convert_topology.py" \
+if ! "$python_bin" "convert_topology.py" \
     "$work_dir/system.parm7" \
     "$work_dir/system.rst7" \
     "$work_dir/topol.top" \
@@ -122,7 +122,7 @@ if ! "$python_bin" "$script_dir/convert_topology.py" \
 fi
 
 if ! "$gmx" grompp \
-    -f "$script_dir/inputs/energy_check.mdp" \
+    -f "inputs/energy_check.mdp" \
     -p "$work_dir/topol.top" \
     -c "$work_dir/system.gro" \
     -pp "$work_dir/processed.top" \
@@ -131,7 +131,7 @@ if ! "$gmx" grompp \
     die "processed topology 생성에 실패했습니다: $work_dir/grompp_preprocess.log"
 fi
 
-if ! "$python_bin" "$script_dir/scale_cmap.py" \
+if ! "$python_bin" "scale_cmap.py" \
     "$work_dir/topol.top" \
     "$work_dir/processed.top" \
     1.0; then
@@ -140,7 +140,7 @@ fi
 
 echo "Published κ schedule로 REST3 topology를 생성합니다."
 
-if ! "$python_bin" "$script_dir/generate_rest3.py" \
+if ! "$python_bin" "generate_rest3.py" \
     "$work_dir/processed.top" \
     "$states_file" \
     "$work_dir"; then
@@ -154,20 +154,20 @@ while IFS=$'\t' read -r replica _ _ _ _ seed; do
 
     replica_dir="$work_dir/$replica"
     cp "$work_dir/system.gro" "$replica_dir/system.gro"
-    cp "$script_dir/inputs/plumed.dat" "$replica_dir/plumed.dat"
+    cp "inputs/plumed.dat" "$replica_dir/plumed.dat"
 
     sed \
         -e "s/@SEED@/$seed/g" \
-        "$script_dir/inputs/equilibrate.mdp" \
+        "inputs/equilibrate.mdp" \
         > "$replica_dir/equilibrate.mdp"
 
-    cp "$script_dir/inputs/minimize.mdp" "$replica_dir/minimize.mdp"
-    cp "$script_dir/inputs/production.mdp" "$replica_dir/production.mdp"
+    cp "inputs/minimize.mdp" "$replica_dir/minimize.mdp"
+    cp "inputs/production.mdp" "$replica_dir/production.mdp"
 done < "$states_file"
 
 cp "$states_file" "$work_dir/states.tsv"
 
-if ! "$python_bin" "$script_dir/verify_rest3.py" \
+if ! "$python_bin" "verify_rest3.py" \
     "$work_dir/processed.top" \
     "$work_dir/states.tsv" \
     "$work_dir"; then

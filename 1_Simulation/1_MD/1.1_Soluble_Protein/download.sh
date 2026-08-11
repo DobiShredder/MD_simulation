@@ -14,8 +14,7 @@ fi
 # 사용자 설정과 output 경로
 curl_bin=${CURL:-curl}
 
-script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-structure_dir="$script_dir/structure"
+structure_dir="structure"
 
 pdb_url="https://files.rcsb.org/download/1UAO.pdb"
 cif_url="https://files.rcsb.org/download/1UAO.cif"

@@ -1,0 +1,39 @@
+Heat Chignolin from 20 K to 300 K over 100 ps at constant volume
+&cntrl
+  imin=0,
+  irest=0,
+  ntx=1,
+  ntxo=2,
+  ig=20260811,
+
+  nstlim=50000,
+  dt=0.002,
+
+  tempi=20.0,
+  temp0=300.0,
+  ntt=3,
+  gamma_ln=1.0,
+
+  ntb=1,
+  ntp=0,
+  ntc=2,
+  ntf=2,
+  cut=10.0,
+
+  ntr=1,
+  restraint_wt=5.0,
+  restraintmask='!:WAT,Na+,Cl- & !@H=',
+
+  ntpr=5000,
+  ntwx=0,
+  ntwr=50000,
+  nmropt=1,
+/
+&wt
+  type='TEMP0',
+  istep1=0,
+  istep2=50000,
+  value1=20.0,
+  value2=300.0,
+/
+&wt type='END' /

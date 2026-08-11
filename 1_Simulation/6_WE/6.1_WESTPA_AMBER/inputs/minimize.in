@@ -1,6 +1,13 @@
-NaCl minimization in implicit solvent
+Minimize the complete Chignolin system
 &cntrl
-  imin=1, maxcyc=1000, ncyc=500,
-  ntb=0, igb=1, cut=999.0, rgbmax=999.0,
-  ntpr=100,
+  imin=1,
+  maxcyc=5000,
+  ncyc=2500,
+
+  ntc=1,
+  ntf=1,
+  ntb=1,
+  cut=10.0,
+  ntr=0,
+  ntpr=500,
 /

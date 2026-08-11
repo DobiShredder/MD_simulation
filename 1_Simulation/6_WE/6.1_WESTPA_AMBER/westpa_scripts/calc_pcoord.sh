@@ -8,6 +8,7 @@ fi
 
 restart_file=$1
 topology_file="$WORK_DIR/common_files/system.parm7"
+reference_file="$WORK_DIR/common_files/reference.rst7"
 
 if [[ ! -s "$restart_file" ]]; then
     echo "오류: progress coordinate용 restart를 찾을 수 없습니다: $restart_file" >&2
@@ -15,6 +16,10 @@ if [[ ! -s "$restart_file" ]]; then
 fi
 if [[ ! -s "$topology_file" ]]; then
     echo "오류: progress coordinate용 topology를 찾을 수 없습니다: $topology_file" >&2
+    exit 1
+fi
+if [[ ! -s "$reference_file" ]]; then
+    echo "오류: RMSD reference를 찾을 수 없습니다: $reference_file" >&2
     exit 1
 fi
 if ! command -v "$CPPTRAJ" >/dev/null 2>&1; then
@@ -26,8 +31,9 @@ tmp_file=$(mktemp "${TMPDIR:-/tmp}/we-pcoord.XXXXXX")
 trap 'rm -f "$tmp_file"' EXIT
 
 "$CPPTRAJ" -p "$topology_file" > /dev/null <<EOF
+reference $reference_file
 trajin $restart_file
-distance ion_distance @Na @Cl noimage out $tmp_file
+rms chignolin_ca :2-9@CA reference out $tmp_file
 run
 EOF
 

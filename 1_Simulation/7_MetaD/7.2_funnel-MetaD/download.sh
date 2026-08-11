@@ -12,11 +12,7 @@ if [[ $# -ne 0 ]]; then
 fi
 
 curl_bin=${CURL:-curl}
-script_dir=$(dirname "${BASH_SOURCE[0]}")
-if [[ "$script_dir" != /* ]]; then
-    script_dir="$PWD/$script_dir"
-fi
-structure_dir="$script_dir/structure"
+structure_dir="structure"
 pdb_url="https://files.rcsb.org/download/3PTB.pdb"
 cif_url="https://files.rcsb.org/download/3PTB.cif"
 ligand_url="https://files.rcsb.org/ligands/download/BEN_ideal.sdf"

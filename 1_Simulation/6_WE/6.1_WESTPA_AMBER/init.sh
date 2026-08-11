@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/env.sh"
+source ./env.sh
 
 reset=0
 if [[ "${1:-}" == "--reset" ]]; then

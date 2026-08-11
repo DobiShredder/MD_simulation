@@ -12,8 +12,7 @@ if [[ $# -ne 0 ]]; then
 fi
 
 curl_bin=${CURL:-curl}
-script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-structure_dir="$script_dir/structure"
+structure_dir="structure"
 
 if ! command -v "$curl_bin" >/dev/null 2>&1; then
     die "curl을 찾을 수 없습니다: $curl_bin"

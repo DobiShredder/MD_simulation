@@ -43,7 +43,7 @@ python3 -m pip install -r requirements.txt
 python3 prepare.py structure/1UAO.raw.pdb structure/chignolin.pdb
 ./build.sh
 ./run.sh --dry-run
-./run.sh
+./run.sh --allow-unverified
 python3 anal.py
 ```
 
@@ -70,10 +70,11 @@ window만 완료된 stage 또는 segment는 자동으로 덮어쓰거나 resume�
 | `ntb=1` | Volume을 고정한 NVT ensemble에서 GaREUS production을 실행합니다. |
 | `-rem 3`, `nstlim=500`, `numexchg=1000` | Umbrella Hamiltonian을 500 steps, 즉 1 ps마다 교환하고 1 ns segment를 만듭니다. |
 | `-gamd` | 현재 GaREUS runner가 window/segment별 boost 기록을 별도 log에 저장할 때 사용합니다. AMBER version별 option 이름을 실제 engine help와 대조합니다. |
+| `--allow-unverified` | Amber 26 multipmemd의 replica별 GaMD state 처리를 검증하기 전 실제 실행을 opt-in합니다. |
 
 `gamd-restart.dat`은 filename이 고정되어 있고 multipmemd는 replica output에
 suffix를 붙입니다. Amber 26 GPU에서 replica별 state read/write가 분리되는지
-확인하기 전에는 실제 실행에 `ALLOW_UNVERIFIED_GAREUS=1`이 필요합니다.
+확인하기 전에는 실제 실행에 `./run.sh --allow-unverified`가 필요합니다.
 
 ### Output
 
@@ -116,7 +117,7 @@ overlapping conventional-statistics and GaMD-equilibration schedules, not four
 durations to sum. Production switches to `irest_gamd=1` and NVT (`ntb=1`),
 and uses `-rem 3`, `nstlim=500`, and `numexchg=1000` for 1 ps exchange attempts
 and a 1 ns segment. Actual execution requires
-`ALLOW_UNVERIFIED_GAREUS=1` until per-replica handling of the fixed
+`run.sh --allow-unverified` until per-replica handling of the fixed
 `gamd-restart.dat` name is confirmed with Amber 26 multipmemd.
 The current runner uses `-gamd` for per-window logs; confirm the accepted log
 option against the target AMBER build.

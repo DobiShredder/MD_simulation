@@ -54,10 +54,9 @@ validate_states() {
     fi
 }
 
-script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-input_pdb="$script_dir/structure/chignolin.pdb"
-states_file=${states_argument:-"$script_dir/inputs/states.tsv"}
-work_dir=${WORK_DIR:-"$script_dir/work"}
+input_pdb="structure/chignolin.pdb"
+states_file=${states_argument:-"inputs/states.tsv"}
+work_dir=${WORK_DIR:-"work"}
 tleap=${TLEAP:-tleap}
 
 if [[ ! -s "$input_pdb" ]]; then
@@ -81,7 +80,7 @@ last_replica=$(awk 'END {print $1}' "$states_file")
 
 if (( dry_run )); then
     echo "$replica_count 개 replica용 ff19SB/TIP3P system을 생성합니다."
-    printf '%q -f %q\n' "$tleap" "$script_dir/inputs/tleap.in"
+    printf '%q -f %q\n' "$tleap" "inputs/tleap.in"
     echo "State table: $states_file"
     echo "생성 위치: $work_dir/000 ... $last_replica"
     exit 0
@@ -90,11 +89,12 @@ fi
 echo "$replica_count 개 replica용 ff19SB/TIP3P system을 생성합니다."
 mkdir -p "$work_dir"
 cp "$input_pdb" "$work_dir/input.pdb"
+cp inputs/tleap.in "$work_dir/tleap.in"
 
 if ! (
     cd "$work_dir"
     "$tleap" \
-        -f "$script_dir/inputs/tleap.in" \
+        -f tleap.in \
         > leap.log 2>&1
 ); then
     die "tleap 실행에 실패했습니다. 확인할 파일: $work_dir/leap.log"
@@ -120,22 +120,22 @@ while IFS=$'\t' read -r replica temperature_kelvin seed; do
     sed \
         -e "s/@TEMP@/$temperature_kelvin/g" \
         -e "s/@SEED@/$seed/g" \
-        "$script_dir/inputs/heat.in" \
+        "inputs/heat.in" \
         > "$replica_dir/heat.in"
 
     sed \
         -e "s/@TEMP@/$temperature_kelvin/g" \
         -e "s/@SEED@/$seed/g" \
-        "$script_dir/inputs/equilibrate.in" \
+        "inputs/equilibrate.in" \
         > "$replica_dir/equilibrate.in"
 
     sed \
         -e "s/@TEMP@/$temperature_kelvin/g" \
         -e "s/@SEED@/$seed/g" \
-        "$script_dir/inputs/production.in" \
+        "inputs/production.in" \
         > "$replica_dir/production.in"
 
-    cp "$script_dir/inputs/minimize.in" "$replica_dir/minimize.in"
+    cp "inputs/minimize.in" "$replica_dir/minimize.in"
 done < "$states_file"
 
 cp "$states_file" "$work_dir/states.tsv"

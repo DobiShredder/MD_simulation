@@ -25,8 +25,7 @@ parmchk2=${PARMCHK2:-parmchk2}
 tleap=${TLEAP:-tleap}
 python=${PYTHON:-python3}
 ligand_charge=${LIGAND_CHARGE:-1}
-script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-work_dir=${WORK_DIR:-"$script_dir/work"}
+work_dir=${WORK_DIR:-"work"}
 
 if [[ ! "$ligand_charge" =~ ^-?[0-9]+$ ]]; then
     die "LIGAND_CHARGE는 정수여야 합니다: $ligand_charge"
@@ -37,17 +36,17 @@ if (( dry_run )); then
     parameter_sdf=$ligand_sdf
     if [[ "$ligand_charge" -eq 1 ]]; then
         parameter_sdf="$work_dir/ben-protonated.sdf"
-        printf '%q %q %q %q\n' "$python" "$script_dir/protonate_benzamidine.py" "$ligand_sdf" "$parameter_sdf"
+        printf '%q %q %q %q\n' "$python" "protonate_benzamidine.py" "$ligand_sdf" "$parameter_sdf"
     fi
     printf '%q -i %q -fi sdf -o %q -fo mol2 -at gaff2 -c bcc -nc %q -rn BEN -s 2\n' "$antechamber" "$parameter_sdf" "$work_dir/ben.mol2" "$ligand_charge"
     printf '%q -i %q -f mol2 -o %q -s gaff2\n' "$parmchk2" "$work_dir/ben.mol2" "$work_dir/ben.frcmod"
-    printf '%q -f %q\n' "$tleap" "$script_dir/inputs/tleap.in"
+    printf '%q -f %q\n' "$tleap" "inputs/tleap.in"
     printf '%q %q %q %q %q %q\n' \
         "$python" \
-        "$script_dir/render_inputs.py" \
+        "render_inputs.py" \
         "$work_dir/system.parm7" \
         "$metadata" \
-        "$script_dir/inputs" \
+        "inputs" \
         "$work_dir/inputs"
     exit 0
 fi
@@ -67,15 +66,17 @@ done
 mkdir -p "$work_dir"
 cp "$complex_pdb" "$work_dir/complex.pdb"
 cp "$disulfides" "$work_dir/disulfides.leap"
+cp inputs/tleap.in "$work_dir/tleap.in"
 
 echo "BEN을 GAFF2/AM1-BCC로 parameterize합니다."
 parameter_sdf=$ligand_sdf
 if [[ "$ligand_charge" -eq 1 ]]; then
-    parameter_sdf="$work_dir/ben-protonated.sdf"
+    protonated_sdf="$work_dir/ben-protonated.sdf"
     "$python" \
-        "$script_dir/protonate_benzamidine.py" \
+        "protonate_benzamidine.py" \
         "$ligand_sdf" \
-        "$parameter_sdf"
+        "$protonated_sdf"
+    parameter_sdf=ben-protonated.sdf
 fi
 if ! (
     cd "$work_dir"
@@ -100,7 +101,7 @@ fi
 echo "ff19SB/GAFF2/TIP3P topology를 생성합니다."
 if ! (
     cd "$work_dir"
-    "$tleap" -f "$script_dir/inputs/tleap.in" > leap.log 2>&1
+    "$tleap" -f tleap.in > leap.log 2>&1
 ); then
     die "tleap 실행에 실패했습니다: $work_dir/leap.log"
 fi
@@ -111,10 +112,10 @@ for output in system.parm7 system.rst7 system.pdb; do
 done
 
 if ! "$python" \
-    "$script_dir/render_inputs.py" \
+    "render_inputs.py" \
     "$work_dir/system.parm7" \
     "$metadata" \
-    "$script_dir/inputs" \
+    "inputs" \
     "$work_dir/inputs"; then
     die "LiGaMD3 input 생성에 실패했습니다."
 fi

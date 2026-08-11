@@ -22,11 +22,7 @@ ligand_sdf=$2
 input_dir=$(dirname "$complex_pdb")
 disulfides="$input_dir/disulfides.leap"
 residue_map="$input_dir/funnel_residues.tsv"
-script_dir=$(dirname "${BASH_SOURCE[0]}")
-if [[ "$script_dir" != /* ]]; then
-    script_dir="$PWD/$script_dir"
-fi
-work_dir=${WORK_DIR:-"$script_dir/work"}
+work_dir=${WORK_DIR:-"work"}
 python=${PYTHON:-python3}
 antechamber=${ANTECHAMBER:-antechamber}
 parmchk2=${PARMCHK2:-parmchk2}
@@ -54,10 +50,11 @@ done
 mkdir -p "$work_dir"
 cp "$complex_pdb" "$work_dir/complex.pdb"
 cp "$disulfides" "$work_dir/disulfides.leap"
+cp inputs/tleap.in "$work_dir/tleap.in"
 
 echo "BEN을 benzamidinium(+1)으로 만들고 GAFF2/AM1-BCC를 적용합니다."
 "$python" \
-    "$script_dir/protonate_benzamidine.py" \
+    "protonate_benzamidine.py" \
     "$ligand_sdf" \
     "$work_dir/ben-protonated.sdf"
 
@@ -85,7 +82,7 @@ fi
 echo "ff19SB/GAFF2/TIP3P topology를 생성합니다."
 if ! (
     cd "$work_dir"
-    "$tleap" -f "$script_dir/inputs/tleap.in" > leap.log 2>&1
+    "$tleap" -f tleap.in > leap.log 2>&1
 ); then
     die "tleap 실행에 실패했습니다: $work_dir/leap.log"
 fi
@@ -97,11 +94,11 @@ for output in system.parm7 system.rst7 system.pdb; do
 done
 
 "$python" \
-    "$script_dir/setup_funnel.py" \
+    "setup_funnel.py" \
     "$work_dir/system.parm7" \
     "$work_dir/system.rst7" \
     "$residue_map" \
-    "$script_dir/inputs/plumed.dat.template" \
+    "inputs/plumed.dat.template" \
     "$work_dir"
 
 echo "Funnel MetaD topology와 geometry: $work_dir"

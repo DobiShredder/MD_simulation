@@ -19,8 +19,7 @@ die() {
 complex_pdb=$1
 ligand_sdf=$2
 structure_dir=$(dirname "$complex_pdb")
-script_dir=$(dirname "${BASH_SOURCE[0]}")
-work_dir=${WORK_DIR:-"$script_dir/work"}
+work_dir=${WORK_DIR:-"work"}
 build_dir="$work_dir/build"
 antechamber=${ANTECHAMBER:-antechamber}
 parmchk2=${PARMCHK2:-parmchk2}
@@ -30,7 +29,7 @@ python=${PYTHON:-python3}
 if (( dry_run )); then
     echo "Build: 3HTB ff19SB/GAFF2/AM1-BCC/TIP3P ABFE"
     printf '%q -i %q -fi sdf -o %q -fo mol2 -at gaff2 -c bcc -nc 0 -rn JZ4\n' "$antechamber" "$ligand_sdf" "$build_dir/jz4.mol2"
-    printf '%q %q %q %q %q\n' "$python" "$script_dir/generate_inputs.py" "$work_dir" "$script_dir/inputs" GLN102_RESIDUE
+    printf '%q %q %q %q %q\n' "$python" "generate_inputs.py" "$work_dir" "inputs" GLN102_RESIDUE
     exit 0
 fi
 
@@ -76,7 +75,7 @@ cp "$ligand_sdf" "$build_dir/JZ4_ideal.sdf"
 
 echo "Complex와 solvent topology를 생성합니다."
 for leg in complex solvent; do
-    cp "$script_dir/inputs/tleap_${leg}.in" "$build_dir/tleap_${leg}.in"
+    cp "inputs/tleap_${leg}.in" "$build_dir/tleap_${leg}.in"
     if ! (cd "$build_dir" && "$tleap" -f "tleap_${leg}.in" > "tleap_${leg}.log" 2>&1); then
         die "$leg topology build에 실패했습니다: $build_dir/tleap_${leg}.log"
     fi
@@ -88,9 +87,9 @@ for leg in complex solvent; do
 done
 
 "$python" \
-    "$script_dir/generate_inputs.py" \
+    "generate_inputs.py" \
     "$work_dir" \
-    "$script_dir/inputs" \
+    "inputs" \
     "$anchor_residue"
 
 echo "ABFE window 65개를 생성했습니다: $work_dir/windows"

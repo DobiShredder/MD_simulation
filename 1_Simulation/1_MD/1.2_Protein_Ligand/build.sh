@@ -22,8 +22,7 @@ die() {
 complex_pdb=$1
 tleap=${TLEAP:-tleap}
 
-script_dir=$(dirname "${BASH_SOURCE[0]}")
-work_dir=${WORK_DIR:-"$script_dir/work"}
+work_dir=${WORK_DIR:-"work"}
 
 ligand_mol2="$work_dir/jz4.mol2"
 ligand_frcmod="$work_dir/jz4.frcmod"
@@ -51,7 +50,7 @@ fi
 if (( dry_run )); then
     printf 'mkdir -p %q\n' "$work_dir"
     printf 'cp %q %q\n' "$complex_pdb" "$work_dir/complex.pdb"
-    printf 'cp %q %q\n' "$script_dir/tleap.in" "$work_dir/tleap.in"
+    printf 'cp %q %q\n' "tleap.in" "$work_dir/tleap.in"
     printf 'cd %q\n' "$work_dir"
     printf '%q \\\n' "$tleap"
     printf '  -f tleap.in\n'
@@ -63,7 +62,7 @@ echo "ff19SB/GAFF2/TIP3P로 T4 lysozyme–JZ4 system을 생성합니다."
 
 mkdir -p "$work_dir"
 cp "$complex_pdb" "$work_dir/complex.pdb"
-cp "$script_dir/tleap.in" "$work_dir/tleap.in"
+cp "tleap.in" "$work_dir/tleap.in"
 
 if ! (
     cd "$work_dir"

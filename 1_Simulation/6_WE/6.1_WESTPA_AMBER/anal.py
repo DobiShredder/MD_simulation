@@ -12,7 +12,20 @@ import h5py
 
 ROOT = Path(__file__).resolve().parent
 WORK = Path(os.environ.get("WORK_DIR", ROOT / "work"))
-BOUND_DISTANCE = 2.6
+TARGET_RMSD_ANGSTROM = 3.0
+BINS = [
+    (0.0, 0.5),
+    (0.5, 0.75),
+    (0.75, 1.0),
+    (1.0, 1.25),
+    (1.25, 1.5),
+    (1.5, 1.75),
+    (1.75, 2.0),
+    (2.0, 2.25),
+    (2.25, 2.5),
+    (2.5, 3.0),
+    (3.0, float("inf")),
+]
 
 
 def main() -> None:
@@ -47,10 +60,12 @@ def main() -> None:
                 raise SystemExit(f"{iteration_name}: walker weight 합을 계산할 수 없습니다.")
             ess = total_weight * total_weight / squared_weight_sum
             iteration_number = int(iteration_name.split("_")[-1])
-            target_count = sum(value < BOUND_DISTANCE for value in final_coordinates)
+            target_count = sum(
+                value >= TARGET_RMSD_ANGSTROM for value in final_coordinates
+            )
             target_weight = sum(
                 weight for weight, value in zip(weights, final_coordinates)
-                if value < BOUND_DISTANCE
+                if value >= TARGET_RMSD_ANGSTROM
             )
             iteration_rows.append([
                 str(iteration_number), str(len(weights)), f"{total_weight:.12f}",
@@ -59,10 +74,7 @@ def main() -> None:
             ])
             target_rows.append([str(iteration_number), str(target_count), f"{target_weight:.12e}"])
 
-            bins = [(0.0, 2.6), (2.6, 3.0), (3.0, 3.5), (3.5, 4.0),
-                    (4.0, 4.5), (4.5, 5.0), (5.0, 6.0), (6.0, 7.0),
-                    (7.0, 8.0), (8.0, 9.0), (9.0, float("inf"))]
-            for bin_index, (lower, upper) in enumerate(bins):
+            for bin_index, (lower, upper) in enumerate(BINS):
                 members = [
                     index for index, value in enumerate(final_coordinates)
                     if lower <= value < upper
@@ -78,7 +90,7 @@ def main() -> None:
 
     with (WORK / "iteration_summary.tsv").open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle, delimiter="\t")
-        writer.writerow(["iteration", "segments", "total_weight", "effective_walkers", "min_distance_A", "max_distance_A", "target_segments", "target_weight"])
+        writer.writerow(["iteration", "segments", "total_weight", "effective_walkers", "min_ca_rmsd_A", "max_ca_rmsd_A", "target_segments", "target_weight"])
         writer.writerows(iteration_rows)
     with (WORK / "bin_occupancy.tsv").open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle, delimiter="\t")

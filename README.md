@@ -70,7 +70,7 @@ MD_simulation/
 | 3 | Replica Exchange | REMD, REST2, REST3, REUS, GaREUS | [Open](1_Simulation/3_REMD/README.md) |
 | 4 | Gaussian accelerated MD | Chignolin GaMD, trypsin–benzamidine LiGaMD3, SH3–peptide Pep-GaMD | [Open](1_Simulation/4_GaMD/README.md) |
 | 5 | Free Energy Perturbation | T4L benzene→toluene RBFE and T4L–JZ4 ABFE | [Open](1_Simulation/5_FEP/README.md) |
-| 6 | Weighted Ensemble | Na⁺/Cl⁻ distance sampling with WESTPA and AMBER | [Open](1_Simulation/6_WE/README.md) |
+| 6 | Weighted Ensemble | Chignolin Cα RMSD sampling with WESTPA and AMBER | [Open](1_Simulation/6_WE/README.md) |
 | 7 | Metadynamics | WT-MetaD, funnel MetaD and OPES variants | [Open](1_Simulation/7_MetaD/README.md) |
 
 ## Analysis areas / 분석 영역
@@ -106,12 +106,11 @@ reduction, clustering, statistics, and plotting use Python.
 
 | System | Role | Source and important choices |
 | --- | --- | --- |
-| Chignolin | Soluble-protein MD and structural/ensemble analysis | PDB 1UAO; first NMR model; ff19SB/TIP3P |
+| Chignolin | Soluble-protein MD, WE and structural/ensemble analysis | PDB 1UAO; first NMR model; ff19SB/TIP3P |
 | T4 lysozyme–JZ4 | Protein–ligand MD, ABFE and MM/GB(PB)SA | PDB 3HTB; neutral JZ4; ff19SB/GAFF2/TIP3P |
 | KcsA | Membrane build and membrane-protein MD | PDB 1K4C; ff19SB/Lipid21/OPC; POPC:POPE:cholesterol 90:5:5 |
 | C-crk SH3–SOS peptide | Pep-GaMD selective peptide boost | PDB 1CKB; resolved PPPVPPRR peptide; ff19SB/TIP3P |
 | T4 lysozyme L99A | Benzene→toluene RBFE | PDB 4W53; ff19SB/GAFF2/TIP3P |
-| Na⁺/Cl⁻ pair | WESTPA–AMBER weighted ensemble | Generated two-ion structure; implicit solvent |
 | Capped alanine dipeptide | WT-MetaD and OPES examples | Built with tleap; ff19SB/TIP3P |
 
 Downloaded source structures are recorded with checksums. Generated systems,

@@ -21,9 +21,8 @@ die() {
 # 사용자 설정과 input/output 경로
 tleap=${TLEAP:-tleap}
 
-script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-input_pdb=${INPUT_PDB:-"$script_dir/structure/chignolin.pdb"}
-work_dir=${WORK_DIR:-"$script_dir/work"}
+input_pdb=${INPUT_PDB:-"structure/chignolin.pdb"}
+work_dir=${WORK_DIR:-"work"}
 
 # 실행 전 확인
 if (( ! dry_run )); then
@@ -42,7 +41,7 @@ if (( dry_run )); then
     printf 'cp %q %q\n' "$input_pdb" "$work_dir/input.pdb"
     printf 'cd %q\n' "$work_dir"
     printf '%q \\\n' "$tleap"
-    printf '  -f %q\n' "$script_dir/inputs/tleap.in"
+    printf '  -f %q\n' "inputs/tleap.in"
     exit 0
 fi
 
@@ -51,11 +50,12 @@ echo "ff19SB/TIP3P로 ratchet MD와 US가 공유할 system을 생성합니다."
 
 mkdir -p "$work_dir"
 cp "$input_pdb" "$work_dir/input.pdb"
+cp inputs/tleap.in "$work_dir/tleap.in"
 
 if ! (
     cd "$work_dir"
     "$tleap" \
-        -f "$script_dir/inputs/tleap.in" \
+        -f tleap.in \
         > leap.log 2>&1
 ); then
     die "tleap 실행에 실패했습니다. 확인할 파일: $work_dir/leap.log"

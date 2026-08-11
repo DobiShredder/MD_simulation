@@ -2,15 +2,23 @@
 set -euo pipefail
 
 dry_run=0
-if [[ "${1:-}" == "--dry-run" ]]; then
-    dry_run=1
-    shift
-fi
+allow_unverified=0
 
-if [[ $# -ne 0 ]]; then
-    echo "사용법: $0 [--dry-run]" >&2
-    exit 2
-fi
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --dry-run)
+            dry_run=1
+            ;;
+        --allow-unverified)
+            allow_unverified=1
+            ;;
+        *)
+            echo "사용법: $0 [--dry-run] [--allow-unverified]" >&2
+            exit 2
+            ;;
+    esac
+    shift
+done
 
 die() {
     echo "오류: $*" >&2
@@ -36,8 +44,8 @@ fi
 if [[ "$mpi_processes" -ne "$replica_count" ]]; then
     die "MPI_PROCESSES는 window 수와 같아야 합니다: $replica_count"
 fi
-if (( ! dry_run )) && [[ "${ALLOW_UNVERIFIED_GAREUS:-0}" != 1 ]]; then
-    die "GaMD state와 multipmemd replica suffix 검증 전입니다. 실행하려면 ALLOW_UNVERIFIED_GAREUS=1을 지정하세요."
+if (( ! dry_run && ! allow_unverified )); then
+    die "GaMD state와 multipmemd replica suffix 검증 전입니다. 실행하려면 --allow-unverified를 지정하세요."
 fi
 
 if (( ! dry_run )); then

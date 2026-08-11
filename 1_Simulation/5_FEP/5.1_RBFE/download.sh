@@ -6,8 +6,7 @@ die() {
     exit 1
 }
 
-script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-structure_dir=${STRUCTURE_DIR:-"$script_dir/structure"}
+structure_dir=${STRUCTURE_DIR:-"structure"}
 curl_bin=${CURL:-curl}
 
 if ! command -v "$curl_bin" >/dev/null 2>&1; then

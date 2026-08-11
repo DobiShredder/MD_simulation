@@ -23,17 +23,11 @@ fi
 echo "Chignolin 구조를 다운로드합니다 (PDB 1UAO)."
 mkdir -p "$structure_dir"
 
-if ! "$curl_bin" \
-    -fsSL \
-    "$pdb_url" \
-    -o "$structure_dir/1UAO.raw.pdb"; then
+if ! "$curl_bin" -fsSL "$pdb_url" -o "$structure_dir/1UAO.raw.pdb"; then
     die "PDB 다운로드에 실패했습니다: $pdb_url"
 fi
 
-if ! "$curl_bin" \
-    -fsSL \
-    "$cif_url" \
-    -o "$structure_dir/1UAO.cif"; then
+if ! "$curl_bin" -fsSL "$cif_url" -o "$structure_dir/1UAO.cif"; then
     die "mmCIF 다운로드에 실패했습니다: $cif_url"
 fi
 
@@ -50,4 +44,3 @@ else
 fi
 
 echo "다운로드 결과와 checksum: $structure_dir"
-

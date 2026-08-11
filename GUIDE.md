@@ -219,9 +219,10 @@ binning과 resampling을 수행하는 path-sampling 방법입니다. 물리적 d
 변경하는 bias potential을 추가하지 않지만, progress coordinate와 초기·최종
 상태 정의가 효율과 해석을 좌우합니다.
 
-현재 Na⁺/Cl⁻ 예제는 total weight, restart, random seed, bin occupancy와 target
-도달을 점검합니다. Flux와 rate estimator는 포함하지 않습니다. Resampling과
-weight는 WESTPA가 관리합니다.
+Chignolin 예제는 residue 2–9 Cα RMSD를 progress coordinate로 사용하여 total
+weight, restart, random seed, bin occupancy와 partially unfolded target 도달을
+점검합니다. Flux와 rate estimator는 포함하지 않습니다. Resampling과 weight는
+WESTPA가 관리합니다.
 
 - [WESTPA + AMBER WE 튜토리얼](1_Simulation/6_WE/README.md)
 

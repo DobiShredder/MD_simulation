@@ -24,8 +24,7 @@ antechamber=${ANTECHAMBER:-antechamber}
 parmchk2=${PARMCHK2:-parmchk2}
 ligand_charge=${LIGAND_CHARGE:-0}
 
-script_dir=$(dirname "${BASH_SOURCE[0]}")
-work_dir=${WORK_DIR:-"$script_dir/work"}
+work_dir=${WORK_DIR:-"work"}
 
 ligand_mol2="$work_dir/jz4.mol2"
 ligand_frcmod="$work_dir/jz4.frcmod"

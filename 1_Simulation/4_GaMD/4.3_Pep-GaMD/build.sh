@@ -20,14 +20,13 @@ input_pdb=$1
 metadata=$(dirname "$input_pdb")/system_metadata.tsv
 tleap=${TLEAP:-tleap}
 python=${PYTHON:-python3}
-script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-work_dir=${WORK_DIR:-"$script_dir/work"}
+work_dir=${WORK_DIR:-"work"}
 
 if (( dry_run )); then
     printf 'mkdir -p %q\n' "$work_dir"
     printf 'cp %q %q\n' "$input_pdb" "$work_dir/input.pdb"
-    printf '%q -f %q\n' "$tleap" "$script_dir/inputs/tleap.in"
-    printf '%q %q %q %q %q\n' "$python" "$script_dir/render_inputs.py" "$metadata" "$script_dir/inputs" "$work_dir/inputs"
+    printf '%q -f %q\n' "$tleap" "inputs/tleap.in"
+    printf '%q %q %q %q %q\n' "$python" "render_inputs.py" "$metadata" "inputs" "$work_dir/inputs"
     exit 0
 fi
 
@@ -45,11 +44,12 @@ done
 mkdir -p "$work_dir"
 cp "$input_pdb" "$work_dir/input.pdb"
 cp "$metadata" "$work_dir/system_metadata.tsv"
+cp inputs/tleap.in "$work_dir/tleap.in"
 
 echo "ff19SB/TIP3P SH3–peptide topology를 생성합니다."
 if ! (
     cd "$work_dir"
-    "$tleap" -f "$script_dir/inputs/tleap.in" > leap.log 2>&1
+    "$tleap" -f tleap.in > leap.log 2>&1
 ); then
     die "tleap 실행에 실패했습니다: $work_dir/leap.log"
 fi
@@ -58,7 +58,7 @@ for output in system.parm7 system.rst7 system.pdb; do
         die "build output이 생성되지 않았습니다: $work_dir/$output"
     fi
 done
-if ! "$python" "$script_dir/render_inputs.py" "$metadata" "$script_dir/inputs" "$work_dir/inputs"; then
+if ! "$python" "render_inputs.py" "$metadata" "inputs" "$work_dir/inputs"; then
     die "Pep-GaMD input 생성에 실패했습니다."
 fi
 

@@ -34,7 +34,7 @@ cd 1_Simulation/4_GaMD/4.2_LiGaMD3
 python3 prepare.py structure/3PTB.raw.pdb structure/complex.pdb
 ./build.sh structure/complex.pdb structure/BEN_ideal.sdf
 ./run.sh --dry-run
-ALLOW_UNVERIFIED_LIGAMD3=1 ./run.sh
+./run.sh --allow-unverified
 python3 anal.py
 ~~~
 
@@ -58,7 +58,7 @@ potential에 세 boost를 적용합니다. 완료된 segment의 MD restart와
 | `ntave=50000` | Triple-boost statistics averaging interval이며 2 fs 기준 100 ps입니다. |
 | `ntcmd*`, `nteb*` | Initial conventional statistics와 GaMD equilibration schedule입니다. `*prep`과 전체 step 값을 독립 구간처럼 더하지 않습니다. |
 | `LIGAND_CHARGE=1` | AM1-BCC parameterization에 사용하는 BEN net charge입니다. |
-| `ALLOW_UNVERIFIED_LIGAMD3=1` | Amber26 GPU 검증 전 실제 실행을 의도적으로 opt-in합니다. |
+| `--allow-unverified` | Amber26 GPU 검증 전 실제 실행을 의도적으로 opt-in합니다. |
 | `ntr=1`, `-ref minimize.rst7` | Heating restraint의 reference로 minimization restart를 사용합니다. |
 
 Amber26의 LiGaMD3 동작은 아직 실제 GPU에서 검증하지 않았습니다. 위 opt-in은
@@ -94,13 +94,13 @@ thresholds.
 100 ps averaging interval. The `ntcmd*`/`nteb*` values define overlapping
 conventional-statistics and GaMD-equilibration schedules. `LIGAND_CHARGE`
 controls BEN parameterization, and
-actual runs remain gated by `ALLOW_UNVERIFIED_LIGAMD3=1`.
+actual runs remain gated by `run.sh --allow-unverified`.
 Heating passes `minimize.rst7` to `-ref` for the `ntr=1` positional restraint.
 
 Amber 26 documents LiGaMD3 only for serial GPU `pmemd.cuda`; `run.sh` rejects
 CPU and MPI engine overrides.
 
-Actual execution requires `ALLOW_UNVERIFIED_LIGAMD3=1` until a short Amber26
+Actual execution requires `run.sh --allow-unverified` until a short Amber26
 GPU run confirms all three nonzero boost components, restart state, and
 continuation behavior. The 1 ns example is not a binding thermodynamics or
 kinetics calculation.
