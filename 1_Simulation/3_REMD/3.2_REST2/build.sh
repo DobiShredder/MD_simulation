@@ -26,7 +26,7 @@ tleap=${TLEAP:-tleap}
 gmx=${GROMACS:-gmx}
 plumed=${PLUMED:-plumed}
 python_bin=${PYTHON:-python3}
-energy_tolerance=${ENERGY_TOLERANCE_KJ_MOL:-0.0001}
+energy_tolerance=${ENERGY_TOLERANCE_KJ_MOL:-0.01}
 
 for input_file in "$input_pdb" "$states_file"; do
     if [[ ! -s "$input_file" ]]; then

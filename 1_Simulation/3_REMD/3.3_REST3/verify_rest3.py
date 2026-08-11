@@ -110,7 +110,7 @@ def cmap_data(path: Path) -> list[tuple[tuple[str, ...], list[float]]]:
         if section != "cmaptypes":
             continue
 
-        fields = stripped.split()
+        fields = stripped.replace("\\", " \\ ").split()
         is_header = (
             len(fields) >= 8
             and fields[5].isdigit()
@@ -153,16 +153,8 @@ def verify_cmap_scaling(base: Path, observed: Path, scale: float) -> None:
         raise SystemExit(f"CMAP map 수가 바뀌었습니다: {observed}")
 
     for (base_types, base_values), (types, values) in zip(base_maps, observed_maps):
-        if scale == 1.0:
-            expected_types = base_types
-        else:
-            expected_types = tuple(
-                f"s{atom_type}{separator}{residue_type}"
-                for name in base_types
-                for atom_type, separator, residue_type in [name.partition("-")]
-            )
-        if types != expected_types:
-            raise SystemExit(f"CMAP atom type이 REST3 hot type과 다릅니다: {observed}")
+        if types != base_types:
+            raise SystemExit(f"CMAP bonded type 또는 residue selector가 바뀌었습니다: {observed}")
 
         for reference, value in zip(base_values, values):
             if not math.isclose(

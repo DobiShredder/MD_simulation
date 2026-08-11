@@ -57,7 +57,7 @@ python3 anal.py
 atom type에만 `_` marker를 붙입니다. PLUMED `partial_tempering`으로
 8개 topology를 만들고, scale 1.0 topology와 원본 topology의 potential
 energy를 한 frame rerun으로 비교합니다. 허용 오차는
-`ENERGY_TOLERANCE_KJ_MOL`로 바꿀 수 있습니다.
+`0.01 kJ/mol`이며 `ENERGY_TOLERANCE_KJ_MOL`로 바꿀 수 있습니다.
 
 ff19SB는 residue별 backbone CMAP을 사용합니다. `convert_topology.py`는
 ParmEd 변환 중 이 map들이 하나의 `XC` type으로 합쳐지지 않도록 C-alpha
@@ -81,7 +81,7 @@ CMAP selector에는 붙이지 않습니다.
 | `ref-t=300` | 모든 replica의 physical thermostat temperature입니다. |
 | `-multidir`, `-replex 1000` | 8개 directory를 HREX로 묶고 1,000 steps, 즉 2 ps마다 교환합니다. |
 | `constraints=h-bonds`, `dt=0.002` | LINCS로 수소 bond를 고정하고 2 fs timestep을 사용합니다. |
-| `ENERGY_TOLERANCE_KJ_MOL` | Scale 1.0 topology identity의 one-frame potential 허용 오차입니다. |
+| `ENERGY_TOLERANCE_KJ_MOL` | Scale 1.0 topology identity의 one-frame potential 허용 오차입니다. 기본값은 `0.01 kJ/mol`입니다. |
 
 ### Output
 
@@ -126,6 +126,7 @@ grids for each state. The `_` marker is limited to nonbonded atom types in
 `run.sh` uses `-multidir -replex 1000`, and `anal.py` summarizes exchange and
 structure. All thermostats remain at `ref-t=300`; hydrogen bonds are constrained
 for a 2 fs timestep. `ENERGY_TOLERANCE_KJ_MOL` controls the scale-one check.
+Its default absolute tolerance is `0.01 kJ/mol`.
 
 The analysis writes exchange acceptance, state visits, occupancy, radius of
 gyration, and terminal Cα distance as TSV files. High-temperature compaction

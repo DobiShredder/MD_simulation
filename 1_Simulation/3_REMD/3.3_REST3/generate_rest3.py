@@ -133,7 +133,6 @@ def main() -> None:
             args.processed_topology,
             target,
             lambda_pp,
-            type_prefix="s",
         )
         shutil.rmtree(temporary)
 

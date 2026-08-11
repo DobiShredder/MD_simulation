@@ -33,7 +33,7 @@ REST3는 REST2의 solute scaling에 κ-dependent solute–solvent correction을
 | `prepare.py` | 1UAO의 첫 NMR model을 simulation PDB로 정리합니다. |
 | `convert_topology.py` | AMBER topology를 GROMACS base topology로 변환합니다. |
 | `generate_rest3.py` | `states.tsv`의 λ·κ와 외부 parser로 8개 REST3 topology를 만듭니다. |
-| `scale_cmap.py` | 외부 parser가 생략하는 ff19SB CMAP을 hot atom type과 `lambda_pp`에 맞춰 추가합니다. |
+| `scale_cmap.py` | 외부 parser가 생략하는 ff19SB CMAP selector를 복원하고 grid를 `lambda_pp`로 scaling합니다. |
 | `verify_rest3.py` | Base identity와 water–water/ion–water Lennard-Jones 보존을 검사합니다. |
 | `build.sh` | Conversion, topology generation, TPR build와 검사를 순서대로 호출합니다. |
 | `run.sh` | 300 K pre-production과 2 ps 간격 HREX를 실행합니다. |
@@ -79,9 +79,10 @@ water–water 및 ion–water Lennard-Jones parameter가 보존되는지 검사�
 ff19SB의 residue-specific CMAP은 ParmEd 변환 전에 서로 다른 C-alpha
 atom type으로 분리하고 GROMACS 2025 형식의 residue selector를 붙입니다.
 `repex-topology-parser` 0.2.2는 CMAP section을 생성하지 않으므로
-`scale_cmap.py`가 hot type 이름을 적용한 CMAP을 넣고 energy grid를
-`lambda_pp`로 scaling합니다. `verify_rest3.py`는 이 값도 base topology와
-비교합니다.
+`scale_cmap.py`가 원래 bonded type과 residue selector를 적용한 CMAP을 넣고
+energy grid를 `lambda_pp`로 scaling합니다. REST3의 scaled nonbonded atom
+type은 CMAP selector에 사용하지 않습니다. `verify_rest3.py`는 이 값도 base
+topology와 비교합니다.
 
 Equilibration은 100 ps, production은 1 ns segment 하나이며 교환은 2 ps마다
 시도합니다. 실행 환경 변수와 resume 규칙은 REST2 예제와 같습니다.
@@ -133,7 +134,8 @@ root or `src/repex_topology_parser.py`.
 `convert_topology.py` creates the base topology, `generate_rest3.py` applies
 the `states.tsv` lambda/kappa schedule, and `scale_cmap.py` restores and scales
 the residue-specific ff19SB CMAP section with GROMACS 2025 residue selectors;
-parser 0.2.2 omits this section. `verify_rest3.py` checks base, CMAP, and
+parser 0.2.2 omits this section. CMAP selectors retain the original bonded
+types while only their grids are scaled. `verify_rest3.py` checks base, CMAP, and
 solvent invariants, `run.sh` performs HREX with `-replex 1000`, and `anal.py`
 summarizes exchange and structure. `kappa_atom_names=['OW']` targets the TIP3P
 oxygen type. The physical thermostat remains at 300 K.
