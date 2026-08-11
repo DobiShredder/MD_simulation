@@ -61,7 +61,10 @@ def add_cmap_residue_selectors(path: Path, cmap_residues: dict[str, str]) -> Non
                     f"{fields[4]}-*",
                 ]
                 fields = atom_types + fields[5:]
-            line = " ".join(fields)
+            if fields and fields[-1] == "\\":
+                line = " ".join(fields[:-1]) + "\\"
+            else:
+                line = " ".join(fields)
 
         output.append(line)
 

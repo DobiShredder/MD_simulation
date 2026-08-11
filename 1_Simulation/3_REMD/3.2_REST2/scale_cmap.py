@@ -64,7 +64,11 @@ def scaled_cmap_section(
                 )
             remaining = int(fields[6]) * int(fields[7])
             map_count += 1
-            output.append(" ".join(atom_types + fields[5:]) + "\n")
+            header = atom_types + fields[5:]
+            if header[-1] == "\\":
+                output.append(" ".join(header[:-1]) + "\\\n")
+            else:
+                output.append(" ".join(header) + "\n")
             continue
 
         if remaining == 0:
@@ -81,9 +85,10 @@ def scaled_cmap_section(
             values.append(f"{float(field) * scale:.12g}")
             remaining -= 1
 
+        line = " ".join(values)
         if continuation:
-            values.append("\\")
-        output.append(" ".join(values) + "\n")
+            line += "\\"
+        output.append(line + "\n")
 
     if remaining:
         raise ValueError(f"CMAP grid 값 {remaining}개가 부족합니다.")
