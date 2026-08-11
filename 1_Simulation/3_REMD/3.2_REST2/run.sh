@@ -50,11 +50,15 @@ if (( ! dry_run )); then
         fi
     done
 
-    if ! mdrun_help=$("$gmx_mpi" mdrun -h 2>&1); then
-        die "GROMACS mdrun option을 확인하지 못했습니다: $gmx_mpi"
+    option_check_log="$work_dir/mdrun_option_check.log"
+    if ! "$gmx_mpi" mdrun -h -hrex > "$option_check_log" 2>&1; then
+        die "GROMACS MPI build가 -hrex option을 인식하지 못합니다: $option_check_log"
     fi
-    if [[ "$mdrun_help" != *"-hrex"* || "$mdrun_help" != *"-plumed"* ]]; then
-        die "GROMACS MPI build에 PLUMED HREX 지원(-hrex, -plumed)이 없습니다: $gmx_mpi"
+    if ! "$gmx_mpi" mdrun \
+        -h \
+        -plumed "$work_dir/000/plumed.dat" \
+        >> "$option_check_log" 2>&1; then
+        die "GROMACS MPI build가 -plumed option을 인식하지 못합니다: $option_check_log"
     fi
 fi
 
