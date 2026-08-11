@@ -96,6 +96,7 @@ run_preproduction() {
             -p "$replica_dir/topol.top" \
             -c "$replica_dir/system.gro" \
             -o "$replica_dir/minimize.tpr" \
+            -maxwarn 1 \
             > "$replica_dir/minimize.grompp.log" 2>&1; then
             die "minimization tpr 생성에 실패했습니다: $replica_dir/minimize.grompp.log"
         fi
@@ -112,6 +113,7 @@ run_preproduction() {
             -p "$replica_dir/topol.top" \
             -c "$replica_dir/minimize.gro" \
             -o "$replica_dir/equilibrate.tpr" \
+            -maxwarn 1 \
             > "$replica_dir/equilibrate.grompp.log" 2>&1; then
             die "equilibration tpr 생성에 실패했습니다: $replica_dir/equilibrate.grompp.log"
         fi
@@ -180,6 +182,7 @@ for segment in $(seq 1 "$production_segments"); do
             -c "$replica_dir/$previous_name.gro" \
             -t "$replica_dir/$previous_name.cpt" \
             -o "$replica_dir/$segment_name.tpr" \
+            -maxwarn 1 \
             > "$replica_dir/$segment_name.grompp.log" 2>&1; then
             die "production tpr 생성에 실패했습니다: $replica_dir/$segment_name.grompp.log"
         fi
