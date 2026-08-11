@@ -2,25 +2,61 @@
 set -euo pipefail
 
 dry_run=0
+states_argument=""
 
-if [[ "${1:-}" == "--dry-run" ]]; then
-    dry_run=1
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --dry-run)
+            dry_run=1
+            ;;
+        -*)
+            echo "사용법: $0 [--dry-run] [states.tsv]" >&2
+            exit 2
+            ;;
+        *)
+            if [[ -n "$states_argument" ]]; then
+                echo "사용법: $0 [--dry-run] [states.tsv]" >&2
+                exit 2
+            fi
+            states_argument=$1
+            ;;
+    esac
     shift
-fi
-
-if [[ $# -ne 0 ]]; then
-    echo "사용법: $0 [--dry-run]" >&2
-    exit 2
-fi
+done
 
 die() {
     echo "오류: $*" >&2
     exit 1
 }
 
+validate_states() {
+    local expected_header=$'replica\ttemperature_K\tseed'
+    local actual_header
+
+    IFS= read -r actual_header < "$states_file"
+    if [[ "$actual_header" != "$expected_header" ]]; then
+        die "state table header가 올바르지 않습니다: $expected_header"
+    fi
+
+    if ! awk -F '\t' '
+        NR == 1 { next }
+        NF != 3 { exit 1 }
+        $1 !~ /^[0-9][0-9][0-9]$/ { exit 1 }
+        $2 !~ /^[0-9]+([.][0-9]+)?$/ || $2 <= 0 { exit 1 }
+        $3 !~ /^[0-9]+$/ || $3 <= 0 { exit 1 }
+        seen[$1]++ { exit 1 }
+        count == 0 && $1 != "000" { exit 1 }
+        count > 0 && $2 <= previous_temperature { exit 1 }
+        { previous_temperature = $2; count++ }
+        END { if (count < 2) exit 1 }
+    ' "$states_file"; then
+        die "state table에는 000부터 시작하는 두 개 이상의 고유 replica, 증가하는 positive temperature와 positive integer seed가 필요합니다: $states_file"
+    fi
+}
+
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 input_pdb="$script_dir/structure/chignolin.pdb"
-states_file="$script_dir/inputs/states.tsv"
+states_file=${states_argument:-"$script_dir/inputs/states.tsv"}
 work_dir=${WORK_DIR:-"$script_dir/work"}
 tleap=${TLEAP:-tleap}
 
@@ -32,6 +68,8 @@ if [[ ! -s "$states_file" ]]; then
     die "replica table을 찾을 수 없습니다: $states_file"
 fi
 
+validate_states
+
 if (( ! dry_run )); then
     if ! command -v "$tleap" >/dev/null 2>&1; then
         die "tleap을 찾을 수 없습니다: $tleap"
@@ -39,18 +77,17 @@ if (( ! dry_run )); then
 fi
 
 replica_count=$(awk 'NR > 1 {count++} END {print count + 0}' "$states_file")
-if [[ "$replica_count" -ne 20 ]]; then
-    die "states.tsv에는 20개 replica가 있어야 합니다: $replica_count"
-fi
+last_replica=$(awk 'END {print $1}' "$states_file")
 
 if (( dry_run )); then
-    echo "20개 replica용 ff19SB/TIP3P system을 생성합니다."
+    echo "$replica_count 개 replica용 ff19SB/TIP3P system을 생성합니다."
     printf '%q -f %q\n' "$tleap" "$script_dir/inputs/tleap.in"
-    echo "생성 위치: $work_dir/000 ... 019"
+    echo "State table: $states_file"
+    echo "생성 위치: $work_dir/000 ... $last_replica"
     exit 0
 fi
 
-echo "20개 replica용 ff19SB/TIP3P system을 생성합니다."
+echo "$replica_count 개 replica용 ff19SB/TIP3P system을 생성합니다."
 mkdir -p "$work_dir"
 cp "$input_pdb" "$work_dir/input.pdb"
 

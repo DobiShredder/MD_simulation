@@ -23,8 +23,6 @@ states_file="$work_dir/states.tsv"
 gmx=${GROMACS:-gmx}
 gmx_mpi=${GROMACS_MPI:-gmx_mpi}
 mpi_launcher=${MPI_LAUNCHER:-mpirun}
-replica_count=8
-mpi_processes=${MPI_PROCESSES:-$replica_count}
 production_segments=1
 exchange_steps=1000
 
@@ -34,6 +32,12 @@ read -r -a gromacs_options <<< "${GROMACS_OPTIONS:-}"
 if [[ ! -s "$states_file" ]]; then
     die "build.sh를 먼저 실행해야 합니다: $states_file"
 fi
+
+replica_count=$(awk 'NR > 1 {count++} END {print count + 0}' "$states_file")
+mpi_processes=${MPI_PROCESSES:-$replica_count}
+temperature_min=$(awk 'NR == 2 {print $2}' "$states_file")
+temperature_max=$(awk 'END {print $2}' "$states_file")
+last_replica=$(awk 'END {print $1}' "$states_file")
 
 if [[ "$mpi_processes" -ne "$replica_count" ]]; then
     die "MPI_PROCESSES는 replica 수와 같아야 합니다: $replica_count"
@@ -120,9 +124,9 @@ run_preproduction() {
 if (( dry_run )); then
     echo "GROMACS: $gmx"
     echo "HREX engine: $gmx_mpi"
-    echo "8 replicas, effective 300–500 K, 2 ps exchange interval"
+    echo "$replica_count replicas, effective ${temperature_min}–${temperature_max} K, 2 ps exchange interval"
     echo "100 ps equilibration + 1 ns production"
-    printf '%q ' "$mpi_launcher" "${mpi_options[@]}" -np "$mpi_processes" "$gmx_mpi" mdrun -multidir "$work_dir/000" ... "$work_dir/007" -deffnm production.001 -hrex -replex "$exchange_steps" -plumed plumed.dat
+    printf '%q ' "$mpi_launcher" "${mpi_options[@]}" -np "$mpi_processes" "$gmx_mpi" mdrun -multidir "$work_dir/000" ... "$work_dir/$last_replica" -deffnm production.001 -hrex -replex "$exchange_steps" -plumed plumed.dat
     printf '\n'
     exit 0
 fi

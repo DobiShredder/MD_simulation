@@ -26,7 +26,7 @@ effective-temperature ladder를 구성할 수 있습니다.
 | `convert_topology.py` | Tleap의 AMBER topology를 GROMACS 형식으로 변환합니다. |
 | `mark_hot.py` | Protein atom type에만 `partial_tempering` marker를 붙입니다. |
 | `scale_cmap.py` | ff19SB CMAP residue selector를 복원하고 energy grid를 `lambda`로 scaling합니다. |
-| `build.sh` | 변환·scaling을 호출해 8개 topology/TPR를 만들고 scale-one energy를 검사합니다. |
+| `build.sh` | 변환·scaling을 호출해 state file의 row 수만큼 topology/TPR를 만들고 scale-one energy를 검사합니다. |
 | `compare_energy.py` | 원본과 scale 1.0 rerun potential 차이를 허용 오차와 비교합니다. |
 | `run.sh` | 300 K pre-production과 PLUMED-patched GROMACS HREX를 실행합니다. |
 | `anal.py` | Exchange, occupancy와 effective-temperature별 구조 지표를 계산합니다. |
@@ -56,8 +56,10 @@ python3 anal.py
 `build.sh`는 AMBER topology를 ParmEd로 GROMACS 형식으로 바꾼 뒤 protein
 atom type에만 `_` marker를 붙입니다. PLUMED `partial_tempering`으로
 8개 topology를 만들고, scale 1.0 topology와 원본 topology의 potential
-energy를 한 frame rerun으로 비교합니다. 허용 오차는
-`0.01 kJ/mol`이며 `ENERGY_TOLERANCE_KJ_MOL`로 바꿀 수 있습니다.
+energy를 한 frame rerun으로 비교합니다. 이 Chignolin tutorial의 허용값은
+`0.1 kJ/mol`이며 `ENERGY_TOLERANCE_KJ_MOL`로 바꿀 수 있습니다. 이 값은
+범용 기준이 아닙니다. System 크기, GROMACS precision, hardware와 병렬 energy
+합산 순서가 달라지면 같은 topology에서도 수치 차이가 달라질 수 있습니다.
 
 ff19SB는 residue별 backbone CMAP을 사용합니다. `convert_topology.py`는
 ParmEd 변환 중 이 map들이 하나의 `XC` type으로 합쳐지지 않도록 C-alpha
@@ -72,16 +74,46 @@ CMAP selector에는 붙이지 않습니다.
 1 ns segment 하나이며 일부 replica만 완료된 segment에서는 resume하지
 않습니다.
 
+새 system의 `effective_temperature_K`는
+[remd-temperature-generator](https://virtualchemistry.org/remd-temperature-generator/)에
+hot solute atom 수를 protein atom 수로 넣고 water molecule 수를 0으로 두어
+초기 ladder를 만듭니다. 출력 temperature마다 `lambda_pp=T0/Tm`,
+`lambda_pw=sqrt(lambda_pp)`를 계산합니다. Water=0은 solvent 자유도를 predictor에서
+제외하는 근사이며 REST2 acceptance를 보장하지 않습니다. 짧은 pilot run에서
+adjacent acceptance, state 방문과 round trip을 확인한 뒤 ladder를 조정합니다.
+
+기본 `inputs/states.tsv`는 Chignolin의 protein atom 수로 미리 계산한 8-state
+file입니다. 다른 system에서는 generator temperature마다
+`lambda_pp=300/Tm`, `lambda_pw=sqrt(lambda_pp)`를 계산해 다음 tab-separated
+형식으로 저장합니다.
+
+```text
+replica<TAB>effective_temperature_K<TAB>lambda_pp<TAB>lambda_pw<TAB>seed
+000<TAB>300.000<TAB>1.00000000<TAB>1.00000000<TAB>310001
+001<TAB>322.711<TAB>0.92962399<TAB>0.96417010<TAB>317920
+```
+
+```bash
+./build.sh /path/to/states.tsv
+./run.sh --dry-run
+```
+
+Physical bath가 300 K이므로 첫 state는 `000`, 300 K, `lambda_pp=1`,
+`lambda_pw=1`이어야 합니다. `build.sh`는 file을 검사해 `work/states.tsv`로
+복사하고, `run.sh`는 data row 수를 replica 수와 기본 MPI process 수로
+사용합니다.
+
 ### 주요 option
 
 | Option | 의미 |
 | --- | --- |
 | `states.tsv`의 `effective_temperature_K` | 300–500 K ladder와 topology scaling factor를 정의합니다. Bath temperature는 아닙니다. |
+| `build.sh [states.tsv]` | 사용자 effective-temperature·scaling file을 선택합니다. Argument를 생략하면 Chignolin용 `inputs/states.tsv`를 사용합니다. |
 | Protein `_` marker | `partial_tempering`이 scaling할 hot region을 protein atom으로 제한합니다. |
 | `ref-t=300` | 모든 replica의 physical thermostat temperature입니다. |
 | `-multidir`, `-replex 1000` | 8개 directory를 HREX로 묶고 1,000 steps, 즉 2 ps마다 교환합니다. |
 | `constraints=h-bonds`, `dt=0.002` | LINCS로 수소 bond를 고정하고 2 fs timestep을 사용합니다. |
-| `ENERGY_TOLERANCE_KJ_MOL` | Scale 1.0 topology identity의 one-frame potential 허용 오차입니다. 기본값은 `0.01 kJ/mol`입니다. |
+| `ENERGY_TOLERANCE_KJ_MOL` | Scale 1.0 one-frame potential 비교의 절대 tolerance입니다. 이 Chignolin 예제의 기본값은 `0.1 kJ/mol`입니다. |
 
 ### Output
 
@@ -122,11 +154,32 @@ produce incorrect exchange acceptance between the separately scaled topologies.
 marks protein atom types, and `scale_cmap.py` preserves residue-specific ff19SB
 CMAPs using GROMACS 2025 residue selectors such as `XC0-TYR`, then scales their
 grids for each state. The `_` marker is limited to nonbonded atom types in
-`[ atoms ]`; CMAP lookup continues to use the original bonded types. `build.sh` generates and verifies eight states,
+`[ atoms ]`; CMAP lookup continues to use the original bonded types. `build.sh`
+generates and verifies the states selected by the input file,
 `run.sh` uses `-multidir -replex 1000`, and `anal.py` summarizes exchange and
 structure. All thermostats remain at `ref-t=300`; hydrogen bonds are constrained
 for a 2 fs timestep. `ENERGY_TOLERANCE_KJ_MOL` controls the scale-one check.
-Its default absolute tolerance is `0.01 kJ/mol`.
+This Chignolin tutorial uses a fixed absolute tolerance of `0.1 kJ/mol`, which
+can be overridden with `ENERGY_TOLERANCE_KJ_MOL`. It is not a universal cutoff:
+system size, GROMACS precision, hardware, and parallel energy-reduction order
+can change the numerical difference between equivalent topologies.
+
+For a new REST2 system, use the
+[remd-temperature-generator](https://virtualchemistry.org/remd-temperature-generator/)
+with the hot-solute atom count entered as the protein-atom count and zero water
+molecules. Convert each output temperature with `lambda_pp=T0/Tm` and
+`lambda_pw=sqrt(lambda_pp)`. This removes solvent degrees of freedom from the
+predictor but does not guarantee REST2 acceptance; refine the initial ladder
+from adjacent acceptance, state visits, and round trips in a pilot run.
+
+The bundled `inputs/states.tsv` is an eight-state ladder precomputed from the
+Chignolin protein-atom count. For another system, write the generator output
+as a tab-separated file with `replica`, `effective_temperature_K`,
+`lambda_pp`, `lambda_pw`, and `seed`, where `lambda_pp=300/Tm` and
+`lambda_pw=sqrt(lambda_pp)`, then run
+`./build.sh /path/to/states.tsv`. The identity row is `000` at
+300 K with both lambdas equal to one. The runner derives the replica count and
+default MPI process count from the selected file.
 
 The analysis writes exchange acceptance, state visits, occupancy, radius of
 gyration, and terminal Cα distance as TSV files. High-temperature compaction

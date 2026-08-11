@@ -32,7 +32,7 @@ REST3는 REST2의 solute scaling에 κ-dependent solute–solvent correction을
 | `download.sh` | 1UAO PDB/mmCIF를 받고 checksum을 기록합니다. |
 | `prepare.py` | 1UAO의 첫 NMR model을 simulation PDB로 정리합니다. |
 | `convert_topology.py` | AMBER topology를 GROMACS base topology로 변환합니다. |
-| `generate_rest3.py` | `states.tsv`의 λ·κ와 외부 parser로 8개 REST3 topology를 만듭니다. |
+| `generate_rest3.py` | 선택한 state file의 λ·κ와 외부 parser로 REST3 topology를 만듭니다. |
 | `scale_cmap.py` | 외부 parser가 생략하는 ff19SB CMAP selector를 복원하고 grid를 `lambda_pp`로 scaling합니다. |
 | `verify_rest3.py` | Base identity와 water–water/ion–water Lennard-Jones 보존을 검사합니다. |
 | `build.sh` | Conversion, topology generation, TPR build와 검사를 순서대로 호출합니다. |
@@ -87,12 +87,42 @@ topology와 비교합니다.
 Equilibration은 100 ps, production은 1 ns segment 하나이며 교환은 2 ps마다
 시도합니다. 실행 환경 변수와 resume 규칙은 REST2 예제와 같습니다.
 
+새 system에서는 REST2와 같이
+[remd-temperature-generator](https://virtualchemistry.org/remd-temperature-generator/)에
+hot solute atom 수와 water molecule 수 0을 입력한 결과를 λ ladder의 출발점으로
+사용할 수 있습니다. 그러나 generator는 κ-dependent solute–water vdW scaling을
+modeling하지 않습니다. Predicted exchange probability를 REST3 값으로 해석하지
+말고 κ schedule을 적용한 pilot run의 adjacent acceptance와 round trip으로
+state 간격을 검증합니다.
+
+기본 `inputs/states.tsv`는 Chignolin의 protein atom 수로 준비한 8-state
+temperature/λ ladder와 이 예제의 κ schedule을 함께 기록합니다. 다른
+system에서는 generator temperature로 λ를 다시 계산하고 system에 맞게 선택한
+κ를 다음 tab-separated 형식으로 저장합니다.
+
+```text
+replica<TAB>effective_temperature_K<TAB>lambda_pp<TAB>lambda_pw<TAB>kappa<TAB>seed
+000<TAB>300.000<TAB>1.00000000<TAB>1.00000000<TAB>1.000<TAB>410001
+001<TAB>317.890<TAB>0.94372206<TAB>0.97145358<TAB>1.000<TAB>417920
+```
+
+```bash
+./build.sh /path/to/states.tsv
+./run.sh --dry-run
+```
+
+첫 state는 `000`, 300 K, `lambda_pp=1`, `lambda_pw=1`, `kappa=1`이어야
+합니다. Temperature만으로 κ가 결정되지는 않습니다. `build.sh`는 file을
+검사해 `work/states.tsv`로 복사하며 `run.sh`는 data row 수를 replica 수와
+기본 MPI process 수로 사용합니다.
+
 ### 주요 option
 
 | Option | 의미 |
 | --- | --- |
 | `lambda_pp`, `lambda_pw` | Protein–protein과 protein–water scaling factor입니다. Geometric temperature ladder에서 계산합니다. |
 | `kappa` | REST3 solute–solvent correction schedule입니다. 이 예제에서는 1.000–1.020을 사용합니다. |
+| `build.sh [states.tsv]` | 사용자 effective-temperature·λ·κ file을 선택합니다. Argument를 생략하면 Chignolin용 `inputs/states.tsv`를 사용합니다. |
 | `kappa_atom_names=['OW']` | TIP3P oxygen type만 κ scaling 대상으로 지정합니다. Water molecule 전체를 hot molecule로 지정하는 option이 아닙니다. |
 | `-replex 1000` | 2 fs timestep에서 2 ps마다 Hamiltonian 교환을 시도합니다. |
 | `REPEX_TOPOLOGY_PARSER_SOURCE` | 0.2.2 source parser 위치를 지정합니다. PyPI wheel만으로 module을 찾지 못할 때 필요합니다. |
@@ -151,3 +181,19 @@ for ff19SB/TIP3P Chignolin. REST2 compaction at high effective temperature was
 designed to aid mini-protein folding, so this example does not claim that REST3
 is superior for Chignolin. Analysis outputs exchange, occupancy, Rg, and
 terminal-distance TSV files.
+
+For a new system, a water-zero
+[remd-temperature-generator](https://virtualchemistry.org/remd-temperature-generator/)
+run using the hot-solute atom count can provide an initial REST2-like lambda
+ladder. The predictor does not model REST3's kappa-dependent solute-water vdW
+scaling, so do not interpret its predicted probability as a REST3 acceptance
+rate; validate and refine the states with a REST3 pilot run.
+
+The bundled `inputs/states.tsv` contains an eight-state temperature/lambda
+ladder prepared from the Chignolin protein-atom count plus this example's
+kappa schedule. For another system, save `replica`,
+`effective_temperature_K`, `lambda_pp`, `lambda_pw`, `kappa`, and `seed` in a
+tab-separated file and run `./build.sh /path/to/states.tsv`.
+The identity row is `000` at 300 K with both lambdas and kappa equal to one.
+Temperature determines the lambdas but not kappa. The runner derives the
+replica count and default MPI process count from the selected file.

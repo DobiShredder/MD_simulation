@@ -17,9 +17,9 @@ Replica exchange는 서로 다른 thermodynamic state 또는 Hamiltonian을 병�
 
 | 순서 | Method | Replica/state | Engine |
 | ---: | --- | ---: | --- |
-| 3.1 | [T-REMD](3.1_REMD/README.md) | 20 temperatures | `pmemd.cuda.MPI -rem 1` |
-| 3.2 | [REST2](3.2_REST2/README.md) | 8 effective temperatures | GROMACS/PLUMED HREX |
-| 3.3 | [REST3](3.3_REST3/README.md) | 8 λ/κ states | GROMACS/PLUMED HREX |
+| 3.1 | [T-REMD](3.1_REMD/README.md) | 기본 20 temperatures | `pmemd.cuda.MPI -rem 1` |
+| 3.2 | [REST2](3.2_REST2/README.md) | 기본 8 effective temperatures | GROMACS/PLUMED HREX |
+| 3.3 | [REST3](3.3_REST3/README.md) | 기본 8 λ/κ states | GROMACS/PLUMED HREX |
 | 3.4 | [REUS](3.4_REUS/README.md) | 19 distance windows | `pmemd.cuda.MPI -rem 3` |
 | 3.5 | [GaREUS](3.5_GaREUS/README.md) | 20 distance windows | `pmemd.cuda.MPI -rem 3` |
 
@@ -56,6 +56,19 @@ REUS/GaREUS PMF처럼 더 긴 후처리는
 [analysis tutorial](../../2_Analysis/7_Enhanced_Sampling/README.md)에서
 다룹니다.
 
+새 system의 T-REMD temperature ladder는
+[remd-temperature-generator](https://virtualchemistry.org/remd-temperature-generator/)로
+설계합니다. REST2는 hot solute atom 수를 protein atom 수로 넣고 water
+molecule 수를 0으로 둔 결과를 initial effective-temperature ladder로
+사용합니다. 두 경우 모두 production 전 짧은 pilot run에서 adjacent acceptance와
+round trip을 확인합니다. REST3의 κ-dependent solute–water scaling은 generator에
+포함되지 않으므로 REST2 ladder를 출발점으로만 사용하고 별도로 검증합니다.
+
+각 예제의 `inputs/states.tsv`는 Chignolin system에 대해 미리 계산한 기본
+ladder입니다. 다른 system에서는 atom 수와 water 수에 맞춰 새 ladder file을
+만들고 `./build.sh /path/to/states.tsv`로 전달합니다. File의 data
+row 수가 replica 수가 되며 `run.sh`의 기본 MPI process 수도 같은 값입니다.
+
 ## English
 
 All five examples independently build ff19SB/TIP3P Chignolin. They cover
@@ -83,3 +96,16 @@ In every folder, download and preparation handle the source structure, build
 creates topology/state inputs, run performs pre-production and exchange, and
 analysis parses exchange and occupancy statistics. REST2/REST3 add topology-
 scaling helpers documented in their local READMEs.
+
+Use the [remd-temperature-generator](https://virtualchemistry.org/remd-temperature-generator/)
+for a new system's T-REMD ladder. For REST2, enter the hot-solute atom count as
+the protein atom count and set the water-molecule count to zero; treat the
+result as an initial effective-temperature ladder and verify adjacent
+acceptance and round trips in a pilot run. REST3 adds kappa-dependent
+solute-water scaling that the predictor does not model, so the REST2 ladder is
+only a starting point for REST3 validation.
+
+Each `inputs/states.tsv` is a precomputed default ladder for Chignolin. For a
+different system, generate a new ladder using its atom and water counts and
+pass it with `./build.sh /path/to/states.tsv`. The number of data
+rows sets both the replica count and the default MPI process count.

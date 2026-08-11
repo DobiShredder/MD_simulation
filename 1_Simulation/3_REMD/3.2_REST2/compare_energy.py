@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""두 GROMACS XVG의 potential energy가 tolerance 안에서 같은지 검사합니다."""
+"""두 GROMACS XVG의 potential energy가 수치 오차 안에서 같은지 검사합니다."""
 
 from __future__ import annotations
 
@@ -45,4 +45,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

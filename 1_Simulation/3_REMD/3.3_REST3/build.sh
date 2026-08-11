@@ -2,25 +2,67 @@
 set -euo pipefail
 
 dry_run=0
+states_argument=""
 
-if [[ "${1:-}" == "--dry-run" ]]; then
-    dry_run=1
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --dry-run)
+            dry_run=1
+            ;;
+        -*)
+            echo "사용법: $0 [--dry-run] [states.tsv]" >&2
+            exit 2
+            ;;
+        *)
+            if [[ -n "$states_argument" ]]; then
+                echo "사용법: $0 [--dry-run] [states.tsv]" >&2
+                exit 2
+            fi
+            states_argument=$1
+            ;;
+    esac
     shift
-fi
-
-if [[ $# -ne 0 ]]; then
-    echo "사용법: $0 [--dry-run]" >&2
-    exit 2
-fi
+done
 
 die() {
     echo "오류: $*" >&2
     exit 1
 }
 
+validate_states() {
+    local expected_header=$'replica\teffective_temperature_K\tlambda_pp\tlambda_pw\tkappa\tseed'
+    local actual_header
+
+    IFS= read -r actual_header < "$states_file"
+    if [[ "$actual_header" != "$expected_header" ]]; then
+        die "state table header가 올바르지 않습니다: $expected_header"
+    fi
+
+    if ! awk -F '\t' '
+        function absolute(value) { return value < 0 ? -value : value }
+        NR == 1 { next }
+        NF != 6 { exit 1 }
+        $1 !~ /^[0-9][0-9][0-9]$/ { exit 1 }
+        $2 !~ /^[0-9]+([.][0-9]+)?$/ || $2 < 300 { exit 1 }
+        $3 !~ /^[0-9]+([.][0-9]+)?$/ || $3 <= 0 || $3 > 1 { exit 1 }
+        $4 !~ /^[0-9]+([.][0-9]+)?$/ || $4 <= 0 || $4 > 1 { exit 1 }
+        $5 !~ /^[0-9]+([.][0-9]+)?$/ || $5 <= 0 { exit 1 }
+        $6 !~ /^[0-9]+$/ || $6 <= 0 { exit 1 }
+        seen[$1]++ { exit 1 }
+        count == 0 && ($1 != "000" || absolute($2 - 300) > 0.000001 || absolute($5 - 1) > 0.000001) { exit 1 }
+        count > 0 && $2 <= previous_temperature { exit 1 }
+        absolute($3 - 300 / $2) > 0.00001 { exit 1 }
+        absolute($4 * $4 - $3) > 0.00001 { exit 1 }
+        { previous_temperature = $2; count++ }
+        END { if (count < 2) exit 1 }
+    ' "$states_file"; then
+        die "REST3 state table에는 000/300 K/κ=1 기준 state, 증가하는 effective temperature, lambda_pp=300/T, lambda_pw=sqrt(lambda_pp), positive κ, 고유 replica와 positive integer seed가 필요합니다: $states_file"
+    fi
+}
+
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 input_pdb="$script_dir/structure/chignolin.pdb"
-states_file="$script_dir/inputs/states.tsv"
+states_file=${states_argument:-"$script_dir/inputs/states.tsv"}
 work_dir=${WORK_DIR:-"$script_dir/work"}
 tleap=${TLEAP:-tleap}
 gmx=${GROMACS:-gmx}
@@ -31,6 +73,8 @@ for input_file in "$input_pdb" "$states_file"; do
         die "필요한 input을 찾을 수 없습니다: $input_file"
     fi
 done
+
+validate_states
 
 if (( ! dry_run )); then
     for executable in "$tleap" "$gmx" "$python_bin"; do
@@ -45,15 +89,14 @@ if (( ! dry_run )); then
 fi
 
 replica_count=$(awk 'NR > 1 {count++} END {print count + 0}' "$states_file")
-if [[ "$replica_count" -ne 8 ]]; then
-    die "states.tsv에는 8개 replica가 있어야 합니다: $replica_count"
-fi
+last_replica=$(awk 'END {print $1}' "$states_file")
 
 if (( dry_run )); then
     echo "ff19SB/TIP3P AMBER system을 GROMACS topology로 변환합니다."
-    echo "고정 temperature/κ table로 8개 REST3 topology를 생성합니다."
+    echo "지정한 temperature/κ table로 $replica_count 개 REST3 topology를 생성합니다."
     echo "Base identity와 water–water/ion–water interaction을 검사합니다."
-    echo "생성 위치: $work_dir/000 ... 007"
+    echo "State table: $states_file"
+    echo "생성 위치: $work_dir/000 ... $last_replica"
     exit 0
 fi
 

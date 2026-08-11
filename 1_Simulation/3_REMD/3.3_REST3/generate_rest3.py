@@ -87,8 +87,8 @@ def main() -> None:
     with args.states.open(encoding="utf-8", newline="") as handle:
         states = list(csv.DictReader(handle, delimiter="\t"))
 
-    if len(states) != 8:
-        raise SystemExit(f"REST3 state는 8개여야 합니다: {len(states)}")
+    if len(states) < 2:
+        raise SystemExit(f"REST3 state는 두 개 이상이어야 합니다: {len(states)}")
 
     base_target = args.output_directory / "000" / "topol.top"
     base_target.parent.mkdir(parents=True, exist_ok=True)
@@ -136,7 +136,7 @@ def main() -> None:
         )
         shutil.rmtree(temporary)
 
-    print(f"REST3 topology 8개를 생성했습니다: {args.output_directory}")
+    print(f"REST3 topology {len(states)}개를 생성했습니다: {args.output_directory}")
 
 
 if __name__ == "__main__":

@@ -23,9 +23,7 @@ states_file="$work_dir/states.tsv"
 amber_engine=${AMBER_ENGINE:-pmemd.cuda}
 amber_mpi_engine=${AMBER_MPI_ENGINE:-pmemd.cuda.MPI}
 mpi_launcher=${MPI_LAUNCHER:-mpirun}
-replica_count=20
 production_segments=1
-mpi_processes=${MPI_PROCESSES:-$replica_count}
 
 read -r -a mpi_options <<< "${MPI_OPTIONS:-}"
 read -r -a amber_options <<< "${AMBER_OPTIONS:-}"
@@ -33,6 +31,11 @@ read -r -a amber_options <<< "${AMBER_OPTIONS:-}"
 if [[ ! -s "$states_file" ]]; then
     die "build.sh를 먼저 실행해야 합니다: $states_file"
 fi
+
+replica_count=$(awk 'NR > 1 {count++} END {print count + 0}' "$states_file")
+mpi_processes=${MPI_PROCESSES:-$replica_count}
+temperature_min=$(awk 'NR == 2 {print $2}' "$states_file")
+temperature_max=$(awk 'END {print $2}' "$states_file")
 
 if [[ "$mpi_processes" -ne "$replica_count" ]]; then
     die "MPI_PROCESSES는 replica 수와 같아야 합니다: $replica_count"
@@ -138,7 +141,7 @@ write_group_file() {
 if (( dry_run )); then
     echo "Engine: $amber_engine"
     echo "Replica exchange engine: $amber_mpi_engine"
-    echo "20 replicas, 300–373 K, 1 ps exchange interval"
+    echo "$replica_count replicas, ${temperature_min}–${temperature_max} K, 1 ps exchange interval"
     echo "200 ps heating + 100 ps equilibration + 1 ns production"
     printf '%q ' "$mpi_launcher" "${mpi_options[@]}" -np "$mpi_processes" "$amber_mpi_engine" "${amber_options[@]}" -ng "$replica_count" -groupfile "$work_dir/production.001.group" -rem 1
     printf '\n'
