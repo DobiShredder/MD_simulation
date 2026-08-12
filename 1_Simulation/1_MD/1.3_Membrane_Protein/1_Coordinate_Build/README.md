@@ -7,9 +7,8 @@
 
 ## 한국어
 
-OPM에서 membrane normal에 맞춰 배향한 KcsA를 평형화된 Lipid21
-bilayer에 삽입합니다. 원자 수가 많은 all-atom lipid를 무작위로
-채우지 않고, 기존 bilayer unit cell을 x·y 방향으로 복제합니다.
+OPM에서 membrane normal에 맞춰 배향한 KcsA를 평형화된 Lipid21 bilayer에 삽입합니다.
+나머지 lipid를 무작위로 채우지 않고, 기존 bilayer unit cell을 x·y 방향으로 복제합니다.
 
 ### 파일 역할
 
@@ -17,25 +16,22 @@ bilayer에 삽입합니다. 원자 수가 많은 all-atom lipid를 무작위로
 
 | 파일 | 용도 |
 | --- | --- |
-| `1K4C-opm.pdb` | OPM이 배향한 2.0 Å KcsA 구조입니다. Membrane boundary는 z=±15.0 Å입니다. |
+| `1K4C-opm.pdb` | OPM 기준으로 membrane에 배치된 2.0 Å KcsA 구조입니다. Membrane boundary는 z=±15.0 Å입니다. |
 | `3EFF-opm.pdb` | 1K4C에서 빠진 Ser22 OG와 Arg117 side chain의 초기 conformer를 가져옵니다. |
 | `POPC.gro`, `POPE.gro`, `CHOL15.gro` | 공개 Lipid21 bilayer coordinate입니다. |
 
 `prepare.py`는 OPM 1K4C의 chain C·F·I·L을 KcsA tetramer로 선택합니다.
-Filter K+ 7개와 filter·cavity water 16개를 유지하고, Fab과 bulk
-crystal water는 제거합니다. Neutral-pH baseline은 E71=`GLH`,
-D80=`ASP`, H25=`HIE`, E118/E120=`GLU`입니다. Side chain이 불완전한
-terminal H124는 제외합니다.
+Filter K+ 7개와 filter·cavity water 16개를 유지하고, Fab과 bulk crystal water는 제거합니다.
+Neutral-pH baseline은 E71=`GLH`, D80=`ASP`, H25=`HIE`, E118/E120=`GLU`입니다.
+Side chain이 불완전한 terminal H124는 제외합니다.
 
 1K4C의 Ser22 OG와 Arg117 side chain은 tleap이 만들게 두지 않습니다.
-`prepare.py`가 closed KcsA 3EFF의 해당 side chain을 residue local
-backbone에 alignment해 추가합니다. Tleap internal coordinate만 사용하면
-Arg117이 이웃 subunit과 비물리적으로 겹칠 수 있습니다.
+`prepare.py`가 closed KcsA 3EFF의 해당 side chain을 residue local backbone에 alignment해 추가합니다.
+tleap internal coordinate만 사용하면 Arg117이 이웃 subunit과 비물리적으로 겹칠 수 있습니다.
 
-`build_membrane.py`는 protein x·y 크기와 padding으로 필요한 unit-cell
-복제 수를 계산합니다. Protein과 겹치는 lipid를 분자 단위로
-제거한 뒤 POPC 일부를 POPE와 cholesterol로 치환합니다. Protein
-footprint가 leaflet마다 다르므로 lipid 수를 인위적으로 맞추지 않습니다.
+`build_membrane.py`는 protein x·y 크기와 padding으로 필요한 unit-cell 복제 수를 계산합니다.
+Protein과 겹치는 lipid를 분자 단위로 제거한 뒤 POPC 일부를 POPE와 cholesterol로 치환합니다.
+Protein footprint가 leaflet마다 다르므로 lipid 수를 인위적으로 맞추지 않습니다.
 
 ### 실행
 
@@ -50,10 +46,10 @@ python3 prepare.py \
 ./run.sh work/kcsa.pdb
 ~~~
 
-기본 결과는 `work/system-coordinates.pdb`입니다. KcsA에서 box는
-124.072×124.686×105.054 Å, leaflet 조성은 upper 186/10/10과 lower
-196/11/11 POPC/POPE/cholesterol입니다. 정수 분자 수로 반올림하므로
-정확히 90/5/5가 아닐 수 있습니다.
+기본 결과는 `work/system-coordinates.pdb`입니다.
+KcsA에서 box는 124.072×124.686×105.054 Å, leaflet 조성은 upper 186/10/10과
+lower 196/11/11 POPC/POPE/cholesterol입니다.
+정수로 반올림하므로 정확히 90%/5%/5%가 아닐 수 있습니다.
 
 ### 주요 option
 

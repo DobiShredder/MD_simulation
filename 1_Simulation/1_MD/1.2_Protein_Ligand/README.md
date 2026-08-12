@@ -2,20 +2,26 @@
 
 ## 한국어
 
-PDB 3HTB의 T4 lysozyme L99A/M102Q–JZ4 complex를 사용합니다. JZ4는
-T4 lysozyme의 hydrophobic cavity에 결합한 중성 2-propylphenol입니다.
-Protein은 ff19SB, ligand는 GAFF2/AM1-BCC, water model은 TIP3P를
-사용합니다.
+PDB 3HTB의 T4 lysozyme L99A/M102Q–JZ4 complex를 사용합니다.
+JZ4는 T4 lysozyme의 hydrophobic cavity에 결합한 중성 2-propylphenol입니다.
+Protein은 ff19SB, ligand는 GAFF2/AM1-BCC, water model은 TIP3P를 사용합니다.
 
-System은 Lemkul의 GROMACS protein–ligand tutorial과 같지만 force field는
-다릅니다. Lemkul tutorial은 CHARMM36/CGenFF를 사용하고, 이 예제는
-AMBER ff19SB/GAFF2로 구성합니다. 두 parameter set의 결과가 같다고
-가정하지 않습니다.
+System은 Lemkul의 GROMACS protein–ligand tutorial과 같지만 force field는 다릅니다.
+Lemkul tutorial은 CHARMM36/CGenFF를 사용하고, 이 예제는 AMBER ff19SB/GAFF2로 구성합니다.
+두 parameter set의 결과가 같다고 가정하지 않습니다.
 
-Protein–ligand MD는 conventional MD와 같은 방식으로 coordinate를
-적분합니다. 다만 ligand의 bond order, protonation, net charge와 atom
-mapping이 추가됩니다. 이 정보가 틀리면 trajectory가 정상 종료해도
-다른 chemical system을 계산합니다.
+Protein-Ligand complex simulation에서 주의할 점은 Ligand atom들의 partial charge를 어떻게 계산하느냐입니다.
+일반적으로는 *ab initio* 양자 계산을 통하여 분자 주변의 electrostatic potential을 계산하고,
+이를 재현하도록 atom-centered partial charge를 RESP 등의 방법으로 fitting합니다.
+이는 양자 계산 프로그램인 `Gaussian`, `GAMESS` 등을 사용하여 수행하지만, 이 튜토리얼에서는 다루지 않습니다.
+여기서는 계산의 편의성과 비용을 줄이기 위해 semi-empirical 방법인 `AM1-BCC`를 사용하여 partial charge를 정의합니다.
+하지만, 실제로 학습자가 Protein-Ligand complex system을 building 할 때에는 양자 계산을 수행하는 것을 추천합니다.
+
+Protein–ligand MD는 conventional MD와 같은 방식으로 coordinate를 적분합니다.
+다만 ligand의 bond order, protonation, net charge와 atom mapping이 추가됩니다.
+이 정보가 달라지면 trajectory가 정상 종료해도 다른 chemical system을 계산합니다.
+
+
 
 ### Script 역할
 
@@ -37,10 +43,12 @@ python3 prepare.py structure/3HTB.raw.pdb structure/complex.pdb
 ./run.sh
 ```
 
-`prepare.py`는 PO₄, BME와 결정수를 제거합니다. PDB에서 보이지 않는
-C-terminal Leu164는 복원하지 않으며 resolved residue 1–163만 사용합니다.
-His31은 neutral-pH baseline으로 `HIE`를 사용합니다. 다른 pH나 chemical
-state를 계산하려면 build 전에 다시 결정합니다.
+`prepare.py`는 PO₄, BME와 water를 제거합니다.
+PDB에서 보이지 않는 C-terminal Leu164는 복원하지 않으며 resolved residue 1–163만 사용합니다.
+His31은 neutral-pH baseline으로 `HIE`를 사용합니다.
+다른 pH나 chemical state를 계산하려면 build 전에 다시 결정합니다.
+
+
 
 ### 주요 option
 

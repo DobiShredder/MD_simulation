@@ -7,36 +7,37 @@
 
 ## 한국어
 
-세 가지 system으로 AMBER 일반 MD를 연습합니다. Production은 모두 1 ns로
-설정되어 있습니다.
+세 가지 system으로 AMBER를 사용한 conventional MD를 연습합니다.
+튜토리얼의 편의성을 위해 Production은 모두 1 ns로 설정되어 있습니다.
 
 Conventional MD는 추가 bias나 replica 교환 없이 선택한 force field의
-Hamiltonian으로 시간에 따른 원자 운동을 계산합니다. Minimization으로 큰
-steric clash를 줄이고, heating에서 velocity를 만든 뒤, equilibration에서
+Hamiltonian으로 시간에 따른 원자 운동을 계산합니다.
+Minimization으로 큰 steric clash를 줄이고, heating에서 velocity를 만든 뒤, equilibration에서
 온도와 밀도를 안정화하고 production trajectory를 수집합니다.
 
-위 그림은 AMBER의 기본 additive force-field 식을 bond, angle, dihedral,
-electrostatic과 Lennard-Jones 항으로 나눠 표시합니다. 실제 energy는 topology에
-정의된 모든 bonded term과 nonbonded atom pair에 대해 합산됩니다.
+위 그림은 AMBER의 기본 additive force-field 식을
+bond, angle, dihedral, electrostatic과 Lennard-Jones 항으로 나눠 표시합니다.
+실제 energy는 topology에 정의된 모든 bonded term과 nonbonded atom pair에 대해 합산됩니다.
 
 - [수용성 단백질: chignolin (PDB 1UAO)](1.1_Soluble_Protein/README.md)
 - [단백질–리간드: T4 lysozyme–JZ4 (PDB 3HTB)](1.2_Protein_Ligand/README.md)
 - [막 단백질: KcsA (PDB 1K4C)](1.3_Membrane_Protein/README.md)
 
-각 `download.sh`가 RCSB 구조와 checksum을 저장합니다. Protonation, missing
-atom, 결정학적 첨가물과 force field는 build 전에 확인합니다. 기본 engine은
-`pmemd.cuda`입니다. Chignolin과 T4 lysozyme–JZ4는 TIP3P, KcsA는 OPC를
-사용합니다. Download와 전처리 구조는 `structure/`, AMBER control
-file은 `inputs/`, 생성된 topology·restart·trajectory는 `work/`에 둡니다.
+각 `download.sh`가 RCSB 구조와 checksum을 저장합니다.
+Protonation, missing atom, 결정학적 첨가물과 force field는 build 전에 확인합니다.
+기본 engine은 `pmemd.cuda`입니다.
+Chignolin과 T4 lysozyme–JZ4는 TIP3P, KcsA는 OPC를 사용합니다.
+Download와 전처리 구조는 `structure/`, AMBER control file은 `inputs/`,
+생성된 topology·restart·trajectory는 `work/`에 둡니다.
 
-각 stage는 engine 정상 종료와 필수 output을 확인한 뒤 completion marker를
-기록합니다. Partial minimization, heating과 equilibration은 해당 stage output을
-삭제하고 다시 실행합니다. Partial production은 보존하고 중단합니다.
+각 stage는 engine 정상 종료와 필수 output을 확인한 뒤 completion marker를 기록합니다.
+Partial minimization, heating과 equilibration은 해당 stage output을 삭제하고 다시 실행합니다.
+Partial production은 보존하고 중단합니다.
 
-각 system README는 실제 script의 input과 output, restraint, thermostat,
-pressure coupling 및 restart option을 설명합니다. 1 ns라는 동일한 길이는
-workflow 학습을 위한 값이며 세 system의 수렴 시간을 같다고 가정한 값이
-아닙니다.
+각 system README는 실제 script의 input과 output, 그리고 그 외 중요 option들에 대해 설명합니다.
+1 ns라는 동일한 길이는 workflow 학습을 위한 값입니다.
+
+
 
 ## English
 

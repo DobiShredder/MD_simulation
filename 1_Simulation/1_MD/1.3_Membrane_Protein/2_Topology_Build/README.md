@@ -2,9 +2,8 @@
 
 ## 한국어
 
-1단계 coordinate에 ff19SB, Lipid21과 OPC를 적용해 `system.parm7`과
-`system.rst7`을 만듭니다. Lipid21의 modular residue `PA`·`PC`·`PE`·`OL`과
-`CHL`은 `leaprc.lipid21`이 읽습니다.
+1단계 coordinate에 ff19SB, Lipid21과 OPC를 적용해 `system.parm7`과 `system.rst7`을 만듭니다.
+Lipid21의 modular residue `PA`·`PC`·`PE`·`OL`과 `CHL`은 `leaprc.lipid21`이 읽습니다.
 
 ### 파일 역할
 
@@ -20,10 +19,8 @@ cd 1_Simulation/1_MD/1.3_Membrane_Protein/2_Topology_Build
 ./run.sh ../1_Coordinate_Build/work/system-coordinates.pdb
 ~~~
 
-`prepare_tleap.py`는 PDB의 `CRYST1`을 그대로 사용합니다. 그러지 않으면
-평형화된 patch의 x·y 주기가 변할 수 있습니다. 먼저
-`addionsrand system Cl- 0`으로 protein과 filter K+를 포함한 전하를
-중화합니다.
+`prepare_tleap.py`는 PDB의 `CRYST1`을 그대로 사용합니다.
+그러지 않으면 평형화된 patch의 x·y 주기가 변할 수 있습니다.
 
 0.15 M KCl pair 수는 total box volume이 아니라 water 분자 수로 계산합니다.
 
@@ -31,18 +28,16 @@ cd 1_Simulation/1_MD/1.3_Membrane_Protein/2_Topology_Build
 KCl pairs = round(number of WAT × 0.15 / 55.5)
 ~~~
 
-기본 KcsA coordinate에는 pore water를 포함해 약 28,000개의 WAT가 있으며,
-76 KCl pairs가 생성됩니다. Coordinate 크기나 water 수가 달라지면
-값도 자동으로 바뀌니다. `addionsrand`는 tleap 실행마다 다른 water를
-선택할 수 있으므로 ion 초기 위치와 `system.rst7` checksum은 고정되지
-않습니다.
+기본 KcsA coordinate에는 pore water를 포함해 약 28,000개의 WAT가 있으며, 76 KCl pairs가 생성됩니다.
+Coordinate 크기나 water 수가 달라지면 값도 자동으로 바뀌니다.
+`addionsrand`는 tleap 실행마다 다른 water를 선택할 수 있으므로
+ion 초기 위치와 `system.rst7` checksum은 고정되지 않습니다.
 
-주요 output은 `work/system.parm7`, `work/system.rst7`, `work/system.pdb`와
-`work/leap.log`입니다. `leap.log`에서 unknown residue, missing heavy atom,
-parameter error와 `Errors = 0`을 확인합니다. Chain C-terminus의 `OXT`를
-tleap이 추가하는 message는 예상된 결과입니다. Initial energy에서
-`VDWAALS = *************`가 보이면 simulation을 진행하지 않고 1단계
-coordinate를 다시 확인합니다.
+주요 output은 `work/system.parm7`, `work/system.rst7`, `work/system.pdb`와 `work/leap.log`입니다.
+`leap.log`에서 unknown residue, missing heavy atom, parameter error와 `Errors = 0`을 확인합니다.
+Chain C-terminus의 `OXT`를 tleap이 추가하는 message는 예상된 결과입니다.
+Initial energy에서 `VDWAALS = *************`가 보이면
+simulation을 진행하지 않고 1단계 coordinate를 다시 확인합니다.
 
 ### 주요 option
 

@@ -2,25 +2,24 @@
 
 ## 한국어
 
-OPM이 membrane에 배향한 PDB 1K4C에서 Fab을 제거한 KcsA
-tetramer를 사용합니다.
-Detergent와 bulk 결정수는 제거합니다. Selectivity filter의 K+ 7개와
-filter·cavity에 있는 결정수 16개는 유지합니다.
-Force field는 ff19SB와 Lipid21, water model은 OPC입니다. Membrane 조성은
-POPC 90%, POPE 5%, cholesterol 5%입니다.
+membrane protein을 building 할 때 가장 중요한 것은 protein이 membrane에 묻혀 있는 orientation이 가장 중요합니다
+이 튜토리얼에서는 OPM에 deposit되어 있는 orientation을 사용하여 building하는 방법을 안내합니다.
+PDB 1K4C에서 Fab을 제거한 KcsA tetramer를 사용합니다.
+Detergent와 bulk water는 제거하고,
+Selectivity filter의 K+ 7개와 filter·cavity에 있는 crystal water 16개는 유지합니다.
+Force field는 ff19SB와 Lipid21, water model은 OPC입니다.
+이 튜토리얼에서 사용 될 Membrane의 조성은 POPC 90%, POPE 5%, cholesterol 5%입니다.
 
-1K4C에서 빠진 Ser22·Arg117 side-chain atom은 closed KcsA 3EFF의
-conformer를 local backbone에 alignment해 복원합니다. Fixed-charge
-neutral-pH baseline으로 네 subunit의 E71을 `GLH`, D80을
-`ASP`, H25를 `HIE`, E118·E120을 `GLU`로 지정합니다. Side chain 좌표가
-불완전한 terminal H124는 제외합니다. E71–D80 사이 proton transfer는 이
-model이 표현하지 않습니다.
+1K4C에서 빠진 Ser22·Arg117 side-chain atom은 closed KcsA 3EFF의 conformer를 local backbone에 alignment해 복원합니다.
+Fixed-charge neutral-pH baseline으로 네 subunit의 E71을 `GLH`, D80을 `ASP`, H25를 `HIE`,
+E118·E120을 `GLU`로 지정합니다.
+Side chain 좌표가 불완전한 terminal H124는 제외합니다.
+E71–D80 사이 proton transfer는 이 model이 표현하지 않습니다.
 
-Membrane MD는 protein뿐 아니라 bilayer의 orientation, leaflet composition,
-area와 pressure response를 함께 준비해야 합니다. Coordinate build와 AMBER
-topology build를 분리해 bilayer geometry와 force-field naming을 각각
-검사합니다. Simulation에서는 box의 x·y·z 방향이 서로 다르게 변할 수
-있는 anisotropic pressure coupling을 사용합니다.
+Membrane MD는 protein뿐 아니라 bilayer의 orientation, leaflet composition, area와 pressure response를 함께 준비해야 합니다.
+Coordinate build와 AMBER topology build를 분리해 bilayer geometry와 force-field naming을 각각 검사합니다.
+Simulation에서는 box의 x·y·z 방향이 서로 다르게 변할 수 있는 anisotropic pressure coupling을 사용합니다.
+
 
 Build는 두 단계로 나눕니다.
 
@@ -29,9 +28,10 @@ Build는 두 단계로 나눕니다.
 2. [`2_Topology_Build/`](2_Topology_Build/README.md): Lipid21 명명 변환,
    tleap 검증, `parm7`/`rst7` 생성
 
-[`3_Simulation/`](3_Simulation/README.md)은 100 ps equilibration과 1 ns
-production을 실행합니다. 다른 pH나 channel state를 다루려면
-protonation, K+ occupancy와 초기 water 배치를 함께 재검토합니다.
+[`3_Simulation/`](3_Simulation/README.md)은 100 ps equilibration과 1 ns production을 실행합니다.
+다른 pH나 channel state를 다루려면 protonation, K+ occupancy와 초기 water 배치를 함께 재검토합니다.
+
+
 
 ## English
 

@@ -2,17 +2,17 @@
 
 ## 한국어
 
-2단계의 `work/system.parm7`과 `work/system.rst7`을 기본 input으로
-사용합니다. 다른 파일은 `TOPOLOGY`와 `COORDINATES`로 지정합니다.
+2단계의 `work/system.parm7`과 `work/system.rst7`을 기본 input으로 사용합니다.
+다른 파일은 `TOPOLOGY`와 `COORDINATES`로 지정합니다.
 
 ### 파일 역할
 
 | 파일 | 역할 |
 | --- | --- |
 | `run.sh` | Input preflight와 두 minimization, heating, equilibration, production을 순서대로 실행합니다. |
-| `inputs/min-environment.in` | Protein과 filter K+ heavy atom을 고정하고 lipid·water·bulk ion을 완화합니다. |
+| `inputs/min-environment.in` | Protein과 filter K+ heavy atom을 고정하고 lipid·water·bulk ion을 minimize합니다. |
 | `inputs/min-all.in` | 전체 system restraint를 제거한 minimization입니다. |
-| `inputs/heat.in` | 20→310 K velocity 생성과 restrained NVT heating입니다. |
+| `inputs/heat.in` | 20→310 K heating을 진행하고 velocity를 생성합니다. |
 | `inputs/equil.in` | 약한 protein/filter restraint를 둔 100 ps anisotropic NPT equilibration입니다. |
 | `inputs/production.in` | Restraint 없는 1 ns anisotropic NPT production입니다. |
 
@@ -22,9 +22,10 @@ cd 1_Simulation/1_MD/1.3_Membrane_Protein/3_Simulation
 ./run.sh
 ~~~
 
-Protein과 filter ion을 restraint한 minimization·heating 뒤 100 ps
-equilibration과 1 ns production을 실행합니다. 기본값은 310 K와 anisotropic
-pressure coupling입니다. 기본 engine은 `pmemd.cuda`입니다.
+Protein과 filter ion을 minimization, heating을 진행하고 나서
+100 ps equilibration과 1 ns production을 실행합니다.
+기본값은 310 K와 anisotropic pressure coupling입니다.
+기본 engine은 `pmemd.cuda`입니다.
 
 ### 주요 option
 
@@ -37,9 +38,7 @@ pressure coupling입니다. 기본 engine은 `pmemd.cuda`입니다.
 | `ntmin=2`, `dx0=0.0001` | 초기 protein side-chain contact를 완화하도록 두 minimization에서 작은 step의 steepest descent만 사용합니다. |
 | `TOPOLOGY`, `COORDINATES`, `WORK_DIR` | 다른 build 또는 independent run의 input/output 경로를 지정합니다. |
 
-1 ns로 mixed membrane이 안정화되었다고 가정하지 않습니다. Area per lipid,
-bilayer thickness, lipid order, density와 box vector를 production 분석 전에
-확인합니다.
+1 ns는 어디까지나 튜토리얼을 위한 시간일 뿐, 대부분의 경우 훨씬 긴 계산을 수행해야 합니다.
 
 ## English
 

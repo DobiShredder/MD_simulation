@@ -4,7 +4,7 @@
 실행 command와 input 설명은 각 폴더의 `README.md`에 있습니다.
 
 모든 input은 학습용 template입니다. Production 길이는 method마다 다르며 각 README에 적혀 있습니다.
-어느 기본값도 수렴을 판정하기 위한 simulation time이 아닙니다.
+이 튜토리얼에서 제공하는 기본 값들은 수렴을 판정하기 위한 simulation 조건이 아닙니다.
 
 ## 목차
 
@@ -109,22 +109,21 @@ Enhanced-sampling 결과를 비교하기 위한 기준 trajectory이며 대부�
 | T4 lysozyme–JZ4 | PDB 3HTB | ligand parameterization, interaction, ABFE와 end-state energy | ff19SB + GAFF2 + TIP3P |
 | KcsA | PDB 1K4C | 막 단백질 좌표·topology build와 membrane analysis | ff19SB + Lipid21 + OPC |
 
-ff19SB 개발 논문에서는 TIP3P와 OPC를 모두 평가했고, OPC에서 더 나은
-성능을 보고했습니다. 이 저장소는 non-membrane system의 기본 water model을 TIP3P로
-사용합니다. Water model을 바꾸면 결과가 달라질 수도 있습니다.
+ff19SB 개발 논문에서는 TIP3P와 OPC를 모두 평가했고, OPC에서 더 나은 성능을 보고했습니다.
+이 저장소는 non-membrane system의 기본 water model을 TIP3P로 사용합니다.
+Water model을 바꾸면 결과가 달라질 수도 있습니다.
 
 - [일반 MD 전체 안내](1_Simulation/1_MD/README.md)
 - [Chignolin](1_Simulation/1_MD/1.1_Soluble_Protein/README.md)
 - [T4 lysozyme–JZ4](1_Simulation/1_MD/1.2_Protein_Ligand/README.md)
 - [KcsA](1_Simulation/1_MD/1.3_Membrane_Protein/README.md)
 
-KcsA는 공개된 Lipid21 POPC bilayer를 2×2로 복제한 뒤 protein과
-겹치는 lipid를 제거해 POPC 90%, POPE 5%, cholesterol 5% membrane을
-만듭니다. tleap build는 별도 단계입니다. Detergent와 bulk water는
-제거하고 selectivity filter K+ 7개와 filter·cavity water 16개를
-유지합니다. Neutral-pH baseline은 E71=`GLH`, D80=`ASP`, H25=`HIE`,
-E118/E120=`GLU`입니다. Side chain 좌표가 불완전한 terminal H124는
-제외합니다.
+KcsA는 공개된 Lipid21 POPC bilayer를 2×2로 복제한 뒤 protein과 겹치는 lipid를 제거해
+POPC 90%, POPE 5%, cholesterol 5% membrane을 만듭니다.
+tleap build는 별도 단계입니다.
+Detergent와 bulk water는 제거하고 selectivity filter K+ 7개와 filter·cavity water 16개를 유지합니다.
+Neutral-pH baseline은 E71=`GLH`, D80=`ASP`, H25=`HIE`, E118/E120=`GLU`입니다.
+Side chain 좌표가 불완전한 terminal H124는 제외합니다.
 
 * CHARMM lipid force field와 CHARMM-GUI는 membrane simulation에서 오랫동안 사용된 조합입니다.
 유명하고 많이 사용되었기 때문에 충분히 많은 검증이 이루어졌다는 것이 장점입니다.
@@ -132,16 +131,15 @@ E118/E120=`GLU`입니다. Side chain 좌표가 불완전한 terminal H124는
 * 이 튜토리얼에서는 CHARMM-GUI를 사용하지 않고 local에서 자체적으로 membrane protein system을 계산하는 방법을 다룹니다.
 
 
-> GROMACS의 기본 사용법 및 GROMACS를 사용한 conventional MD simulation은 이 튜토리얼에서 다루지 않습니다.
-참고 자료에 안내되어 있는 Lemkul's MD tutorials의 Lysozyme in Water와 KALP15 in DPPC 과정을 참조하시기 바랍니다.
+> GROMACS의 기본 사용법 및 GROMACS를 사용한 conventional MD simulation은 이 튜토리얼에서 다루지 않습니다. 참고 자료에 안내되어 있는 Lemkul's MD tutorials의 Lysozyme in Water와 KALP15 in DPPC 과정을 참조하시기 바랍니다.
 
 
 
 ### 2 Umbrella sampling
 
 Umbrella sampling은 선택한 reaction coordinate를 여러 window로 나누고
-각 window에 harmonic restraint를 적용하여 일반 MD에서 충분히 방문하기
-어려운 영역을 sampling합니다. 분석 단계에서는 window overlap을 확인한 뒤
+각 window에 harmonic restraint를 적용하여 일반 MD에서 충분히 방문하기 어려운 영역을 sampling합니다.
+분석 단계에서는 window overlap을 확인한 뒤
 WHAM 또는 MBAR로 unbiased PMF를 복원합니다.
 
 이 저장소의 예제는 먼저 PLUMED ratchet MD(ABMD)로 ordered seed pathway를 만듭니다.
@@ -160,6 +158,8 @@ Ratchet MD trajectory와 모든 umbrella window는 동일한 topology를 사용�
 - [Umbrella-sampling 튜토리얼](1_Simulation/2_US/README.md)
 - [US PMF와 overlap 분석](2_Analysis/7_Enhanced_Sampling/7.1_Umbrella_Sampling/README.md)
 
+
+
 ### 3 Replica exchange
 
 Replica exchange는 temperature 또는 Hamiltonian이 다른 replica 사이에서 상태를 교환합니다.
@@ -174,11 +174,12 @@ Analysis에는 exchange acceptance, round trip, ensemble별 sampling과 관심 o
 - [Replica-exchange 튜토리얼](1_Simulation/3_REMD/README.md)
 - [GaREUS reweighting](2_Analysis/7_Enhanced_Sampling/7.3_GaREUS_Reweighting/README.md)
 
+
+
 ### 4 Gaussian accelerated MD
 
-GaMD는 potential-energy surface에 smooth boost를 추가합니다. 하나의
-reaction coordinate를 고정하지 않는 대신 boost distribution과 reweighting
-quality를 함께 봅니다.
+GaMD는 potential-energy surface에 smooth boost를 추가합니다.
+reaction coordinate를 고정하지 않는 대신 boost distribution과 reweighting quality를 함께 봅니다.
 
 - GaMD: 일반적인 potential boost
 - LiGaMD3: ligand, remaining nonbonded와 bonded potential의 triple boost
@@ -187,59 +188,62 @@ quality를 함께 봅니다.
 - [GaMD 계열 튜토리얼](1_Simulation/4_GaMD/README.md)
 - [GaMD reweighting](2_Analysis/7_Enhanced_Sampling/7.2_GaMD_Reweighting/README.md)
 
+
+
 ### 5 Free-energy perturbation
 
-FEP는 직접적인 물리적 transition 대신 alchemical intermediate를 정의해
-두 state의 자유에너지 차이를 계산합니다.
+FEP는 직접적인 물리적 transition 대신 alchemical intermediate를 정의해 두 state의 자유에너지 차이를 계산합니다.
 
 - RBFE: 유사한 두 ligand 또는 mutation 사이의 상대 자유에너지
 - ABFE: restraint와 decoupling을 이용한 절대 결합 자유에너지
 
-FEP input에는 lambda schedule, atom mapping, charge change, soft-core 설정과
-window별 equilibration이 들어갑니다. ABFE는 ligand position/orientation
-restraint와 standard-state correction도 포함합니다. RBFE는 T4 lysozyme L99A의
-benzene→toluene transformation, ABFE는 3HTB T4 lysozyme–JZ4를 사용합니다.
-두 예제는 AMBER가 기록한 cross-state energy matrix를 FE-ToolKit MBAR로 분석하며
-production은 2 ns/window입니다. State overlap과 bootstrap uncertainty를 함께
-확인합니다.
+FEP input에는 lambda schedule, atom mapping, charge change, soft-core 설정과 window별 equilibration이 들어갑니다. 
+ABFE는 ligand position/orientation restraint와 standard-state correction도 포함합니다.
+RBFE는 T4 lysozyme L99A의 benzene→toluene transformation, ABFE는 3HTB T4 lysozyme–JZ4를 사용합니다.
+두 예제는 AMBER가 기록한 cross-state energy matrix를 FE-ToolKit MBAR로 분석하며 production은 2 ns/window입니다.
+State overlap과 bootstrap uncertainty를 함께 확인합니다.
 
 - [FEP 튜토리얼](1_Simulation/5_FEP/README.md)
 
+
+
 ### 6 Weighted ensemble
 
-Weighted ensemble은 여러 weighted trajectory segment를 전파하고 WESTPA가
-binning과 resampling을 수행하는 path-sampling 방법입니다. 물리적 dynamics를
-변경하는 bias potential을 추가하지 않지만, progress coordinate와 초기·최종
-상태 정의가 효율과 해석을 좌우합니다.
+Weighted ensemble은 여러 weighted trajectory segment를 전파하고 WESTPA가 binning과 resampling을 수행하는 path-sampling 방법입니다.
+물리적 dynamics를 변경하는 bias potential을 추가하지 않지만, progress coordinate와 초기·최종 상태 정의가 효율과 해석을 좌우합니다.
 
-Chignolin 예제는 residue 2–9 Cα RMSD를 progress coordinate로 사용하여 total
-weight, restart, random seed, bin occupancy와 partially unfolded target 도달을
-점검합니다. Flux와 rate estimator는 포함하지 않습니다. Resampling과 weight는
-WESTPA가 관리합니다.
+Chignolin 예제는 residue 2–9 Cα RMSD를 progress coordinate로 사용하여
+total weight, restart, random seed, bin occupancy와 partially unfolded target 도달을 점검합니다.
+Flux와 rate estimator는 포함하지 않습니다. Resampling과 weight는 WESTPA가 관리합니다.
 
 - [WESTPA + AMBER WE 튜토리얼](1_Simulation/6_WE/README.md)
 
+
+
 ### 7 Metadynamics와 OPES
 
-Metadynamics는 선택한 collective variable 공간에 history-dependent bias를
-누적하여 이미 방문한 영역에서 벗어나도록 합니다. Well-tempered MetaD는
-bias 증가를 완화하고, OPES는 목표 distribution에 접근하도록 bias를
-구성합니다. Funnel MetaD는 trypsin–benzamidine binding 경로를 cone과
-cylinder 안으로 제한하고 ligand의 axis projection을 bias합니다.
+Metadynamics는 선택한 collective variable 공간에 history-dependent bias를 누적하여 이미 방문한 영역에서 벗어나도록 합니다. 
+Well-Tempered MetaD는 bias 증가를 완화하고, OPES는 목표 distribution에 접근하도록 bias를 구성합니다.
+Funnel MetaD는 trypsin–benzamidine binding 경로를 cone과 cylinder 안으로 제한하고 ligand의 axis projection을 bias합니다.
 
-Input에는 CV, Gaussian width·height, bias factor, pace, wall, grid와 단위를
-기록합니다. Restart할 때는 AMBER restart와 method별 `HILLS` 또는 OPES state를
-함께 이어갑니다.
+Input에는 CV, Gaussian width·height, bias factor, pace, wall, grid와 단위를 기록합니다.
+Restart할 때는 AMBER restart와 method별 `HILLS` 또는 OPES state를 함께 이어갑니다.
 
 - [MetaD와 OPES 튜토리얼](1_Simulation/7_MetaD/README.md)
 
+
+
 ## 2. Trajectory 분석
 
-Analysis는 simulation method와 분리합니다. 공통 preprocessing과 feature를
-재사용하고 topology, trajectory, mask, stride, 단위와 output column을
-기록합니다.
+이 section에서는 MD simulation 계산 후의 데이터 분석 방법에 대해 학습합니다.
+data의 분석은 simulation 수행만큼이나 (혹은 그 이상으로) 중요한 과정입니다.
+본 section을 학습하기 전에 `1_MD/1.1_Soluble_Protein`에서 기본 튜토리얼을 진행해서
+학습에 필요한 예제 trajectory를 확보하시길 바랍니다. 
+
 
 권장 학습 순서는 다음과 같습니다.
+
+
 
 1. [Trajectory preprocessing](2_Analysis/1_Preprocessing/README.md): imaging,
    alignment, stripping, 변환과 sampling
@@ -253,11 +257,10 @@ Analysis는 simulation method와 분리합니다. 공통 preprocessing과 featur
 7. [Enhanced-sampling analysis](2_Analysis/7_Enhanced_Sampling/README.md):
    umbrella-sampling PMF, histogram overlap, GaMD와 GaREUS reweighting
 
-Cpptraj로 imaging, alignment와 기본 feature를 계산합니다. PCA, t-SNE, UMAP과
-clustering은 표 형태의 feature를 Python으로 전달합니다. Dimension-reduction
-plot과 cluster 결과는 representative structure, 시간 순서와 parameter
-sensitivity를 함께 봅니다.
 
+Cpptraj로 imaging, alignment와 기본 feature를 계산합니다.
+Dimension reduction, clustering 방법은 Python을 사용해서 계산합니다.
+시각화는 matplotlib의 pyplot 사용을 권장합니다.
 t-SNE와 HDBSCAN은 scikit-learn, UMAP은 umap-learn을 사용합니다.
 
 ```bash
@@ -267,9 +270,10 @@ conda install -c conda-forge \
     "umap-learn>=0.5.7,<0.6"
 ```
 
-1–5번 analysis는 Chignolin conventional-MD output을 사용합니다.
-MM/GBSA·MM/PBSA는 T4 lysozyme–JZ4 output을 사용합니다. KcsA의
-membrane-aware preprocessing과 채널 구조 분석은 이후 범위입니다.
+1–5번 analysis는 `1_MD/1.1_Soluble_Protein`에서 생성 된 Chignolin의 trajectory를 사용합니다.
+MM/GBSA·MM/PBSA는 `1_MD/1.2_Protein_Ligand`에서 생성 된 T4 Lysozyme-JZ4 시스템의 trajectory를 사용합니다.
+
+
 
 ## 3. 참고 자료
 

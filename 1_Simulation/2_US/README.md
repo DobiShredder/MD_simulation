@@ -5,24 +5,24 @@
 *인접 window의 histogram이 겹쳐야 CV 구간 사이의 PMF를 연결할 수 있습니다. / Neighboring histograms must overlap to connect the PMF across the CV range.*
 
 
+
 ## 한국어
 
 Chignolin terminal Cα distance를 CV로 사용합니다.
 
-Umbrella sampling은 하나의 trajectory가 넘기 어려운 reaction-coordinate
-영역을 여러 harmonic window로 나누어 sampling합니다. Window마다 biased
-distribution을 얻은 뒤 overlap을 확인하고 WHAM 같은 estimator로 unbiased
-PMF를 복원합니다. 이 예제에서는 ratchet MD가 window 초기 구조만 공급하며
-PMF에는 umbrella production만 사용합니다.
+Umbrella sampling은 하나의 trajectory가 넘기 어려운 reaction-coordinate 영역을
+여러 harmonic window로 나누어 sampling합니다.
+Window마다 biased distribution을 얻은 뒤 overlap을 확인하고 WHAM 같은 estimator로 unbiased PMF를 복원합니다.
+이 예제에서는 ratchet MD가 window 초기 구조만 공급하며 PMF에는 umbrella production만 사용합니다.
 
-1. PLUMED `ABMD`를 이용한 ratchet MD에서 thermal fluctuation으로
-   end-to-end distance가 증가하는 경로를 생성합니다.
-2. Ratchet MD trajectory에서 ordered seed를 추출하고, 모두 동일한 AMBER
-   topology를 사용하는 umbrella window를 실행합니다.
+1. PLUMED `ABMD`를 이용한 ratchet MD에서 thermal fluctuation으로 end-to-end distance가 증가하는 경로를 생성합니다.
+2. Ratchet MD trajectory에서 ordered seed를 추출하고, 모두 동일한 AMBER topology를 사용하는 umbrella window를 실행합니다.
 
-Ratchet MD는 target-directed simulation이지만 constant-velocity pulling과는
-다릅니다. 목표 방향의 thermal fluctuation은 허용하고 반대 방향 fluctuation은
-ratchet-and-pawl bias로 억제합니다. Conventional Steered MD는 다루지 않습니다.
+Ratchet MD는 target-directed simulation이지만 constant-velocity pulling과는 다릅니다.
+목표 방향의 thermal fluctuation은 허용하고 반대 방향 fluctuation은 ratchet-and-pawl bias로 억제합니다.
+Conventional Steered MD는 이 튜토리얼에서는 다루지 않습니다.
+
+
 
 ### Script 흐름
 
