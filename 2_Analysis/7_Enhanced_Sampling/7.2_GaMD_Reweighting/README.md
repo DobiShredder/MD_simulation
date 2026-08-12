@@ -32,6 +32,10 @@ GaMD log는 각각 100 frames여야 합니다.
 effective sample size가 기록됩니다. 기본 bin width는 0.25 Å입니다. CV 범위는
 관측 범위에서 계산하며 비어 있는 bin은 쓰지 않습니다.
 
+LiGaMD3도 Amber 26 `gamd.log`에 기록된 `Boost-Energy-Potential`과
+`Boost-Energy-Dihedral` 두 aggregate column을 읽습니다. 두 값의 합을
+reweighting에 필요한 frame별 total boost `ΔV`로 사용합니다.
+
 1 ns example의 noisy PMF를 정량 free energy로 사용하지 않습니다. 서로 다른
 independent run, bin sensitivity, anharmonicity, effective sample size와 sampling
 convergence를 함께 확인합니다. Kinetic reweighting과 2D PMF는 포함하지 않습니다.
@@ -49,6 +53,10 @@ one-dimensional PMF. `run.sh` executes these steps in order.
 mean and variance, and effective sample size. The 1 ns result is a workflow
 example, not a converged free energy. Kinetic reweighting and two-dimensional
 PMFs are outside this example.
+
+For LiGaMD3, the parser reads Amber 26's two logged aggregate columns,
+`Boost-Energy-Potential` and `Boost-Energy-Dihedral`, and uses their sum as the
+per-frame total boost `ΔV` for reweighting.
 
 ## References / 참고 자료
 

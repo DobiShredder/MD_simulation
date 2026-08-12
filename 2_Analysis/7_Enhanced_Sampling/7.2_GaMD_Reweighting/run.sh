@@ -18,11 +18,8 @@ python=${PYTHON:-python3}
 output_dir=${OUTPUT_DIR:-"output/$profile"}
 
 case "$profile" in
-    chignolin | pepgamd)
+    chignolin | ligamd3 | pepgamd)
         components=2
-        ;;
-    ligamd3)
-        components=3
         ;;
     *)
         die "Unsupported profile: $profile"

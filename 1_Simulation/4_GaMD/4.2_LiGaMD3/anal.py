@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check the triple-boost distribution in a LiGaMD3 production log."""
+"""Check the logged boost distribution in a LiGaMD3 production log."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 WORK = Path(os.environ.get("WORK_DIR", ROOT / "work"))
-COMPONENT_COUNT = 3
+COMPONENT_COUNT = 2
 EXPECTED_SEGMENTS = 1
 EXPECTED_FRAMES = 100
 TEMPERATURE_K = 300.0
@@ -119,8 +119,8 @@ def main() -> None:
             raise SystemExit(f"GaMD log not found: {path}")
         records = parse_log(path)
         series = {
-            f"boost_{index + 1}": [components[index] for _, components in records]
-            for index in range(COMPONENT_COUNT)
+            "potential_boost": [components[0] for _, components in records],
+            "dihedral_boost": [components[1] for _, components in records],
         }
         series["total"] = [sum(components) for _, components in records]
         for component, values in series.items():
@@ -132,7 +132,14 @@ def main() -> None:
 
     with (WORK / "boost_frames.tsv").open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle, delimiter="\t")
-        writer.writerow(["segment", "frame", "step", "boost_1_kcal_mol", "boost_2_kcal_mol", "boost_3_kcal_mol", "total_boost_kcal_mol"])
+        writer.writerow([
+            "segment",
+            "frame",
+            "step",
+            "potential_boost_kcal_mol",
+            "dihedral_boost_kcal_mol",
+            "total_boost_kcal_mol",
+        ])
         writer.writerows([[*row[:3], *[f"{value:.6f}" for value in row[3:]]] for row in frame_rows])
     with (WORK / "boost_summary.tsv").open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle, delimiter="\t")

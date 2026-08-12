@@ -96,7 +96,7 @@ structure and scientific choices
 
 
 
-### 1.1 conventional MD
+### 1 conventional MD
 
 일반 MD는 별도의 bias 없이 선택한 Hamiltonian과 ensemble에서 시간에 따른 구조 변화를 계산합니다.
 Enhanced-sampling 결과를 비교하기 위한 기준 trajectory이며 대부분의 후속 분석을 배우는 출발점입니다.
@@ -137,7 +137,7 @@ E118/E120=`GLU`입니다. Side chain 좌표가 불완전한 terminal H124는
 
 
 
-### 1.2 Umbrella sampling
+### 2 Umbrella sampling
 
 Umbrella sampling은 선택한 reaction coordinate를 여러 window로 나누고
 각 window에 harmonic restraint를 적용하여 일반 MD에서 충분히 방문하기
@@ -160,7 +160,7 @@ Ratchet MD trajectory와 모든 umbrella window는 동일한 topology를 사용�
 - [Umbrella-sampling 튜토리얼](1_Simulation/2_US/README.md)
 - [US PMF와 overlap 분석](2_Analysis/7_Enhanced_Sampling/7.1_Umbrella_Sampling/README.md)
 
-### 1.3 Replica exchange
+### 3 Replica exchange
 
 Replica exchange는 temperature 또는 Hamiltonian이 다른 replica 사이에서 상태를 교환합니다.
 Analysis에는 exchange acceptance, round trip, ensemble별 sampling과 관심 observable을 사용합니다.
@@ -174,7 +174,7 @@ Analysis에는 exchange acceptance, round trip, ensemble별 sampling과 관심 o
 - [Replica-exchange 튜토리얼](1_Simulation/3_REMD/README.md)
 - [GaREUS reweighting](2_Analysis/7_Enhanced_Sampling/7.3_GaREUS_Reweighting/README.md)
 
-### 1.4 Gaussian accelerated MD
+### 4 Gaussian accelerated MD
 
 GaMD는 potential-energy surface에 smooth boost를 추가합니다. 하나의
 reaction coordinate를 고정하지 않는 대신 boost distribution과 reweighting
@@ -187,7 +187,7 @@ quality를 함께 봅니다.
 - [GaMD 계열 튜토리얼](1_Simulation/4_GaMD/README.md)
 - [GaMD reweighting](2_Analysis/7_Enhanced_Sampling/7.2_GaMD_Reweighting/README.md)
 
-### 1.5 Free-energy perturbation
+### 5 Free-energy perturbation
 
 FEP는 직접적인 물리적 transition 대신 alchemical intermediate를 정의해
 두 state의 자유에너지 차이를 계산합니다.
@@ -205,7 +205,7 @@ production은 2 ns/window입니다. State overlap과 bootstrap uncertainty를 �
 
 - [FEP 튜토리얼](1_Simulation/5_FEP/README.md)
 
-### 1.6 Weighted ensemble
+### 6 Weighted ensemble
 
 Weighted ensemble은 여러 weighted trajectory segment를 전파하고 WESTPA가
 binning과 resampling을 수행하는 path-sampling 방법입니다. 물리적 dynamics를
@@ -219,7 +219,7 @@ WESTPA가 관리합니다.
 
 - [WESTPA + AMBER WE 튜토리얼](1_Simulation/6_WE/README.md)
 
-### 1.7 Metadynamics와 OPES
+### 7 Metadynamics와 OPES
 
 Metadynamics는 선택한 collective variable 공간에 history-dependent bias를
 누적하여 이미 방문한 영역에서 벗어나도록 합니다. Well-tempered MetaD는
