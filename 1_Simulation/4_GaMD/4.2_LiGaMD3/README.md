@@ -45,6 +45,8 @@ python3 anal.py
 `igamd=28`은 ligand essential nonbonded, 나머지 nonbonded와 system bonded
 potential에 세 boost를 적용합니다. 완료된 segment의 MD restart와
 `*.gamd.rst` state snapshot은 한 쌍으로 이어집니다.
+`anal.py`는 `gamd.log` header에서 세 `Boost-Energy-*` column을 찾아 읽습니다.
+기본 production log의 103줄은 header 3줄과 GaMD record 100개입니다.
 
 ### 주요 option
 
@@ -83,6 +85,8 @@ potentials into three boosts. `prepare.py` validates the complex metadata,
 `build.sh` parameterizes BEN and builds the system, `render_inputs.py` derives
 the receptor range from the final topology, `run.sh` performs the stages, and
 `anal.py` reports all three components.
+The analysis locates the three `Boost-Energy-*` columns from the log header;
+the default 103-line production log contains three header lines and 100 records.
 The default +1 ligand path first adds one imine-N hydrogen and a formal charge
 to the neutral RCSB SDF, then applies GAFF2/AM1-BCC.
 

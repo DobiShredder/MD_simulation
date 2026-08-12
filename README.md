@@ -1,7 +1,7 @@
 # Molecular Dynamics Tutorials and Templates
 
 [![AMBER](https://img.shields.io/badge/AMBER-26+-orange?style=flat)](https://ambermd.org/)
-[![GROMACS](https://img.shields.io/badge/GROMACS-2025+-blue?style=flat&logo=gromacs)](https://manual.gromacs.org/)
+[![GROMACS](https://img.shields.io/badge/GROMACS-2024.3+-blue?style=flat&logo=gromacs)](https://manual.gromacs.org/)
 [![PLUMED](https://img.shields.io/badge/PLUMED-2.10+-green?style=flat)](https://www.plumed.org/doc-v2.10/user-doc/html/index.html)
 [![WESTPA](https://img.shields.io/badge/WESTPA-2+-blueviolet?style=flat)](https://westpa.github.io/westpa/)
 [![Python](https://img.shields.io/badge/Python-3.10+-yellow?style=flat&logo=python)](https://www.python.org/)
@@ -14,9 +14,9 @@
 
 > [!IMPORTANT]
 > 이 코드들은 범용 production protocol이 아닌 시작 템플릿입니다.
-> 실제 system에 맞는 force field, protonation, 원자 선택, equilibration, sampling 및 수렴성을
+> 실제 system에 맞는 force field, protonation, equilibration, sampling 및 수렴 여부를
 > 사용자가 반드시 직접 디자인하고 검증해야합니다.
-> 학습용 production 길이는 method별 README에 적힌 짧은 기본값을 사용합니다.
+> 학습용 production 길이는 method별 README에 적힌 짧은 기본값을 사용합니다. (약 1~2 ns 수준)
 >
 > These are starting templates, not universal production protocols. Users must
 > design and validate the force field, protonation states, atom selections,
@@ -63,23 +63,23 @@ MD_simulation/
 
 ## Simulation tutorials / 시뮬레이션 튜토리얼
 
-| No. | Method | Included templates | Guide |
-| --- | --- | --- | --- |
-| 1 | Conventional MD | Chignolin, T4 lysozyme–JZ4, KcsA with AMBER | [Open](1_Simulation/1_MD/README.md) |
-| 2 | Ratchet MD / Umbrella Sampling | PLUMED ABMD pathway and restrained windows | [Open](1_Simulation/2_US/README.md) |
-| 3 | Replica Exchange | REMD, REST2, REST3, REUS, GaREUS | [Open](1_Simulation/3_REMD/README.md) |
-| 4 | Gaussian accelerated MD | Chignolin GaMD, trypsin–benzamidine LiGaMD3, SH3–peptide Pep-GaMD | [Open](1_Simulation/4_GaMD/README.md) |
-| 5 | Free Energy Perturbation | T4L benzene→toluene RBFE and T4L–JZ4 ABFE | [Open](1_Simulation/5_FEP/README.md) |
-| 6 | Weighted Ensemble | Chignolin Cα RMSD sampling with WESTPA and AMBER | [Open](1_Simulation/6_WE/README.md) |
-| 7 | Metadynamics | WT-MetaD, funnel MetaD and OPES variants | [Open](1_Simulation/7_MetaD/README.md) |
+| No. | Method                         | Included templates                                                | Guide                                  |
+| --- | ------------------------------ | ----------------------------------------------------------------- | -------------------------------------- |
+| 1   | Conventional MD                | Chignolin, T4 lysozyme–JZ4, KcsA with AMBER                       | [Open](1_Simulation/1_MD/README.md)    |
+| 2   | Ratchet MD / Umbrella Sampling | PLUMED ABMD pathway and restrained windows                        | [Open](1_Simulation/2_US/README.md)    |
+| 3   | Replica Exchange               | REMD, REST2, REST3, REUS, GaREUS                                  | [Open](1_Simulation/3_REMD/README.md)  |
+| 4   | Gaussian accelerated MD        | Chignolin GaMD, trypsin–benzamidine LiGaMD3, SH3–peptide Pep-GaMD | [Open](1_Simulation/4_GaMD/README.md)  |
+| 5   | Free Energy Perturbation       | T4L benzene→toluene RBFE and T4L–JZ4 ABFE                         | [Open](1_Simulation/5_FEP/README.md)   |
+| 6   | Weighted Ensemble              | Chignolin Cα RMSD sampling with WESTPA and AMBER                  | [Open](1_Simulation/6_WE/README.md)    |
+| 7   | Metadynamics                   | WT-MetaD, funnel MetaD and OPES variants                          | [Open](1_Simulation/7_MetaD/README.md) |
 
-## Analysis areas / 분석 영역
+## Analysis tutorials / 분석 방법 튜토리얼
 
-분석 파트는 preprocessing, 기본 구조 지표, interaction, dimension reduction,
-clustering, MM/GB(PB)SA와 enhanced-sampling 후처리로 구성됩니다. 1–6번은
-Chignolin 또는 T4 lysozyme–JZ4 trajectory를 사용하고, 7번은 대응하는 US,
-GaMD 또는 GaREUS simulation output을 사용합니다. Trajectory 처리는 cpptraj을
-중심으로 하고 dimension reduction, clustering, 통계와 plotting은 Python으로
+분석 튜토리얼은 trajectory preprocessing, 기본 구조 지표의 계산, interaction 계산, dimension reduction,
+clustering, MM/GB(PB)SA 및 enhanced-sampling post-processing으로 구성됩니다. 1–6번은
+Chignolin 또는 T4 lysozyme–JZ4 trajectory를 사용하고, 7번은 US,
+GaMD 또는 GaREUS simulation output을 사용합니다. 기본적으로 AMBER package에 내장되어 있는 cpptraj을
+중심으로 하고 dimension reduction, clustering, 통계, plotting 등은 Python으로
 진행합니다.
 
 
@@ -92,47 +92,47 @@ reduction, clustering, statistics, and plotting use Python.
 
 
 
-| Area | Contents | Guide |
-| --- | --- | --- |
-| Preprocessing | Imaging, alignment, conversion and sampling | [Open](2_Analysis/1_Preprocessing/README.md) |
-| Basic | RMSD, RMSF, Rg, distance, angle and dihedral | [Open](2_Analysis/2_Basic/README.md) |
-| Interactions | Hydrogen bonds, contacts, SASA and secondary structure | [Open](2_Analysis/3_Interactions/README.md) |
-| Dimensionality reduction | PCA, t-SNE and UMAP | [Open](2_Analysis/4_Dimension_Reduction/README.md) |
-| Clustering | K-means, DBSCAN, HDBSCAN and GMM | [Open](2_Analysis/5_Clustering/README.md) |
-| Binding energy | MM/GBSA and MM/PBSA | [Open](2_Analysis/6_Binding_Energy/README.md) |
-| Enhanced sampling | US WHAM, GaMD and GaREUS reweighting | [Open](2_Analysis/7_Enhanced_Sampling/README.md) |
+| Area                     | Contents                                               | Guide                                              |
+| ------------------------ | ------------------------------------------------------ | -------------------------------------------------- |
+| Preprocessing            | Imaging, alignment, conversion and sampling            | [Open](2_Analysis/1_Preprocessing/README.md)       |
+| Basic                    | RMSD, RMSF, Rg, distance, angle and dihedral           | [Open](2_Analysis/2_Basic/README.md)               |
+| Interactions             | Hydrogen bonds, contacts, SASA and secondary structure | [Open](2_Analysis/3_Interactions/README.md)        |
+| Dimensionality reduction | PCA, t-SNE and UMAP                                    | [Open](2_Analysis/4_Dimension_Reduction/README.md) |
+| Clustering               | K-means, DBSCAN, HDBSCAN and GMM                       | [Open](2_Analysis/5_Clustering/README.md)          |
+| Binding energy           | MM/GBSA and MM/PBSA                                    | [Open](2_Analysis/6_Binding_Energy/README.md)      |
+| Enhanced sampling        | US WHAM, GaMD and GaREUS reweighting                   | [Open](2_Analysis/7_Enhanced_Sampling/README.md)   |
 
 ## Example systems / 예제 시스템
 
-| System | Role | Source and important choices |
-| --- | --- | --- |
-| Chignolin | Soluble-protein MD, WE and structural/ensemble analysis | PDB 1UAO; first NMR model; ff19SB/TIP3P |
-| T4 lysozyme–JZ4 | Protein–ligand MD, ABFE and MM/GB(PB)SA | PDB 3HTB; neutral JZ4; ff19SB/GAFF2/TIP3P |
-| KcsA | Membrane build and membrane-protein MD | PDB 1K4C; ff19SB/Lipid21/OPC; POPC:POPE:cholesterol 90:5:5 |
-| C-crk SH3–SOS peptide | Pep-GaMD selective peptide boost | PDB 1CKB; resolved PPPVPPRR peptide; ff19SB/TIP3P |
-| T4 lysozyme L99A | Benzene→toluene RBFE | PDB 4W53; ff19SB/GAFF2/TIP3P |
-| Capped alanine dipeptide | WT-MetaD and OPES examples | Built with tleap; ff19SB/TIP3P |
+| System                   | Role                                                    | Source and important choices                               |
+| ------------------------ | ------------------------------------------------------- | ---------------------------------------------------------- |
+| Chignolin                | Soluble-protein MD, WE and structural/ensemble analysis | PDB 1UAO; first NMR model; ff19SB/TIP3P                    |
+| T4 lysozyme–JZ4          | Protein–ligand MD, ABFE and MM/GB(PB)SA                 | PDB 3HTB; neutral JZ4; ff19SB/GAFF2/TIP3P                  |
+| KcsA                     | Membrane build and membrane-protein MD                  | PDB 1K4C; ff19SB/Lipid21/OPC; POPC:POPE:cholesterol 90:5:5 |
+| C-crk SH3–SOS peptide    | Pep-GaMD selective peptide boost                        | PDB 1CKB; resolved PPPVPPRR peptide; ff19SB/TIP3P          |
+| T4 lysozyme L99A         | Benzene→toluene RBFE                                    | PDB 4W53; ff19SB/GAFF2/TIP3P                               |
+| Capped alanine dipeptide | WT-MetaD and OPES examples                              | Built with tleap; ff19SB/TIP3P                             |
 
 Downloaded source structures are recorded with checksums. Generated systems,
 trajectories, restarts, topologies, and logs are not distributed through Git.
 
 ## Method references
 
-| Method | Journal | Year | Citation |
-| --- | --- | ---: | --- |
-| US | *J. Comput. Phys.* | 1977 | [23, 187–199](https://doi.org/10.1016/0021-9991(77)90121-8) |
-| REMD | *Chem. Phys. Lett.* | 1999 | [314, 141–151](https://doi.org/10.1016/S0009-2614(99)01123-9) |
-| REST | *PNAS* | 2005 | [102, 13749–13754](https://doi.org/10.1073/pnas.0506346102) |
-| REST3 | *J. Chem. Theory Comput.* | 2023 | [19, 1346–1356](https://doi.org/10.1021/acs.jctc.2c01139) |
-| REUS | *J. Chem. Phys.* | 2000 | [113, 6042–6051](https://doi.org/10.1063/1.1308516) |
-| GaMD | *J. Chem. Theory Comput.* | 2015 | [11, 3584–3595](https://doi.org/10.1021/acs.jctc.5b00436) |
-| LiGaMD3 | *J. Chem. Theory Comput.* | 2024 | [Triple-boost LiGaMD](https://doi.org/10.1021/acs.jctc.4c00502) |
-| Pep-GaMD | *J. Chem. Phys.* | 2020 | [153, 154109](https://doi.org/10.1063/5.0021399) |
-| WE | *J. Chem. Phys.* | 1996 | [105, 1604–1610](https://doi.org/10.1063/1.472061) |
-| MetaD | *PNAS* | 2002 | [99, 12562–12566](https://doi.org/10.1073/pnas.202427399) |
-| WT-MetaD | *Phys. Rev. Lett.* | 2008 | [100, 020603](https://doi.org/10.1103/PhysRevLett.100.020603) |
-| Funnel MetaD | *PNAS* | 2013 | [110, 6358–6363](https://doi.org/10.1073/pnas.1303186110) |
-| OPES | *J. Phys. Chem. Lett.* | 2020 | [11, 2731–2736](https://doi.org/10.1021/acs.jpclett.0c00497) |
+| Method       | Journal                   | Year | Citation                                                        |
+| ------------ | ------------------------- | ---: | --------------------------------------------------------------- |
+| US           | *J. Comput. Phys.*        | 1977 | [23, 187–199](https://doi.org/10.1016/0021-9991(77)90121-8)     |
+| REMD         | *Chem. Phys. Lett.*       | 1999 | [314, 141–151](https://doi.org/10.1016/S0009-2614(99)01123-9)   |
+| REST         | *PNAS*                    | 2005 | [102, 13749–13754](https://doi.org/10.1073/pnas.0506346102)     |
+| REST3        | *J. Chem. Theory Comput.* | 2023 | [19, 1346–1356](https://doi.org/10.1021/acs.jctc.2c01139)       |
+| REUS         | *J. Chem. Phys.*          | 2000 | [113, 6042–6051](https://doi.org/10.1063/1.1308516)             |
+| GaMD         | *J. Chem. Theory Comput.* | 2015 | [11, 3584–3595](https://doi.org/10.1021/acs.jctc.5b00436)       |
+| LiGaMD3      | *J. Chem. Theory Comput.* | 2024 | [Triple-boost LiGaMD](https://doi.org/10.1021/acs.jctc.4c00502) |
+| Pep-GaMD     | *J. Chem. Phys.*          | 2020 | [153, 154109](https://doi.org/10.1063/5.0021399)                |
+| WE           | *J. Chem. Phys.*          | 1996 | [105, 1604–1610](https://doi.org/10.1063/1.472061)              |
+| MetaD        | *PNAS*                    | 2002 | [99, 12562–12566](https://doi.org/10.1073/pnas.202427399)       |
+| WT-MetaD     | *Phys. Rev. Lett.*        | 2008 | [100, 020603](https://doi.org/10.1103/PhysRevLett.100.020603)   |
+| Funnel MetaD | *PNAS*                    | 2013 | [110, 6358–6363](https://doi.org/10.1073/pnas.1303186110)       |
+| OPES         | *J. Phys. Chem. Lett.*    | 2020 | [11, 2731–2736](https://doi.org/10.1021/acs.jpclett.0c00497)    |
 
 
 
@@ -140,12 +140,12 @@ trajectories, restarts, topologies, and logs are not distributed through Git.
 
 The tutorials utilize the following software packages. Please ensure they are installed and properly configured in your environment.
 
-| Software | Description | Official Site |
-| :--- | :--- | :--- |
-| ![AMBER](https://img.shields.io/badge/AMBER-26+-orange) | MD simulation package | [ambermd.org](http://ambermd.org/) |
-| ![GROMACS](https://img.shields.io/badge/GROMACS-2026+-blue) | MD simulation package | [gromacs.org](https://manual.gromacs.org/)
-| ![PLUMED](https://img.shields.io/badge/PLUMED-2.10+-lightgrey) | Plugin for enhanced sampling algorithms | [plumed.org](https://www.plumed.org/) |
-| ![Python](https://img.shields.io/badge/Python-3.10%2B-yellow?logo=python&logoColor=white) | Analysis & plotting | [python.org](https://www.python.org/) |
+| Software                                                                                  | Description                             | Official Site                              |
+| :---------------------------------------------------------------------------------------- | :-------------------------------------- | :----------------------------------------- |
+| ![AMBER](https://img.shields.io/badge/AMBER-26+-orange)                                   | MD simulation package                   | [ambermd.org](http://ambermd.org/)         |
+| ![GROMACS](https://img.shields.io/badge/GROMACS-2026+-blue)                               | MD simulation package                   | [gromacs.org](https://manual.gromacs.org/) |
+| ![PLUMED](https://img.shields.io/badge/PLUMED-2.10+-lightgrey)                            | Plugin for enhanced sampling algorithms | [plumed.org](https://www.plumed.org/)      |
+| ![Python](https://img.shields.io/badge/Python-3.10%2B-yellow?logo=python&logoColor=white) | Analysis & plotting                     | [python.org](https://www.python.org/)      |
 
 ### AmberTools 26 installation / 설치
 
@@ -157,10 +157,7 @@ Weighted Ensemble (WE) 계산을 위한 WESTPA도 같은 environment에 install�
 conda create -n ambertools26 -c conda-forge python=3.12 ambertools=26
 conda activate ambertools26
 source "$CONDA_PREFIX/amber.sh"
-conda install westpa -c conda-forge
-conda install -c conda-forge \
-    "scikit-learn>=1.5,<2" \
-    "umap-learn>=0.5.7,<0.6"
+conda install westpa umap-learn -c conda-forge
 ```
 
 설치 결과는 다음 command로 확인합니다.
@@ -190,6 +187,11 @@ AMBER_ENGINE=sander ./run.sh --dry-run
 platform별 차이와 설치 후 test 방법을 확인할 수 있습니다.
 
 ### 🐍 Python Dependencies
+
+분석 스크립트 및 시각화를 위해서는 아래 library들이 추가적으로 필요합니다. `pip` 혹은 `conda`를 사용하여 설치할 수 있습니다.
+또한, Python 패키지들은 가상 환경을 구성해서 관리하는 것을 추천합니다 (예: [Anaconda](https://www.anaconda.com/download))
+**AmberTools26을 설치할 때 생성 된 가상 환경(ambertools26)에 통합하여 사용하는 것을 추천합니다.**
+
 To run the analysis scripts, you need the following Python libraries. You can install them via `pip` or `conda`.
 
 I recommend to manage your Python packages through virtual environment (ex: [Anaconda](https://www.anaconda.com/download))

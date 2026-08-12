@@ -6,6 +6,7 @@ from __future__ import annotations
 import csv
 import math
 import os
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -18,15 +19,64 @@ GAS_CONSTANT = 0.00198720425864083
 
 
 def parse_log(path: Path) -> list[tuple[int, list[float]]]:
+    lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    column_names = None
+
+    for line in lines:
+        stripped = line.lstrip()
+        if not stripped.startswith("#") or "total_nstep" not in stripped:
+            continue
+        column_names = [field.strip() for field in stripped.lstrip("#").split(",")]
+        break
+
+    if column_names is None:
+        raise SystemExit(f"{path.name}: GaMD column header was not found.")
+
+    normalized_names = [
+        re.sub(r"[^a-z0-9]", "", name.lower()) for name in column_names
+    ]
+    try:
+        step_index = normalized_names.index("totalnstep")
+    except ValueError as error:
+        raise SystemExit(f"{path.name}: total_nstep column was not found.") from error
+
+    boost_indices = [
+        index
+        for index, name in enumerate(normalized_names)
+        if "boost" in name and "energy" in name and "unboosted" not in name
+    ]
+    if len(boost_indices) != COMPONENT_COUNT:
+        raise SystemExit(
+            f"{path.name}: expected {COMPONENT_COUNT} boost-energy columns, "
+            f"found {len(boost_indices)}: {', '.join(column_names)}"
+        )
+
     records = []
-    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+    malformed = []
+    last_required_index = max(step_index, *boost_indices)
+    for line_number, line in enumerate(lines, start=1):
         fields = line.split()
-        if not fields or fields[0].startswith("#") or len(fields) < 6 + COMPONENT_COUNT:
+        if not fields or fields[0].startswith("#"):
+            continue
+        if len(fields) <= last_required_index:
+            malformed.append((line_number, line))
             continue
         try:
-            records.append((int(float(fields[1])), [float(fields[6 + index]) for index in range(COMPONENT_COUNT)]))
+            step = int(float(fields[step_index]))
+            components = [float(fields[index]) for index in boost_indices]
         except ValueError:
+            malformed.append((line_number, line))
             continue
+        if not all(math.isfinite(value) for value in components):
+            malformed.append((line_number, line))
+            continue
+        records.append((step, components))
+
+    if malformed:
+        line_number, line = malformed[0]
+        raise SystemExit(
+            f"{path.name}: malformed GaMD record at line {line_number}: {line.strip()}"
+        )
     if len(records) != EXPECTED_FRAMES:
         raise SystemExit(f"{path.name}: {EXPECTED_FRAMES} GaMD records is required: {len(records)}")
     if any(current[0] <= previous[0] for previous, current in zip(records, records[1:])):

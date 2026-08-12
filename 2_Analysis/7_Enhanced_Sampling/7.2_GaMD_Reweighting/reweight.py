@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import csv
 import math
+import re
 from pathlib import Path
 
 import numpy as np
@@ -44,15 +45,57 @@ def read_boosts(directory: Path, components: int) -> np.ndarray:
     if not path.is_file():
         raise SystemExit(f"GaMD log not found: {path}")
 
+    lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    column_names = None
+    for line in lines:
+        stripped = line.lstrip()
+        if not stripped.startswith("#") or "total_nstep" not in stripped:
+            continue
+        column_names = [field.strip() for field in stripped.lstrip("#").split(",")]
+        break
+
+    if column_names is None:
+        raise SystemExit(f"{path.name}: GaMD column header was not found.")
+
+    normalized_names = [
+        re.sub(r"[^a-z0-9]", "", name.lower()) for name in column_names
+    ]
+    boost_indices = [
+        index
+        for index, name in enumerate(normalized_names)
+        if "boost" in name and "energy" in name and "unboosted" not in name
+    ]
+    if len(boost_indices) != components:
+        raise SystemExit(
+            f"{path.name}: expected {components} boost-energy columns, "
+            f"found {len(boost_indices)}: {', '.join(column_names)}"
+        )
+
     values = []
-    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+    malformed = []
+    last_required_index = max(boost_indices)
+    for line_number, line in enumerate(lines, start=1):
         fields = line.split()
-        if not fields or fields[0].startswith("#") or len(fields) < 6 + components:
+        if not fields or fields[0].startswith("#"):
+            continue
+        if len(fields) <= last_required_index:
+            malformed.append((line_number, line))
             continue
         try:
-            values.append(sum(float(fields[6 + index]) for index in range(components)))
+            boost = sum(float(fields[index]) for index in boost_indices)
         except ValueError:
+            malformed.append((line_number, line))
             continue
+        if not math.isfinite(boost):
+            malformed.append((line_number, line))
+            continue
+        values.append(boost)
+
+    if malformed:
+        line_number, line = malformed[0]
+        raise SystemExit(
+            f"{path.name}: malformed GaMD record at line {line_number}: {line.strip()}"
+        )
 
     if len(values) != 100:
         raise SystemExit(f"{path.name}: 100 GaMD records is required: {len(values)}")

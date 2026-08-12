@@ -1,10 +1,10 @@
 # MD simulation tutorials: integrated guide
 
-저장소의 학습 순서와 method 선택 기준을 정리한 문서입니다. 실행 command와
-input 설명은 각 폴더의 `README.md`에 있습니다.
+저장소의 학습 순서와 method 선택 기준을 정리한 문서입니다.
+실행 command와 input 설명은 각 폴더의 `README.md`에 있습니다.
 
-모든 input은 학습용 template입니다. Production 길이는 method마다 다르며 각
-README에 적혀 있습니다. 어느 기본값도 수렴을 판정하기 위한 길이가 아닙니다.
+모든 input은 학습용 template입니다. Production 길이는 method마다 다르며 각 README에 적혀 있습니다.
+어느 기본값도 수렴을 판정하기 위한 simulation time이 아닙니다.
 
 ## 목차
 
@@ -24,28 +24,33 @@ README에 적혀 있습니다. 어느 기본값도 수렴을 판정하기 위한
 
 ### 필요한 배경
 
+아래 내용은 학습자가 이 튜토리얼을 진행하기 전에 습득할 필요가 있는 지식들입니다.
+이 튜토리얼에서는 아래 내용들을 다루지 않습니다.
+
+- programming에 대한 기초 수준의 이해
 - Linux shell과 파일·디렉터리의 기본 사용법
-- AMBER, GROMACS, PLUMED 또는 WESTPA 중 사용할 프로그램의 기본 실행법
-- force field, potential energy, ensemble, periodic boundary condition,
-  thermostat와 barostat의 기본 개념
-- Python 환경과 package 설치·분리 방법
+- Python과 package 설치 및 가상 환경 관리 방법
+- force field 등 MD simulation을 구성하는 기본적인 물리학에 대한 이해
+- 단백질 구조에 대한 이해
+- AMBER, GROMACS, PLUMED 의 기본 실행 방법
 - RMSD, clustering, dimension reduction 등 분석 방법의 목적
 
-설치, 라이선스, GPU/cluster 환경과 scheduler 설정은 저장소의 범위 밖입니다.
-튜토리얼은 개인 경로, queue, module 명령을 포함하지 않습니다.
+
 
 ### 먼저 질문을 정의하기
 
-Method를 고르기 전에 아래 항목을 정합니다.
+분자동력학 계산을 수행하기 전에 아래 내용을 충분히 고민하고 결정해야 합니다.
 
-1. 관찰하려는 구조 변화나 열역학·속도론적 양은 무엇인가?
-2. 일반 MD 시간 척도에서 관찰 가능한가?
+1. 관찰하려는 구조 변화나 thermodynamic/kinetic 지표는 무엇인가?
+2. 일반적인 MD simulation 수준의 time scale에서 관찰 가능한가?
 3. 적절한 reaction coordinate 또는 collective variable을 정의할 수 있는가?
 4. equilibrium ensemble이 필요한가, transition pathway와 rate가 필요한가?
 5. force field, protonation, 막 조성, ligand 상태가 질문과 일치하는가?
 6. 수렴과 불확실성을 어떤 독립적인 지표로 판단할 것인가?
 
-질문과 관측량이 달라지면 simulation·analysis method도 달라집니다.
+질문과 관측하려는 지표가 달라지면 simulation·analysis method도 달라집니다.
+
+
 
 ### 저장소의 두 부분
 
@@ -60,24 +65,28 @@ structure and scientific choices
 - [시뮬레이션 튜토리얼](1_Simulation/README.md)
 - [분석 튜토리얼](2_Analysis/README.md)
 
+
+
 ## 1. 시뮬레이션
 
 | 번호 | 방법 | 주된 목적 | 주요 사전 조건 |
 | --- | --- | --- | --- |
-| 1 | 일반 MD | 자연스러운 국소 dynamics와 기준 trajectory | 관심 과정이 접근 가능한 시간 척도에 존재 |
-| 2 | US | 선택한 좌표를 따른 PMF | 적절한 reaction coordinate와 window overlap |
-| 3 | REMD 계열 | replica 교환을 통한 sampling 향상 | 교환 변수와 replica 분포 설계 |
+| 1 | 일반 MD | 시간에 따른 dynamics | 관심있는 pathway가 conventional MD로 접근 가능한 시간 scale에 존재 |
+| 2 | US | 선택한 좌표를 따르는 PMF | 적절한 reaction coordinate와 window overlap |
+| 3 | REMD 계열 | replica exchange를 통한 sampling 향상 | 교환 변수와 replica 분포 설계 |
 | 4 | GaMD 계열 | reaction-coordinate-free barrier 완화 | boost 통계와 reweighting 검증 |
-| 5 | FEP | 두 alchemical state의 자유에너지 차이 | 안정적인 mapping과 lambda overlap |
+| 5 | FEP | 두 alchemical state의 free energy 차이 | 안정적인 mapping과 lambda overlap |
 | 6 | WE | 희귀 사건의 pathway, flux와 rate | progress coordinate와 상태 정의 |
 | 7 | MetaD/OPES | CV 공간의 barrier 완화와 자유에너지 탐색 | 물리적으로 유효한 CV와 bias 설정 |
+
+
 
 ### 공통 계산 흐름
 
 공통 workflow는 아래 순서를 따릅니다.
 
 1. 원본 구조와 출처 기록
-2. residue, ligand, ion, protonation과 결손 원자 검토
+2. residue, ligand, ion, protonation 및 missing atoms 검토
 3. force field와 solvent model 선택
 4. topology와 초기 좌표 생성
 5. 단계별 minimization과 equilibration
@@ -85,62 +94,48 @@ structure and scientific choices
 7. 짧은 교육용 production
 8. 출력·restart·trajectory의 일관성 확인
 
-Syntax check와 정상 종료는 물리적 검증이나 수렴 판단을 대신하지 않습니다.
 
-### 현재 검증 범위
-
-AmberTools 26의 topology build, 짧은 `sander`/cpptraj 계산, WESTPA 연결과
-Python fixture는 확인했습니다. 다음 실제 engine 조합은 아직 다른 PC에서
-검증해야 합니다.
-
-- Amber 26 `pmemd.cuda` production과 GPU 전용 GaMD·FEP 기능
-- `pmemd.cuda.MPI` T-REMD, REUS와 GaREUS replica exchange
-- GROMACS/PLUMED REST2·REST3 HREX
-- PLUMED가 연결된 AMBER의 ratchet MD, WT-MetaD와 OPES
-
-따라서 local README에 opt-in gate나 호환성 경고가 있는 method는 해당 표시를
-유지합니다. 짧은 actual run, restart와 output 검사를 통과하기 전에는 검증
-완료로 간주하지 않습니다.
 
 ### 1.1 conventional MD
 
-일반 MD는 별도의 bias 없이 선택한 Hamiltonian과 ensemble에서 시간에 따른
-구조 변화를 계산합니다. Enhanced-sampling 결과를 비교하기 위한 기준
-trajectory이며 대부분의 후속 분석을 배우는 출발점입니다.
+일반 MD는 별도의 bias 없이 선택한 Hamiltonian과 ensemble에서 시간에 따른 구조 변화를 계산합니다.
+Enhanced-sampling 결과를 비교하기 위한 기준 trajectory이며 대부분의 후속 분석을 배우는 출발점입니다.
 
 세 시스템이 서로 다른 학습 목표를 담당합니다.
 
 | 시스템 | 시작 구조 | 학습 목표 | 기본 AMBER model |
 | --- | --- | --- | --- |
-| Chignolin | PDB 1UAO | 수용성 단백질 build와 기본 구조·ensemble 분석 | ff19SB + TIP3P |
+| Chignolin | PDB 1UAO |  protein의 build와 기본 구조·ensemble 분석 | ff19SB + TIP3P |
 | T4 lysozyme–JZ4 | PDB 3HTB | ligand parameterization, interaction, ABFE와 end-state energy | ff19SB + GAFF2 + TIP3P |
 | KcsA | PDB 1K4C | 막 단백질 좌표·topology build와 membrane analysis | ff19SB + Lipid21 + OPC |
 
 ff19SB 개발 논문에서는 TIP3P와 OPC를 모두 평가했고, OPC에서 더 나은
-성능을 보고했습니다. 이 저장소는 비막 system의 교육용 기본값을 TIP3P로
-통일합니다. Water model을 바꾸면 결과가 동일하다고 가정하지 않습니다.
+성능을 보고했습니다. 이 저장소는 non-membrane system의 기본 water model을 TIP3P로
+사용합니다. Water model을 바꾸면 결과가 달라질 수도 있습니다.
 
 - [일반 MD 전체 안내](1_Simulation/1_MD/README.md)
 - [Chignolin](1_Simulation/1_MD/1.1_Soluble_Protein/README.md)
 - [T4 lysozyme–JZ4](1_Simulation/1_MD/1.2_Protein_Ligand/README.md)
 - [KcsA](1_Simulation/1_MD/1.3_Membrane_Protein/README.md)
 
-KcsA는 공개된 평형화 Lipid21 POPC bilayer를 2×2로 복제한 뒤 protein과
+KcsA는 공개된 Lipid21 POPC bilayer를 2×2로 복제한 뒤 protein과
 겹치는 lipid를 제거해 POPC 90%, POPE 5%, cholesterol 5% membrane을
-만듭니다. tleap build는 별도 단계입니다. Detergent와 bulk 결정수는
+만듭니다. tleap build는 별도 단계입니다. Detergent와 bulk water는
 제거하고 selectivity filter K+ 7개와 filter·cavity water 16개를
 유지합니다. Neutral-pH baseline은 E71=`GLH`, D80=`ASP`, H25=`HIE`,
 E118/E120=`GLU`입니다. Side chain 좌표가 불완전한 terminal H124는
 제외합니다.
 
-CHARMM lipid force field와 CHARMM-GUI는 membrane simulation에서 오래
-사용된 조합입니다. AMBER Lipid21은 AMBER protein·ligand force field와 함께
-사용하기 편합니다. 선택 기준은 lipid 조성, water/ion model과 비교할 실험
-자료입니다.
+* CHARMM lipid force field와 CHARMM-GUI는 membrane simulation에서 오랫동안 사용된 조합입니다.
+유명하고 많이 사용되었기 때문에 충분히 많은 검증이 이루어졌다는 것이 장점입니다.
+* AMBER Lipid21은 AMBER protein·ligand force field와 함께 사용하기 편합니다.
+* 이 튜토리얼에서는 CHARMM-GUI를 사용하지 않고 local에서 자체적으로 membrane protein system을 계산하는 방법을 다룹니다.
 
-입문용 GROMACS 일반 MD는 이 저장소에서 중복 구현하지 않습니다. 아래의
-Lemkul 튜토리얼의 Lysozyme in Water와 KALP15 in DPPC 과정을
-선행 자료로 사용합니다.
+
+> GROMACS의 기본 사용법 및 GROMACS를 사용한 conventional MD simulation은 이 튜토리얼에서 다루지 않습니다.
+참고 자료에 안내되어 있는 Lemkul's MD tutorials의 Lysozyme in Water와 KALP15 in DPPC 과정을 참조하시기 바랍니다.
+
+
 
 ### 1.2 Umbrella sampling
 
@@ -149,11 +144,10 @@ Umbrella sampling은 선택한 reaction coordinate를 여러 window로 나누고
 어려운 영역을 sampling합니다. 분석 단계에서는 window overlap을 확인한 뒤
 WHAM 또는 MBAR로 unbiased PMF를 복원합니다.
 
-이 저장소의 예제는 먼저 PLUMED ABMD ratchet MD로 ordered seed pathway를
-만듭니다. Ratchet MD는 target-directed simulation이지만 constant-velocity
-pulling은 아닙니다. 목표 방향의 thermal fluctuation은 허용하고 반대 방향
-fluctuation을 억제합니다. Ratchet trajectory와 모든 umbrella window는
-동일한 topology를 사용합니다.
+이 저장소의 예제는 먼저 PLUMED ratchet MD(ABMD)로 ordered seed pathway를 만듭니다.
+Ratchet MD는 target-directed simulation이지만 constant-velocity pulling은 아닙니다.
+목표 방향의 thermal fluctuation은 허용하고 반대 방향 fluctuation을 억제합니다.
+Ratchet MD trajectory와 모든 umbrella window는 동일한 topology를 사용합니다.
 
 핵심 검토 항목은 다음과 같습니다.
 
@@ -168,9 +162,8 @@ fluctuation을 억제합니다. Ratchet trajectory와 모든 umbrella window는
 
 ### 1.3 Replica exchange
 
-Replica exchange는 temperature 또는 Hamiltonian이 다른 replica 사이에서
-상태를 교환합니다. Analysis에는 exchange acceptance, round trip,
-ensemble별 sampling과 관심 observable을 사용합니다.
+Replica exchange는 temperature 또는 Hamiltonian이 다른 replica 사이에서 상태를 교환합니다.
+Analysis에는 exchange acceptance, round trip, ensemble별 sampling과 관심 observable을 사용합니다.
 
 - T-REMD: replica마다 서로 다른 temperature 사용
 - REST2: solute interaction을 scaling하여 전체 solvent 가열 비용 완화
@@ -282,7 +275,7 @@ membrane-aware preprocessing과 채널 구조 분석은 이후 범위입니다.
 
 - [AMBER](https://ambermd.org/)
 - [GROMACS documentation](https://manual.gromacs.org/)
-- [Lemkul GROMACS tutorials](http://www.mdtutorials.com/gmx/)
+- [GROMACS tutorials](http://www.mdtutorials.com/gmx/)
 - [PLUMED 2.10 user documentation](https://www.plumed.org/doc-v2.10/user-doc/html/index.html)
 - [WESTPA documentation](https://westpa.readthedocs.io/)
 - [REMD temperature generator](https://virtualchemistry.org/remd-temperature-generator/)
