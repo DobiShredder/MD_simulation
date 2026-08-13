@@ -1,3 +1,2 @@
 energy: ENERGY
 PRINT ARG=energy STRIDE=5000 FILE=plumed_energy.dat
-

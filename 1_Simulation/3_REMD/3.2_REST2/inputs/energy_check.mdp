@@ -12,4 +12,3 @@ rvdw                    = 1.0
 tcoupl                  = no
 pcoupl                  = no
 pbc                     = xyz
-

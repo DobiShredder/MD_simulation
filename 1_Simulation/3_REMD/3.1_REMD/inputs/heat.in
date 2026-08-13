@@ -31,4 +31,3 @@ Heat to @TEMP@ K over 200 ps at constant volume
  value2=@TEMP@,
 /
 &wt type='END' /
-

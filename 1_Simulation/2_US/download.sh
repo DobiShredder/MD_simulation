@@ -50,4 +50,3 @@ else
 fi
 
 echo "Downloaded files and checksums: $structure_dir"
-

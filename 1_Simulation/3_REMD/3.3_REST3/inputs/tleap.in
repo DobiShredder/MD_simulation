@@ -11,4 +11,3 @@ check system
 saveamberparm system system.parm7 system.rst7
 savepdb system system.pdb
 quit
-

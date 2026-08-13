@@ -197,7 +197,7 @@ FEP는 직접적인 물리적 transition 대신 alchemical intermediate를 정�
 - RBFE: 유사한 두 ligand 또는 mutation 사이의 상대 자유에너지
 - ABFE: restraint와 decoupling을 이용한 절대 결합 자유에너지
 
-FEP input에는 lambda schedule, atom mapping, charge change, soft-core 설정과 window별 equilibration이 들어갑니다. 
+FEP input에는 lambda schedule, atom mapping, charge change, soft-core 설정과 window별 equilibration이 들어갑니다.
 ABFE는 ligand position/orientation restraint와 standard-state correction도 포함합니다.
 RBFE는 T4 lysozyme L99A의 benzene→toluene transformation, ABFE는 3HTB T4 lysozyme–JZ4를 사용합니다.
 두 예제는 AMBER가 기록한 cross-state energy matrix를 FE-ToolKit MBAR로 분석하며 production은 2 ns/window입니다.
@@ -222,7 +222,7 @@ Flux와 rate estimator는 포함하지 않습니다. Resampling과 weight는 WES
 
 ### 7 Metadynamics와 OPES
 
-Metadynamics는 선택한 collective variable 공간에 history-dependent bias를 누적하여 이미 방문한 영역에서 벗어나도록 합니다. 
+Metadynamics는 선택한 collective variable 공간에 history-dependent bias를 누적하여 이미 방문한 영역에서 벗어나도록 합니다.
 Well-Tempered MetaD는 bias 증가를 완화하고, OPES는 목표 distribution에 접근하도록 bias를 구성합니다.
 Funnel MetaD는 trypsin–benzamidine binding 경로를 cone과 cylinder 안으로 제한하고 ligand의 axis projection을 bias합니다.
 
@@ -238,7 +238,7 @@ Restart할 때는 AMBER restart와 method별 `HILLS` 또는 OPES state를 함께
 이 section에서는 MD simulation 계산 후의 데이터 분석 방법에 대해 학습합니다.
 data의 분석은 simulation 수행만큼이나 (혹은 그 이상으로) 중요한 과정입니다.
 본 section을 학습하기 전에 `1_MD/1.1_Soluble_Protein`에서 기본 튜토리얼을 진행해서
-학습에 필요한 예제 trajectory를 확보하시길 바랍니다. 
+학습에 필요한 예제 trajectory를 확보하시길 바랍니다.
 
 
 권장 학습 순서는 다음과 같습니다.
