@@ -69,10 +69,11 @@ Restraint stage는 λ=0의 restrained complex에서 λ=1의 unrestrained complex
 진행합니다. 모든 window는 같은 full-strength `DISANG` file을 사용하고,
 `gti_nmropt=1`이 restraint energy를 lambda에 따라 제거합니다. Complex
 minimization에도 같은 `DISANG` restraint를 적용해 heating 전에 anchor geometry가
-흐트러지지 않게 합니다. Restraint stage의 MBAR 값을 binding cycle에 넣을 때는
-부호를 바꿉니다. AMBER의 `rk2`/`rk3`는 `U=rk(x-x0)^2`의 계수이므로 Boresch
+흐트러지지 않게 합니다. Restraint stage에서 계산한 제거값은 같은 방향으로
+binding cycle에 더합니다. AMBER의 `rk2`/`rk3`는 `U=rk(x-x0)^2`의 계수이므로 Boresch
 analytic correction에서는 `K=2×rk`로 변환합니다. `standard_state_correction`은
 decoupled ligand의 restraint를 풀어 1 M 상태로 옮기는 항이며 보통 음수입니다.
+이 함수가 반환한 release free energy는 binding cycle에서 뺍니다.
 
 Charge stage는 원래 topology와 `crgmask=':JZ4'`를 사용합니다. JZ4의 net
 charge는 0이지만 atom별 partial charge interaction은 이 stage에서 제거합니다.
@@ -87,14 +88,17 @@ JZ4의 net charge가 0이므로 ligand decoupling은 system의 net charge를 바
 cycle과 standard-state correction을 다시 검토합니다.
 
 `anal.py`는 AmberTools 26의 `edgembar-amber2dats.py`와
-`edgembar --mode=MBAR`를 실행합니다. FE-ToolKit의 automatic equilibration,
-correlated-sample stride와 20회 bootstrap을 사용합니다. 각 window에 존재하는
+`edgembar --mode=AUTO`를 실행합니다. Full cross-state energy matrix가 있으면
+MBAR를 사용하고, 없으면 모든 adjacent pair가 기록된 stage에 BAR를 사용합니다.
+사용한 estimator는 `free_energy.tsv`에 stage별로 기록합니다. FE-ToolKit의
+automatic equilibration, correlated-sample stride와 20회 bootstrap을 사용합니다.
+각 window에 존재하는
 `production.NNN.out`을 번호순으로 모두 읽으므로 production을 추가 segment로
 연장해도 analysis code를 수정하지 않습니다.
 
 | Output | 내용 |
 | --- | --- |
-| `work/free_energy.tsv` | Stage별 MBAR 값, analytic correction과 최종 `ΔG°bind` |
+| `work/free_energy.tsv` | Stage별 MBAR/BAR 값, analytic correction과 최종 `ΔG°bind` |
 | `work/mbar_diagnostics.tsv` | State별 sample 수, 제거한 equilibration과 stride |
 | `work/overlap_matrix.tsv` | Stage별 lambda overlap |
 | `work/mbar/abfe_report.html` | FE-ToolKit convergence report |
@@ -113,7 +117,7 @@ Run the five public entry points in the order shown above. `build.sh` uses
 ff19SB, GAFF2/AM1-BCC, and TIP3P, writes original and zero-JZ4-charge topologies,
 then creates 65 windows. Restraint and charge
 stages use eleven lambda states; the soft-core LJ stages use sixteen states with
-additional endpoint spacing. Each window contains 200 ps heating, 1 ns
+additional endpoint spacing. Each window contains 200 ps heating, 100 ps
 equilibration, and one 1 ns production segment.
 JZ4 is parameterized with a net charge of zero. The protein anchors are GLN102
 `CG-CB-CA`, and the ligand anchors are JZ4 `C7-C8-C9`.
@@ -145,8 +149,10 @@ the zero-JZ4-charge topology without applying `crgmask` a second time.
 Soft-core interactions use the Amber 26 `aces26=1` format and require
 `pmemd.cuda`.
 
-`anal.py` uses the AmberTools 26 FE-ToolKit MBAR estimator for all five sampled
-stages. It combines every `production.NNN.out` present in each window; the
+`anal.py` uses FE-ToolKit MBAR when a stage has the full cross-state energy
+matrix and falls back to adjacent-state BAR when all neighboring pairs are
+available. The selected estimator is recorded for each stage in
+`free_energy.tsv`. It combines every `production.NNN.out` present in each window; the
 default run creates `production.001.out`, while additional numbered segments
 require no analysis-code change. It then adds the analytical standard-state term. The leading PME
 net-charge correction is zero because JZ4 is neutral. Outputs include bootstrap uncertainty,
@@ -154,8 +160,9 @@ per-state sampling diagnostics, stage overlap matrices, and an HTML convergence
 report. The short windows and approximate correction are suitable for learning
 the workflow, not for claiming a converged experimental binding affinity.
 
-The restraint stage runs from an unrestrained to a restrained bound complex, so
-its MBAR contribution enters the binding cycle with the opposite sign. AMBER uses
+The restraint stage runs from a restrained to an unrestrained bound complex.
+Its sampled removal free energy enters the binding cycle with the same sign,
+while the negative analytical standard-state release term is subtracted. AMBER uses
 `U=rk(x-x0)^2`; the analytical Boresch expression therefore uses `K=2*rk`.
 The `gti_nmropt=1` restraint-MBAR combination still requires an Amber 26
 `pmemd.cuda` desktop smoke test.

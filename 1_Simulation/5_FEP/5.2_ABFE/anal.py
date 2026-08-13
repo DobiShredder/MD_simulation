@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Calculate the ABFE MBAR cycle and corrections with Amber FE-ToolKit."""
+"""Calculate the ABFE cycle and corrections with Amber FE-ToolKit."""
 
 from __future__ import annotations
 
@@ -79,12 +79,52 @@ def extract_window(
                     output_handle.write(input_handle.read())
 
 
+def choose_estimator(
+    stage: str,
+    lambdas: list[str],
+    observed_files: set[str],
+    log_file: Path,
+) -> str:
+    mbar_files = {
+        f"efep_{sampled_lambda}_{evaluated_lambda}.dat"
+        for sampled_lambda in lambdas
+        for evaluated_lambda in lambdas
+    }
+    bar_files = set()
+    for state_index in range(len(lambdas) - 1):
+        first_lambda = lambdas[state_index]
+        second_lambda = lambdas[state_index + 1]
+        bar_files.update({
+            f"efep_{first_lambda}_{first_lambda}.dat",
+            f"efep_{first_lambda}_{second_lambda}.dat",
+            f"efep_{second_lambda}_{first_lambda}.dat",
+            f"efep_{second_lambda}_{second_lambda}.dat",
+        })
+
+    if mbar_files.issubset(observed_files):
+        return "MBAR"
+    if bar_files.issubset(observed_files):
+        print(
+            f"{stage}: full MBAR matrix is unavailable; "
+            "using adjacent-state BAR."
+        )
+        return "BAR"
+
+    missing_files = sorted(bar_files - observed_files)
+    missing_preview = ", ".join(missing_files[:4])
+    raise SystemExit(
+        f"{stage} energy matrix cannot support adjacent-state BAR: "
+        f"missing={len(missing_files)} ({missing_preview}). "
+        f"Check {log_file}."
+    )
+
+
 def prepare_stage_data(
     extractor: str,
     stage: str,
     states: list[dict[str, str]],
     mbar_directory: Path,
-) -> tuple[Path, list[str]]:
+) -> tuple[Path, list[str], str]:
     stage_states = [state for state in states if state["stage"] == stage]
     stage_states.sort(key=lambda state: float(state["lambda"]))
     data_directory = mbar_directory / "data" / stage
@@ -95,14 +135,9 @@ def prepare_stage_data(
         extract_window(extractor, state, data_directory, log_file)
 
     lambdas = [f"{float(state['lambda']):.8f}" for state in stage_states]
-    expected_files = len(lambdas) * len(lambdas)
-    observed_files = len(list(data_directory.glob("efep_*.dat")))
-    if observed_files != expected_files:
-        raise SystemExit(
-            f"{stage} MBAR energy matrix is incomplete: "
-            f"expected={expected_files}, observed={observed_files}"
-        )
-    return data_directory, lambdas
+    observed_files = {path.name for path in data_directory.glob("efep_*.dat")}
+    estimator = choose_estimator(stage, lambdas, observed_files, log_file)
+    return data_directory, lambdas, estimator
 
 
 def add_trial(
@@ -110,22 +145,26 @@ def add_trial(
     name: str,
     data_directory: Path,
     lambdas: list[str],
+    estimator: str,
 ) -> None:
     stage = ET.SubElement(parent, "stage", name=name)
-    trial = ET.SubElement(stage, "trial", name="trial_1", mode="MBAR")
+    trial = ET.SubElement(stage, "trial", name="trial_1", mode=estimator)
     ET.SubElement(trial, "dir").text = str(data_directory.resolve())
     for lambda_value in lambdas:
         ET.SubElement(trial, "ene").text = lambda_value
 
 
-def write_edge_xml(path: Path, stage_data: dict[str, tuple[Path, list[str]]]) -> None:
+def write_edge_xml(
+    path: Path,
+    stage_data: dict[str, tuple[Path, list[str], str]],
+) -> None:
     edge = ET.Element("edge", name="jz4_decoupling")
     solvent = ET.SubElement(edge, "env", name="target")
     complex_environment = ET.SubElement(edge, "env", name="reference")
 
+    add_trial(solvent, "restraint", *stage_data["restraint"])
     add_trial(solvent, "solvent_charge", *stage_data["solvent_charge"])
     add_trial(solvent, "solvent_vdw", *stage_data["solvent_vdw"])
-    add_trial(complex_environment, "restraint", *stage_data["restraint"])
     add_trial(complex_environment, "complex_charge", *stage_data["complex_charge"])
     add_trial(complex_environment, "complex_vdw", *stage_data["complex_vdw"])
 
@@ -148,6 +187,14 @@ def stage_results(edge: object) -> dict[str, tuple[float, float]]:
         for stage in environment.stages:
             results[stage.name] = stage.GetValueAndError(edge.results.prod)
     return results
+
+
+def stage_estimators(edge: object) -> dict[str, str]:
+    estimators: dict[str, str] = {}
+    for environment in edge.GetEnvs():
+        for stage in environment.stages:
+            estimators[stage.name] = stage.trials[0].GetMode()
+    return estimators
 
 
 def standard_state_correction(restraints: list[dict[str, str]]) -> float:
@@ -182,8 +229,8 @@ def combine_binding_free_energy(
         + contributions["solvent_vdw"]
         - contributions["complex_charge"]
         - contributions["complex_vdw"]
-        - contributions["restraint"]
-        + standard_state
+        + contributions["restraint"]
+        - standard_state
     )
     return raw_binding, raw_binding + finite_size
 
@@ -199,25 +246,40 @@ def write_free_energy(edge: object, results: dict[str, tuple[float, float]]) -> 
         finite_size,
     )
     _, cycle_error = edge.GetValueAndError(edge.results.prod)
+    estimators = stage_estimators(edge)
+    sampled_stages = (
+        "restraint",
+        "complex_charge",
+        "complex_vdw",
+        "solvent_charge",
+        "solvent_vdw",
+    )
+    unique_estimators = set(estimators.values())
+    if len(unique_estimators) == 1:
+        cycle_estimator = f"{next(iter(unique_estimators))}+analytic"
+    else:
+        stage_modes = ";".join(
+            f"{stage}={estimators[stage]}" for stage in sampled_stages
+        )
+        cycle_estimator = f"{stage_modes};analytic"
 
     with (WORK / "free_energy.tsv").open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle, delimiter="\t")
         writer.writerow(["quantity", "value_kcal_mol", "uncertainty_kcal_mol", "estimator"])
-        for stage in (
-            "restraint",
-            "complex_charge",
-            "complex_vdw",
-            "solvent_charge",
-            "solvent_vdw",
-        ):
+        for stage in sampled_stages:
             value, error = results[stage]
-            writer.writerow([stage, f"{value:.8f}", f"{error:.8f}", "MBAR"])
+            writer.writerow([
+                stage,
+                f"{value:.8f}",
+                f"{error:.8f}",
+                estimators[stage],
+            ])
         restraint_error = results["restraint"][1]
         writer.writerow([
             "bound_restraint_cycle_contribution",
-            f"{-contributions['restraint']:.8f}",
+            f"{contributions['restraint']:.8f}",
             f"{restraint_error:.8f}",
-            "MBAR",
+            estimators["restraint"],
         ])
         writer.writerow(["standard_state_correction", f"{standard:.8f}", "", "analytic"])
         writer.writerow(["leading_pme_net_charge_correction", f"{finite_size:.8f}", "", "analytic"])
@@ -225,13 +287,13 @@ def write_free_energy(edge: object, results: dict[str, tuple[float, float]]) -> 
             "raw_standard_binding_delta_g",
             f"{raw_binding:.8f}",
             f"{cycle_error:.8f}",
-            "MBAR+analytic",
+            cycle_estimator,
         ])
         writer.writerow([
             "corrected_standard_binding_delta_g",
             f"{corrected_binding:.8f}",
             f"{cycle_error:.8f}",
-            "MBAR+analytic",
+            cycle_estimator,
         ])
 
 
@@ -300,7 +362,7 @@ def main() -> None:
     run_command(
         [
             edgembar,
-            "--mode=MBAR",
+            "--mode=AUTO",
             f"--temp={TEMPERATURE_K}",
             f"--nboot={BOOTSTRAP_SAMPLES}",
             f"--out={report_path}",
@@ -314,7 +376,7 @@ def main() -> None:
     write_diagnostics(report.edge)
     run_command([sys.executable, str(report_path), "--html"], mbar_directory / "report.log")
 
-    print(f"ABFE MBAR results: {WORK / 'free_energy.tsv'}")
+    print(f"ABFE free-energy results: {WORK / 'free_energy.tsv'}")
 
 
 if __name__ == "__main__":
