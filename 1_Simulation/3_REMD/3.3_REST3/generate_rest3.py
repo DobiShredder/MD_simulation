@@ -106,7 +106,11 @@ def main() -> None:
         temporary = args.output_directory / f".rest3_{replica}"
         temporary.mkdir(parents=True, exist_ok=True)
 
-        converter = module.topo2rest(str(args.processed_topology))
+        converter = module.topo2rest(
+            str(args.processed_topology),
+            temps=[300.0, temperature],
+            nreps=2,
+        )
 
         molecules = getattr(converter, "molecules", {})
         protein_name = str(molecules.get(0, "")).lower()
