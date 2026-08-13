@@ -20,7 +20,7 @@ protein complex와 물에서 각각 계산하고 두 값의 차이로 `ΔΔG_bin
 | `build.sh` | GAFF2/AM1-BCC parameter와 complex 및 solvent topology 생성 | `work/build/`, `states.tsv` |
 | `generate_inputs.py` | 22개 window input 생성; `build.sh`가 호출 | `work/complex/`, `work/solvent/` |
 | `run.sh` | Minimization, heating, equilibration, production 실행 | Window별 restart, trajectory, log |
-| `anal.py` | MBAR energy 추출, FE-ToolKit 실행과 두 environment 조합 | `free_energy.tsv`, `overlap_matrix.tsv` |
+| `anal.py` | Cross-state energy 추출, FE-ToolKit MBAR/BAR 실행과 두 environment 조합 | `free_energy.tsv`, `overlap_matrix.tsv` |
 
 ```bash
 ./download.sh
@@ -56,19 +56,25 @@ Soft-core interaction은 Amber 26의 `aces26=1` 형식을 사용합니다.
 
 Production의 `ifmbar=1`과 `mbar_lambda`는 각 saved configuration의 potential
 energy를 11개 state에서 평가합니다. 이 계산은 현재 window의 dynamics를
-바꾸지 않고 MBAR에 필요한 full energy matrix를 mdout에 추가합니다.
+바꾸지 않고 cross-state energy를 mdout에 추가합니다.
 
 `anal.py`는 AmberTools 26의 `edgembar-amber2dats.py`로 matrix를 추출한 뒤
-`edgembar --mode=MBAR`를 실행합니다. FE-ToolKit의 automatic equilibration,
+full matrix가 있으면 MBAR를 사용합니다. 먼 lambda state의 energy가 수치 범위를
+벗어나 mdout에 `********`로 기록되면 extractor는 해당 window의 현재 state와
+인접 state energy만 저장합니다. 이 경우 모든 인접 pair가 있으면 BAR로
+전환하며 임의의 energy로 `********`를 대체하지 않습니다. Complex와 solvent는
+각각 사용 가능한 estimator를 선택하고 `free_energy.tsv`에 이를 기록합니다.
+
+FE-ToolKit의 automatic equilibration,
 correlated-sample stride와 20회 bootstrap을 사용합니다. 각 window에 존재하는
 `production.NNN.out`을 번호순으로 모두 읽으므로 production을 추가 segment로
 연장해도 같은 command로 분석합니다. 주요 output은 다음과 같습니다.
 
 | Output | 내용 |
 | --- | --- |
-| `work/free_energy.tsv` | Complex, solvent와 `ΔΔG_bind`; MBAR uncertainty 포함 |
+| `work/free_energy.tsv` | Complex, solvent와 `ΔΔG_bind`; MBAR/BAR estimator와 uncertainty 포함 |
 | `work/mbar_diagnostics.tsv` | State별 sample 수, 제거한 equilibration과 stride |
-| `work/overlap_matrix.tsv` | Lambda state 사이의 MBAR overlap |
+| `work/overlap_matrix.tsv` | Lambda state 사이의 overlap |
 | `work/mbar/rbfe_report.html` | FE-ToolKit convergence report |
 
 `complex_delta_g`와 `solvent_delta_g`는 같은 방향의 transformation입니다.
@@ -105,9 +111,16 @@ The inputs use the Amber 26 `aces26=1` soft-core format and scale
 configuration at all eleven lambda states without changing its propagation.
 
 `anal.py` extracts the cross-state energy matrix and runs the AmberTools 26
-FE-ToolKit in MBAR mode. It writes free energies with bootstrap uncertainties,
-per-state sampling diagnostics, an overlap matrix, and an HTML convergence
-report. It combines every `production.NNN.out` present in each window; the
-default run creates `production.001.out`, while additional numbered segments
-require no analysis-code change. Inspect neighboring-state overlap and
-equilibration warnings before interpreting the final value.
+FE-ToolKit. A complete matrix is analyzed with MBAR. If an energy at a distant
+lambda state overflows to `********`, the extractor retains current- and
+adjacent-state energies. The analysis then uses BAR when every adjacent pair is
+available; it does not replace undefined energies with arbitrary values. The
+complex and solvent estimators are selected independently and recorded in
+`free_energy.tsv`.
+
+The analysis writes bootstrap uncertainties, per-state sampling diagnostics,
+an overlap matrix, and an HTML convergence report. It combines every
+`production.NNN.out` present in each window; the default run creates
+`production.001.out`, while additional numbered segments require no
+analysis-code change. Inspect neighboring-state overlap and equilibration
+warnings before interpreting the final value.

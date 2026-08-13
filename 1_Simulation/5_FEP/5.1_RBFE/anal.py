@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Calculate RBFE MBAR results and overlap with Amber FE-ToolKit."""
+"""Calculate RBFE free energies and overlap with Amber FE-ToolKit."""
 
 from __future__ import annotations
 
@@ -83,7 +83,7 @@ def prepare_environment_data(
     environment_name: str,
     states: list[dict[str, str]],
     mbar_directory: Path,
-) -> tuple[Path, list[str]]:
+) -> tuple[Path, list[str], str]:
     environment_states = [
         state for state in states if state["environment"] == environment_name
     ]
@@ -96,14 +96,40 @@ def prepare_environment_data(
         extract_window(extractor, state, data_directory, log_file)
 
     lambdas = [f"{float(state['lambda']):.8f}" for state in environment_states]
-    expected_files = len(lambdas) * len(lambdas)
-    observed_files = len(list(data_directory.glob("efep_*.dat")))
-    if observed_files != expected_files:
-        raise SystemExit(
-            f"{environment_name} MBAR energy matrix is incomplete: "
-            f"expected={expected_files}, observed={observed_files}"
+    observed_files = {path.name for path in data_directory.glob("efep_*.dat")}
+    mbar_files = {
+        f"efep_{sampled_lambda}_{evaluated_lambda}.dat"
+        for sampled_lambda in lambdas
+        for evaluated_lambda in lambdas
+    }
+    bar_files = set()
+    for state_index in range(len(lambdas) - 1):
+        first_lambda = lambdas[state_index]
+        second_lambda = lambdas[state_index + 1]
+        bar_files.update({
+            f"efep_{first_lambda}_{first_lambda}.dat",
+            f"efep_{first_lambda}_{second_lambda}.dat",
+            f"efep_{second_lambda}_{first_lambda}.dat",
+            f"efep_{second_lambda}_{second_lambda}.dat",
+        })
+
+    if mbar_files.issubset(observed_files):
+        estimator = "MBAR"
+    elif bar_files.issubset(observed_files):
+        estimator = "BAR"
+        print(
+            f"{environment_name}: full MBAR matrix is unavailable; "
+            "using adjacent-state BAR."
         )
-    return data_directory, lambdas
+    else:
+        missing_files = sorted(bar_files - observed_files)
+        missing_preview = ", ".join(missing_files[:4])
+        raise SystemExit(
+            f"{environment_name} energy matrix cannot support adjacent-state BAR: "
+            f"missing={len(missing_files)} ({missing_preview}). "
+            f"Check {log_file}."
+        )
+    return data_directory, lambdas, estimator
 
 
 def add_trial(
@@ -111,9 +137,10 @@ def add_trial(
     name: str,
     data_directory: Path,
     lambdas: list[str],
+    estimator: str,
 ) -> None:
     stage = ET.SubElement(parent, "stage", name=name)
-    trial = ET.SubElement(stage, "trial", name="trial_1", mode="MBAR")
+    trial = ET.SubElement(stage, "trial", name="trial_1", mode=estimator)
     ET.SubElement(trial, "dir").text = str(data_directory.resolve())
     for lambda_value in lambdas:
         ET.SubElement(trial, "ene").text = lambda_value
@@ -121,8 +148,8 @@ def add_trial(
 
 def write_edge_xml(
     path: Path,
-    complex_data: tuple[Path, list[str]],
-    solvent_data: tuple[Path, list[str]],
+    complex_data: tuple[Path, list[str], str],
+    solvent_data: tuple[Path, list[str], str],
 ) -> None:
     edge = ET.Element("edge", name="benzene_to_toluene")
     target = ET.SubElement(edge, "env", name="target")
@@ -146,13 +173,28 @@ def environment_result(edge: object, name: str) -> tuple[float, float]:
     for environment in edge.GetEnvs():
         if environment.stages[0].name == name:
             return environment.GetValueAndError(edge.results.prod)
-    raise SystemExit(f"Environment {name} not found in MBAR report.")
+    raise SystemExit(f"Environment {name} not found in FE-ToolKit report.")
+
+
+def environment_estimator(edge: object, name: str) -> str:
+    for environment in edge.GetEnvs():
+        if environment.stages[0].name == name:
+            return environment.stages[0].trials[0].GetMode()
+    raise SystemExit(f"Environment {name} not found in FE-ToolKit report.")
 
 
 def write_free_energy(edge: object) -> None:
     complex_value, complex_error = environment_result(edge, "complex")
     solvent_value, solvent_error = environment_result(edge, "solvent")
     relative_value, relative_error = edge.GetValueAndError(edge.results.prod)
+    complex_estimator = environment_estimator(edge, "complex")
+    solvent_estimator = environment_estimator(edge, "solvent")
+    if complex_estimator == solvent_estimator:
+        relative_estimator = complex_estimator
+    else:
+        relative_estimator = (
+            f"complex={complex_estimator};solvent={solvent_estimator}"
+        )
 
     with (WORK / "free_energy.tsv").open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle, delimiter="\t")
@@ -161,19 +203,19 @@ def write_free_energy(edge: object) -> None:
             "complex_delta_g",
             f"{complex_value:.8f}",
             f"{complex_error:.8f}",
-            "MBAR",
+            complex_estimator,
         ])
         writer.writerow([
             "solvent_delta_g",
             f"{solvent_value:.8f}",
             f"{solvent_error:.8f}",
-            "MBAR",
+            solvent_estimator,
         ])
         writer.writerow([
             "relative_binding_delta_delta_g",
             f"{relative_value:.8f}",
             f"{relative_error:.8f}",
-            "MBAR",
+            relative_estimator,
         ])
 
 
@@ -233,7 +275,7 @@ def main() -> None:
     run_command(
         [
             edgembar,
-            "--mode=MBAR",
+            "--mode=AUTO",
             f"--temp={TEMPERATURE_K}",
             f"--nboot={BOOTSTRAP_SAMPLES}",
             f"--out={report_path}",
@@ -246,7 +288,7 @@ def main() -> None:
     write_diagnostics(report.edge)
     run_command([sys.executable, str(report_path), "--html"], mbar_directory / "report.log")
 
-    print(f"RBFE MBAR results: {WORK / 'free_energy.tsv'}")
+    print(f"RBFE free-energy results: {WORK / 'free_energy.tsv'}")
 
 
 if __name__ == "__main__":
