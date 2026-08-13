@@ -7,12 +7,28 @@ import argparse
 import csv
 import importlib
 import importlib.util
+import math
 import os
 import shutil
 from pathlib import Path
 from types import ModuleType
 
 from scale_cmap import install_scaled_cmap
+
+
+def use_full_precision_nonbonded_output(module: ModuleType) -> ModuleType:
+    """Replace the four-decimal solvent override writer in parser 0.2.2."""
+
+    def generate_nonbonded(first: list[str], second: list[str]) -> str:
+        epsilon = math.sqrt(float(first[-1]) * float(second[-1]))
+        sigma = 0.5 * (float(first[-2]) + float(second[-2]))
+        return (
+            f"{first[0]:>5} {second[0]:>4} {1:^5} "
+            f"{sigma:.16e} {epsilon:.16e}\n"
+        )
+
+    module.generate_nonbonded = generate_nonbonded
+    return module
 
 
 def load_parser_module() -> ModuleType:
@@ -23,7 +39,9 @@ def load_parser_module() -> ModuleType:
 
     for name in candidates:
         try:
-            return importlib.import_module(name)
+            return use_full_precision_nonbonded_output(
+                importlib.import_module(name)
+            )
         except ModuleNotFoundError:
             continue
 
@@ -51,7 +69,7 @@ def load_parser_module() -> ModuleType:
 
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
-        return module
+        return use_full_precision_nonbonded_output(module)
 
     raise SystemExit(
         "repex-topology-parser 0.2.2 module not found. "

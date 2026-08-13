@@ -215,7 +215,8 @@ def main() -> None:
             if not close_pair(reference, observed):
                 raise SystemExit(
                     "Water-water or ion-water interaction changed: "
-                    f"replica {state['replica']}, {first}-{second}"
+                    f"replica {state['replica']}, {first}-{second}, "
+                    f"reference={reference}, observed={observed}"
                 )
 
     print("Verified REST3 base identity, CMAP scaling, and preservation of solvent interactions.")

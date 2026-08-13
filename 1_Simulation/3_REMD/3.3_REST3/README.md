@@ -71,6 +71,12 @@ TIP3P oxygen type `OW`에 κ scaling을 적용합니다. 고정 κ를 재현하�
 replica 0 topology가 base topology와 byte 단위로 같은지 확인하고
 water–water 및 ion–water Lennard-Jones parameter가 보존되는지 검사합니다.
 
+Parser 0.2.2는 solvent override의 σ와 ε를 소수점 4자리로 출력합니다.
+`generate_rest3.py`는 같은 mixing rule을 double precision으로 계산해 16자리로
+기록합니다. 따라서 κ가 적용되는 protein–water interaction은 바뀌지만 explicit
+override가 필요한 water–water와 ion–water parameter는 base topology 값을
+유지합니다.
+
 ParmEd는 여러 residue로 이루어진 첫 molecule을 기본적으로 `system1`이라고
 기록합니다. Parser 0.2.2는 이 이름을 `[ system ]` section으로 잘못 인식하므로
 `convert_topology.py`가 첫 molecule의 definition과 reference를
@@ -184,6 +190,12 @@ unchanged while only their grids are scaled. `verify_rest3.py` checks base, CMAP
 solvent invariants, `run.sh` performs HREX with `-replex 1000`, and `anal.py`
 summarizes exchange and structure. `kappa_atom_names=['OW']` targets the TIP3P
 oxygen type. The physical thermostat remains at 300 K.
+
+Parser 0.2.2 writes solvent nonbonded overrides with only four decimal places.
+`generate_rest3.py` replaces that writer with the same mixing rule evaluated in
+double precision and records 16 digits. This keeps explicit water–water and
+ion–water overrides equal to the base topology while retaining the intended
+kappa-scaled protein–water interaction.
 
 Run with `--cpus TOTAL --gpus 8`; the GPU count must match the eight replicas,
 and the CPU count must divide evenly among them. Preproduction runs one replica
