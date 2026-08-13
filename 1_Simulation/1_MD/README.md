@@ -66,6 +66,5 @@ Each stage receives a completion marker only after a successful engine exit and
 required-output checks. Partial minimization, heating, and equilibration stages
 are restarted after their outputs are removed; partial production is preserved
 and stops the workflow.
-Each system README documents its scripts, restraints, thermostat, pressure
-coupling, and restart controls. The common 1 ns length is a workflow setting,
-not an assertion that the three systems converge on the same timescale.
+Each system README documents its scripts, inputs, outputs, and other important
+options. The common 1 ns length is a tutorial workflow setting.

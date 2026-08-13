@@ -73,11 +73,13 @@ for Langevin temperature control, `ntb=2`, `ntp=1`, and `barostat=2` for
 isotropic NPT, and `ntc=2`/`ntf=2` for SHAKE. Heating creates velocities;
 later stages use `irest=1`, `ntx=5` to continue coordinates and velocities.
 
-Check `structure/SHA256SUMS`, terminal states, protonation, and `work/leap.log`.
+Check `structure/SHA256SUMS`, terminal states, protonation states, disulfide
+bonds, and `work/leap.log` before building the system.
 `build.sh` writes `work/system.parm7` and `work/system.rst7`. Heating creates
 velocities, and later stages continue from the restart. `run.sh` uses
 `pmemd.cuda`; `AMBER_ENGINE` overrides it.
-The 1 ns trajectory is not a folding-equilibrium or convergence result.
+The 1 ns production result is not evidence of folding equilibrium or
+convergence.
 
 ## References / 참고 자료
 

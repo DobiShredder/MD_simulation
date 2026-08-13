@@ -42,10 +42,10 @@ energy 또는 전체 folding free energy로 해석하지 않습니다.
 
 ## English
 
-Per-window `distance.dat` files from the matching 2_US simulation are converted
-to a one-dimensional terminal-distance PMF. The implementation solves the
-binned WHAM equations directly with NumPy and does not require an external WHAM
-executable.
+Per-window `us/work/NNN/distance.dat` files from the matching 2_US simulation
+are converted to a one-dimensional terminal-distance PMF. The implementation
+solves the binned WHAM equations directly with NumPy and does not require an
+external WHAM executable.
 
 Run `./run.sh` to discard the first 100 ps and prepare each distance series,
 then run `python3 anal.py` to calculate and plot the PMF and neighboring-window

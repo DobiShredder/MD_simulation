@@ -80,7 +80,22 @@ ff19SB for the protein, GAFF2/AM1-BCC for JZ4, and TIP3P water.
 
 The molecular system follows the Lemkul GROMACS protein–ligand tutorial, but
 the parameterization does not: that tutorial uses CHARMM36/CGenFF, whereas this
-one uses AMBER ff19SB/GAFF2.
+one uses AMBER ff19SB/GAFF2. Results from the two parameter sets should not be
+assumed to be equivalent.
+
+Ligand partial charges require particular attention when building a
+protein–ligand system. A common protocol calculates the molecular
+electrostatic potential with an *ab initio* quantum-chemistry method and fits
+atom-centered partial charges, for example with RESP. Programs such as
+Gaussian or GAMESS can perform the quantum calculation, but that workflow is
+outside this tutorial. This example instead uses the lower-cost
+semi-empirical AM1-BCC method. For a new protein–ligand system, consider a
+quantum-chemistry charge protocol and validate the selected chemical model.
+
+Protein–ligand MD integrates the coordinates in the same way as conventional
+MD. The ligand additionally requires a defined bond order, protonation state,
+net charge, and atom mapping. Changing any of these describes a different
+chemical system even if the trajectory finishes normally.
 
 ### Script roles
 

@@ -112,6 +112,8 @@ automatic equilibration, correlated-sample stride와 20회 bootstrap을 사용�
 This restrained double-decoupling example removes JZ4 interactions in the
 3HTB T4 lysozyme complex and in bulk water. Six Boresch coordinates retain the
 bound pose while electrostatic and Lennard-Jones interactions are decoupled.
+The restraint, electrostatic, van der Waals, and standard-state contributions
+are combined according to the thermodynamic cycle.
 
 Run the five public entry points in the order shown above. `build.sh` uses
 ff19SB, GAFF2/AM1-BCC, and TIP3P, writes original and zero-JZ4-charge topologies,

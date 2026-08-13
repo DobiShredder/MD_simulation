@@ -29,5 +29,9 @@ thermodynamic settings, and production length to the target system.
 Protein templates default to ff19SB with TIP3P. Only the KcsA membrane tutorial
 uses Lipid21 and OPC.
 
+The conventional MD examples cover Chignolin, T4 lysozyme–JZ4, and KcsA. The
+remaining families provide ratchet MD/umbrella sampling, replica exchange,
+GaMD, FEP, weighted ensemble, and MetaD/OPES templates.
+
 Scheduler-specific `qsub.sh` files are not included. Keep queue, account,
 module, and path settings in a separate cluster adapter.

@@ -96,9 +96,9 @@ MBAR와 2차 cumulant expansion으로 계산합니다.
 
 This example combines dual-boost GaMD with 20 terminal-Cα distance windows from
 6 to 25 Å. Each window is minimized, heated for 200 ps, and equilibrated for
-1 ns. A single 4 ns GaMD parameter-preparation run at the 15 Å reference window
-provides the same `gamd-restart.dat` parameters to every replica. Ten 1 ns NVT
-GaREUS segments continue that state with `irest_gamd=1`, with exchanges
+100 ps. A single 4 ns GaMD parameter-preparation run at the 15 Å reference
+window provides the same `gamd-restart.dat` parameters to every replica. One
+1 ns NVT GaREUS segment continues that state with `irest_gamd=1`, with exchanges
 attempted every 1 ps.
 
 GaREUS combines umbrella/replica exchange along the selected CV with GaMD
@@ -124,9 +124,11 @@ The current runner uses `-gamd` for per-window logs; confirm the accepted log
 option against the target AMBER build.
 
 Analysis writes exchange, visits, occupancy, restraint sampling, and boost
-potential ranges as TSV files. The boost parser treats the final numeric GaMD
-log column as the total boost and should be adjusted if an AMBER build uses a
-different log layout.
+potential ranges as TSV files. Window trajectories and boost logs are written
+to `work/NNN/production.001.nc` and
+`work/NNN/gamd.production.001.log`. The boost parser treats the final numeric
+GaMD log column as the total boost and should be adjusted if an AMBER build
+uses a different log layout.
 
 The separate [GaREUS reweighting tutorial](../../../2_Analysis/7_Enhanced_Sampling/7.3_GaREUS_Reweighting/README.md)
 uses MBAR followed by second-order cumulant expansion to calculate the PMF.

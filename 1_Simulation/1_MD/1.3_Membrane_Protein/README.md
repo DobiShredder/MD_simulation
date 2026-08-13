@@ -35,16 +35,17 @@ Build는 두 단계로 나눕니다.
 
 ## English
 
-OPM-oriented PDB 1K4C supplies the KcsA tetramer after Fab removal. Detergent and bulk
-crystallographic waters are removed. Seven selectivity-filter K+ ions and 16
-filter/cavity waters are retained. The fixed-charge neutral-pH baseline assigns
-E71 as `GLH`, D80 as `ASP`, H25 as `HIE`, and E118/E120 as `GLU` in all
-four subunits. Missing Ser22 and Arg117 side-chain atoms are transferred from
-closed KcsA 3EFF by local-backbone alignment. Terminal H124 is omitted because its side-chain coordinates
-are incomplete. The model does
-not represent proton transfer between E71 and D80. The model uses ff19SB,
-Lipid21, OPC, and a symmetric
-90% POPC / 5% POPE / 5% cholesterol bilayer.
+Protein orientation within the membrane is a central choice when building a
+membrane-protein system. This tutorial uses the membrane placement deposited
+in OPM for PDB 1K4C and retains the KcsA tetramer after Fab removal. Detergent
+and bulk crystallographic waters are removed. Seven selectivity-filter K+ ions
+and 16 filter/cavity waters are retained. The fixed-charge neutral-pH baseline
+assigns E71 as `GLH`, D80 as `ASP`, H25 as `HIE`, and E118/E120 as `GLU` in
+all four subunits. Missing Ser22 and Arg117 side-chain atoms are transferred
+from closed KcsA 3EFF by local-backbone alignment. Terminal H124 is omitted
+because its side-chain coordinates are incomplete. The model does not
+represent proton transfer between E71 and D80. It uses ff19SB, Lipid21, OPC,
+and a symmetric 90% POPC / 5% POPE / 5% cholesterol bilayer.
 
 Membrane MD adds bilayer orientation, leaflet composition, area, and pressure
 response to the protein preparation problem. Separating coordinate packing

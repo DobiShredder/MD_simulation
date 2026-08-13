@@ -102,5 +102,6 @@ silently resumed.
 the same interval. `MPI_PROCESSES` must equal the 19 windows.
 
 Analysis writes acceptance, state visits, window occupancy, and sampled
-restraint-distance ranges as TSV files. Use the linked analysis tutorial for
-overlap and PMF calculation.
+restraint-distance ranges as TSV files. Window trajectories are written to
+`work/NNN/production.001.nc`. Use the linked analysis tutorial for overlap and
+PMF calculation.

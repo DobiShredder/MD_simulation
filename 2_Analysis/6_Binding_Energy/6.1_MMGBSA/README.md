@@ -26,4 +26,5 @@ block과 decomposition을 TSV로 요약합니다.
 
 The single-trajectory workflow strips solvent and separates `:JZ4` from the
 same complex snapshots. It uses mbondi2 radii, GB model 5, 0.15 M salt, LCPO,
-and per-residue decomposition for 100 sampled frames. Entropy is omitted.
+and per-residue decomposition for 100 frames saved every 10 ps from the 1 ns
+production trajectory. Entropy is omitted.

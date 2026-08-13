@@ -56,6 +56,6 @@ topology residue ordering changes. SHAKE permits the 2 fs timestep.
 Both minimizations use steepest descent (`ntmin=2`) with `dx0=0.0001` to
 relax initial side-chain contacts before dynamics.
 
-The default engine is `pmemd.cuda`; `AMBER_ENGINE` overrides it. Before
-analyzing production, check area per lipid, bilayer thickness, lipid order,
-density, and box-vector stability.
+The default engine is `pmemd.cuda`; `AMBER_ENGINE` overrides it. The 1 ns
+production run is a tutorial-scale duration; most membrane studies require
+substantially longer simulations.

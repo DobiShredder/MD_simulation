@@ -97,17 +97,21 @@ core의 bulk water, filter K+·water를 확인한 뒤 2단계로 넘어갑니다
 
 ## English
 
-This stage inserts OPM-oriented 1K4C into replicated, equilibrated Lipid21
-bilayer patches. `prepare.py` selects the KcsA tetramer, seven filter K+ ions,
-and 16 filter/cavity waters. It transfers the missing Ser22 and Arg117 side
-chain atoms from closed KcsA 3EFF by a local backbone alignment. H124 is
-omitted because its terminal side chain is incomplete.
+This stage inserts 1K4C, positioned relative to the membrane according to OPM,
+into replicated, equilibrated Lipid21 bilayer patches. It tiles an existing
+bilayer unit cell in x and y instead of randomly packing the remaining lipids.
+`prepare.py` selects the KcsA tetramer, seven filter K+ ions, and 16
+filter/cavity waters. It transfers the missing Ser22 and Arg117 side-chain
+atoms from closed KcsA 3EFF by a local backbone alignment. H124 is omitted
+because its terminal side chain is incomplete.
 
 The builder derives the number of x/y unit-cell copies from the protein size
 and padding. It removes complete overlapping lipids and preserves the natural
 leaflet asymmetry produced by the protein footprint. The default KcsA box is
-124.072×124.686×105.054 Å. Edit the clearly named values near the top of
-`run.sh` to change composition or padding.
+124.072×124.686×105.054 Å. Integer molecule counts mean that the resulting
+composition may differ slightly from exactly 90% POPC, 5% POPE, and 5%
+cholesterol. Edit the clearly named values near the top of `run.sh` to change
+composition or padding.
 
 The builder itself does not use KcsA residue numbers. Another OPM protein can
 be supplied after a system-specific preparation step has selected the

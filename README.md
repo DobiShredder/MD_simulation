@@ -164,6 +164,9 @@ AmberTools만 설치한 환경에서 짧은 test를 실행할 때는 해당 meth
 AMBER_ENGINE=sander ./run.sh --dry-run
 ```
 
+The dry-run mode included in each `run.sh` prints the selected engine and
+command without starting the calculation.
+
 [AmberTools 26 공식 설치 안내](https://ambermd.org/GetAmber.php)와
 [Amber 2026 Reference Manual](https://ambermd.org/doc12/Amber26.pdf)에서
 platform별 차이와 설치 후 test 방법을 확인할 수 있습니다.

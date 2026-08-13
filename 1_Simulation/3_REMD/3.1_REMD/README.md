@@ -132,5 +132,6 @@ build copies the selected file to `work/states.tsv`; the runner reads its
 temperatures and replica count.
 
 The analysis writes adjacent-state acceptance, replica state ranges, round-trip
-counts, and temperature occupancy as TSV files. These short training runs do
-not establish convergence.
+counts, and temperature occupancy as TSV files. Replica trajectories are
+written to `work/NNN/production.001.nc`. These short training runs do not
+establish convergence.

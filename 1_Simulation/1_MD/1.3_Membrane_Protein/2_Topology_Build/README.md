@@ -49,8 +49,7 @@ simulation을 진행하지 않고 1단계 coordinate를 다시 확인합니다.
 This stage applies ff19SB, Lipid21, and OPC to the stage-1 coordinates.
 `prepare_tleap.py` transfers the PDB `CRYST1` dimensions to a generated tleap
 input and calculates 0.15 M KCl pairs from the number of water molecules. The
-default KcsA system contains about 28,000 waters and receives 76 KCl pairs,
-in addition to ions required for neutralization.
+default KcsA system contains about 28,000 waters and receives 76 KCl pairs.
 Because `addionsrand` selects solvent molecules anew for each tleap invocation,
 the initial ion positions and restart checksum are not fixed.
 
