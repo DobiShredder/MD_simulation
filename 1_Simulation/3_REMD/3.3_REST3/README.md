@@ -29,7 +29,7 @@ REST3는 REST2의 solute scaling에 κ-dependent solute–solvent correction을
 
 | 파일 | 역할 |
 | --- | --- |
-| `download.sh` | 1UAO PDB/mmCIF를 받고 checksum을 기록합니다. |
+| `download.sh` | 1UAO PDB/mmCIF와 외부 parser source를 받고 checksum을 검사합니다. |
 | `prepare.py` | 1UAO의 첫 NMR model을 simulation PDB로 정리합니다. |
 | `convert_topology.py` | AMBER topology를 GROMACS base topology로 변환합니다. |
 | `generate_rest3.py` | 선택한 state file의 λ·κ와 외부 parser로 REST3 topology를 만듭니다. |
@@ -42,7 +42,7 @@ REST3는 REST2의 solute scaling에 κ-dependent solute–solvent correction을
 ### 실행
 
 AMBER 26, ParmEd, `GROMACS 2024.3`, `PLUMED 2.10.0`과
-`repex-topology-parser==0.2.2`가 필요합니다. GROMACS는 PLUMED 2.10.0이
+`repex-topology-parser==0.2.2` source가 필요합니다. GROMACS는 PLUMED 2.10.0이
 제공하는 GROMACS patch를 적용하고 외부 MPI를 사용해 build합니다.
 
 권장 조합은 `GROMACS 2024.3 + PLUMED 2.10.0`입니다. 이 PLUMED patch에는
@@ -60,15 +60,10 @@ python3 prepare.py structure/1UAO.raw.pdb structure/chignolin.pdb
 python3 anal.py
 ```
 
-`requirements.txt`에는 외부 dependency version을
-`repex-topology-parser==0.2.2`로 고정했습니다. 2026년 8월에 배포된 PyPI
-wheel은 parser module을 포함하지 않으므로 설치 성공만으로 준비 여부를
-판단하지 않습니다. PyPI의 0.2.2 source archive를 풀고 다음처럼 source file
-또는 repository root를 지정합니다.
-
-```bash
-export REPEX_TOPOLOGY_PARSER_SOURCE=/path/to/repex_topology_parser-0.2.2
-```
+PyPI의 0.2.2 wheel은 parser module을 포함하지 않습니다. `download.sh`가
+공식 source archive를 내려받아 SHA-256 checksum을 검사한 뒤
+`dependencies/`에 풉니다. `generate_rest3.py`가 이 위치를 자동으로 읽으므로
+별도 `pip install`이나 환경 변수 설정은 필요하지 않습니다.
 
 `generate_rest3.py`는 protein molecule index 0을 hot molecule로 지정하고
 TIP3P oxygen type `OW`에 κ scaling을 적용합니다. 고정 κ를 재현하기 위해
@@ -132,7 +127,7 @@ replica<TAB>effective_temperature_K<TAB>lambda_pp<TAB>lambda_pw<TAB>kappa<TAB>se
 | `--cpus`, `--gpus` | 할당받은 총 resource 수입니다. GPU 수는 replica 수와 같고 CPU 수는 replica 수로 나누어져야 합니다. |
 | `PREPRODUCTION_GROMACS_OPTIONS` | Replica별 minimization/equilibration에만 추가할 option입니다. |
 | `HREX_GROMACS_OPTIONS` | External-MPI HREX production에만 추가하며 `-ntmpi`를 넣지 않습니다. |
-| `REPEX_TOPOLOGY_PARSER_SOURCE` | 0.2.2 source parser 위치를 지정합니다. PyPI wheel만으로 module을 찾지 못할 때 필요합니다. |
+| `REPEX_TOPOLOGY_PARSER_SOURCE` | 자동으로 받은 source 대신 별도 parser checkout을 사용할 때만 지정합니다. |
 
 ### 해석 범위
 
@@ -165,8 +160,10 @@ interactions are preserved. Equilibration is 100 ps; production is one 1 ns
 segment with exchanges every 2 ps.
 
 The PyPI wheel inspected in August 2026 does not contain the parser module.
-Use the 0.2.2 source archive and point `REPEX_TOPOLOGY_PARSER_SOURCE` to its
-root or `src/repex_topology_parser.py`.
+`download.sh` downloads the official 0.2.2 source archive, verifies its
+SHA-256 checksum, and extracts it under `dependencies/`. No separate parser
+installation or environment variable is required. Set
+`REPEX_TOPOLOGY_PARSER_SOURCE` only to use another source checkout.
 
 `convert_topology.py` creates the base topology, `generate_rest3.py` applies
 the `states.tsv` lambda/kappa schedule, and `scale_cmap.py` restores and scales

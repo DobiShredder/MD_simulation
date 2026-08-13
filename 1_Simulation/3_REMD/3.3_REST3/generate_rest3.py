@@ -27,17 +27,21 @@ def load_parser_module() -> ModuleType:
         except ModuleNotFoundError:
             continue
 
+    source_candidates = []
     source_value = os.environ.get("REPEX_TOPOLOGY_PARSER_SOURCE", "")
     if source_value:
-        source = Path(source_value).expanduser().resolve()
+        source_candidates.append(Path(source_value).expanduser())
+
+    source_candidates.append(
+        Path("dependencies/repex_topology_parser-0.2.2/src/repex_topology_parser.py")
+    )
+
+    for source in source_candidates:
         if source.is_dir():
             source = source / "src" / "repex_topology_parser.py"
 
         if not source.is_file():
-            raise SystemExit(
-                "Parser was not found in REPEX_TOPOLOGY_PARSER_SOURCE: "
-                f"{source}"
-            )
+            continue
 
         spec = importlib.util.spec_from_file_location(
             "repex_topology_parser_external", source
@@ -51,7 +55,7 @@ def load_parser_module() -> ModuleType:
 
     raise SystemExit(
         "repex-topology-parser 0.2.2 module not found. "
-        "Check the README source-package instructions and REPEX_TOPOLOGY_PARSER_SOURCE."
+        "Run ./download.sh before ./build.sh."
     )
 
 

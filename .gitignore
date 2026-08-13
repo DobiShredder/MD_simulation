@@ -31,3 +31,6 @@
 # Python/Jupyter caches
 **/__pycache__/
 .ipynb_checkpoints/
+
+# Downloaded third-party REST3 parser source
+1_Simulation/3_REMD/3.3_REST3/dependencies/

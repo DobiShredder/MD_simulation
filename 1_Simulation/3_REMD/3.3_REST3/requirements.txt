@@ -1,4 +1,2 @@
 parmed>=4.2
 MDAnalysis>=2.7
-repex-topology-parser==0.2.2
-
