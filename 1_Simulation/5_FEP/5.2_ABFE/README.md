@@ -37,7 +37,8 @@ python3 anal.py
 JZ4는 GAFF2/AM1-BCC net charge 0으로 parameterize합니다. Protein은 ff19SB,
 물은 TIP3P를 사용합니다. `generate_inputs.py`는 GLN102 `CG-CB-CA`와 JZ4
 `C7-C8-C9`를 anchor로 선택하고 실제 topology atom 번호와 초기 restraint
-geometry를 `restraints.tsv`에 기록합니다.
+geometry를 `restraints.tsv`에 기록합니다. Torsion reference는 Amber와 같은
+ParmEd dihedral convention으로 계산합니다.
 
 Restraint·charge stage는 11개 lambda state를 사용합니다. LJ stage는 endpoint
 근처를 촘촘히 나눈 16개 state를 사용합니다. `icfe`와 `clambda`가 alchemical
@@ -64,10 +65,11 @@ heating 또는 equilibration의 partial output은 삭제한 뒤 해당 stage를 
 exit status, 필수 output과 `.<stage>.complete` marker를 모두 사용해 판별합니다.
 Marker가 없는 output은 파일이 모두 있어도 partial stage로 처리합니다.
 
-Restraint stage는 λ=0의 unrestrained complex에서 λ=1의 restrained complex로
+Restraint stage는 λ=0의 restrained complex에서 λ=1의 unrestrained complex로
 진행합니다. 모든 window는 같은 full-strength `DISANG` file을 사용하고,
-`gti_nmropt=1`이 restraint energy를 lambda에 따라 scaling합니다. 따라서
-restraint stage도 MBAR로 분석할 수 있습니다. 이 값을 binding cycle에 넣을 때는
+`gti_nmropt=1`이 restraint energy를 lambda에 따라 제거합니다. Complex
+minimization에도 같은 `DISANG` restraint를 적용해 heating 전에 anchor geometry가
+흐트러지지 않게 합니다. Restraint stage의 MBAR 값을 binding cycle에 넣을 때는
 부호를 바꿉니다. AMBER의 `rk2`/`rk3`는 `U=rk(x-x0)^2`의 계수이므로 Boresch
 analytic correction에서는 `K=2×rk`로 변환합니다. `standard_state_correction`은
 decoupled ligand의 restraint를 풀어 1 M 상태로 옮기는 항이며 보통 음수입니다.
@@ -132,8 +134,11 @@ all required outputs, and a `.<stage>.complete` marker. Outputs without the
 marker are partial even when every expected file is present.
 
 The restraint stage uses one full-strength `DISANG` definition in every window.
-`gti_nmropt=1` scales that restraint from the unrestrained to the restrained
-state and `ifmbar=1` records its cross-state energies. The charge stage uses
+`gti_nmropt=1` removes that restraint from the restrained state at lambda zero
+to the unrestrained state at lambda one, and `ifmbar=1` records its cross-state
+energies. Complex minimization uses the same `DISANG` restraints so heating
+does not start from displaced anchor geometry. Torsion references follow the
+Amber/ParmEd dihedral convention. The charge stage uses
 `crgmask=':JZ4'` with the original topology. Although JZ4 is net neutral, this
 stage removes its atom-centered partial-charge interactions. The LJ stage uses
 the zero-JZ4-charge topology without applying `crgmask` a second time.

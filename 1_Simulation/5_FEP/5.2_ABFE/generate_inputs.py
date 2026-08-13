@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 
 import parmed
+from parmed.geometry import dihedral as parmed_dihedral
 
 
 UNIFORM = [index / 10 for index in range(11)]
@@ -56,10 +57,6 @@ def dot(a: list[float], b: list[float]) -> float:
     return sum(left * right for left, right in zip(a, b))
 
 
-def cross(a: list[float], b: list[float]) -> list[float]:
-    return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]
-
-
 def norm(a: list[float]) -> float:
     return math.sqrt(dot(a, a))
 
@@ -75,11 +72,7 @@ def angle(a: list[float], b: list[float], c: list[float]) -> float:
 
 
 def dihedral(a: list[float], b: list[float], c: list[float], d: list[float]) -> float:
-    b0, b1, b2 = vector(b, a), vector(b, c), vector(c, d)
-    normal1, normal2 = cross(b0, b1), cross(b1, b2)
-    x = dot(normal1, normal2)
-    y = dot(cross(normal1, normal2), b1) / norm(b1)
-    return math.degrees(math.atan2(y, x))
+    return float(parmed_dihedral(a, b, c, d))
 
 
 def atom_by_name(residue: object, name: str) -> object:
@@ -243,8 +236,10 @@ def main() -> None:
                     collect_mbar=name == "production",
                 )
                 render(args.input_dir / f"{name}.in.template", directory / f"{name}.in", replacements)
-            (directory / "minimize.in").write_text(
-                (args.input_dir / "minimize.in").read_text(encoding="utf-8"), encoding="utf-8"
+            render(
+                args.input_dir / "minimize.in",
+                directory / "minimize.in",
+                replacements,
             )
             states.append(
                 f"{stage}\t{environment}\t{window}\t{lambda_value:.6f}\t"

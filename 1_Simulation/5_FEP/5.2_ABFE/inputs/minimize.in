@@ -6,4 +6,7 @@ ABFE minimization
   ntb=1,
   cut=10.0,
   ntpr=500,
+  @RESTRAINT_OPTIONS@
 /
+@WT_END@
+@DISANG@
