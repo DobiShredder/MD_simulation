@@ -10,6 +10,9 @@ from pathlib import Path
 import parmed
 
 
+PARSER_PROTEIN_NAME = "Protein_chain_A"
+
+
 def preserve_residue_specific_cmaps(structure: parmed.Structure) -> dict[str, str]:
     """Assign C-alpha atom types for each ff19SB CMAP grid and residue combination."""
     cmap_names: dict[tuple[int, str], str] = {}
@@ -36,6 +39,52 @@ def preserve_residue_specific_cmaps(structure: parmed.Structure) -> dict[str, st
     return {name: residue for (_, residue), name in cmap_names.items()}
 
 
+def rename_primary_molecule(topology: Path) -> None:
+    """Give the first molecule a name accepted by parser 0.2.2."""
+    lines = topology.read_text(encoding="utf-8").splitlines(keepends=True)
+    section = ""
+    original_name = ""
+    definition_renamed = False
+    reference_renamed = False
+
+    for line_number, line in enumerate(lines):
+        stripped = line.strip()
+
+        if stripped.startswith("[") and "]" in stripped:
+            section = stripped[1 : stripped.index("]")].strip()
+            continue
+
+        if not stripped or stripped.startswith((";", "#")):
+            continue
+
+        fields = stripped.split()
+        if section == "moleculetype" and not definition_renamed:
+            original_name = fields[0]
+            lines[line_number] = line.replace(
+                original_name, PARSER_PROTEIN_NAME, 1
+            )
+            definition_renamed = True
+            continue
+
+        if (
+            section == "molecules"
+            and definition_renamed
+            and fields[0] == original_name
+        ):
+            lines[line_number] = line.replace(
+                original_name, PARSER_PROTEIN_NAME, 1
+            )
+            reference_renamed = True
+
+    if not definition_renamed or not reference_renamed:
+        raise SystemExit(
+            "Could not rename the primary GROMACS molecule in both "
+            "[ moleculetype ] and [ molecules ]."
+        )
+
+    topology.write_text("".join(lines), encoding="utf-8")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("topology", type=Path)
@@ -52,11 +101,13 @@ def main() -> None:
     cmap_types = preserve_residue_specific_cmaps(structure)
     structure.save(str(args.output_topology), overwrite=True)
     structure.save(str(args.output_coordinates), overwrite=True)
+    rename_primary_molecule(args.output_topology)
 
     print(
         "GROMACS Conversion output: "
         f"{args.output_topology}, {args.output_coordinates} "
-        f"(residue-specific CMAP types: {len(cmap_types)})"
+        f"(protein molecule: {PARSER_PROTEIN_NAME}, "
+        f"residue-specific CMAP types: {len(cmap_types)})"
     )
 
 

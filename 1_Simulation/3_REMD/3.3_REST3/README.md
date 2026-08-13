@@ -31,7 +31,7 @@ REST3는 REST2의 solute scaling에 κ-dependent solute–solvent correction을
 | --- | --- |
 | `download.sh` | 1UAO PDB/mmCIF와 외부 parser source를 받고 checksum을 검사합니다. |
 | `prepare.py` | 1UAO의 첫 NMR model을 simulation PDB로 정리합니다. |
-| `convert_topology.py` | AMBER topology를 GROMACS base topology로 변환합니다. |
+| `convert_topology.py` | AMBER topology를 GROMACS base topology로 변환하고 protein molecule 이름을 정규화합니다. |
 | `generate_rest3.py` | 선택한 state file의 λ·κ와 외부 parser로 REST3 topology를 만듭니다. |
 | `scale_cmap.py` | 외부 parser가 생략하는 ff19SB의 residue별 CMAP section을 복원하고 grid를 `lambda_pp`로 scaling합니다. |
 | `verify_rest3.py` | Base identity와 water–water/ion–water Lennard-Jones 보존을 검사합니다. |
@@ -70,6 +70,12 @@ TIP3P oxygen type `OW`에 κ scaling을 적용합니다. 고정 κ를 재현하�
 각 target state를 2-state `ssrest3` 변환으로 생성합니다. `build.sh`는
 replica 0 topology가 base topology와 byte 단위로 같은지 확인하고
 water–water 및 ion–water Lennard-Jones parameter가 보존되는지 검사합니다.
+
+ParmEd는 여러 residue로 이루어진 첫 molecule을 기본적으로 `system1`이라고
+기록합니다. Parser 0.2.2는 이 이름을 `[ system ]` section으로 잘못 인식하므로
+`convert_topology.py`가 첫 molecule의 definition과 reference를
+`Protein_chain_A`로 바꿉니다. Atom, residue와 force-field parameter는 바꾸지
+않습니다.
 
 ff19SB의 residue-specific CMAP은 ParmEd 변환 전에 서로 다른 C-alpha
 atom type으로 분리합니다. GROMACS 2024.3의 `[ cmaptypes ]` header에는
@@ -165,7 +171,11 @@ SHA-256 checksum, and extracts it under `dependencies/`. No separate parser
 installation or environment variable is required. Set
 `REPEX_TOPOLOGY_PARSER_SOURCE` only to use another source checkout.
 
-`convert_topology.py` creates the base topology, `generate_rest3.py` applies
+ParmEd names the first multi-residue molecule `system1`, which parser 0.2.2
+mistakes for the `[ system ]` section. `convert_topology.py` renames that
+molecule definition and reference to `Protein_chain_A` without changing any
+atoms, residues, or force-field parameters. It then creates the base topology.
+`generate_rest3.py` applies
 the `states.tsv` lambda/kappa schedule, and `scale_cmap.py` restores and scales
 the residue-specific ff19SB CMAP section omitted by parser 0.2.2. GROMACS
 2024.3 headers use atom types such as `C N XC0 C N`; each unique central
