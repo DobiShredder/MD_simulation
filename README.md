@@ -5,6 +5,7 @@
 [![PLUMED](https://img.shields.io/badge/PLUMED-2.10+-green?style=flat)](https://www.plumed.org/doc-v2.10/user-doc/html/index.html)
 [![WESTPA](https://img.shields.io/badge/WESTPA-2+-blueviolet?style=flat)](https://westpa.github.io/westpa/)
 [![Python](https://img.shields.io/badge/Python-3.10+-yellow?style=flat&logo=python)](https://www.python.org/)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 
 
 ### A comprehensive collection of Molecular Dynamics (MD) simulation tutorials using **AMBER** and **GROMACS**.
@@ -206,6 +207,27 @@ MDAnalysis
 | WT-MetaD     | *Phys. Rev. Lett.*        | 2008 | [100, 020603](https://doi.org/10.1103/PhysRevLett.100.020603)   |
 | Funnel MetaD | *PNAS*                    | 2013 | [110, 6358–6363](https://doi.org/10.1073/pnas.1303186110)       |
 | OPES         | *J. Phys. Chem. Lett.*    | 2020 | [11, 2731–2736](https://doi.org/10.1021/acs.jpclett.0c00497)    |
+
+
+## License / 라이선스
+
+Copyright © 2026 DobiShredder.
+
+이 저장소에서 DobiShredder가 작성한 원본 code, 문서와 figure는
+[GNU General Public License version 3 only](LICENSE), SPDX identifier
+`GPL-3.0-only`로 배포합니다. 개인적으로 사용하거나 수정한 사본을 공개하지
+않는 경우 source 공개 의무가 발생하지 않습니다. 원본 또는 수정본을
+재배포할 때는 GPLv3의 source 제공과 license 고지 조건을 따라야 합니다.
+
+Original code, documentation, and figures authored by DobiShredder in this
+repository are distributed under the [GNU General Public License version 3
+only](LICENSE), SPDX identifier `GPL-3.0-only`. Private use and modification do
+not require publication of the modified source. Redistribution of original or
+modified copies must comply with GPLv3 source-availability and license-notice
+requirements.
+
+Downloaded structures, external software, and third-party dependencies remain
+subject to their respective licenses and terms.
 
 
 
