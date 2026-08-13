@@ -7,8 +7,8 @@ if [[ "${1:-}" == "--dry-run" ]]; then
     shift
 fi
 
-if [[ $# -ne 0 ]]; then
-    echo "Usage: $0 [--dry-run]" >&2
+if [[ $# -ne 1 ]]; then
+    echo "Usage: $0 [--dry-run] INPUT.pdb" >&2
     exit 2
 fi
 
@@ -17,7 +17,7 @@ die() {
     exit 1
 }
 
-input_pdb="structure/chignolin.pdb"
+input_pdb=$1
 states_file="inputs/states.tsv"
 work_dir=${WORK_DIR:-"work"}
 tleap=${TLEAP:-tleap}

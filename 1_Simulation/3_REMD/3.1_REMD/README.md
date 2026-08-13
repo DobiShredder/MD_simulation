@@ -28,7 +28,7 @@ AMBER 26의 `tleap`, `pmemd.cuda`, `pmemd.cuda.MPI`와 MPI launcher가
 ```bash
 ./download.sh
 python3 prepare.py structure/1UAO.raw.pdb structure/chignolin.pdb
-./build.sh
+./build.sh structure/chignolin.pdb
 ./run.sh --dry-run
 ./run.sh
 python3 anal.py
@@ -58,7 +58,7 @@ replica<TAB>temperature_K<TAB>seed
 ```
 
 ```bash
-./build.sh /path/to/states.tsv
+./build.sh structure/chignolin.pdb /path/to/states.tsv
 ./run.sh --dry-run
 ```
 
@@ -79,7 +79,7 @@ file이 있으면 해당 stage를 자동으로 덮어쓰지 않습니다.
 | `temp0=@TEMP@` | `states.tsv`의 replica별 target temperature로 치환됩니다. |
 | `nstlim=500`, `numexchg=1000` | REMD에서 `nstlim`은 교환 사이의 step 수입니다. 500 steps마다 1,000회 교환하여 segment당 1 ns가 됩니다. |
 | `ig=@SEED@` | Replica마다 다른 positive random seed를 사용합니다. |
-| `build.sh [states.tsv]` | 사용자 temperature·seed file을 선택합니다. Argument를 생략하면 Chignolin용 `inputs/states.tsv`를 사용합니다. |
+| `build.sh INPUT.pdb [states.tsv]` | 첫 argument의 PDB로 topology를 만들고 temperature·seed file을 선택합니다. State file을 생략하면 Chignolin용 `inputs/states.tsv`를 사용합니다. |
 | `MPI_PROCESSES` | AMBER replica 수와 MPI rank 수를 1:1로 맞춥니다. 기본값은 state file의 data row 수입니다. |
 | `AMBER_MPI_ENGINE`, `MPI_LAUNCHER`, `MPI_OPTIONS` | MPI executable과 launcher 설정을 바꿉니다. |
 
@@ -126,7 +126,7 @@ short ff19SB/AMBER pilot before fixing the ladder.
 The bundled `inputs/states.tsv` is precomputed from the Chignolin atom and
 water counts. For a different system, save the generator result as a
 tab-separated file with columns `replica`, `temperature_K`, and `seed`, then
-run `./build.sh /path/to/states.tsv`. Replica IDs are unique
+run `./build.sh structure/chignolin.pdb /path/to/states.tsv`. Replica IDs are unique
 three-digit values starting at `000`, and temperatures increase by row. The
 build copies the selected file to `work/states.tsv`; the runner reads its
 temperatures and replica count.

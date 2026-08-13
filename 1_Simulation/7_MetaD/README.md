@@ -24,8 +24,10 @@ WT-MetaD, Funnel MetaD와 OPES_METAD는 선택한 CV 공간의 barrier를
 CV 대신 300–500 K multithermal target distribution을 구성합니다. 서로 다른
 목표를 가진 method이므로 bias 크기만으로 성능을 비교하지 않습니다.
 
-각 runnable directory에서 `./build.sh`, `./run.sh --dry-run`, `./run.sh`,
-`python3 anal.py` 순서로 실행합니다. Production은 1 ns segment 하나입니다.
+각 runnable directory에서 `build.sh`, `run.sh --dry-run`, `run.sh`,
+`python3 anal.py` 순서로 실행합니다. `build.sh`의 첫 argument는 준비한
+PDB입니다. Funnel MetaD는 ligand SDF도 두 번째 argument로 받습니다.
+Production은 1 ns segment 하나입니다.
 AMBER restart와 PLUMED bias state가 모두 있어야 다음 segment를 시작합니다.
 
 Minimization, heating과 equilibration의 partial output은 해당 stage를 다시
@@ -46,8 +48,10 @@ MetaD uses ff19SB/GAFF2/TIP3P trypsin–benzamidine. They cover well-tempered Me
 trypsin–benzamidine, OPES_METAD on φ/ψ, and multithermal OPES_EXPANDED over
 300–500 K. Funnel MetaD requires PLUMED's optional `funnel` module.
 
-Run `./build.sh`, `./run.sh --dry-run`, `./run.sh`, and `python3 anal.py` in a
-runnable directory. Production consists of one 1 ns segment. Continuation
+Run `build.sh`, `run.sh --dry-run`, `run.sh`, and `python3 anal.py` in a
+runnable directory. The first build argument is the prepared PDB; Funnel MetaD
+also accepts the ligand SDF as its second argument. Production consists of one
+1 ns segment. Continuation
 requires both the AMBER restart and the method-specific PLUMED state. The default
 engine is a PLUMED-enabled `pmemd.cuda`; a PLUMED-enabled `sander` can be selected
 with `AMBER_ENGINE=sander`.

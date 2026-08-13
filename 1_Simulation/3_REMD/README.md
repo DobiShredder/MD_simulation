@@ -33,7 +33,7 @@ PLUMED interface와 GROMACS 2025 patch에는 서로 다른 scaled topology를
 ```bash
 ./download.sh
 python3 prepare.py structure/1UAO.raw.pdb structure/chignolin.pdb
-./build.sh
+./build.sh structure/chignolin.pdb
 ./run.sh --dry-run
 ./run.sh
 python3 anal.py
@@ -70,7 +70,7 @@ round trip을 확인합니다. REST3의 κ-dependent solute–water scaling은 g
 
 각 예제의 `inputs/states.tsv`는 Chignolin system에 대해 미리 계산한 기본
 ladder입니다. 다른 system에서는 atom 수와 water 수에 맞춰 새 ladder file을
-만들고 `./build.sh /path/to/states.tsv`로 전달합니다. File의 data
+만들고 `./build.sh structure/chignolin.pdb /path/to/states.tsv`로 전달합니다. File의 data
 row 수가 replica 수가 되며 `run.sh`의 기본 MPI process 수도 같은 값입니다.
 
 ## English
@@ -115,5 +115,5 @@ only a starting point for REST3 validation.
 
 Each `inputs/states.tsv` is a precomputed default ladder for Chignolin. For a
 different system, generate a new ladder using its atom and water counts and
-pass it with `./build.sh /path/to/states.tsv`. The number of data
+pass it with `./build.sh structure/chignolin.pdb /path/to/states.tsv`. The number of data
 rows sets both the replica count and the default MPI process count.

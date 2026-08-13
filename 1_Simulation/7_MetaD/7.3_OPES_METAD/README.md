@@ -13,7 +13,7 @@ dipeptide의 φ와 ψ를 bias합니다.
 
 ```bash
 cd 1_Simulation/7_MetaD/7.3_OPES_METAD
-./build.sh
+./build.sh structure/alanine-dipeptide.pdb
 ./run.sh --dry-run
 ./run.sh
 python3 anal.py
@@ -23,7 +23,7 @@ python3 anal.py
 
 | File | 역할 |
 |---|---|
-| `build.sh` | ff19SB/TIP3P topology를 만들고 CV atom을 확인합니다. |
+| `build.sh` | Argument로 받은 capped alanine PDB의 ff19SB/TIP3P topology를 만들고 CV atom을 확인합니다. |
 | `check_topology.py` | `build.sh`가 자동 호출하며 CV atom 번호와 이름을 검사합니다. |
 | `run.sh` | preparation stage와 1 ns OPES_METAD production을 실행합니다. |
 | `anal.py` | φ/ψ, bias, effective sample size와 kernel 수를 segment별로 요약합니다. |
@@ -47,7 +47,8 @@ append 동작을 켭니다.
 
 ## English
 
-OPES_METAD adaptively estimates the φ/ψ distribution and builds a bias bounded
+`build.sh structure/alanine-dipeptide.pdb` builds the solvated system from the
+supplied PDB. OPES_METAD adaptively estimates the φ/ψ distribution and builds a bias bounded
 by `BARRIER=50` kJ/mol. `PACE=500` updates the bias every 1 ps, and the initial
 kernel widths are 0.15 rad. Exact continuation reads the binary/text OPES state
 through `STATE_RFILE`; the cumulative `KERNELS` file is retained as a readable

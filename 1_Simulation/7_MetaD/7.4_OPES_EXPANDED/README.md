@@ -13,7 +13,7 @@ REMD와 달리 하나의 walker가 expanded target distribution을 따라갑니�
 
 ```bash
 cd 1_Simulation/7_MetaD/7.4_OPES_EXPANDED
-./build.sh
+./build.sh structure/alanine-dipeptide.pdb
 ./run.sh --dry-run
 ./run.sh
 python3 anal.py
@@ -23,7 +23,7 @@ python3 anal.py
 
 | File | 역할 |
 |---|---|
-| `build.sh` | ff19SB/TIP3P capped alanine system을 생성합니다. |
+| `build.sh` | Argument로 받은 capped alanine PDB에서 ff19SB/TIP3P system을 생성합니다. |
 | `check_topology.py` | `build.sh`가 자동 호출하며 capped peptide atom ordering을 검사합니다. |
 | `run.sh` | NPT equilibration 후 fixed-volume multithermal production을 1 ns로 실행합니다. |
 | `anal.py` | potential energy, expanded CV, bias 범위와 `DELTAFS` state 수를 기록합니다. |
@@ -49,7 +49,8 @@ Keyword는 PLUMED 2.10
 
 ## English
 
-This example combines OPES_EXPANDED with `ECV_MULTITHERMAL` to sample a
+`build.sh structure/alanine-dipeptide.pdb` builds the solvated system from the
+supplied PDB. This example combines OPES_EXPANDED with `ECV_MULTITHERMAL` to sample a
 300–500 K potential-energy target using one walker. The thermostat remains at
 300 K, while production uses a fixed box (`ntb=1`, `ntp=0`). `opes.state` and
 `DELTAFS` are both carried into continuation segments. `ecv.ene` is an expanded

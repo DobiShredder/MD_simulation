@@ -15,7 +15,7 @@ Alanine dipeptide의 φ와 ψ torsion에 well-tempered MetaD bias를 적용합�
 
 ```bash
 cd 1_Simulation/7_MetaD/7.1_WT-MetaD
-./build.sh
+./build.sh structure/alanine-dipeptide.pdb
 ./run.sh --dry-run
 ./run.sh
 python3 anal.py
@@ -29,7 +29,7 @@ integer이며 segment마다 서로 다른 seed가 생성됩니다.
 
 | File | 역할 |
 |---|---|
-| `build.sh` | capped alanine을 만들고 ff19SB/TIP3P solvent box와 topology를 생성합니다. |
+| `build.sh` | Argument로 받은 capped alanine PDB에서 ff19SB/TIP3P solvent box와 topology를 생성합니다. |
 | `check_topology.py` | build가 끝날 때 CV atom 번호와 atom 이름을 확인합니다. |
 | `run.sh` | minimization, 200 ps heating, 100 ps NPT equilibration과 1 ns production을 실행합니다. |
 | `anal.py` | φ/ψ 및 bias 범위를 기록하고 1 ns 누적 `HILLS`로 FES를 만듭니다. |
@@ -62,7 +62,8 @@ well-tempered metadynamics. `PACE=500` deposits a Gaussian every 1 ps,
 `HEIGHT=1.2` is in kJ/mol, `SIGMA=0.2` is in radians, and `BIASFACTOR=10`
 controls tempering. The -π to π grid supports `CALC_RCT`.
 
-`build.sh` creates and validates the ff19SB/TIP3P system. `run.sh` performs
+`build.sh structure/alanine-dipeptide.pdb` creates and validates the
+ff19SB/TIP3P system from the supplied PDB. `run.sh` performs
 minimization, 200 ps heating, 100 ps NPT equilibration, and one 1 ns production
 segment. A continuation copies the cumulative `HILLS` file and enables
 PLUMED `RESTART`. `anal.py` reports sampled torsion and bias ranges. The 1 ns

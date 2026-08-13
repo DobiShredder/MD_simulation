@@ -54,7 +54,7 @@ GROMACS 2025 patch와 GROMACS의 built-in PLUMED interface는 이 경로를
 python3 -m pip install parmed MDAnalysis numpy
 ./download.sh
 python3 prepare.py structure/1UAO.raw.pdb structure/chignolin.pdb
-./build.sh
+./build.sh structure/chignolin.pdb
 ./run.sh --dry-run
 ./run.sh
 python3 anal.py
@@ -108,7 +108,7 @@ replica<TAB>effective_temperature_K<TAB>lambda_pp<TAB>lambda_pw<TAB>kappa<TAB>se
 ```
 
 ```bash
-./build.sh /path/to/states.tsv
+./build.sh structure/chignolin.pdb /path/to/states.tsv
 ./run.sh --dry-run
 ```
 
@@ -123,7 +123,7 @@ replica<TAB>effective_temperature_K<TAB>lambda_pp<TAB>lambda_pw<TAB>kappa<TAB>se
 | --- | --- |
 | `lambda_pp`, `lambda_pw` | Protein–protein과 protein–water scaling factor입니다. Geometric temperature ladder에서 계산합니다. |
 | `kappa` | REST3 solute–solvent correction schedule입니다. 이 예제에서는 1.000–1.020을 사용합니다. |
-| `build.sh [states.tsv]` | 사용자 effective-temperature·λ·κ file을 선택합니다. Argument를 생략하면 Chignolin용 `inputs/states.tsv`를 사용합니다. |
+| `build.sh INPUT.pdb [states.tsv]` | 첫 argument의 PDB로 topology를 만들고 effective-temperature·λ·κ file을 선택합니다. State file을 생략하면 Chignolin용 `inputs/states.tsv`를 사용합니다. |
 | `kappa_atom_names=['OW']` | TIP3P oxygen type만 κ scaling 대상으로 지정합니다. Water molecule 전체를 hot molecule로 지정하는 option이 아닙니다. |
 | `-replex 1000` | 2 fs timestep에서 2 ps마다 Hamiltonian 교환을 시도합니다. |
 | `REPEX_TOPOLOGY_PARSER_SOURCE` | 0.2.2 source parser 위치를 지정합니다. PyPI wheel만으로 module을 찾지 못할 때 필요합니다. |
@@ -194,7 +194,7 @@ The bundled `inputs/states.tsv` contains an eight-state temperature/lambda
 ladder prepared from the Chignolin protein-atom count plus this example's
 kappa schedule. For another system, save `replica`,
 `effective_temperature_K`, `lambda_pp`, `lambda_pw`, `kappa`, and `seed` in a
-tab-separated file and run `./build.sh /path/to/states.tsv`.
+tab-separated file and run `./build.sh structure/chignolin.pdb /path/to/states.tsv`.
 The identity row is `000` at 300 K with both lambdas and kappa equal to one.
 Temperature determines the lambdas but not kappa. The runner derives the
 replica count and default MPI process count from the selected file.

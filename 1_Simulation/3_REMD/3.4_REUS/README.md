@@ -36,7 +36,7 @@ AMBER 26, ParmEd와 19개 MPI process가 필요합니다.
 python3 -m pip install -r requirements.txt
 ./download.sh
 python3 prepare.py structure/1UAO.raw.pdb structure/chignolin.pdb
-./build.sh
+./build.sh structure/chignolin.pdb
 ./run.sh --dry-run
 ./run.sh
 python3 anal.py
@@ -90,8 +90,9 @@ REUS exchanges configurations among Hamiltonians with different umbrella
 centers. Accepted swaps allow a walker to visit multiple CV regions, but PMF
 analysis must retain the window state associated with each sampled frame.
 
-The build resolves the two Cα atom indices from the ff19SB/TIP3P topology and
-writes one restraint per window. The run uses `pmemd.cuda` for individual
+Run the build as `./build.sh structure/chignolin.pdb`. It resolves the two Cα
+atom indices from the ff19SB/TIP3P topology and writes one restraint per window.
+The run uses `pmemd.cuda` for individual
 stages and `pmemd.cuda.MPI -rem 3` for exchange. Partial segments are not
 silently resumed.
 

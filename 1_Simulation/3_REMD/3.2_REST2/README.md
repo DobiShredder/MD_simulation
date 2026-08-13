@@ -48,7 +48,7 @@ scaled topology 사이의 exchange acceptance가 올바르게 계산되지 않�
 python3 -m pip install -r requirements.txt
 ./download.sh
 python3 prepare.py structure/1UAO.raw.pdb structure/chignolin.pdb
-./build.sh
+./build.sh structure/chignolin.pdb
 ./run.sh --dry-run
 ./run.sh
 python3 anal.py
@@ -96,7 +96,7 @@ replica<TAB>effective_temperature_K<TAB>lambda_pp<TAB>lambda_pw<TAB>seed
 ```
 
 ```bash
-./build.sh /path/to/states.tsv
+./build.sh structure/chignolin.pdb /path/to/states.tsv
 ./run.sh --dry-run
 ```
 
@@ -110,7 +110,7 @@ Physical bath가 300 K이므로 첫 state는 `000`, 300 K, `lambda_pp=1`,
 | Option | 의미 |
 | --- | --- |
 | `states.tsv`의 `effective_temperature_K` | 300–500 K ladder와 topology scaling factor를 정의합니다. Bath temperature는 아닙니다. |
-| `build.sh [states.tsv]` | 사용자 effective-temperature·scaling file을 선택합니다. Argument를 생략하면 Chignolin용 `inputs/states.tsv`를 사용합니다. |
+| `build.sh INPUT.pdb [states.tsv]` | 첫 argument의 PDB로 topology를 만들고 effective-temperature·scaling file을 선택합니다. State file을 생략하면 Chignolin용 `inputs/states.tsv`를 사용합니다. |
 | Protein `_` marker | `partial_tempering`이 scaling할 hot region을 protein atom으로 제한합니다. |
 | `ref-t=300` | 모든 replica의 physical thermostat temperature입니다. |
 | `-multidir`, `-replex 1000` | 8개 directory를 HREX로 묶고 1,000 steps, 즉 2 ps마다 교환합니다. |
@@ -182,7 +182,7 @@ Chignolin protein-atom count. For another system, write the generator output
 as a tab-separated file with `replica`, `effective_temperature_K`,
 `lambda_pp`, `lambda_pw`, and `seed`, where `lambda_pp=300/Tm` and
 `lambda_pw=sqrt(lambda_pp)`, then run
-`./build.sh /path/to/states.tsv`. The identity row is `000` at
+`./build.sh structure/chignolin.pdb /path/to/states.tsv`. The identity row is `000` at
 300 K with both lambdas equal to one. The runner derives the replica count and
 default MPI process count from the selected file.
 

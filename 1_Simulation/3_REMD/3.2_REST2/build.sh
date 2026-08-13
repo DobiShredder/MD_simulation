@@ -2,7 +2,7 @@
 set -euo pipefail
 
 dry_run=0
-states_argument=""
+positional_arguments=()
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -10,19 +10,20 @@ while [[ $# -gt 0 ]]; do
             dry_run=1
             ;;
         -*)
-            echo "Usage: $0 [--dry-run] [states.tsv]" >&2
+            echo "Usage: $0 [--dry-run] INPUT.pdb [states.tsv]" >&2
             exit 2
             ;;
         *)
-            if [[ -n "$states_argument" ]]; then
-                echo "Usage: $0 [--dry-run] [states.tsv]" >&2
-                exit 2
-            fi
-            states_argument=$1
+            positional_arguments+=("$1")
             ;;
     esac
     shift
 done
+
+if (( ${#positional_arguments[@]} < 1 || ${#positional_arguments[@]} > 2 )); then
+    echo "Usage: $0 [--dry-run] INPUT.pdb [states.tsv]" >&2
+    exit 2
+fi
 
 die() {
     echo "Error: $*" >&2
@@ -59,8 +60,8 @@ validate_states() {
     fi
 }
 
-input_pdb="structure/chignolin.pdb"
-states_file=${states_argument:-"inputs/states.tsv"}
+input_pdb=${positional_arguments[0]}
+states_file=${positional_arguments[1]:-"inputs/states.tsv"}
 work_dir=${WORK_DIR:-"work"}
 tleap=${TLEAP:-tleap}
 gmx=${GROMACS:-gmx}

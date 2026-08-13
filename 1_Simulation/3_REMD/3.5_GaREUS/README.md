@@ -41,7 +41,7 @@ AMBER 26, ParmEd와 20개 MPI process가 필요합니다.
 python3 -m pip install -r requirements.txt
 ./download.sh
 python3 prepare.py structure/1UAO.raw.pdb structure/chignolin.pdb
-./build.sh
+./build.sh structure/chignolin.pdb
 ./run.sh --dry-run
 ./run.sh --allow-unverified
 python3 anal.py
@@ -106,7 +106,8 @@ acceleration of other energetic degrees of freedom. Window overlap, exchange
 mixing, boost distributions, and reweighting quality therefore require separate
 checks.
 
-The defaults are `igamd=3` and `sigma0P=sigma0D=6.0`. Each window has a
+Run the build as `./build.sh structure/chignolin.pdb`. The defaults are
+`igamd=3` and `sigma0P=sigma0D=6.0`. Each window has a
 unique positive seed and separate production GaMD logs. The run uses `pmemd.cuda` for
 individual stages and `pmemd.cuda.MPI -rem 3` for replica exchange, with
 environment overrides for engines and MPI settings.
