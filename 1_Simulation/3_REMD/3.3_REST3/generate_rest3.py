@@ -5,8 +5,10 @@ from __future__ import annotations
 
 import argparse
 import csv
+import contextlib
 import importlib
 import importlib.util
+import io
 import math
 import os
 import shutil
@@ -29,6 +31,19 @@ def use_full_precision_nonbonded_output(module: ModuleType) -> ModuleType:
 
     module.generate_nonbonded = generate_nonbonded
     return module
+
+
+def run_parser(converter: object, **options: object) -> None:
+    """Run parser 0.2.2 without its unconditional empty-list diagnostic."""
+    captured = io.StringIO()
+
+    try:
+        with contextlib.redirect_stdout(captured):
+            converter.run(**options)
+    finally:
+        for line in captured.getvalue().splitlines():
+            if line.strip() and line.strip() != "[]":
+                print(line)
 
 
 def load_parser_module() -> ModuleType:
@@ -138,7 +153,8 @@ def main() -> None:
                 f"{molecules.get(0, '<unknown>')}"
             )
 
-        converter.run(
+        run_parser(
+            converter,
             method="ssrest3",
             hot_molecules=[0],
             nreps=2,
