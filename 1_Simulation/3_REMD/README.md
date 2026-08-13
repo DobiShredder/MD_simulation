@@ -50,6 +50,11 @@ replica가 같은 segment를 완료했을 때만 resume합니다. MPI launcher, 
 process 수와 추가 option은 각 README에 적힌 environment variable로
 지정합니다.
 
+REST2/REST3는 `run.sh --cpus N --gpus N`으로 할당 resource를 받습니다.
+Replica별 preproduction은 GPU별로 병렬 실행하면서 한 process를
+`-ntmpi 1`로 제한하고, production은 replica당 external-MPI rank 하나를
+사용합니다.
+
 모든 replica의 engine 정상 종료와 필수 output을 확인한 뒤 stage marker를
 기록합니다. Partial minimization, heating과 equilibration은 모든 replica에서
 해당 stage output을 제거하고 다시 실행합니다. Partial production/exchange
@@ -94,6 +99,10 @@ in order. Production is one 1 ns segment per replica. A run resumes only from
 the last segment completed by every replica; partial segments are reported as
 errors. Engine and MPI settings are supplied through the environment variables
 documented by each method.
+
+REST2/REST3 accept allocated resources through `run.sh --cpus N --gpus N`.
+Per-replica preproduction runs concurrently across GPUs with `-ntmpi 1` per
+process, while production uses one external-MPI rank per replica.
 
 A stage marker is written only after successful engine exits and required-output
 checks across every replica. Partial minimization, heating, and equilibration

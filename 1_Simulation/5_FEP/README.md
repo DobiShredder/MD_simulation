@@ -7,9 +7,8 @@
 
 ## 한국어
 
-Alchemical calculation은 실제 결합·해리 경로 대신 Hamiltonian을 단계적으로
-바꿉니다. 인접한 lambda state가 비슷한 configuration을 sampling해야 state
-사이의 free-energy 차이를 계산할 수 있습니다.
+Alchemical calculation은 실제 결합·해리 경로 대신 Hamiltonian을 단계적으로 바꿉니다.
+인접한 lambda state가 비슷한 configuration을 sampling해야 state 사이의 free-energy 차이를 계산할 수 있습니다.
 
 | Tutorial | 계산 | System |
 | --- | --- | --- |

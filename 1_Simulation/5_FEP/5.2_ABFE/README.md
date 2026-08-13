@@ -7,10 +7,10 @@
 
 ## 한국어
 
-PDB 3HTB의 JZ4를 T4 lysozyme complex와 물에서 단계적으로 decouple합니다. Complex
-계산에서는 ligand가 binding site를 벗어나지 않도록 Boresch restraint 6개를
-먼저 연결합니다. Restraint, electrostatic, van der Waals contribution과
-standard-state correction을 thermodynamic cycle의 부호에 맞춰 합칩니다.
+PDB 3HTB의 JZ4를 T4 lysozyme complex와 물에서 단계적으로 decouple합니다.
+Complex 계산에서는 ligand가 binding site를 벗어나지 않도록 Boresch restraint 6개를 먼저 연결합니다.
+Restraint, electrostatic, van der Waals contribution과
+standard-state correction을 thermodynamic cycle에 따라 계산합니다.
 
 ### Script 역할
 

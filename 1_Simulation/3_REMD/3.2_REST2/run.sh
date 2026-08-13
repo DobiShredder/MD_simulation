@@ -2,14 +2,33 @@
 set -euo pipefail
 
 dry_run=0
+cpu_count=""
+gpu_count=""
 
-if [[ "${1:-}" == "--dry-run" ]]; then
-    dry_run=1
-    shift
-fi
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --cpus)
+            [[ $# -ge 2 ]] || break
+            cpu_count=$2
+            shift 2
+            ;;
+        --gpus)
+            [[ $# -ge 2 ]] || break
+            gpu_count=$2
+            shift 2
+            ;;
+        --dry-run)
+            dry_run=1
+            shift
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
 
-if [[ $# -ne 0 ]]; then
-    echo "Usage: $0 [--dry-run]" >&2
+if [[ $# -ne 0 || -z "$cpu_count" || -z "$gpu_count" ]]; then
+    echo "Usage: $0 --cpus N --gpus N [--dry-run]" >&2
     exit 2
 fi
 
@@ -27,7 +46,8 @@ production_segments=1
 exchange_steps=1000
 
 read -r -a mpi_options <<< "${MPI_OPTIONS:-}"
-read -r -a gromacs_options <<< "${GROMACS_OPTIONS:-}"
+read -r -a preproduction_gromacs_options <<< "${PREPRODUCTION_GROMACS_OPTIONS:-}"
+read -r -a hrex_gromacs_options <<< "${HREX_GROMACS_OPTIONS:-}"
 
 if [[ ! -s "$states_file" ]]; then
     die "Run build.sh first: $states_file"
@@ -42,6 +62,24 @@ last_replica=$(awk 'END {print $1}' "$states_file")
 if [[ "$mpi_processes" -ne "$replica_count" ]]; then
     die "MPI_PROCESSES must equal the replica count: $replica_count"
 fi
+if [[ ! "$cpu_count" =~ ^[1-9][0-9]*$ ]]; then
+    die "--cpus must be a positive integer: $cpu_count"
+fi
+if [[ ! "$gpu_count" =~ ^[1-9][0-9]*$ ]]; then
+    die "--gpus must be a positive integer: $gpu_count"
+fi
+if [[ "$gpu_count" -ne "$replica_count" ]]; then
+    die "--gpus must equal the replica count: $replica_count"
+fi
+if (( cpu_count % replica_count != 0 )); then
+    die "--cpus must be divisible by the replica count: $replica_count"
+fi
+
+threads_per_replica=$((cpu_count / replica_count))
+gpu_ids=0
+for ((gpu_index = 1; gpu_index < gpu_count; gpu_index++)); do
+    gpu_ids+=",$gpu_index"
+done
 
 if (( ! dry_run )); then
     for executable in "$gmx" "$gmx_mpi" "$mpi_launcher"; do
@@ -136,8 +174,14 @@ mark_gromacs_stage_complete() {
 run_preproduction() {
     local replica
     local replica_dir
+    local replica_index=0
+    local gpu_id
+    local process_id
+    local failed=0
+    local -a process_ids=()
+    local -a process_replicas=()
 
-    echo "Running minimization and 100 ps equilibration."
+    echo "Running minimization on $gpu_count GPUs."
 
     while IFS=$'\t' read -r replica _; do
         if [[ "$replica" == "replica" ]]; then
@@ -155,13 +199,42 @@ run_preproduction() {
             die "minimization tpr generation failed: $replica_dir/minimize.grompp.log"
         fi
 
-        if ! "$gmx" mdrun \
+        gpu_id=$((replica_index % gpu_count))
+        "$gmx" mdrun \
             -deffnm "$replica_dir/minimize" \
-            "${gromacs_options[@]}" \
-            > "$replica_dir/minimize.mdrun.log" 2>&1; then
-            die "minimization failed: $replica_dir/minimize.mdrun.log"
-        fi
+            -ntmpi 1 \
+            -ntomp "$threads_per_replica" \
+            -gpu_id "$gpu_id" \
+            "${preproduction_gromacs_options[@]}" \
+            > "$replica_dir/minimize.mdrun.log" 2>&1 &
+        process_ids+=("$!")
+        process_replicas+=("$replica")
+        replica_index=$((replica_index + 1))
+    done < "$states_file"
 
+    for replica_index in "${!process_ids[@]}"; do
+        process_id=${process_ids[$replica_index]}
+        replica=${process_replicas[$replica_index]}
+        if ! wait "$process_id"; then
+            echo "Error: minimization failed: $work_dir/$replica/minimize.mdrun.log" >&2
+            failed=1
+        fi
+    done
+    if (( failed )); then
+        die "minimization failed for one or more replicas."
+    fi
+
+    process_ids=()
+    process_replicas=()
+    replica_index=0
+
+    echo "Running 100 ps equilibration on $gpu_count GPUs."
+
+    while IFS=$'\t' read -r replica _; do
+        if [[ "$replica" == "replica" ]]; then
+            continue
+        fi
+        replica_dir="$work_dir/$replica"
         if ! "$gmx" grompp \
             -f "$replica_dir/equilibrate.mdp" \
             -p "$replica_dir/topol.top" \
@@ -172,13 +245,31 @@ run_preproduction() {
             die "equilibration tpr generation failed: $replica_dir/equilibrate.grompp.log"
         fi
 
-        if ! "$gmx" mdrun \
+        gpu_id=$((replica_index % gpu_count))
+        "$gmx" mdrun \
             -deffnm "$replica_dir/equilibrate" \
-            "${gromacs_options[@]}" \
-            > "$replica_dir/equilibrate.mdrun.log" 2>&1; then
-            die "equilibration failed: $replica_dir/equilibrate.mdrun.log"
-        fi
+            -ntmpi 1 \
+            -ntomp "$threads_per_replica" \
+            -gpu_id "$gpu_id" \
+            "${preproduction_gromacs_options[@]}" \
+            > "$replica_dir/equilibrate.mdrun.log" 2>&1 &
+        process_ids+=("$!")
+        process_replicas+=("$replica")
+        replica_index=$((replica_index + 1))
     done < "$states_file"
+
+    failed=0
+    for replica_index in "${!process_ids[@]}"; do
+        process_id=${process_ids[$replica_index]}
+        replica=${process_replicas[$replica_index]}
+        if ! wait "$process_id"; then
+            echo "Error: equilibration failed: $work_dir/$replica/equilibrate.mdrun.log" >&2
+            failed=1
+        fi
+    done
+    if (( failed )); then
+        die "equilibration failed for one or more replicas."
+    fi
     mark_gromacs_stage_complete preproduction
 }
 
@@ -186,8 +277,12 @@ if (( dry_run )); then
     echo "GROMACS: $gmx"
     echo "HREX engine: $gmx_mpi"
     echo "$replica_count replicas, effective ${temperature_min}–${temperature_max} K, 2 ps exchange interval"
+    echo "$cpu_count CPUs, $gpu_count GPUs, $threads_per_replica OpenMP threads per replica"
     echo "100 ps equilibration + 1 ns production"
-    printf '%q ' "$mpi_launcher" "${mpi_options[@]}" -np "$mpi_processes" "$gmx_mpi" mdrun -multidir "$work_dir/000" ... "$work_dir/$last_replica" -deffnm production.001 -hrex -replex "$exchange_steps" -plumed plumed.dat
+    printf 'Preproduction command: '
+    printf '%q ' "$gmx" mdrun -deffnm "$work_dir/000/equilibrate" -ntmpi 1 -ntomp "$threads_per_replica" -gpu_id 0 "${preproduction_gromacs_options[@]}"
+    printf '\nHREX command: '
+    printf '%q ' "$mpi_launcher" "${mpi_options[@]}" -np "$mpi_processes" "$gmx_mpi" mdrun -ntomp "$threads_per_replica" -gpu_id "$gpu_ids" -multidir "$work_dir/000" ... "$work_dir/$last_replica" -deffnm production.001 -hrex -replex "$exchange_steps" -plumed plumed.dat "${hrex_gromacs_options[@]}"
     printf '\n'
     exit 0
 fi
@@ -250,12 +345,14 @@ for segment in $(seq 1 "$production_segments"); do
         -np "$mpi_processes" \
         "$gmx_mpi" \
         mdrun \
+        -ntomp "$threads_per_replica" \
+        -gpu_id "$gpu_ids" \
         -multidir "${replica_dirs[@]}" \
         -deffnm "$segment_name" \
         -hrex \
         -replex "$exchange_steps" \
         -plumed plumed.dat \
-        "${gromacs_options[@]}"; then
+        "${hrex_gromacs_options[@]}"; then
         die "REST2 segment $segment run failed."
     fi
     mark_gromacs_stage_complete "$segment_name"

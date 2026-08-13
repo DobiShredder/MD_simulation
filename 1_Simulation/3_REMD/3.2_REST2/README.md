@@ -49,8 +49,8 @@ python3 -m pip install -r requirements.txt
 ./download.sh
 python3 prepare.py structure/1UAO.raw.pdb structure/chignolin.pdb
 ./build.sh structure/chignolin.pdb
-./run.sh --dry-run
-./run.sh
+./run.sh --cpus 48 --gpus 8 --dry-run
+./run.sh --cpus 48 --gpus 8
 python3 anal.py
 ```
 
@@ -71,10 +71,14 @@ residue별 grid를 구분합니다. `scale_cmap.py`는 PLUMED가 처리하지 �
 grid를 각 REST2 state에 맞게 보정합니다. `_` marker는 `[ atoms ]`의
 nonbonded type에만 붙이고 CMAP bonded type은 바꾸지 않습니다.
 
-`GROMACS`, `GROMACS_MPI`, `MPI_LAUNCHER`, `MPI_PROCESSES`,
-`MPI_OPTIONS`와 `GROMACS_OPTIONS`로 실행 환경을 지정합니다. Production은
-1 ns segment 하나이며 일부 replica만 완료된 segment에서는 resume하지
-않습니다.
+`GROMACS`, `GROMACS_MPI`, `MPI_LAUNCHER`, `MPI_PROCESSES`와
+`MPI_OPTIONS`로 executable과 MPI 환경을 지정합니다. `--cpus`는 job에 할당한
+총 CPU thread 수이고 `--gpus`는 GPU 수입니다. 두 값은 replica에 균등하게
+나눕니다. Replica별 minimization과 equilibration은 GPU별로 동시에 실행하고
+각 process를 `-ntmpi 1`로 제한합니다. Production은 1 ns segment 하나이며 일부
+replica만 완료된 segment에서는 resume하지 않습니다.
+Scheduler는 할당한 GPU만 `CUDA_VISIBLE_DEVICES`에 노출해야 합니다. Script의
+`-gpu_id 0,1,...`은 그 안에서 다시 매겨진 logical device ID입니다.
 
 새 system의 `effective_temperature_K`는
 [remd-temperature-generator](https://virtualchemistry.org/remd-temperature-generator/)에
@@ -97,7 +101,7 @@ replica<TAB>effective_temperature_K<TAB>lambda_pp<TAB>lambda_pw<TAB>seed
 
 ```bash
 ./build.sh structure/chignolin.pdb /path/to/states.tsv
-./run.sh --dry-run
+./run.sh --cpus 48 --gpus 8 --dry-run
 ```
 
 Physical bath가 300 K이므로 첫 state는 `000`, 300 K, `lambda_pp=1`,
@@ -115,6 +119,9 @@ Physical bath가 300 K이므로 첫 state는 `000`, 300 K, `lambda_pp=1`,
 | `ref-t=300` | 모든 replica의 physical thermostat temperature입니다. |
 | `-multidir`, `-replex 1000` | 8개 directory를 HREX로 묶고 1,000 steps, 즉 2 ps마다 교환합니다. |
 | `constraints=h-bonds`, `dt=0.002` | LINCS로 수소 bond를 고정하고 2 fs timestep을 사용합니다. |
+| `--cpus`, `--gpus` | 할당받은 총 resource 수입니다. GPU 수는 replica 수와 같고 CPU 수는 replica 수로 나누어져야 합니다. |
+| `PREPRODUCTION_GROMACS_OPTIONS` | Replica별 minimization/equilibration에만 추가할 option입니다. Resource option은 script가 설정합니다. |
+| `HREX_GROMACS_OPTIONS` | External-MPI HREX production에만 추가할 option입니다. `-ntmpi`를 넣지 않습니다. |
 | `ENERGY_TOLERANCE_KJ_MOL` | Scale 1.0 one-frame potential 비교의 절대 tolerance입니다. 이 Chignolin 예제의 기본값은 `0.1 kJ/mol`입니다. |
 
 ### Output
@@ -164,6 +171,12 @@ generates and verifies the states selected by the input file,
 `run.sh` uses `-multidir -replex 1000`, and `anal.py` summarizes exchange and
 structure. All thermostats remain at `ref-t=300`; hydrogen bonds are constrained
 for a 2 fs timestep. `ENERGY_TOLERANCE_KJ_MOL` controls the scale-one check.
+Run with `--cpus TOTAL --gpus 8`; the GPU count must match the eight replicas,
+and the CPU count must divide evenly among them. Preproduction runs one replica
+per GPU with `-ntmpi 1`. `HREX_GROMACS_OPTIONS` applies only to external-MPI
+production and must not contain `-ntmpi`.
+The scheduler must expose only allocated devices through `CUDA_VISIBLE_DEVICES`;
+the generated `-gpu_id` values are logical IDs within that visible set.
 This Chignolin tutorial uses a fixed absolute tolerance of `0.1 kJ/mol`, which
 can be overridden with `ENERGY_TOLERANCE_KJ_MOL`. It is not a universal cutoff:
 system size, GROMACS precision, hardware, and parallel energy-reduction order

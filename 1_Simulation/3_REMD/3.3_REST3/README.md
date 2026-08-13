@@ -55,8 +55,8 @@ python3 -m pip install parmed MDAnalysis numpy
 ./download.sh
 python3 prepare.py structure/1UAO.raw.pdb structure/chignolin.pdb
 ./build.sh structure/chignolin.pdb
-./run.sh --dry-run
-./run.sh
+./run.sh --cpus 48 --gpus 8 --dry-run
+./run.sh --cpus 48 --gpus 8
 python3 anal.py
 ```
 
@@ -86,7 +86,10 @@ CMAP lookup에 사용하지 않습니다. `verify_rest3.py`는 이 값도 base t
 비교합니다.
 
 Equilibration은 100 ps, production은 1 ns segment 하나이며 교환은 2 ps마다
-시도합니다. 실행 환경 변수와 resume 규칙은 REST2 예제와 같습니다.
+시도합니다. `--cpus`와 `--gpus`로 할당받은 총 resource를 입력합니다. GPU 수는
+replica 수와 같아야 하며, preproduction은 GPU별로 병렬 실행하되 각 process를
+`-ntmpi 1`로 제한합니다. 나머지 실행 환경 변수와 resume 규칙은 REST2 예제와
+같습니다.
 
 새 system에서는 REST2와 같이
 [remd-temperature-generator](https://virtualchemistry.org/remd-temperature-generator/)에
@@ -109,7 +112,7 @@ replica<TAB>effective_temperature_K<TAB>lambda_pp<TAB>lambda_pw<TAB>kappa<TAB>se
 
 ```bash
 ./build.sh structure/chignolin.pdb /path/to/states.tsv
-./run.sh --dry-run
+./run.sh --cpus 48 --gpus 8 --dry-run
 ```
 
 첫 state는 `000`, 300 K, `lambda_pp=1`, `lambda_pw=1`, `kappa=1`이어야
@@ -126,6 +129,9 @@ replica<TAB>effective_temperature_K<TAB>lambda_pp<TAB>lambda_pw<TAB>kappa<TAB>se
 | `build.sh INPUT.pdb [states.tsv]` | 첫 argument의 PDB로 topology를 만들고 effective-temperature·λ·κ file을 선택합니다. State file을 생략하면 Chignolin용 `inputs/states.tsv`를 사용합니다. |
 | `kappa_atom_names=['OW']` | TIP3P oxygen type만 κ scaling 대상으로 지정합니다. Water molecule 전체를 hot molecule로 지정하는 option이 아닙니다. |
 | `-replex 1000` | 2 fs timestep에서 2 ps마다 Hamiltonian 교환을 시도합니다. |
+| `--cpus`, `--gpus` | 할당받은 총 resource 수입니다. GPU 수는 replica 수와 같고 CPU 수는 replica 수로 나누어져야 합니다. |
+| `PREPRODUCTION_GROMACS_OPTIONS` | Replica별 minimization/equilibration에만 추가할 option입니다. |
+| `HREX_GROMACS_OPTIONS` | External-MPI HREX production에만 추가하며 `-ntmpi`를 넣지 않습니다. |
 | `REPEX_TOPOLOGY_PARSER_SOURCE` | 0.2.2 source parser 위치를 지정합니다. PyPI wheel만으로 module을 찾지 못할 때 필요합니다. |
 
 ### 해석 범위
@@ -171,6 +177,11 @@ unchanged while only their grids are scaled. `verify_rest3.py` checks base, CMAP
 solvent invariants, `run.sh` performs HREX with `-replex 1000`, and `anal.py`
 summarizes exchange and structure. `kappa_atom_names=['OW']` targets the TIP3P
 oxygen type. The physical thermostat remains at 300 K.
+
+Run with `--cpus TOTAL --gpus 8`; the GPU count must match the eight replicas,
+and the CPU count must divide evenly among them. Preproduction runs one replica
+per GPU with `-ntmpi 1`. `PREPRODUCTION_GROMACS_OPTIONS` and
+`HREX_GROMACS_OPTIONS` add options only to their named phases.
 
 This tutorial recommends an external-MPI build of `GROMACS 2024.3` patched
 with `PLUMED 2.10.0`. That patch includes the `-hrex` path required to
