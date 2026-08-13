@@ -53,12 +53,13 @@ def extract_window(
     window_directory = Path(state["directory"])
     trajectory_lambda = float(state["lambda"])
 
-    for segment_number in (1, 2):
-        mdout = window_directory / f"production.{segment_number:03d}.out"
-        if not mdout.is_file():
-            raise SystemExit(f"production output not found: {mdout}")
+    production_outputs = sorted(window_directory.glob("production.[0-9][0-9][0-9].out"))
+    if not production_outputs:
+        raise SystemExit(f"production output not found: {window_directory}")
 
-        segment_directory = data_directory / f"segment_{state['window']}_{segment_number:03d}"
+    for mdout in production_outputs:
+        segment = mdout.stem.rsplit(".", 1)[1]
+        segment_directory = data_directory / f"segment_{state['window']}_{segment}"
         segment_directory.mkdir(parents=True)
         run_command(
             [extractor, "--odir", str(segment_directory), str(mdout)],

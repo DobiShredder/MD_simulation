@@ -60,8 +60,9 @@ energy를 11개 state에서 평가합니다. 이 계산은 현재 window의 dyna
 
 `anal.py`는 AmberTools 26의 `edgembar-amber2dats.py`로 matrix를 추출한 뒤
 `edgembar --mode=MBAR`를 실행합니다. FE-ToolKit의 automatic equilibration,
-correlated-sample stride와 20회 bootstrap을 사용합니다. 주요 output은 다음과
-같습니다.
+correlated-sample stride와 20회 bootstrap을 사용합니다. 각 window에 존재하는
+`production.NNN.out`을 번호순으로 모두 읽으므로 production을 추가 segment로
+연장해도 같은 command로 분석합니다. 주요 output은 다음과 같습니다.
 
 | Output | 내용 |
 | --- | --- |
@@ -106,5 +107,7 @@ configuration at all eleven lambda states without changing its propagation.
 `anal.py` extracts the cross-state energy matrix and runs the AmberTools 26
 FE-ToolKit in MBAR mode. It writes free energies with bootstrap uncertainties,
 per-state sampling diagnostics, an overlap matrix, and an HTML convergence
-report. Inspect neighboring-state overlap and equilibration warnings before
-interpreting the final value.
+report. It combines every `production.NNN.out` present in each window; the
+default run creates `production.001.out`, while additional numbered segments
+require no analysis-code change. Inspect neighboring-state overlap and
+equilibration warnings before interpreting the final value.

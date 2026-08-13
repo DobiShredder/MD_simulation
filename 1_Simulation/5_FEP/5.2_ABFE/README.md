@@ -45,6 +45,12 @@ state를 정하고 `ifsc`/`scmask1`이 LJ endpoint의 singularity를 피합니�
 `ifmbar=1`은 각 configuration의 potential energy를 해당 stage의 모든 lambda에서
 평가합니다. 이 full energy matrix가 MBAR의 input입니다.
 
+Restraint와 charge stage는 atom을 생성하거나 제거하지 않으므로
+`timask1=timask2=''`인 non-softcore transformation입니다. Restraint stage는
+`gti_nmropt=1`, charge stage는 `crgmask=':JZ4'`로 바뀌는 energy term을
+지정합니다. `timask1=':JZ4', timask2=''`인 비대칭 unique-atom mask는
+`ifsc=1`인 LJ decoupling에만 사용합니다.
+
 Window는 `work/restraint/complex/`, `work/charge/{complex,solvent}/`와
 `work/vdw/{complex,solvent}/`에 생성됩니다. 각 directory 아래의 `000`부터
 시작하는 번호가 lambda window입니다.
@@ -79,7 +85,9 @@ cycle과 standard-state correction을 다시 검토합니다.
 
 `anal.py`는 AmberTools 26의 `edgembar-amber2dats.py`와
 `edgembar --mode=MBAR`를 실행합니다. FE-ToolKit의 automatic equilibration,
-correlated-sample stride와 20회 bootstrap을 사용합니다.
+correlated-sample stride와 20회 bootstrap을 사용합니다. 각 window에 존재하는
+`production.NNN.out`을 번호순으로 모두 읽으므로 production을 추가 segment로
+연장해도 analysis code를 수정하지 않습니다.
 
 | Output | 내용 |
 | --- | --- |
@@ -107,6 +115,12 @@ equilibration, and one 1 ns production segment.
 JZ4 is parameterized with a net charge of zero. The protein anchors are GLN102
 `CG-CB-CA`, and the ligand anchors are JZ4 `C7-C8-C9`.
 
+The restraint and charge stages do not create or remove atoms, so their
+non-softcore inputs use empty `timask1` and `timask2`. `gti_nmropt=1` defines
+the changing restraint term, while `crgmask=':JZ4'` defines charge removal.
+Only the soft-core LJ stage uses the asymmetric unique-atom masks
+`timask1=':JZ4'` and `timask2=''`.
+
 The solvent topology uses a 20 Å solute-to-box-edge buffer to keep the shortest
 box dimension out of the `pmemd.cuda` small-box guard with the 10 Å cutoff.
 Completed stages are skipped. Partial minimization, heating, or equilibration
@@ -125,7 +139,9 @@ Soft-core interactions use the Amber 26 `aces26=1` format and require
 `pmemd.cuda`.
 
 `anal.py` uses the AmberTools 26 FE-ToolKit MBAR estimator for all five sampled
-stages. It then adds the analytical standard-state term. The leading PME
+stages. It combines every `production.NNN.out` present in each window; the
+default run creates `production.001.out`, while additional numbered segments
+require no analysis-code change. It then adds the analytical standard-state term. The leading PME
 net-charge correction is zero because JZ4 is neutral. Outputs include bootstrap uncertainty,
 per-state sampling diagnostics, stage overlap matrices, and an HTML convergence
 report. The short windows and approximate correction are suitable for learning

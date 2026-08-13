@@ -159,20 +159,21 @@ def alchemical_options(
     schedule: list[float],
     collect_mbar: bool,
 ) -> str:
-    common = f"icfe=1, clambda={lambda_value:.6f}, timask1=':JZ4', timask2='', "
+    common = f"icfe=1, clambda={lambda_value:.6f}, "
     if stage == "restraint":
         common += (
-            " ifsc=0, aces26=1, gti_nmropt=1,"
+            " timask1='', timask2='', ifsc=0, aces26=1, gti_nmropt=1,"
             " gti_sc_cc_energy_terms='', gti_sc_sc_energy_terms='',"
         )
     elif stage.endswith("vdw"):
         common += (
+            " timask1=':JZ4', timask2='',"
             " ifsc=1, scmask1=':JZ4', scmask2='', scalpha=0.5, scbeta=12.0,"
             " aces26=1, gti_sc_cc_energy_terms='ele,vdw,ele14,vdw14',"
             " gti_sc_sc_energy_terms='', gti_nmropt=0,"
         )
     else:
-        common += " crgmask=':JZ4', ifsc=0,"
+        common += " timask1='', timask2='', crgmask=':JZ4', ifsc=0,"
     if collect_mbar:
         mbar_lambda = ",".join(f"{value:.6f}" for value in schedule)
         common += (
