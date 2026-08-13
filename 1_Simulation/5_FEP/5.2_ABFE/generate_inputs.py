@@ -162,7 +162,8 @@ def alchemical_options(
     common = f"icfe=1, clambda={lambda_value:.6f}, "
     if stage == "restraint":
         common += (
-            " timask1='', timask2='', ifsc=0, aces26=1, gti_nmropt=1,"
+            " timask1=':JZ4', timask2=':JZ4',"
+            " ifsc=0, aces26=1, gti_nmropt=1,"
             " gti_sc_cc_energy_terms='', gti_sc_sc_energy_terms='',"
         )
     elif stage.endswith("vdw"):
@@ -173,7 +174,10 @@ def alchemical_options(
             " gti_sc_sc_energy_terms='', gti_nmropt=0,"
         )
     else:
-        common += " timask1='', timask2='', crgmask=':JZ4', ifsc=0,"
+        common += (
+            " timask1=':JZ4', timask2=':JZ4',"
+            " crgmask=':JZ4', ifsc=0,"
+        )
     if collect_mbar:
         mbar_lambda = ",".join(f"{value:.6f}" for value in schedule)
         common += (

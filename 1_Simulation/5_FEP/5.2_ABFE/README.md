@@ -45,11 +45,12 @@ state를 정하고 `ifsc`/`scmask1`이 LJ endpoint의 singularity를 피합니�
 `ifmbar=1`은 각 configuration의 potential energy를 해당 stage의 모든 lambda에서
 평가합니다. 이 full energy matrix가 MBAR의 input입니다.
 
-Restraint와 charge stage는 atom을 생성하거나 제거하지 않으므로
-`timask1=timask2=''`인 non-softcore transformation입니다. Restraint stage는
-`gti_nmropt=1`, charge stage는 `crgmask=':JZ4'`로 바뀌는 energy term을
-지정합니다. `timask1=':JZ4', timask2=''`인 비대칭 unique-atom mask는
-`ifsc=1`인 LJ decoupling에만 사용합니다.
+Restraint와 charge stage는 atom을 생성하거나 제거하지 않는 non-softcore
+transformation입니다. PMEMD가 두 endpoint의 대응 atom을 구성할 수 있도록
+`timask1=timask2=':JZ4'`를 사용합니다. Restraint stage는 `gti_nmropt=1`, charge
+stage는 `crgmask=':JZ4'`로 실제로 scaling할 energy term을 지정합니다.
+`timask1=':JZ4', timask2=''`인 비대칭 unique-atom mask는 `ifsc=1`인 LJ
+decoupling에만 사용합니다.
 
 Window는 `work/restraint/complex/`, `work/charge/{complex,solvent}/`와
 `work/vdw/{complex,solvent}/`에 생성됩니다. 각 directory 아래의 `000`부터
@@ -115,11 +116,12 @@ equilibration, and one 1 ns production segment.
 JZ4 is parameterized with a net charge of zero. The protein anchors are GLN102
 `CG-CB-CA`, and the ligand anchors are JZ4 `C7-C8-C9`.
 
-The restraint and charge stages do not create or remove atoms, so their
-non-softcore inputs use empty `timask1` and `timask2`. `gti_nmropt=1` defines
-the changing restraint term, while `crgmask=':JZ4'` defines charge removal.
-Only the soft-core LJ stage uses the asymmetric unique-atom masks
-`timask1=':JZ4'` and `timask2=''`.
+The restraint and charge stages do not create or remove atoms. Their
+non-softcore inputs use `timask1=timask2=':JZ4'` so PMEMD has a nonempty,
+one-to-one endpoint mapping. `gti_nmropt=1` defines the changing restraint
+term, while `crgmask=':JZ4'` defines charge removal. Only the soft-core LJ
+stage uses the asymmetric unique-atom masks `timask1=':JZ4'` and
+`timask2=''`.
 
 The solvent topology uses a 20 Å solute-to-box-edge buffer to keep the shortest
 box dimension out of the `pmemd.cuda` small-box guard with the 10 Å cutoff.
