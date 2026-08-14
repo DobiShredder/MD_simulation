@@ -1,39 +1,70 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img">
-<title>REST3 interaction scaling</title>
-<desc>Interaction scaling diagram for REST3.</desc>
-<defs>
-<marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#243447"/></marker>
-<marker id="blue-arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#0072B2"/></marker>
-<pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0 10L10 0" stroke="#6B7280" stroke-width="2"/></pattern>
-</defs>
-<rect width="1200" height="675" fill="#FFFFFF"/>
-<text x="60" y="52" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#243447">REST3 interaction scaling</text>
-<text x="60" y="88" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="normal" fill="#6B7280">Hamiltonian scaling at reference temperature T₀</text>
-<rect x="85" y="150" width="300" height="300" rx="16" fill="#FAFCFD" stroke="#B8C4CE" stroke-width="2" opacity="1"/>
-<text x="107" y="184" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="bold" fill="#243447">protein–protein</text>
-<circle cx="175" cy="285" r="30" fill="#0072B2" stroke="white" stroke-width="3" opacity="1"/>
-<text x="175" y="291" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">P</text>
-<circle cx="295" cy="285" r="30" fill="#0072B2" stroke="white" stroke-width="3" opacity="1"/>
-<text x="295" y="291" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">P</text>
-<line x1="210" y1="285" x2="260" y2="285" stroke="#0072B2" stroke-width="5" stroke-dasharray="8 6"/>
-<text x="235" y="375" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="bold" fill="#0072B2">scale = λ</text>
-<rect x="450" y="150" width="300" height="300" rx="16" fill="#FAFCFD" stroke="#B8C4CE" stroke-width="2" opacity="1"/>
-<text x="472" y="184" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="bold" fill="#243447">protein–solvent</text>
-<circle cx="540" cy="285" r="30" fill="#0072B2" stroke="white" stroke-width="3" opacity="1"/>
-<text x="540" y="291" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">P</text>
-<circle cx="660" cy="285" r="30" fill="#56B4E9" stroke="white" stroke-width="3" opacity="1"/>
-<text x="660" y="291" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">W</text>
-<line x1="575" y1="285" x2="625" y2="285" stroke="#E69F00" stroke-width="5" stroke-dasharray="8 6"/>
-<text x="600" y="375" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="bold" fill="#E69F00">scale = √λ</text>
-<rect x="815" y="150" width="300" height="300" rx="16" fill="#FAFCFD" stroke="#B8C4CE" stroke-width="2" opacity="1"/>
-<text x="837" y="184" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="bold" fill="#243447">solvent–solvent</text>
-<circle cx="905" cy="285" r="30" fill="#56B4E9" stroke="white" stroke-width="3" opacity="1"/>
-<text x="905" y="291" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">W</text>
-<circle cx="1025" cy="285" r="30" fill="#56B4E9" stroke="white" stroke-width="3" opacity="1"/>
-<text x="1025" y="291" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="white">W</text>
-<line x1="940" y1="285" x2="990" y2="285" stroke="#009E73" stroke-width="5" stroke-dasharray="8 6"/>
-<text x="965" y="375" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="bold" fill="#009E73">scale = 1</text>
-<rect x="260" y="500" width="680" height="95" rx="14" fill="#FFF8E6" stroke="#E69F00" stroke-width="2" opacity="1"/>
-<text x="600" y="540" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="bold" fill="#E69F00">κ adjusts the protein–water contribution</text>
-<text x="600" y="574" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="normal" fill="#6B7280">Published schedule; not validated for ff19SB/TIP3P Chignolin</text>
+  <title>Why REST3 adds a kappa schedule to REST2 scaling</title>
+  <desc>REST2 scales protein-protein interactions by lambda and protein-water interactions by square root lambda. At high effective temperature this can weaken protein-water interactions and drive artificial IDP collapse. REST3 keeps electrostatic scaling but multiplies protein-water van der Waals scaling by kappa to control chain expansion.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#243447"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="675" fill="#FFFFFF"/>
+  <text x="55" y="52" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#243447">Why REST3 adds κ</text>
+  <text x="55" y="84" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#6B7280">Schematic — REST2 compaction and REST3 κ correction for IDPs</text>
+
+  <rect x="55" y="110" width="1090" height="110" rx="15" fill="#F8FBFD" stroke="#B8C4CE" stroke-width="2"/>
+  <text x="80" y="143" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="bold" fill="#243447">REST2 interaction scaling</text>
+  <rect x="80" y="160" width="210" height="42" rx="8" fill="#E8F4FA" stroke="#0072B2" stroke-width="2"/>
+  <text x="185" y="187" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#243447">P–P: λ</text>
+  <rect x="315" y="160" width="260" height="42" rx="8" fill="#FFF4DA" stroke="#E69F00" stroke-width="2"/>
+  <text x="445" y="187" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#243447">P–W electrostatic: √λ</text>
+  <rect x="600" y="160" width="220" height="42" rx="8" fill="#FFF4DA" stroke="#E69F00" stroke-width="2"/>
+  <text x="710" y="187" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#243447">P–W vdW: √λ</text>
+  <rect x="845" y="160" width="210" height="42" rx="8" fill="#E9F7F1" stroke="#009E73" stroke-width="2"/>
+  <text x="950" y="187" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#243447">W–W: 1</text>
+
+  <rect x="55" y="250" width="470" height="325" rx="16" fill="#FFF8F2" stroke="#D55E00" stroke-width="2"/>
+  <text x="80" y="287" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="bold" fill="#D55E00">REST2 at high effective temperature</text>
+  <text x="80" y="316" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#6B7280">√λ weakens protein–water interactions</text>
+
+  <g fill="#56B4E9" stroke="#FFFFFF" stroke-width="2">
+    <circle cx="115" cy="380" r="12"/><circle cx="160" cy="350" r="12"/><circle cx="205" cy="385" r="12"/>
+    <circle cx="105" cy="485" r="12"/><circle cx="165" cy="520" r="12"/><circle cx="230" cy="500" r="12"/>
+    <circle cx="445" cy="365" r="12"/><circle cx="470" cy="425" r="12"/><circle cx="435" cy="500" r="12"/>
+  </g>
+  <g fill="none" stroke="#D55E00" stroke-width="11" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M265 360 L335 350 L375 395 L325 440 L260 420 L245 475 L315 505 L375 475 L390 420 L345 390 L285 395 Z"/>
+  </g>
+  <g fill="#FFFFFF" stroke="#D55E00" stroke-width="3">
+    <circle cx="265" cy="360" r="15"/><circle cx="335" cy="350" r="15"/><circle cx="375" cy="395" r="15"/>
+    <circle cx="325" cy="440" r="15"/><circle cx="260" cy="420" r="15"/><circle cx="245" cy="475" r="15"/>
+    <circle cx="315" cy="505" r="15"/><circle cx="375" cy="475" r="15"/><circle cx="390" cy="420" r="15"/>
+    <circle cx="345" cy="390" r="15"/><circle cx="285" cy="395" r="15"/>
+  </g>
+  <text x="315" y="548" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#D55E00">artificially compact IDP</text>
+  <text x="80" y="568" font-family="Arial, Helvetica, sans-serif" font-size="15" fill="#6B7280">compact-state trapping can segregate replicas</text>
+
+  <line x1="535" y1="410" x2="655" y2="410" stroke="#243447" stroke-width="4" marker-end="url(#arrow)"/>
+  <text x="595" y="385" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="#243447">schedule κ</text>
+  <text x="595" y="440" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" fill="#6B7280">vdW only</text>
+
+  <rect x="665" y="250" width="480" height="325" rx="16" fill="#F2FAF7" stroke="#009E73" stroke-width="2"/>
+  <text x="690" y="287" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="bold" fill="#009E73">REST3 for disordered proteins</text>
+  <text x="690" y="316" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#6B7280">P–W vdW scale = κ√λ; κ &gt; 1 strengthens P–W vdW</text>
+  <text x="690" y="340" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#6B7280">P–W electrostatic remains √λ; W–W remains 1</text>
+
+  <g fill="#56B4E9" stroke="#FFFFFF" stroke-width="2">
+    <circle cx="710" cy="395" r="12"/><circle cx="755" cy="455" r="12"/><circle cx="800" cy="380" r="12"/>
+    <circle cx="855" cy="520" r="12"/><circle cx="915" cy="375" r="12"/><circle cx="970" cy="500" r="12"/>
+    <circle cx="1030" cy="380" r="12"/><circle cx="1090" cy="465" r="12"/>
+  </g>
+  <path d="M720 470 C755 405 795 500 835 425 S915 500 955 420 S1035 500 1090 410" fill="none" stroke="#009E73" stroke-width="11" stroke-linecap="round"/>
+  <g fill="#FFFFFF" stroke="#009E73" stroke-width="3">
+    <circle cx="720" cy="470" r="15"/><circle cx="760" cy="425" r="15"/><circle cx="800" cy="470" r="15"/>
+    <circle cx="840" cy="425" r="15"/><circle cx="880" cy="470" r="15"/><circle cx="920" cy="425" r="15"/>
+    <circle cx="960" cy="470" r="15"/><circle cx="1000" cy="425" r="15"/><circle cx="1040" cy="470" r="15"/><circle cx="1090" cy="410" r="15"/>
+  </g>
+  <text x="905" y="548" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#009E73">chain expansion is controlled across states</text>
+
+  <rect x="180" y="610" width="840" height="42" rx="10" fill="#F5F6F7" stroke="#6B7280" stroke-width="1.5"/>
+  <text x="600" y="636" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#243447">κ is a calibrated schedule, not a universal constant; the published values were developed for a99SB-disp IDPs.</text>
 </svg>

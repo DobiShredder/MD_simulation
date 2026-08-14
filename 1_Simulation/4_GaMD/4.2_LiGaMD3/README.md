@@ -2,7 +2,7 @@
 
 ![LiGaMD3의 세 boost component / Three boost components in LiGaMD3](../../../assets/simulation/ligamd3_components.svg)
 
-*Ligand-essential, remaining nonbonded와 bonded potential의 통계를 따로 수집합니다. / Ligand-essential, remaining nonbonded, and bonded potentials use separate statistics.*
+*첫 boost는 ligand dissociation, 두 번째는 rebinding, 세 번째는 receptor와 ligand의 conformational change를 촉진합니다. / The first boost promotes ligand dissociation, the second facilitates rebinding, and the third promotes receptor and ligand conformational changes.*
 
 
 ## 한국어
@@ -15,6 +15,24 @@ system bonded potential을 세 component로 나누어 가속합니다. Ligand의
 binding/unbinding barrier뿐 아니라 receptor와 ligand의 flexibility를 함께
 sampling하려는 구성입니다. Triple boost를 정확히 분리하려면 ligand mask와
 receptor atom range가 최종 topology와 일치해야 합니다.
+
+Potential energy는 다음 세 component로 나뉩니다.
+
+```text
+V_L = V_LL,nonbonded + V_PL,nonbonded
+V_D = V_system,nonbonded - V_L
+V_B = V_system,bond + V_system,angle + V_system,dihedral
+ΔV_total = ΔV_L + ΔV_D + ΔV_B
+```
+
+`V_L`은 BEN 내부의 self nonbonded와 BEN–trypsin nonbonded interaction을
+포함합니다. 이 항을 boost하면 binding pocket에서 ligand를 붙잡는 electrostatic과
+van der Waals barrier가 완만해져 dissociation sampling이 촉진됩니다. `V_D`는
+protein–protein, protein–environment, ligand–environment와
+environment–environment를 포함하는 나머지 nonbonded potential이며 ligand의
+diffusion과 rebinding을 돕습니다. `V_B`는 전체 system의 bond, angle과 dihedral
+potential로 receptor와 ligand의 internal conformational change를 가속합니다.
+세 boost는 각자 potential statistics와 threshold를 사용한 뒤 합산됩니다.
 
 ### Script 역할
 
@@ -94,6 +112,18 @@ sum as the per-frame total boost `ΔV`. The default 103-line production log
 contains three header lines and 100 records.
 The default +1 ligand path first adds one imine-N hydrogen and a formal charge
 to the neutral RCSB SDF, then applies GAFF2/AM1-BCC.
+
+The energy partition is
+`V_L = V_LL,nonbonded + V_PL,nonbonded`,
+`V_D = V_system,nonbonded - V_L`, and
+`V_B = V_system,bond + V_system,angle + V_system,dihedral`.
+The first component contains BEN self-nonbonded and BEN–trypsin interactions
+and promotes ligand dissociation. The second contains the remaining
+protein, ligand–environment, and environment nonbonded terms and facilitates
+diffusion and rebinding. The third accelerates internal conformational changes
+through all-system bonded terms. Each component has separate statistics and a
+separate boost, and the applied total is
+`ΔV_total = ΔV_L + ΔV_D + ΔV_B`.
 
 `igamd=28` with `iEP=2` and `iED=iEB=1` follows the Amber 26 example: the
 first boost uses the upper-bound threshold and the other boosts use lower-bound

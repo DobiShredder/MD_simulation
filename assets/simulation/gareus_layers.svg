@@ -1,35 +1,90 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img">
-<title>GaREUS</title>
-<desc>Layered schematic combining GaMD boost with umbrella-state exchange.</desc>
-<defs>
-<marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#243447"/></marker>
-<marker id="blue-arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#0072B2"/></marker>
-<pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0 10L10 0" stroke="#6B7280" stroke-width="2"/></pattern>
-</defs>
-<rect width="1200" height="675" fill="#FFFFFF"/>
-<text x="60" y="52" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#243447">GaREUS</text>
-<text x="60" y="88" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="normal" fill="#6B7280">Same physical temperature, different umbrella centers</text>
-<path d="M55 320 Q130 145 205 320" stroke="#0072B2" stroke-width="4" fill="none" opacity="1"/>
-<circle cx="130" cy="275" r="17" fill="#0072B2" stroke="#243447" stroke-width="2" opacity="1"/>
-<text x="130" y="355" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#243447">ξ₀,1</text>
-<line x1="175" y1="405" x2="310" y2="405" stroke="#243447" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow)"/>
-<path d="M280 320 Q355 145 430 320" stroke="#E69F00" stroke-width="4" fill="none" opacity="1"/>
-<circle cx="355" cy="240" r="17" fill="#E69F00" stroke="#243447" stroke-width="2" opacity="1"/>
-<text x="355" y="355" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#243447">ξ₀,2</text>
-<line x1="400" y1="405" x2="535" y2="405" stroke="#243447" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow)"/>
-<path d="M505 320 Q580 145 655 320" stroke="#009E73" stroke-width="4" fill="none" opacity="1"/>
-<circle cx="580" cy="275" r="17" fill="#009E73" stroke="#243447" stroke-width="2" opacity="1"/>
-<text x="580" y="355" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#243447">ξ₀,3</text>
-<line x1="625" y1="405" x2="760" y2="405" stroke="#243447" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow)"/>
-<path d="M730 320 Q805 145 880 320" stroke="#CC79A7" stroke-width="4" fill="none" opacity="1"/>
-<circle cx="805" cy="240" r="17" fill="#CC79A7" stroke="#243447" stroke-width="2" opacity="1"/>
-<text x="805" y="355" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#243447">ξ₀,4</text>
-<line x1="850" y1="405" x2="985" y2="405" stroke="#243447" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow)"/>
-<path d="M955 320 Q1030 145 1105 320" stroke="#D55E00" stroke-width="4" fill="none" opacity="1"/>
-<circle cx="1030" cy="275" r="17" fill="#D55E00" stroke="#243447" stroke-width="2" opacity="1"/>
-<text x="1030" y="355" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#243447">ξ₀,5</text>
-<text x="600" y="445" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="normal" fill="#243447">exchange adjacent restraint states</text>
-<rect x="145" y="500" width="910" height="90" rx="16" fill="#F4ECFA" stroke="#CC79A7" stroke-width="2" opacity="1"/>
-<text x="600" y="540" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="bold" fill="#CC79A7">GaMD boost lowers hidden barriers inside every umbrella window</text>
-<text x="600" y="575" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="normal" fill="#6B7280">Analysis removes umbrella and GaMD biases in separate steps.</text>
+  <title>GaREUS adds the same GaMD boost to every REUS state</title>
+  <desc>Umbrella states exchange configurations along a selected collective variable. The same GaMD boost is active in every state and smooths barriers in degrees of freedom not described by that variable.</desc>
+  <defs>
+    <marker id="arrow-dark" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#243447"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#D55E00"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="675" fill="#FFFFFF"/>
+  <text x="60" y="54" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#243447">GaREUS: add GaMD acceleration to every REUS state</text>
+  <text x="60" y="88" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#6B7280">Schematic · REUS and GaMD solve different sampling problems at the same time</text>
+
+  <rect x="55" y="112" width="1090" height="302" rx="18" fill="#F7FAFC" stroke="#CBD5E1" stroke-width="2"/>
+  <rect x="245" y="132" width="710" height="50" rx="15" fill="#FFF2E8" stroke="#D55E00" stroke-width="2"/>
+  <text x="600" y="163" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#D55E00">The same prepared GaMD boost parameters are active in every state</text>
+
+  <g stroke="#D55E00" stroke-width="2.5" fill="none" stroke-dasharray="6 5">
+    <line x1="240" y1="182" x2="180" y2="218" marker-end="url(#arrow-orange)"/>
+    <line x1="480" y1="182" x2="460" y2="218" marker-end="url(#arrow-orange)"/>
+    <line x1="720" y1="182" x2="740" y2="218" marker-end="url(#arrow-orange)"/>
+    <line x1="960" y1="182" x2="1020" y2="218" marker-end="url(#arrow-orange)"/>
+  </g>
+
+  <text x="82" y="207" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="#0072B2">REUS state ladder: neighboring configurations exchange along the selected CV ξ</text>
+
+  <path d="M103 300 Q180 204 257 300" fill="none" stroke="#0072B2" stroke-width="4"/>
+  <path d="M383 300 Q460 204 537 300" fill="none" stroke="#E69F00" stroke-width="4"/>
+  <path d="M663 300 Q740 204 817 300" fill="none" stroke="#009E73" stroke-width="4"/>
+  <path d="M943 300 Q1020 204 1097 300" fill="none" stroke="#CC79A7" stroke-width="4"/>
+  <line x1="95" y1="302" x2="1105" y2="302" stroke="#243447" stroke-width="2" marker-end="url(#arrow-dark)"/>
+
+  <g font-family="Arial, Helvetica, sans-serif" text-anchor="middle">
+    <circle cx="180" cy="302" r="11" fill="#0072B2" stroke="#243447" stroke-width="2"/>
+    <text x="180" y="334" font-size="17" font-weight="bold" fill="#243447">State i − 1</text>
+    <text x="180" y="355" font-size="14" fill="#6B7280">umbrella center ξᵢ₋₁</text>
+    <rect x="121" y="369" width="118" height="27" rx="13" fill="#FFF2E8" stroke="#D55E00" stroke-width="1.5"/>
+    <text x="180" y="388" font-size="13" font-weight="bold" fill="#D55E00">GaMD boost ON</text>
+
+    <circle cx="460" cy="302" r="11" fill="#E69F00" stroke="#243447" stroke-width="2"/>
+    <text x="460" y="334" font-size="17" font-weight="bold" fill="#243447">State i</text>
+    <text x="460" y="355" font-size="14" fill="#6B7280">umbrella center ξᵢ</text>
+    <rect x="401" y="369" width="118" height="27" rx="13" fill="#FFF2E8" stroke="#D55E00" stroke-width="1.5"/>
+    <text x="460" y="388" font-size="13" font-weight="bold" fill="#D55E00">GaMD boost ON</text>
+
+    <circle cx="740" cy="302" r="11" fill="#009E73" stroke="#243447" stroke-width="2"/>
+    <text x="740" y="334" font-size="17" font-weight="bold" fill="#243447">State i + 1</text>
+    <text x="740" y="355" font-size="14" fill="#6B7280">umbrella center ξᵢ₊₁</text>
+    <rect x="681" y="369" width="118" height="27" rx="13" fill="#FFF2E8" stroke="#D55E00" stroke-width="1.5"/>
+    <text x="740" y="388" font-size="13" font-weight="bold" fill="#D55E00">GaMD boost ON</text>
+
+    <circle cx="1020" cy="302" r="11" fill="#CC79A7" stroke="#243447" stroke-width="2"/>
+    <text x="1020" y="334" font-size="17" font-weight="bold" fill="#243447">State i + 2</text>
+    <text x="1020" y="355" font-size="14" fill="#6B7280">umbrella center ξᵢ₊₂</text>
+    <rect x="961" y="369" width="118" height="27" rx="13" fill="#FFF2E8" stroke="#D55E00" stroke-width="1.5"/>
+    <text x="1020" y="388" font-size="13" font-weight="bold" fill="#D55E00">GaMD boost ON</text>
+  </g>
+
+  <g font-family="Arial, Helvetica, sans-serif" text-anchor="middle" font-size="25" font-weight="bold" fill="#243447">
+    <text x="320" y="289">⇄</text>
+    <text x="600" y="289">⇄</text>
+    <text x="880" y="289">⇄</text>
+  </g>
+
+  <rect x="55" y="440" width="520" height="176" rx="18" fill="#FFF7ED" stroke="#D55E00" stroke-width="2"/>
+  <text x="82" y="474" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="bold" fill="#D55E00">Inside each state: hidden barriers are smoothed</text>
+  <line x1="90" y1="577" x2="535" y2="577" stroke="#243447" stroke-width="1.5"/>
+  <path d="M90 528 C126 473 156 587 195 522 C231 466 264 585 304 519 C342 469 373 584 414 520 C451 479 501 542 535 491"
+        fill="none" stroke="#243447" stroke-width="3"/>
+  <path d="M90 520 C127 493 158 553 196 516 C233 487 265 552 305 514 C343 489 375 551 415 515 C453 493 502 521 535 491"
+        fill="none" stroke="#D55E00" stroke-width="4" stroke-dasharray="9 6"/>
+  <line x1="158" y1="568" x2="158" y2="543" stroke="#D55E00" stroke-width="3" marker-end="url(#arrow-orange)"/>
+  <text x="312" y="601" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#6B7280">solid: original potential · dashed: GaMD-boosted potential</text>
+
+  <rect x="605" y="440" width="540" height="176" rx="18" fill="#F3F8FC" stroke="#0072B2" stroke-width="2"/>
+  <text x="875" y="474" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="bold" fill="#243447">Complementary roles in one simulation</text>
+  <rect x="635" y="496" width="214" height="72" rx="12" fill="#FFFFFF" stroke="#0072B2" stroke-width="2"/>
+  <text x="742" y="523" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#0072B2">REUS exchange</text>
+  <text x="742" y="548" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#243447">explores the selected CV</text>
+  <text x="875" y="540" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="27" font-weight="bold" fill="#243447">+</text>
+  <rect x="901" y="496" width="214" height="72" rx="12" fill="#FFFFFF" stroke="#D55E00" stroke-width="2"/>
+  <text x="1008" y="523" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#D55E00">GaMD boost</text>
+  <text x="1008" y="548" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#243447">accelerates hidden motion</text>
+  <text x="875" y="596" text-anchor="middle" font-family="Georgia, Times New Roman, serif" font-size="17" fill="#243447">U″ᵢ = U + ΔU<tspan baseline-shift="super" font-size="11">GaMD</tspan> + ΔUᵢ<tspan baseline-shift="super" font-size="11">REUS</tspan></text>
+
+  <text x="600" y="651" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" fill="#6B2876">Analysis: umbrella reweighting with MBAR → GaMD reweighting with cumulant expansion</text>
 </svg>

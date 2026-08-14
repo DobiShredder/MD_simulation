@@ -2,7 +2,7 @@
 
 ![Umbrella state 사이의 replica exchange / Replica exchange between umbrella states](../../../assets/simulation/reus_exchange.svg)
 
-*Walker는 같은 온도에서 인접 restraint center를 교환합니다. / Walkers exchange neighboring restraint centers at the same temperature.*
+*CV 위의 각 umbrella center가 하나의 Hamiltonian state를 정의합니다. Accepted exchange는 state 정의를 유지한 채 인접 state의 configuration을 교환합니다. / Each umbrella center on the CV defines a Hamiltonian state. An accepted exchange swaps configurations between neighboring states without changing the state definitions.*
 
 
 ## 한국어
@@ -16,6 +16,14 @@ REUS는 umbrella restraint가 다른 Hamiltonian 사이에서 configuration을
 교환합니다. 일반 US가 각 window 안에서만 움직이는 것과 달리, accepted
 exchange를 통해 한 walker가 여러 CV 영역을 방문할 수 있습니다. Restraint를
 제거한 PMF 계산에는 각 frame이 어느 window state에서 생성됐는지 추적해야 합니다.
+
+Reaction coordinate 위에서 선택한 각 point `ξᵢ`는 단순한 sampling 위치가
+아니라 restraint center와 force constant로 정의된 umbrella state입니다. 각
+replica는 한 state의 Hamiltonian으로 MD를 진행합니다. Exchange가 accept되면
+인접 state에 배정된 configuration이 서로 바뀌지만 `ξᵢ`와 force constant는
+그 state에 그대로 남습니다. 이 과정을 반복하면 같은 walker가 state ladder를
+따라 이동하며 서로 떨어진 CV 영역을 방문합니다. 인접 window의 분포가 겹치지
+않으면 exchange와 PMF 연결이 모두 나빠집니다.
 
 ### Script 역할
 
@@ -89,6 +97,15 @@ production is one 1 ns segment per window, and exchanges are attempted every
 REUS exchanges configurations among Hamiltonians with different umbrella
 centers. Accepted swaps allow a walker to visit multiple CV regions, but PMF
 analysis must retain the window state associated with each sampled frame.
+
+Each selected point `ξᵢ` on the reaction coordinate is an umbrella state defined
+by its restraint center and force constant, rather than just a sampling
+location. A replica propagates under one state Hamiltonian. When a neighboring
+exchange is accepted, the configurations assigned to the two states are
+swapped, while the centers and force constants remain attached to their states.
+Repeated swaps let a walker diffuse across the state ladder. Poor overlap
+between neighboring window distributions reduces both exchange acceptance and
+the connectivity of the reconstructed PMF.
 
 Run the build as `./build.sh structure/chignolin.pdb`. It resolves the two Cα
 atom indices from the ff19SB/TIP3P topology and writes one restraint per window.

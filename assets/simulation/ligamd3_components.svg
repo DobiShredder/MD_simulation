@@ -1,30 +1,71 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img">
-<title>LiGaMD3 triple boost</title>
-<desc>Component diagram for LiGaMD3 triple boost selective boosts.</desc>
-<defs>
-<marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#243447"/></marker>
-<marker id="blue-arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#0072B2"/></marker>
-<pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0 10L10 0" stroke="#6B7280" stroke-width="2"/></pattern>
-</defs>
-<rect width="1200" height="675" fill="#FFFFFF"/>
-<text x="60" y="52" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#243447">LiGaMD3 triple boost</text>
-<text x="60" y="88" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="normal" fill="#6B7280">Selected potential components receive separate boost statistics</text>
-<rect x="80.0" y="155" width="285.0" height="290" rx="16" fill="#FAFCFD" stroke="#B8C4CE" stroke-width="2" opacity="1"/>
-<text x="102.0" y="189" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="bold" fill="#243447">Ligand-essential</text>
-<path d="M125.0 345 Q240.0 180 320.0 345" stroke="#0072B2" stroke-width="5" fill="none" opacity="1"/>
-<line x1="125.0" y1="365" x2="320.0" y2="365" stroke="#0072B2" stroke-width="3" stroke-dasharray="7 6"/>
-<text x="225.0" y="405" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="normal" fill="#6B7280">nonbonded</text>
-<rect x="400.0" y="155" width="285.0" height="290" rx="16" fill="#FAFCFD" stroke="#B8C4CE" stroke-width="2" opacity="1"/>
-<text x="422.0" y="189" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="bold" fill="#243447">Remaining</text>
-<path d="M445.0 345 Q560.0 180 640.0 345" stroke="#E69F00" stroke-width="5" fill="none" opacity="1"/>
-<line x1="445.0" y1="365" x2="640.0" y2="365" stroke="#E69F00" stroke-width="3" stroke-dasharray="7 6"/>
-<text x="545.0" y="405" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="normal" fill="#6B7280">nonbonded</text>
-<rect x="720.0" y="155" width="285.0" height="290" rx="16" fill="#FAFCFD" stroke="#B8C4CE" stroke-width="2" opacity="1"/>
-<text x="742.0" y="189" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="bold" fill="#243447">System</text>
-<path d="M765.0 345 Q880.0 180 960.0 345" stroke="#CC79A7" stroke-width="5" fill="none" opacity="1"/>
-<line x1="765.0" y1="365" x2="960.0" y2="365" stroke="#CC79A7" stroke-width="3" stroke-dasharray="7 6"/>
-<text x="865.0" y="405" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="normal" fill="#6B7280">bonded</text>
-<line x1="200" y1="515" x2="1000" y2="515" stroke="#243447" stroke-width="4" marker-end="url(#arrow)"/>
-<text x="600" y="555" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="normal" fill="#243447">separate statistics → combined accelerated sampling</text>
-<text x="600" y="605" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="normal" fill="#6B7280">Schematic</text>
+  <title>LiGaMD3 energy partition and triple boost</title>
+  <desc>LiGaMD3 partitions a protein ligand system into ligand-essential nonbonded, remaining nonbonded, and all bonded potential energies. Three boosts target ligand dissociation, rebinding, and conformational changes.</desc>
+  <defs>
+    <marker id="arrow-dark" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#243447"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="675" fill="#FFFFFF"/>
+  <text x="60" y="54" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#243447">LiGaMD3: three boosts target three physical barriers</text>
+  <text x="60" y="88" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#6B7280">Schematic · P = protein, L = ligand, E = solvent and ions</text>
+
+  <rect x="55" y="118" width="375" height="440" rx="18" fill="#F7FAFC" stroke="#CBD5E1" stroke-width="2"/>
+  <text x="82" y="153" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#243447">Selected system</text>
+  <text x="82" y="178" font-family="Arial, Helvetica, sans-serif" font-size="15" fill="#6B7280">BEN ligand mask + generated receptor range</text>
+
+  <path d="M105 263 C105 205 170 184 228 210 C271 229 281 264 267 296 C302 318 298 369 259 387 C222 411 168 397 145 367 C104 360 84 325 101 294 Z"
+        fill="#DCEAF7" stroke="#0072B2" stroke-width="4"/>
+  <path d="M223 263 C246 244 280 249 292 273 C301 294 286 318 260 320 C238 321 218 307 216 287 Z"
+        fill="#FFFFFF" stroke="#0072B2" stroke-width="3"/>
+  <text x="171" y="302" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="bold" fill="#0072B2">P</text>
+
+  <polygon points="260,267 282,279 282,304 260,316 238,304 238,279" fill="#F9D9C7" stroke="#D55E00" stroke-width="4"/>
+  <text x="260" y="298" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#D55E00">L</text>
+  <line x1="238" y1="278" x2="216" y2="267" stroke="#D55E00" stroke-width="3" stroke-dasharray="6 4"/>
+  <line x1="238" y1="303" x2="213" y2="315" stroke="#D55E00" stroke-width="3" stroke-dasharray="6 4"/>
+
+  <g fill="#FFFFFF" stroke="#009E73" stroke-width="2">
+    <circle cx="91" cy="220" r="9"/><circle cx="325" cy="222" r="9"/><circle cx="345" cy="294" r="9"/>
+    <circle cx="322" cy="377" r="9"/><circle cx="94" cy="403" r="9"/><circle cx="352" cy="443" r="9"/>
+    <circle cx="151" cy="450" r="9"/><circle cx="276" cy="445" r="9"/>
+  </g>
+  <text x="346" y="197" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#009E73">E</text>
+
+  <rect x="84" y="478" width="318" height="55" rx="12" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.5"/>
+  <text x="103" y="501" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#243447">Dashed orange: ligand–protein nonbonded</text>
+  <text x="103" y="522" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#243447">Blue shape / green circles: receptor / environment</text>
+
+  <line x1="443" y1="338" x2="478" y2="338" stroke="#243447" stroke-width="3" marker-end="url(#arrow-dark)"/>
+
+  <rect x="490" y="118" width="655" height="142" rx="18" fill="#FFF2E8" stroke="#D55E00" stroke-width="2.5"/>
+  <circle cx="531" cy="155" r="22" fill="#D55E00"/>
+  <text x="531" y="162" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="bold" fill="#FFFFFF">1</text>
+  <text x="569" y="153" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="bold" fill="#D55E00">Ligand-essential nonbonded boost ΔV<tspan baseline-shift="super" font-size="12">L</tspan></text>
+  <text x="569" y="181" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#243447">V<tspan baseline-shift="sub" font-size="12">L</tspan> = ligand self nonbonded + ligand–protein nonbonded</text>
+  <text x="569" y="209" font-family="Arial, Helvetica, sans-serif" font-size="15" fill="#6B7280">electrostatic + van der Waals terms involving BEN and the receptor</text>
+  <rect x="892" y="218" width="226" height="28" rx="14" fill="#FFFFFF" stroke="#D55E00" stroke-width="1.5"/>
+  <text x="1005" y="237" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#D55E00">promotes ligand dissociation</text>
+
+  <rect x="490" y="278" width="655" height="142" rx="18" fill="#EDF8F4" stroke="#009E73" stroke-width="2.5"/>
+  <circle cx="531" cy="315" r="22" fill="#009E73"/>
+  <text x="531" y="322" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="bold" fill="#FFFFFF">2</text>
+  <text x="569" y="313" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="bold" fill="#007A5A">Remaining nonbonded boost ΔV<tspan baseline-shift="super" font-size="12">D</tspan></text>
+  <text x="569" y="341" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#243447">V<tspan baseline-shift="sub" font-size="12">D</tspan> = all system nonbonded − V<tspan baseline-shift="sub" font-size="12">L</tspan></text>
+  <text x="569" y="369" font-family="Arial, Helvetica, sans-serif" font-size="15" fill="#6B7280">protein–protein, protein–environment, ligand–environment and environment–environment</text>
+  <rect x="892" y="378" width="226" height="28" rx="14" fill="#FFFFFF" stroke="#009E73" stroke-width="1.5"/>
+  <text x="1005" y="397" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#007A5A">facilitates ligand rebinding</text>
+
+  <rect x="490" y="438" width="655" height="142" rx="18" fill="#F7EEF5" stroke="#CC79A7" stroke-width="2.5"/>
+  <circle cx="531" cy="475" r="22" fill="#CC79A7"/>
+  <text x="531" y="482" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="bold" fill="#FFFFFF">3</text>
+  <text x="569" y="473" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="bold" fill="#9A4F7E">System bonded boost ΔV<tspan baseline-shift="super" font-size="12">B</tspan></text>
+  <text x="569" y="501" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#243447">V<tspan baseline-shift="sub" font-size="12">B</tspan> = bond + angle + dihedral terms of the entire system</text>
+  <text x="569" y="529" font-family="Arial, Helvetica, sans-serif" font-size="15" fill="#6B7280">includes receptor and ligand internal degrees of freedom</text>
+  <rect x="860" y="538" width="258" height="28" rx="14" fill="#FFFFFF" stroke="#CC79A7" stroke-width="1.5"/>
+  <text x="989" y="557" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#9A4F7E">promotes conformational changes</text>
+
+  <rect x="217" y="606" width="766" height="45" rx="22" fill="#F7FAFC" stroke="#243447" stroke-width="2"/>
+  <text x="600" y="635" text-anchor="middle" font-family="Georgia, Times New Roman, serif" font-size="19" fill="#243447">Total LiGaMD3 boost: ΔV = ΔV<tspan baseline-shift="super" font-size="12">L</tspan> + ΔV<tspan baseline-shift="super" font-size="12">D</tspan> + ΔV<tspan baseline-shift="super" font-size="12">B</tspan></text>
 </svg>

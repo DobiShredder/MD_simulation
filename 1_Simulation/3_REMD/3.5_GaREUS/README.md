@@ -2,7 +2,7 @@
 
 ![GaMD boost와 umbrella exchange의 결합 / Combined GaMD boost and umbrella exchange](../../../assets/simulation/gareus_layers.svg)
 
-*각 window 안에서는 GaMD가 barrier를 낮추고 window 사이는 replica exchange로 연결합니다. / GaMD lowers barriers within each window, while replica exchange connects neighboring windows.*
+*REUS는 선택한 CV의 umbrella state를 연결하고, 모든 state에 공통으로 적용한 GaMD boost는 CV에 드러나지 않는 barrier를 낮춥니다. / REUS connects umbrella states along the selected CV, while a GaMD boost shared by all states lowers barriers hidden from that CV.*
 
 
 ## 한국어
@@ -15,6 +15,23 @@ GaREUS는 CV 방향의 umbrella/replica exchange와 CV에 포함되지 않은 �
 GaMD acceleration을 동시에 사용합니다. 두 bias가 함께 작동하므로 window
 overlap뿐 아니라 exchange mixing, GaMD boost distribution과 reweighting 조건을
 각각 확인해야 합니다.
+
+Umbrella state `i`에서 사용하는 potential은 다음처럼 볼 수 있습니다.
+
+```text
+U″ᵢ(x) = U(x) + ΔU_GaMD(U(x)) + ΔUᵢ_REUS(ξ(x))
+```
+
+`ΔUᵢ_REUS`는 terminal Cα distance `ξ`의 center를 정하고, replica exchange가
+configuration을 인접 center 사이에서 이동시킵니다. `ΔU_GaMD`는 낮은 potential
+energy 영역을 harmonic boost로 올려 energy landscape를 완만하게 만듭니다.
+따라서 선택한 CV만으로 구분되지 않는 dihedral motion과 hidden barrier의
+sampling을 촉진합니다. GaMD는 umbrella state ladder를 대신하지 않으며, 두
+항이 같은 configuration에 동시에 적용됩니다.
+
+이 예제에서는 15 Å reference window에서 준비한 같은 GaMD parameter를 모든
+state에 사용합니다. Analysis에서는 먼저 MBAR로 umbrella bias를 제거하고,
+이어서 2차 cumulant expansion으로 GaMD boost를 reweight합니다.
 
 ### Script 역할
 
@@ -105,6 +122,19 @@ GaREUS combines umbrella/replica exchange along the selected CV with GaMD
 acceleration of other energetic degrees of freedom. Window overlap, exchange
 mixing, boost distributions, and reweighting quality therefore require separate
 checks.
+
+The potential in umbrella state `i` is
+`U″ᵢ(x) = U(x) + ΔU_GaMD(U(x)) + ΔUᵢ_REUS(ξ(x))`. The REUS term defines a
+terminal-Cα distance center, and replica exchange moves configurations between
+neighboring centers. The GaMD term raises low-potential regions with a harmonic
+boost and smooths energetic barriers, improving sampling of dihedral motion and
+other hidden degrees of freedom that are not resolved by the selected CV. GaMD
+does not replace the umbrella state ladder; both bias terms act on the same
+configuration.
+
+This example distributes the same GaMD parameters prepared at the 15 Å
+reference window to every state. Analysis first removes the umbrella bias with
+MBAR and then reweights the GaMD boost with a second-order cumulant expansion.
 
 Run the build as `./build.sh structure/chignolin.pdb`. The defaults are
 `igamd=3` and `sigma0P=sigma0D=6.0`. Each window has a

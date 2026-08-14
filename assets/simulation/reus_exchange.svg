@@ -1,33 +1,81 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img">
-<title>Replica exchange umbrella sampling</title>
-<desc>Schematic of neighboring umbrella states exchanging configurations.</desc>
-<defs>
-<marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#243447"/></marker>
-<marker id="blue-arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#0072B2"/></marker>
-<pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0 10L10 0" stroke="#6B7280" stroke-width="2"/></pattern>
-</defs>
-<rect width="1200" height="675" fill="#FFFFFF"/>
-<text x="60" y="52" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#243447">Replica exchange umbrella sampling</text>
-<text x="60" y="88" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="normal" fill="#6B7280">Same physical temperature, different umbrella centers</text>
-<path d="M55 320 Q130 145 205 320" stroke="#0072B2" stroke-width="4" fill="none" opacity="1"/>
-<circle cx="130" cy="275" r="17" fill="#0072B2" stroke="#243447" stroke-width="2" opacity="1"/>
-<text x="130" y="355" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#243447">ξ₀,1</text>
-<line x1="175" y1="405" x2="310" y2="405" stroke="#243447" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow)"/>
-<path d="M280 320 Q355 145 430 320" stroke="#E69F00" stroke-width="4" fill="none" opacity="1"/>
-<circle cx="355" cy="240" r="17" fill="#E69F00" stroke="#243447" stroke-width="2" opacity="1"/>
-<text x="355" y="355" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#243447">ξ₀,2</text>
-<line x1="400" y1="405" x2="535" y2="405" stroke="#243447" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow)"/>
-<path d="M505 320 Q580 145 655 320" stroke="#009E73" stroke-width="4" fill="none" opacity="1"/>
-<circle cx="580" cy="275" r="17" fill="#009E73" stroke="#243447" stroke-width="2" opacity="1"/>
-<text x="580" y="355" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#243447">ξ₀,3</text>
-<line x1="625" y1="405" x2="760" y2="405" stroke="#243447" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow)"/>
-<path d="M730 320 Q805 145 880 320" stroke="#CC79A7" stroke-width="4" fill="none" opacity="1"/>
-<circle cx="805" cy="240" r="17" fill="#CC79A7" stroke="#243447" stroke-width="2" opacity="1"/>
-<text x="805" y="355" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#243447">ξ₀,4</text>
-<line x1="850" y1="405" x2="985" y2="405" stroke="#243447" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow)"/>
-<path d="M955 320 Q1030 145 1105 320" stroke="#D55E00" stroke-width="4" fill="none" opacity="1"/>
-<circle cx="1030" cy="275" r="17" fill="#D55E00" stroke="#243447" stroke-width="2" opacity="1"/>
-<text x="1030" y="355" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#243447">ξ₀,5</text>
-<text x="600" y="445" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="normal" fill="#243447">exchange adjacent restraint states</text>
-<text x="600" y="535" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="normal" fill="#6B7280">Restraints define state identity; walkers carry their coordinates between states.</text>
+  <title>Replica exchange umbrella sampling state ladder</title>
+  <desc>Each umbrella center along a collective variable defines a Hamiltonian state. Neighboring states exchange configurations while their restraint definitions remain fixed.</desc>
+  <defs>
+    <marker id="arrow-dark" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#243447"/>
+    </marker>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#0072B2"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="675" fill="#FFFFFF"/>
+  <text x="60" y="54" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#243447">REUS: umbrella centers form a state ladder</text>
+  <text x="60" y="88" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#6B7280">Schematic · same temperature, different restraint Hamiltonians</text>
+
+  <rect x="55" y="118" width="1090" height="276" rx="18" fill="#F7FAFC" stroke="#CBD5E1" stroke-width="2"/>
+  <text x="82" y="151" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="bold" fill="#243447">Discrete points on the collective variable ξ become umbrella states</text>
+
+  <path d="M105 276 C185 220 245 337 330 270 C415 204 478 335 565 266 C650 201 720 338 805 268 C890 197 960 332 1095 246"
+        fill="none" stroke="#94A3B8" stroke-width="3" stroke-dasharray="8 7"/>
+  <text x="1090" y="222" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="15" fill="#6B7280">unbiased free-energy profile</text>
+
+  <path d="M92 300 Q150 188 208 300" fill="none" stroke="#0072B2" stroke-width="4"/>
+  <path d="M307 300 Q365 188 423 300" fill="none" stroke="#E69F00" stroke-width="4"/>
+  <path d="M522 300 Q580 188 638 300" fill="none" stroke="#009E73" stroke-width="4"/>
+  <path d="M737 300 Q795 188 853 300" fill="none" stroke="#CC79A7" stroke-width="4"/>
+  <path d="M952 300 Q1010 188 1068 300" fill="none" stroke="#D55E00" stroke-width="4"/>
+
+  <line x1="105" y1="322" x2="1090" y2="322" stroke="#243447" stroke-width="2" marker-end="url(#arrow-dark)"/>
+  <text x="1090" y="184" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#243447">horizontal axis: collective variable ξ</text>
+
+  <g font-family="Arial, Helvetica, sans-serif" text-anchor="middle">
+    <circle cx="150" cy="322" r="10" fill="#0072B2" stroke="#243447" stroke-width="2"/>
+    <text x="150" y="359" font-size="17" font-weight="bold" fill="#243447">State 1</text>
+    <text x="150" y="381" font-size="15" fill="#6B7280">center ξ₁</text>
+    <circle cx="365" cy="322" r="10" fill="#E69F00" stroke="#243447" stroke-width="2"/>
+    <text x="365" y="359" font-size="17" font-weight="bold" fill="#243447">State 2</text>
+    <text x="365" y="381" font-size="15" fill="#6B7280">center ξ₂</text>
+    <circle cx="580" cy="322" r="10" fill="#009E73" stroke="#243447" stroke-width="2"/>
+    <text x="580" y="359" font-size="17" font-weight="bold" fill="#243447">State 3</text>
+    <text x="580" y="381" font-size="15" fill="#6B7280">center ξ₃</text>
+    <circle cx="795" cy="322" r="10" fill="#CC79A7" stroke="#243447" stroke-width="2"/>
+    <text x="795" y="359" font-size="17" font-weight="bold" fill="#243447">State 4</text>
+    <text x="795" y="381" font-size="15" fill="#6B7280">center ξ₄</text>
+    <circle cx="1010" cy="322" r="10" fill="#D55E00" stroke="#243447" stroke-width="2"/>
+    <text x="1010" y="359" font-size="17" font-weight="bold" fill="#243447">State 5</text>
+    <text x="1010" y="381" font-size="15" fill="#6B7280">center ξ₅</text>
+  </g>
+
+  <text x="60" y="438" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#243447">Accepted neighboring exchange</text>
+  <rect x="60" y="462" width="282" height="124" rx="14" fill="#EAF4FB" stroke="#0072B2" stroke-width="2"/>
+  <text x="201" y="492" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#243447">Before</text>
+  <rect x="83" y="510" width="105" height="52" rx="8" fill="#FFFFFF" stroke="#E69F00" stroke-width="3"/>
+  <text x="135" y="532" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#243447">State 2</text>
+  <text x="135" y="551" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#0072B2">Walker A</text>
+  <rect x="214" y="510" width="105" height="52" rx="8" fill="#FFFFFF" stroke="#009E73" stroke-width="3"/>
+  <text x="266" y="532" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#243447">State 3</text>
+  <text x="266" y="551" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#D55E00">Walker B</text>
+
+  <line x1="370" y1="524" x2="463" y2="524" stroke="#0072B2" stroke-width="3" marker-end="url(#arrow-blue)"/>
+  <line x1="463" y1="550" x2="370" y2="550" stroke="#0072B2" stroke-width="3" marker-end="url(#arrow-blue)"/>
+  <text x="417" y="495" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#0072B2">swap configurations</text>
+
+  <rect x="492" y="462" width="282" height="124" rx="14" fill="#EAF4FB" stroke="#0072B2" stroke-width="2"/>
+  <text x="633" y="492" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#243447">After</text>
+  <rect x="515" y="510" width="105" height="52" rx="8" fill="#FFFFFF" stroke="#E69F00" stroke-width="3"/>
+  <text x="567" y="532" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#243447">State 2</text>
+  <text x="567" y="551" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#D55E00">Walker B</text>
+  <rect x="646" y="510" width="105" height="52" rx="8" fill="#FFFFFF" stroke="#009E73" stroke-width="3"/>
+  <text x="698" y="532" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#243447">State 3</text>
+  <text x="698" y="551" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#0072B2">Walker A</text>
+
+  <rect x="815" y="456" width="330" height="138" rx="14" fill="#FFF7E6" stroke="#E69F00" stroke-width="2"/>
+  <text x="839" y="496" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="#243447">What remains fixed?</text>
+  <text x="839" y="527" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#243447">• State center and force constant</text>
+  <text x="839" y="554" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#243447">• Physical temperature</text>
+  <text x="839" y="581" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#243447">Walkers diffuse across CV states.</text>
+
+  <text x="600" y="642" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#6B7280">State overlap controls exchange acceptance and PMF connectivity.</text>
 </svg>

@@ -2,7 +2,7 @@
 
 ![Pep-GaMD의 selective dual boost / Selective dual boost in Pep-GaMD](../../../assets/simulation/pepgamd_components.svg)
 
-*Peptide-essential potential과 나머지 system potential을 나누어 가속합니다. / Peptide-essential and remaining-system potentials are accelerated separately.*
+*첫 boost는 peptide의 internal rearrangement와 receptor/environment interaction을 가속하고, 두 번째 boost는 나머지 system의 sampling과 peptide rebinding을 돕습니다. / The first boost accelerates peptide rearrangement and its interactions with the receptor and environment; the second enhances the remaining system and peptide rebinding.*
 
 
 ## 한국어
@@ -15,6 +15,23 @@ Pep-GaMD는 peptide essential potential과 나머지 system potential을 분리�
 dual boost를 적용합니다. Flexible peptide의 내부 rearrangement와 receptor에서의
 이동을 가속하는 것이 목적입니다. Peptide selection이 receptor residue를 포함하면
 다른 Hamiltonian이 되므로 sequence와 generated mask를 build 단계에서 검사합니다.
+
+이 예제의 `igamd=15`는 다음 energy partition을 사용합니다.
+
+```text
+V_L = peptide bonded + peptide self nonbonded
+      + peptide-protein nonbonded + peptide-environment nonbonded
+V_D = V_system,total - V_L
+ΔV_total = ΔV_L + ΔV_D
+```
+
+`V_L`에는 peptide의 bond, angle과 dihedral뿐 아니라 peptide 내부 nonbonded와
+protein·solvent와의 nonbonded interaction도 포함됩니다. 따라서 flexible peptide의
+internal rearrangement와 binding/unbinding motion을 함께 가속합니다. `V_D`는
+essential peptide component를 제외한 receptor와 environment potential입니다.
+두 번째 boost는 receptor conformational sampling과 peptide rebinding을 돕습니다.
+`timask1`과 `scmask1`은 단순한 analysis selection이 아니라 이 두 potential의
+경계를 정하므로 generated `:58-65` mask를 확인해야 합니다.
 
 ### Script 역할
 
@@ -76,6 +93,16 @@ accelerate flexible peptide rearrangement and motion. `prepare.py` validates
 the resolved PPPVPPRR sequence, `build.sh` creates the system,
 `render_inputs.py` inserts the peptide mask, `run.sh` performs preparation and
 production, and `anal.py` reports both boost components.
+
+For `igamd=15`, the essential component contains peptide bond, angle, and
+dihedral terms, peptide self-nonbonded energy, and peptide interactions with
+the protein and environment. The remaining component is the total system
+potential minus this essential peptide potential. The first boost therefore
+accelerates both internal peptide rearrangement and binding/unbinding motion;
+the second enhances receptor/environment sampling and facilitates rebinding.
+The applied total is `ΔV_total = ΔV_L + ΔV_D`. Because `timask1` and `scmask1`
+define this energy boundary rather than an analysis-only selection, the
+generated `:58-65` mask must match the resolved peptide.
 
 `igamd=15` with `iEP=iED=1` selects lower-bound peptide dual boost.
 Generated `timask1`/`scmask1=':58-65'` identify the resolved peptide;

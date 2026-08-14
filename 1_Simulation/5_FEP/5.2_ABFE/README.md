@@ -1,8 +1,8 @@
 # T4 lysozyme–JZ4 ABFE / T4 lysozyme–JZ4 ABFE
 
-![ABFE에서 JZ4의 electrostatic 및 Lennard-Jones decoupling / Electrostatic and Lennard-Jones decoupling of JZ4 in ABFE](../../../assets/simulation/abfe_decoupling_atoms.svg)
+![JZ4 ABFE thermodynamic cycle과 두 decoupling leg / JZ4 ABFE thermodynamic cycle and two decoupling legs](../../../assets/simulation/abfe_decoupling_atoms.svg)
 
-*JZ4 전체에서 partial charge를 먼저 제거한 뒤 zero-charge topology에서 Lennard-Jones interaction을 제거합니다. / Partial charges are removed from all JZ4 atoms before Lennard-Jones interactions are removed from the zero-charge topology.*
+*Solvent와 restrained complex에서 charge와 LJ interaction을 각각 제거하는 두 decoupling 계산을 restraint correction과 연결해 physical binding cycle을 닫습니다. / Two decoupling calculations remove charge and LJ interactions in solvent and in the restrained complex, and restraint corrections close the physical binding cycle.*
 
 
 ## 한국어
@@ -11,6 +11,27 @@ PDB 3HTB의 JZ4를 T4 lysozyme complex와 물에서 단계적으로 decouple합�
 Complex 계산에서는 ligand가 binding site를 벗어나지 않도록 Boresch restraint 6개를 먼저 연결합니다.
 Restraint, electrostatic, van der Waals contribution과
 standard-state correction을 thermodynamic cycle에 따라 계산합니다.
+
+그림의 alchemical path는 물에서 interacting JZ4를 먼저 decouple한 뒤, interaction이
+없는 ligand를 1 M reference에서 binding pose의 위치와 방향으로 restraint합니다.
+이 standard-state restraint 항은 Boresch 식으로 계산하므로 별도 simulation을 하지
+않습니다. 다음으로 binding site에서 restraint를 유지한 채 JZ4의 charge와 LJ
+interaction을 다시 연결하고, 마지막으로 fully interacting complex의 restraint를
+풉니다. 시작과 끝이 각각 solvated ligand와 bound complex이므로 이 우회 경로의
+free-energy 합은 physical standard binding free energy와 같습니다.
+
+```text
+ΔG°bind = ΔGsolvent,charge + ΔGsolvent,LJ
+          - ΔGcomplex,charge - ΔGcomplex,LJ
+          + ΔGrestraint - ΔG°release
+```
+
+실제 simulation은 solvent와 complex에서 모두 `interacting → charge off → LJ off`
+방향으로 수행합니다. Cycle 그림의 complex leg는 이를 반대로 지나가므로 complex
+decoupling 두 항에 minus sign이 붙습니다. `ΔGrestraint`는 restrained bound
+complex에서 restraint를 제거하는 sampled 값입니다. `ΔG°release`는 decoupled
+ligand의 Boresch restraint를 풀어 1 M 상태로 보내는 analytic 값이므로 cycle에서는
+그 역방향인 `-ΔG°release`가 들어갑니다.
 
 ### Script 역할
 
@@ -114,6 +135,27 @@ This restrained double-decoupling example removes JZ4 interactions in the
 bound pose while electrostatic and Lennard-Jones interactions are decoupled.
 The restraint, electrostatic, van der Waals, and standard-state contributions
 are combined according to the thermodynamic cycle.
+
+The alchemical path first decouples interacting JZ4 in water. The noninteracting
+ligand is then placed at the bound position and orientation through the
+analytical Boresch standard-state term, without a separate simulation. JZ4 is
+coupled in the binding site while the restraint remains active, and the
+restraint is finally released from the fully interacting complex. Because the
+path connects solvated ligand and bound complex, its sum equals the physical
+standard binding free energy:
+
+```text
+ΔG°bind = ΔGsolvent,charge + ΔGsolvent,LJ
+          - ΔGcomplex,charge - ΔGcomplex,LJ
+          + ΔGrestraint - ΔG°release
+```
+
+Both simulated decoupling legs run from interacting to charge-off to LJ-off.
+The cycle traverses the complex leg in reverse, which gives the two complex
+terms their minus signs. `ΔGrestraint` is the sampled release of the restraint
+from the interacting bound complex. `ΔG°release` analytically releases the
+decoupled restrained ligand to the 1 M state, so the reverse traversal enters
+the cycle as `-ΔG°release`.
 
 Run the five public entry points in the order shown above. `build.sh` uses
 ff19SB, GAFF2/AM1-BCC, and TIP3P, writes original and zero-JZ4-charge topologies,

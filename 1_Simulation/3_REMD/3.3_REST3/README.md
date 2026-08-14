@@ -2,7 +2,7 @@
 
 ![REST3의 interaction scaling과 kappa correction / REST3 interaction scaling and kappa correction](../../../assets/simulation/rest3_scaling.svg)
 
-*REST3는 REST scaling에 protein–water interaction을 조정하는 kappa schedule을 더합니다. / REST3 adds a kappa schedule that adjusts protein–water interactions.*
+*REST2의 `√λ` protein–water scaling은 높은 effective temperature에서 IDP를 인위적으로 compact하게 만들 수 있습니다. REST3는 protein–water vdW 항에 `κ√λ` schedule을 적용해 이 문제를 조절합니다. / REST2's `√λ` protein–water scaling can artificially compact IDPs at high effective temperature. REST3 applies a `κ√λ` schedule to the protein–water vdW term to control this artifact.*
 
 
 ## 한국어
@@ -12,10 +12,23 @@ Chignolin을 ff19SB/TIP3P로 만들고 8-replica solvent-scaled REST3를
 사용합니다. `states.tsv`에는
 `λpp=T0/Tm`, `λpw=sqrt(T0/Tm)`과 다음 κ를 기록합니다.
 
-REST3는 REST2의 solute scaling에 κ-dependent solute–solvent correction을
-추가합니다. 목적은 높은 effective temperature에서 solute가 지나치게 compact해질
-수 있는 경향을 조정하는 것입니다. κ는 solvent 자체의 temperature를 바꾸는
-값이 아니며 water–water와 ion–water interaction은 physical state에 남겨야 합니다.
+REST2에서 높은 effective temperature state는 `λ=T0/Tm<1`입니다.
+Protein–protein interaction은 `λ`, protein–water electrostatic과 vdW interaction은
+`√λ`, water–water interaction은 1로 scaling합니다. 이 geometric `√λ` scaling은
+높은 state에서 protein–water interaction을 약화합니다. Mini-protein의 reversible
+folding을 촉진하려고 의도한 특성이지만, 크고 유연한 IDP에서는 chain이 temperature가
+높을수록 오히려 인위적으로 collapse할 수 있습니다. Compact conformation이 높은
+state에 trapping되면 낮은 state와 잘 교환되지 않아 replica가 temperature space에서
+segregate되고 round trip이 줄어듭니다.
+
+REST3는 protein–water vdW scaling을 `κ√λ`로 바꿉니다. Protein–water
+electrostatic은 PME charge scaling 때문에 `√λ`로 유지하고 water–water도 1로
+유지합니다. 높은 state에서 `κ>1`을 사용하면 REST2보다 protein–water vdW
+interaction이 강해져 IDP chain expansion을 조절하고 artificial collapse와 exchange
+bottleneck을 줄일 수 있습니다. `κ=1`이면 REST2와 같습니다. 따라서 REST2에서
+high-temperature collapse가 나타나는 IDP에는 REST3 같은 solute–solvent vdW
+correction이 필요합니다. 다만 κ는 solvent temperature가 아니며 system과 force
+field에 맞춰 정해야 하는 schedule입니다.
 
 | Replica | κ |
 | ---: | ---: |
@@ -132,7 +145,7 @@ replica<TAB>effective_temperature_K<TAB>lambda_pp<TAB>lambda_pw<TAB>kappa<TAB>se
 | Option | 의미 |
 | --- | --- |
 | `lambda_pp`, `lambda_pw` | Protein–protein과 protein–water scaling factor입니다. Geometric temperature ladder에서 계산합니다. |
-| `kappa` | REST3 solute–solvent correction schedule입니다. 이 예제에서는 1.000–1.020을 사용합니다. |
+| `kappa` | Protein–water vdW의 `√λ` scaling에 곱하는 REST3 correction입니다. `κ=1`은 REST2이고, 이 예제에서는 높은 state에서 1.005–1.020을 사용합니다. |
 | `build.sh INPUT.pdb [states.tsv]` | 첫 argument의 PDB로 topology를 만들고 effective-temperature·λ·κ file을 선택합니다. State file을 생략하면 Chignolin용 `inputs/states.tsv`를 사용합니다. |
 | `kappa_atom_names=['OW']` | TIP3P oxygen type만 κ scaling 대상으로 지정합니다. Water molecule 전체를 hot molecule로 지정하는 option이 아닙니다. |
 | `-replex 1000` | 2 fs timestep에서 2 ps마다 Hamiltonian 교환을 시도합니다. |
@@ -163,8 +176,22 @@ schedule shown above. Protein molecule 0 is hot, and TIP3P oxygen type `OW`
 is the solvent-scaling target.
 
 REST3 adds a kappa-dependent solute–solvent correction to REST2 scaling to
-adjust excessive high-effective-temperature compaction. Kappa does not heat
-the solvent; water–water and ion–water interactions must remain physical.
+adjust excessive high-effective-temperature compaction. At state `m`,
+`lambda=T0/Tm` is below one: protein–protein interactions are scaled by
+`lambda`, protein–water electrostatic and vdW interactions by `sqrt(lambda)`,
+and water–water interactions remain unscaled. This geometric protein–water
+scaling weakens protein–water interactions at high effective temperature. It was useful
+for promoting reversible folding of mini-proteins, but large flexible IDPs can
+instead collapse artificially. Compact conformations may then remain trapped
+at high states, segregating replicas and reducing temperature round trips.
+
+REST3 replaces only the protein–water vdW factor with
+`kappa*sqrt(lambda)`. Protein–water electrostatics remain at `sqrt(lambda)`
+because of PME charge scaling, and water–water interactions remain at one.
+Using `kappa>1` at high states modestly strengthens protein–water vdW
+interactions, controls IDP chain expansion, and can remove the compaction-driven
+exchange bottleneck. `kappa=1` recovers REST2. Kappa is a system- and
+force-field-dependent schedule, not a solvent temperature or universal value.
 
 The build uses `repex-topology-parser==0.2.2`, verifies byte identity of the
 base topology, and checks that water–water and ion–water Lennard-Jones

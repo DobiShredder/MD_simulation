@@ -2,7 +2,7 @@
 
 ![Replica exchange에서 state와 walker의 이동 / State and walker motion in replica exchange](../../assets/simulation/replica_exchange.svg)
 
-*State는 ladder에 남고 accepted exchange를 통해 walker가 여러 state를 방문합니다. / States remain on the ladder while accepted exchanges let walkers visit different states.*
+*각 가로 lane은 고정된 temperature/state이고 원은 walker identity입니다. 가로 화살표는 병렬 MD, 교차 화살표는 accepted exchange, X 표시는 rejected exchange를 나타냅니다. / Each horizontal lane is a fixed temperature/state and each circle is a walker identity. Horizontal arrows show parallel MD, crossed arrows show accepted exchanges, and X marks a rejected exchange. Figure concept adapted from [Zhang et al.](https://pmc.ncbi.nlm.nih.gov/articles/PMC6484850/).*
 
 
 ## 한국어

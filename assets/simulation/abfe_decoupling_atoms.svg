@@ -1,84 +1,93 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img">
-  <title>ABFE decoupling stages for JZ4</title>
-  <desc>Ball-and-stick schematic of electrostatic and Lennard-Jones decoupling for every atom of neutral 2-propylphenol JZ4.</desc>
+  <title>Minimal ABFE double-decoupling thermodynamic cycle</title>
+  <desc>JZ4 interactions are removed in solvent and in the restrained protein complex. Physical binding and the standard-state restraint connect the two decoupling legs.</desc>
   <defs>
-    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+    <marker id="arrow-dark" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
       <path d="M0,0 L0,6 L9,3 z" fill="#243447"/>
     </marker>
-    <pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse">
-      <path d="M0 10 L10 0" stroke="#6B7280" stroke-width="2"/>
-    </pattern>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#0072B2"/>
+    </marker>
   </defs>
 
   <rect width="1200" height="675" fill="#FFFFFF"/>
-  <text x="60" y="52" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#243447">ABFE decoupling of :JZ4</text>
-  <text x="60" y="86" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#6B7280">Neutral ligand: partial charges are removed before Lennard-Jones interactions</text>
+  <text x="60" y="55" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#243447">ABFE double-decoupling cycle</text>
+  <text x="60" y="88" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#6B7280">The ligand is decoupled in two environments.</text>
 
-  <g font-family="Arial, Helvetica, sans-serif">
-    <g transform="translate(45 150)">
-      <rect width="310" height="325" rx="16" fill="#F8FBFD" stroke="#B8C4CE" stroke-width="2"/>
-      <text x="155" y="38" text-anchor="middle" font-size="21" font-weight="bold" fill="#243447">Interacting JZ4</text>
-      <g stroke="#CC79A7" stroke-width="6" fill="none">
-        <path d="M95 115 L150 85 L205 115 L205 180 L150 210 L95 180 Z"/>
-        <path d="M205 180 L240 215 L265 260"/>
-        <path d="M150 85 L150 55"/>
-      </g>
-      <g fill="#CC79A7" stroke="#FFFFFF" stroke-width="3">
-        <circle cx="95" cy="115" r="14"/><circle cx="150" cy="85" r="14"/>
-        <circle cx="205" cy="115" r="14"/><circle cx="205" cy="180" r="14"/>
-        <circle cx="150" cy="210" r="14"/><circle cx="95" cy="180" r="14"/>
-        <circle cx="240" cy="215" r="14"/><circle cx="265" cy="260" r="14"/>
-      </g>
-      <circle cx="150" cy="50" r="16" fill="#0072B2" stroke="#FFFFFF" stroke-width="3"/>
-      <text x="150" y="56" text-anchor="middle" font-size="16" font-weight="bold" fill="#FFFFFF">O</text>
-      <text x="155" y="305" text-anchor="middle" font-size="17" fill="#D55E00">partial charges + LJ</text>
-    </g>
+  <rect x="85" y="125" width="1030" height="190" rx="20" fill="#F0FAF6" stroke="#009E73" stroke-width="2.5"/>
+  <text x="115" y="160" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="bold" fill="#007A5A">Solvent</text>
 
-    <g transform="translate(445 150)">
-      <rect width="310" height="325" rx="16" fill="#F8FBFD" stroke="#B8C4CE" stroke-width="2"/>
-      <text x="155" y="38" text-anchor="middle" font-size="21" font-weight="bold" fill="#243447">Charge removed</text>
-      <g stroke="#6B7280" stroke-width="6" fill="none">
-        <path d="M95 115 L150 85 L205 115 L205 180 L150 210 L95 180 Z"/>
-        <path d="M205 180 L240 215 L265 260"/>
-        <path d="M150 85 L150 55"/>
-      </g>
-      <g fill="#6B7280" stroke="#FFFFFF" stroke-width="3">
-        <circle cx="95" cy="115" r="14"/><circle cx="150" cy="85" r="14"/>
-        <circle cx="205" cy="115" r="14"/><circle cx="205" cy="180" r="14"/>
-        <circle cx="150" cy="210" r="14"/><circle cx="95" cy="180" r="14"/>
-        <circle cx="240" cy="215" r="14"/><circle cx="265" cy="260" r="14"/>
-        <circle cx="150" cy="50" r="16"/>
-      </g>
-      <text x="155" y="305" text-anchor="middle" font-size="17" font-weight="bold" fill="#0072B2">crgmask=':JZ4'</text>
-    </g>
-
-    <g transform="translate(845 150)">
-      <rect width="310" height="325" rx="16" fill="#F8FBFD" stroke="#B8C4CE" stroke-width="2"/>
-      <g opacity="0.28">
-        <g stroke="#6B7280" stroke-width="6" fill="none">
-          <path d="M95 115 L150 85 L205 115 L205 180 L150 210 L95 180 Z"/>
-          <path d="M205 180 L240 215 L265 260"/><path d="M150 85 L150 55"/>
-        </g>
-        <g fill="#6B7280">
-          <circle cx="95" cy="115" r="14"/><circle cx="150" cy="85" r="14"/>
-          <circle cx="205" cy="115" r="14"/><circle cx="205" cy="180" r="14"/>
-          <circle cx="150" cy="210" r="14"/><circle cx="95" cy="180" r="14"/>
-          <circle cx="240" cy="215" r="14"/><circle cx="265" cy="260" r="14"/>
-          <circle cx="150" cy="50" r="16"/>
-        </g>
-      </g>
-      <text x="155" y="38" text-anchor="middle" font-size="21" font-weight="bold" fill="#243447">LJ removed</text>
-      <ellipse cx="155" cy="160" rx="135" ry="120" fill="url(#hatch)" stroke="#6B7280" stroke-width="3" opacity="0.45"/>
-      <text x="155" y="305" text-anchor="middle" font-size="17" font-weight="bold" fill="#6B7280">scmask1=':JZ4'</text>
-    </g>
-
-    <line x1="365" y1="315" x2="430" y2="315" stroke="#243447" stroke-width="4" marker-end="url(#arrow)"/>
-    <text x="398" y="288" text-anchor="middle" font-size="16" fill="#0072B2">electrostatics off</text>
-    <line x1="765" y1="315" x2="830" y2="315" stroke="#243447" stroke-width="4" marker-end="url(#arrow)"/>
-    <text x="798" y="288" text-anchor="middle" font-size="16" fill="#6B7280">LJ off</text>
-
-    <rect x="170" y="535" width="860" height="80" rx="14" fill="#F4ECFA" stroke="#CC79A7" stroke-width="2"/>
-    <text x="600" y="570" text-anchor="middle" font-size="18" fill="#243447">Protein, water and Boresch reference atoms remain interacting.</text>
-    <text x="600" y="600" text-anchor="middle" font-size="16" fill="#6B7280">The ligand net charge is zero, but its atom-centered partial charges are decoupled.</text>
+  <rect x="175" y="180" width="190" height="105" rx="15" fill="#FFFFFF" stroke="#D55E00" stroke-width="3"/>
+  <g fill="#FFFFFF" stroke="#009E73" stroke-width="2">
+    <circle cx="198" cy="213" r="7"/><circle cx="210" cy="263" r="7"/><circle cx="340" cy="222" r="7"/>
   </g>
+  <polygon points="270,195 294,209 294,237 270,251 246,237 246,209" fill="#F9D9C7" stroke="#D55E00" stroke-width="4"/>
+  <text x="270" y="228" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#D55E00">L</text>
+  <text x="270" y="274" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#243447">Interacting</text>
+
+  <line x1="380" y1="232" x2="495" y2="232" stroke="#243447" stroke-width="3" marker-end="url(#arrow-dark)"/>
+  <polygon points="495,232 484,226 484,238" fill="#243447"/>
+  <text x="437" y="211" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#0072B2">charge off</text>
+
+  <rect x="510" y="180" width="190" height="105" rx="15" fill="#FFFFFF" stroke="#0072B2" stroke-width="3"/>
+  <polygon points="605,195 629,209 629,237 605,251 581,237 581,209" fill="#E8EEF3" stroke="#0072B2" stroke-width="4"/>
+  <text x="605" y="228" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#0072B2">q = 0</text>
+  <text x="605" y="274" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#243447">LJ remains</text>
+
+  <line x1="715" y1="232" x2="830" y2="232" stroke="#243447" stroke-width="3" marker-end="url(#arrow-dark)"/>
+  <polygon points="830,232 819,226 819,238" fill="#243447"/>
+  <text x="772" y="211" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#6B7280">LJ off</text>
+
+  <rect x="845" y="180" width="190" height="105" rx="15" fill="#FFFFFF" stroke="#6B7280" stroke-width="3" stroke-dasharray="8 6"/>
+  <polygon points="940,195 964,209 964,237 940,251 916,237 916,209" fill="#FFFFFF" stroke="#6B7280" stroke-width="4" stroke-dasharray="7 5"/>
+  <text x="940" y="226" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#6B7280">ghost</text>
+  <text x="940" y="274" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#243447">Decoupled</text>
+
+  <rect x="85" y="350" width="1030" height="190" rx="20" fill="#F8F2F7" stroke="#CC79A7" stroke-width="2.5"/>
+  <text x="115" y="385" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="bold" fill="#9A4F7E">Complex</text>
+
+  <rect x="105" y="405" width="165" height="105" rx="15" fill="#FFFFFF" stroke="#0072B2" stroke-width="3"/>
+  <path d="M120 476 C122 431 151 419 177 432 C196 442 202 466 191 488 C170 503 141 500 125 488 Z" fill="#DCEAF7" stroke="#0072B2" stroke-width="3.5"/>
+  <polygon points="198,422 219,434 219,458 198,470 177,458 177,434" fill="#F9D9C7" stroke="#D55E00" stroke-width="3.5"/>
+  <text x="187" y="530" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#243447">Bound</text>
+
+  <line x1="280" y1="457" x2="320" y2="457" stroke="#243447" stroke-width="3" marker-end="url(#arrow-dark)"/>
+  <polygon points="320,457 309,451 309,463" fill="#243447"/>
+  <text x="300" y="436" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="bold" fill="#9A4F7E">restraint</text>
+
+  <rect x="330" y="405" width="165" height="105" rx="15" fill="#FFFFFF" stroke="#D55E00" stroke-width="3"/>
+  <path d="M345 476 C347 431 376 419 402 432 C421 442 427 466 416 488 C395 503 366 500 350 488 Z" fill="#DCEAF7" stroke="#0072B2" stroke-width="3.5"/>
+  <polygon points="423,422 444,434 444,458 423,470 402,458 402,434" fill="#F9D9C7" stroke="#D55E00" stroke-width="3.5"/>
+  <line x1="397" y1="424" x2="423" y2="422" stroke="#CC79A7" stroke-width="2.5"/>
+  <line x1="398" y1="467" x2="423" y2="470" stroke="#CC79A7" stroke-width="2.5"/>
+  <text x="412" y="530" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#243447">Restrained</text>
+
+  <line x1="505" y1="457" x2="570" y2="457" stroke="#243447" stroke-width="3" marker-end="url(#arrow-dark)"/>
+  <polygon points="570,457 559,451 559,463" fill="#243447"/>
+  <text x="537" y="436" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#0072B2">charge off</text>
+
+  <rect x="580" y="405" width="165" height="105" rx="15" fill="#FFFFFF" stroke="#0072B2" stroke-width="3"/>
+  <path d="M595 476 C597 431 626 419 652 432 C671 442 677 466 666 488 C645 503 616 500 600 488 Z" fill="#DCEAF7" stroke="#0072B2" stroke-width="3.5"/>
+  <polygon points="673,422 694,434 694,458 673,470 652,458 652,434" fill="#E8EEF3" stroke="#0072B2" stroke-width="3.5"/>
+  <line x1="647" y1="424" x2="673" y2="422" stroke="#CC79A7" stroke-width="2.5"/>
+  <line x1="648" y1="467" x2="673" y2="470" stroke="#CC79A7" stroke-width="2.5"/>
+  <text x="662" y="530" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#243447">q = 0 · LJ on</text>
+
+  <line x1="755" y1="457" x2="820" y2="457" stroke="#243447" stroke-width="3" marker-end="url(#arrow-dark)"/>
+  <polygon points="820,457 809,451 809,463" fill="#243447"/>
+  <text x="787" y="436" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#6B7280">LJ off</text>
+
+  <rect x="830" y="405" width="165" height="105" rx="15" fill="#FFFFFF" stroke="#6B7280" stroke-width="3" stroke-dasharray="8 6"/>
+  <path d="M845 476 C847 431 876 419 902 432 C921 442 927 466 916 488 C895 503 866 500 850 488 Z" fill="#DCEAF7" stroke="#0072B2" stroke-width="3.5"/>
+  <polygon points="923,422 944,434 944,458 923,470 902,458 902,434" fill="#FFFFFF" stroke="#6B7280" stroke-width="3.5" stroke-dasharray="7 5"/>
+  <text x="912" y="530" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#243447">Ghost</text>
+
+  <path d="M160 285 H62 V405 H95" fill="none" stroke="#0072B2" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow-blue)"/>
+  <text x="42" y="347" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#0072B2" transform="rotate(-90 42 347)">ΔG°bind</text>
+
+  <path d="M1005 405 H1080 V285 H1050" fill="none" stroke="#CC79A7" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow-dark)"/>
+  <text x="1099" y="347" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#9A4F7E" transform="rotate(-90 1099 347)">standard state</text>
+
+  <rect x="195" y="570" width="810" height="57" rx="28" fill="#F4ECFA" stroke="#CC79A7" stroke-width="2"/>
+  <text x="600" y="606" text-anchor="middle" font-family="Georgia, Times New Roman, serif" font-size="20" fill="#243447">ΔG°bind = ΔGsolvent − ΔGcomplex + ΔGrest − ΔG°release</text>
 </svg>
