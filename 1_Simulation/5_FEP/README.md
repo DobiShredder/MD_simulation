@@ -1,13 +1,15 @@
 # Free-energy perturbation
 
-![RBFE와 ABFE thermodynamic cycle / RBFE and ABFE thermodynamic cycles](../../assets/simulation/thermodynamic_cycles.svg)
+![Lambda state에 따라 interaction을 scaling하는 alchemical path / Alchemical path that scales interactions across lambda states](../../assets/simulation/alchemical_lambda_path.svg)
 
-*직접 sampling하기 어려운 binding process를 계산 가능한 alchemical path의 조합으로 구합니다. / The physical binding process is obtained from a combination of tractable alchemical paths.*
+*각 lambda window에서 서로 다른 Hamiltonian을 sampling하고 인접 state의 free-energy 차이를 합산합니다. / Each lambda window samples a different Hamiltonian, and adjacent-state free-energy differences are accumulated.*
 
 
 ## 한국어
 
-Alchemical calculation은 실제 결합·해리 경로 대신 Hamiltonian을 단계적으로 바꿉니다.
+Alchemical calculation은 실제 결합·해리 경로 대신 lambda에 따라 Hamiltonian의
+interaction을 단계적으로 바꿉니다. Lambda는 simulation time이나 ligand의 물리적
+이동 거리가 아니라 두 endpoint 사이의 alchemical state를 나타냅니다.
 인접한 lambda state가 비슷한 configuration을 sampling해야 state 사이의 free-energy 차이를 계산할 수 있습니다.
 
 | Tutorial | 계산 | System |
@@ -36,9 +38,11 @@ ACES26 cross-state energy와 ABFE restraint scaling은 Amber 26
 
 ## English
 
-Alchemical calculations connect Hamiltonian end states instead of sampling a
-physical binding or unbinding path. Neighboring lambda states must sample
-overlapping configurations for reliable free-energy estimates.
+Alchemical calculations scale Hamiltonian interactions across lambda states
+instead of sampling a physical binding or unbinding path. Lambda is an
+alchemical state coordinate, not simulation time or ligand displacement.
+Neighboring lambda states must sample overlapping configurations for reliable
+free-energy estimates.
 
 The RBFE example transforms benzene into toluene in T4 lysozyme L99A. The ABFE
 example applies a restrained double-decoupling cycle to JZ4 bound to T4

@@ -1,6 +1,8 @@
 # T4 lysozyme–JZ4 ABFE / T4 lysozyme–JZ4 ABFE
 
-![JZ4 ABFE thermodynamic cycle과 두 decoupling leg / JZ4 ABFE thermodynamic cycle and two decoupling legs](../../../assets/simulation/abfe_decoupling_atoms.svg)
+<p align="center">
+  <img src="../../../assets/simulation/abfe_decoupling_atoms.png" width="520" alt="JZ4 ABFE thermodynamic cycle과 두 decoupling leg / JZ4 ABFE thermodynamic cycle and two decoupling legs">
+</p>
 
 *Solvent와 restrained complex에서 charge와 LJ interaction을 각각 제거하는 두 decoupling 계산을 restraint correction과 연결해 physical binding cycle을 닫습니다. / Two decoupling calculations remove charge and LJ interactions in solvent and in the restrained complex, and restraint corrections close the physical binding cycle.*
 
