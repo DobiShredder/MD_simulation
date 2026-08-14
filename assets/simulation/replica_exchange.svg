@@ -52,7 +52,8 @@
   <line x1="460" y1="434" x2="485" y2="459" stroke="#6B7280" stroke-width="4"/>
   <line x1="485" y1="434" x2="460" y2="459" stroke="#6B7280" stroke-width="4"/>
 
-  <text x="450" y="250" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#243447">accepted</text>
+  <rect x="409" y="226" width="82" height="29" rx="6" fill="#F8FBFD"/>
+  <text x="450" y="247" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#243447">accepted</text>
   <text x="450" y="540" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#6B7280">rejected</text>
 
   <line x1="500" y1="185" x2="685" y2="185" stroke="#243447" stroke-width="3" marker-end="url(#arrow)"/>
@@ -71,7 +72,8 @@
   <path d="M690 395 C735 395 750 290 795 290" fill="none" stroke="#009E73" stroke-width="4" marker-end="url(#arrow)"/>
   <line x1="690" y1="185" x2="795" y2="185" stroke="#E69F00" stroke-width="3" marker-end="url(#arrow)"/>
   <line x1="690" y1="500" x2="795" y2="500" stroke="#0072B2" stroke-width="3" marker-end="url(#arrow)"/>
-  <text x="745" y="355" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#243447">accepted</text>
+  <rect x="704" y="331" width="82" height="29" rx="6" fill="#F8FBFD"/>
+  <text x="745" y="352" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#243447">accepted</text>
 
   <line x1="795" y1="185" x2="1085" y2="185" stroke="#243447" stroke-width="3" marker-end="url(#arrow)"/>
   <line x1="795" y1="290" x2="1085" y2="290" stroke="#243447" stroke-width="3" marker-end="url(#arrow)"/>

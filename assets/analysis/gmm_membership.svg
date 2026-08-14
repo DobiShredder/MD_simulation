@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img">
+<title>Gaussian mixture soft assignment</title>
+<desc>Illustrative overlapping Gaussian components with covariance ellipses and soft posterior membership.</desc>
+<defs>
+<marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#243447"/></marker>
+<marker id="blue-arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#0072B2"/></marker>
+<pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0 10L10 0" stroke="#6B7280" stroke-width="2"/></pattern>
+</defs>
+<rect width="1200" height="675" fill="#FFFFFF"/>
+<text x="60" y="52" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#243447">Gaussian mixture model</text>
+<text x="60" y="88" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="normal" fill="#6B7280">Soft membership from overlapping Gaussian components — illustrative data</text>
+<ellipse cx="390" cy="350" rx="190" ry="95" fill="#0072B222" stroke="#0072B2" stroke-width="4" opacity="0.8" transform="rotate(25 390 350)"/>
+<ellipse cx="720" cy="320" rx="180" ry="110" fill="#E69F0022" stroke="#E69F00" stroke-width="4" opacity="0.8" transform="rotate(-15 720 320)"/>
+<ellipse cx="650" cy="455" rx="160" ry="80" fill="#009E7322" stroke="#009E73" stroke-width="4" opacity="0.8" transform="rotate(10 650 455)"/>
+<circle cx="508.0" cy="436.8181818181818" r="8" fill="#0072B2" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="527.5" cy="395.90909090909093" r="8" fill="#0072B2" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="547.0" cy="432.72727272727275" r="8" fill="#0072B2" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="566.5" cy="391.8181818181818" r="8" fill="#0072B2" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="586.0" cy="428.6363636363636" r="8" fill="#0072B2" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="605.5" cy="387.72727272727275" r="8" fill="#0072B2" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="514.5" cy="424.54545454545456" r="8" fill="#0072B2" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="534.0" cy="383.6363636363636" r="8" fill="#0072B2" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="553.5" cy="420.45454545454544" r="8" fill="#0072B2" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="573.0" cy="379.54545454545456" r="8" fill="#0072B2" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="592.5" cy="416.3636363636364" r="8" fill="#0072B2" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="612.0" cy="375.45454545454544" r="8" fill="#0072B2" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="521.0" cy="412.27272727272725" r="8" fill="#0072B2" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="540.5" cy="371.3636363636364" r="8" fill="#0072B2" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="560.0" cy="408.1818181818182" r="8" fill="#0072B2" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="579.5" cy="367.27272727272725" r="8" fill="#0072B2" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="599.0" cy="404.09090909090907" r="8" fill="#0072B2" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="508.0" cy="363.1818181818182" r="8" fill="#0072B2" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="677.0" cy="355.8181818181818" r="8" fill="#E69F00" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="696.5" cy="314.9090909090909" r="8" fill="#E69F00" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="716.0" cy="351.72727272727275" r="8" fill="#E69F00" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="735.5" cy="310.8181818181818" r="8" fill="#E69F00" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="755.0" cy="347.6363636363636" r="8" fill="#E69F00" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="774.5" cy="306.72727272727275" r="8" fill="#E69F00" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="683.5" cy="343.54545454545456" r="8" fill="#E69F00" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="703.0" cy="302.6363636363636" r="8" fill="#E69F00" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="722.5" cy="339.45454545454544" r="8" fill="#E69F00" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="742.0" cy="298.54545454545456" r="8" fill="#E69F00" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="761.5" cy="335.3636363636364" r="8" fill="#E69F00" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="781.0" cy="294.45454545454544" r="8" fill="#E69F00" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="690.0" cy="331.27272727272725" r="8" fill="#E69F00" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="709.5" cy="290.3636363636364" r="8" fill="#E69F00" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="729.0" cy="327.1818181818182" r="8" fill="#E69F00" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="748.5" cy="286.27272727272725" r="8" fill="#E69F00" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="768.0" cy="323.09090909090907" r="8" fill="#E69F00" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="677.0" cy="282.1818181818182" r="8" fill="#E69F00" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="365.0" cy="324.3181818181818" r="8" fill="#009E73" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="384.5" cy="283.4090909090909" r="8" fill="#009E73" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="404.0" cy="320.22727272727275" r="8" fill="#009E73" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="423.5" cy="279.3181818181818" r="8" fill="#009E73" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="443.0" cy="316.1363636363636" r="8" fill="#009E73" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="462.5" cy="275.22727272727275" r="8" fill="#009E73" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="371.5" cy="312.04545454545456" r="8" fill="#009E73" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="391.0" cy="271.1363636363636" r="8" fill="#009E73" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="410.5" cy="307.95454545454544" r="8" fill="#009E73" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="430.0" cy="267.0454545454545" r="8" fill="#009E73" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="449.5" cy="303.8636363636364" r="8" fill="#009E73" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="469.0" cy="262.9545454545455" r="8" fill="#009E73" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="378.0" cy="299.77272727272725" r="8" fill="#009E73" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="397.5" cy="258.8636363636364" r="8" fill="#009E73" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="417.0" cy="295.6818181818182" r="8" fill="#009E73" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="436.5" cy="254.77272727272725" r="8" fill="#009E73" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="456.0" cy="291.5909090909091" r="8" fill="#009E73" stroke="white" stroke-width="1" opacity="0.7"/>
+<circle cx="365.0" cy="250.6818181818182" r="8" fill="#009E73" stroke="white" stroke-width="1" opacity="0.7"/>
+<text x="390" y="210" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#0072B2">component 1</text>
+<text x="840" y="245" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#E69F00">component 2</text>
+<text x="705" y="560" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#009E73">component 3</text>
+<rect x="190" y="585" width="820" height="50" rx="12" fill="#F5F9FC" stroke="#CC79A7" stroke-width="2" opacity="1"/>
+<text x="600" y="617" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#CC79A7">posterior probabilities sum to 1 for each frame</text>
+</svg>

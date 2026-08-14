@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img">
+<title>HDBSCAN density hierarchy</title>
+<desc>Illustrative hierarchy in which stable dense branches are retained and sparse observations remain noise.</desc>
+<defs>
+<marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#243447"/></marker>
+<marker id="blue-arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#0072B2"/></marker>
+<pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0 10L10 0" stroke="#6B7280" stroke-width="2"/></pattern>
+</defs>
+<rect width="1200" height="675" fill="#FFFFFF"/>
+<text x="60" y="52" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#243447">HDBSCAN density hierarchy</text>
+<text x="60" y="88" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="normal" fill="#6B7280">Illustrative hierarchy, not a trajectory result</text>
+<line x1="600" y1="150" x2="600" y2="235" stroke="#243447" stroke-width="5"/>
+<line x1="600" y1="235" x2="350" y2="340" stroke="#0072B2" stroke-width="5"/>
+<line x1="600" y1="235" x2="850" y2="340" stroke="#E69F00" stroke-width="5"/>
+<line x1="350" y1="340" x2="245" y2="455" stroke="#0072B2" stroke-width="5"/>
+<line x1="350" y1="340" x2="455" y2="455" stroke="#56B4E9" stroke-width="5"/>
+<line x1="850" y1="340" x2="760" y2="455" stroke="#E69F00" stroke-width="5"/>
+<line x1="850" y1="340" x2="950" y2="455" stroke="#6B7280" stroke-width="3" stroke-dasharray="8 6"/>
+<circle cx="600" cy="150" r="24" fill="#243447" stroke="white" stroke-width="3" opacity="1"/>
+<text x="620" y="202" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="normal" fill="#243447">all points</text>
+<circle cx="350" cy="340" r="24" fill="#0072B2" stroke="white" stroke-width="3" opacity="1"/>
+<text x="350" y="310" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="normal" fill="#0072B2">dense branch</text>
+<circle cx="850" cy="340" r="24" fill="#E69F00" stroke="white" stroke-width="3" opacity="1"/>
+<text x="850" y="310" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="normal" fill="#E69F00">dense branch</text>
+<circle cx="245" cy="455" r="24" fill="#0072B2" stroke="white" stroke-width="3" opacity="1"/>
+<text x="245" y="507" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="normal" fill="#0072B2">cluster 0</text>
+<circle cx="455" cy="455" r="24" fill="#56B4E9" stroke="white" stroke-width="3" opacity="1"/>
+<text x="455" y="507" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="normal" fill="#56B4E9">cluster 1</text>
+<circle cx="760" cy="455" r="24" fill="#E69F00" stroke="white" stroke-width="3" opacity="1"/>
+<text x="760" y="507" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="normal" fill="#E69F00">cluster 2</text>
+<circle cx="950" cy="455" r="24" fill="#6B7280" stroke="white" stroke-width="3" opacity="1"/>
+<text x="950" y="507" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="normal" fill="#6B7280">noise</text>
+<rect x="220" y="550" width="760" height="70" rx="12" fill="#F5F9FC" stroke="#0072B2" stroke-width="2" opacity="1"/>
+<text x="600" y="592" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#243447">Stable branches are selected across density scales; membership can be uncertain.</text>
+</svg>

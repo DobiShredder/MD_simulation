@@ -18,13 +18,6 @@
   <rect x="245" y="132" width="710" height="50" rx="15" fill="#FFF2E8" stroke="#D55E00" stroke-width="2"/>
   <text x="600" y="163" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#D55E00">The same prepared GaMD boost parameters are active in every state</text>
 
-  <g stroke="#D55E00" stroke-width="2.5" fill="none" stroke-dasharray="6 5">
-    <line x1="240" y1="182" x2="180" y2="218" marker-end="url(#arrow-orange)"/>
-    <line x1="480" y1="182" x2="460" y2="218" marker-end="url(#arrow-orange)"/>
-    <line x1="720" y1="182" x2="740" y2="218" marker-end="url(#arrow-orange)"/>
-    <line x1="960" y1="182" x2="1020" y2="218" marker-end="url(#arrow-orange)"/>
-  </g>
-
   <text x="82" y="207" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="#0072B2">REUS state ladder: neighboring configurations exchange along the selected CV ξ</text>
 
   <path d="M103 300 Q180 204 257 300" fill="none" stroke="#0072B2" stroke-width="4"/>
@@ -38,25 +31,25 @@
     <text x="180" y="334" font-size="17" font-weight="bold" fill="#243447">State i − 1</text>
     <text x="180" y="355" font-size="14" fill="#6B7280">umbrella center ξᵢ₋₁</text>
     <rect x="121" y="369" width="118" height="27" rx="13" fill="#FFF2E8" stroke="#D55E00" stroke-width="1.5"/>
-    <text x="180" y="388" font-size="13" font-weight="bold" fill="#D55E00">GaMD boost ON</text>
+    <text x="180" y="388" font-size="14" font-weight="bold" fill="#D55E00">GaMD boost ON</text>
 
     <circle cx="460" cy="302" r="11" fill="#E69F00" stroke="#243447" stroke-width="2"/>
     <text x="460" y="334" font-size="17" font-weight="bold" fill="#243447">State i</text>
     <text x="460" y="355" font-size="14" fill="#6B7280">umbrella center ξᵢ</text>
     <rect x="401" y="369" width="118" height="27" rx="13" fill="#FFF2E8" stroke="#D55E00" stroke-width="1.5"/>
-    <text x="460" y="388" font-size="13" font-weight="bold" fill="#D55E00">GaMD boost ON</text>
+    <text x="460" y="388" font-size="14" font-weight="bold" fill="#D55E00">GaMD boost ON</text>
 
     <circle cx="740" cy="302" r="11" fill="#009E73" stroke="#243447" stroke-width="2"/>
     <text x="740" y="334" font-size="17" font-weight="bold" fill="#243447">State i + 1</text>
     <text x="740" y="355" font-size="14" fill="#6B7280">umbrella center ξᵢ₊₁</text>
     <rect x="681" y="369" width="118" height="27" rx="13" fill="#FFF2E8" stroke="#D55E00" stroke-width="1.5"/>
-    <text x="740" y="388" font-size="13" font-weight="bold" fill="#D55E00">GaMD boost ON</text>
+    <text x="740" y="388" font-size="14" font-weight="bold" fill="#D55E00">GaMD boost ON</text>
 
     <circle cx="1020" cy="302" r="11" fill="#CC79A7" stroke="#243447" stroke-width="2"/>
     <text x="1020" y="334" font-size="17" font-weight="bold" fill="#243447">State i + 2</text>
     <text x="1020" y="355" font-size="14" fill="#6B7280">umbrella center ξᵢ₊₂</text>
     <rect x="961" y="369" width="118" height="27" rx="13" fill="#FFF2E8" stroke="#D55E00" stroke-width="1.5"/>
-    <text x="1020" y="388" font-size="13" font-weight="bold" fill="#D55E00">GaMD boost ON</text>
+    <text x="1020" y="388" font-size="14" font-weight="bold" fill="#D55E00">GaMD boost ON</text>
   </g>
 
   <g font-family="Arial, Helvetica, sans-serif" text-anchor="middle" font-size="25" font-weight="bold" fill="#243447">
@@ -86,5 +79,5 @@
   <text x="1008" y="548" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#243447">accelerates hidden motion</text>
   <text x="875" y="596" text-anchor="middle" font-family="Georgia, Times New Roman, serif" font-size="17" fill="#243447">U″ᵢ = U + ΔU<tspan baseline-shift="super" font-size="11">GaMD</tspan> + ΔUᵢ<tspan baseline-shift="super" font-size="11">REUS</tspan></text>
 
-  <text x="600" y="651" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" fill="#6B2876">Analysis: umbrella reweighting with MBAR → GaMD reweighting with cumulant expansion</text>
+  <text x="600" y="651" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#6B2876">Analysis: umbrella reweighting with MBAR → GaMD reweighting with cumulant expansion</text>
 </svg>

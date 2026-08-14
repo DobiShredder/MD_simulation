@@ -27,6 +27,8 @@
 **/seg_logs/
 **/istates/
 **/ANALYSIS/
+!assets/analysis/
+!assets/analysis/*.svg
 
 # Python/Jupyter caches
 **/__pycache__/

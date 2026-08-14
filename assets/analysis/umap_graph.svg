@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img">
+<title>UMAP neighbor graph and embedding</title>
+<desc>Illustrative neighbor graph mapped to a low-dimensional embedding with local graph connectivity emphasized.</desc>
+<defs>
+<marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#243447"/></marker>
+<marker id="blue-arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#0072B2"/></marker>
+<pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0 10L10 0" stroke="#6B7280" stroke-width="2"/></pattern>
+</defs>
+<rect width="1200" height="675" fill="#FFFFFF"/>
+<text x="60" y="52" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#243447">UMAP builds and embeds a neighbor graph</text>
+<text x="60" y="88" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="normal" fill="#6B7280">Illustrative data</text>
+<rect x="55" y="130" width="480" height="430" rx="16" fill="#FAFCFD" stroke="#B8C4CE" stroke-width="2" opacity="1"/>
+<text x="77" y="164" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="bold" fill="#243447">Weighted neighbor graph</text>
+<rect x="665" y="130" width="480" height="430" rx="16" fill="#FAFCFD" stroke="#B8C4CE" stroke-width="2" opacity="1"/>
+<text x="687" y="164" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="bold" fill="#243447">Low-dimensional layout</text>
+<line x1="150" y1="250" x2="240" y2="210" stroke="#56B4E9" stroke-width="3"/>
+<line x1="240" y1="210" x2="325" y2="270" stroke="#56B4E9" stroke-width="3"/>
+<line x1="325" y1="270" x2="410" y2="220" stroke="#56B4E9" stroke-width="3"/>
+<line x1="150" y1="250" x2="190" y2="400" stroke="#56B4E9" stroke-width="3"/>
+<line x1="190" y1="400" x2="300" y2="430" stroke="#56B4E9" stroke-width="3"/>
+<line x1="300" y1="430" x2="420" y2="390" stroke="#56B4E9" stroke-width="3"/>
+<line x1="325" y1="270" x2="300" y2="430" stroke="#56B4E9" stroke-width="3"/>
+<line x1="410" y1="220" x2="420" y2="390" stroke="#56B4E9" stroke-width="3"/>
+<line x1="240" y1="210" x2="300" y2="430" stroke="#56B4E9" stroke-width="3"/>
+<circle cx="150" cy="250" r="14" fill="#0072B2" stroke="#243447" stroke-width="2" opacity="1"/>
+<circle cx="240" cy="210" r="14" fill="#E69F00" stroke="#243447" stroke-width="2" opacity="1"/>
+<circle cx="325" cy="270" r="14" fill="#009E73" stroke="#243447" stroke-width="2" opacity="1"/>
+<circle cx="410" cy="220" r="14" fill="#0072B2" stroke="#243447" stroke-width="2" opacity="1"/>
+<circle cx="190" cy="400" r="14" fill="#E69F00" stroke="#243447" stroke-width="2" opacity="1"/>
+<circle cx="300" cy="430" r="14" fill="#009E73" stroke="#243447" stroke-width="2" opacity="1"/>
+<circle cx="420" cy="390" r="14" fill="#0072B2" stroke="#243447" stroke-width="2" opacity="1"/>
+<line x1="545" y1="345" x2="655" y2="345" stroke="#243447" stroke-width="4" marker-end="url(#arrow)"/>
+<line x1="760" y1="230" x2="840" y2="245" stroke="#56B4E9" stroke-width="3"/>
+<line x1="840" y1="245" x2="900" y2="320" stroke="#56B4E9" stroke-width="3"/>
+<line x1="900" y1="320" x2="980" y2="360" stroke="#56B4E9" stroke-width="3"/>
+<line x1="760" y1="230" x2="790" y2="450" stroke="#56B4E9" stroke-width="3"/>
+<line x1="790" y1="450" x2="880" y2="445" stroke="#56B4E9" stroke-width="3"/>
+<line x1="880" y1="445" x2="1020" y2="440" stroke="#56B4E9" stroke-width="3"/>
+<line x1="900" y1="320" x2="880" y2="445" stroke="#56B4E9" stroke-width="3"/>
+<line x1="980" y1="360" x2="1020" y2="440" stroke="#56B4E9" stroke-width="3"/>
+<line x1="840" y1="245" x2="880" y2="445" stroke="#56B4E9" stroke-width="3"/>
+<circle cx="760" cy="230" r="14" fill="#0072B2" stroke="#243447" stroke-width="2" opacity="1"/>
+<circle cx="840" cy="245" r="14" fill="#E69F00" stroke="#243447" stroke-width="2" opacity="1"/>
+<circle cx="900" cy="320" r="14" fill="#009E73" stroke="#243447" stroke-width="2" opacity="1"/>
+<circle cx="980" cy="360" r="14" fill="#0072B2" stroke="#243447" stroke-width="2" opacity="1"/>
+<circle cx="790" cy="450" r="14" fill="#E69F00" stroke="#243447" stroke-width="2" opacity="1"/>
+<circle cx="880" cy="445" r="14" fill="#009E73" stroke="#243447" stroke-width="2" opacity="1"/>
+<circle cx="1020" cy="440" r="14" fill="#0072B2" stroke="#243447" stroke-width="2" opacity="1"/>
+<text x="600" y="625" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="normal" fill="#243447">n_neighbors and min_dist change the displayed geometry.</text>
+</svg>

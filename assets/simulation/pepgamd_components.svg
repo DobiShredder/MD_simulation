@@ -13,7 +13,7 @@
 
   <rect x="55" y="118" width="420" height="440" rx="18" fill="#F7FAFC" stroke="#CBD5E1" stroke-width="2"/>
   <text x="82" y="153" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#243447">SH3–PPPVPPRR system</text>
-  <text x="82" y="178" font-family="Arial, Helvetica, sans-serif" font-size="15" fill="#6B7280">timask1 / scmask1 select peptide residues 58–65</text>
+  <text x="82" y="178" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#6B7280">timask1 / scmask1 select peptide residues 58–65</text>
 
   <path d="M103 257 C117 199 184 183 239 209 C280 228 297 269 278 301 C310 334 290 381 248 398 C205 417 152 401 130 369 C92 358 78 316 100 287 Z"
         fill="#DCEAF7" stroke="#0072B2" stroke-width="4"/>
@@ -36,9 +36,9 @@
   <text x="438" y="196" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#009E73">E</text>
 
   <rect x="84" y="461" width="362" height="72" rx="12" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.5"/>
-  <text x="103" y="485" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#243447">Orange chain: peptide bonded / self terms</text>
-  <text x="103" y="507" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#243447">Dashed orange: peptide interaction with P or E</text>
-  <text x="103" y="526" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#6B7280">All are grouped into the essential peptide potential.</text>
+  <text x="103" y="485" font-family="Arial, Helvetica, sans-serif" font-size="15" fill="#243447">Orange chain: peptide bonded / self terms</text>
+  <text x="103" y="507" font-family="Arial, Helvetica, sans-serif" font-size="15" fill="#243447">Dashed orange: peptide interaction with P or E</text>
+  <text x="103" y="527" font-family="Arial, Helvetica, sans-serif" font-size="15" fill="#6B7280">All are grouped into the essential peptide potential.</text>
 
   <line x1="488" y1="337" x2="526" y2="337" stroke="#243447" stroke-width="3" marker-end="url(#arrow-dark)"/>
 
@@ -49,8 +49,8 @@
   <text x="570" y="201" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#243447">V<tspan baseline-shift="sub" font-size="12">L</tspan> includes:</text>
   <text x="596" y="229" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#243447">• peptide bonded terms: bond + angle + dihedral</text>
   <text x="596" y="256" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#243447">• peptide self nonbonded + peptide–protein + peptide–environment</text>
-  <rect x="760" y="280" width="350" height="30" rx="15" fill="#FFFFFF" stroke="#D55E00" stroke-width="1.5"/>
-  <text x="935" y="300" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#D55E00">accelerates peptide rearrangement and motion</text>
+  <rect x="740" y="280" width="390" height="30" rx="15" fill="#FFFFFF" stroke="#D55E00" stroke-width="1.5"/>
+  <text x="935" y="300" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#D55E00">accelerates peptide rearrangement and motion</text>
 
   <rect x="540" y="348" width="605" height="210" rx="18" fill="#EDF8F4" stroke="#009E73" stroke-width="2.5"/>
   <circle cx="584" cy="388" r="24" fill="#009E73"/>
@@ -59,8 +59,8 @@
   <text x="570" y="431" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#243447">V<tspan baseline-shift="sub" font-size="12">D</tspan> = total system potential − V<tspan baseline-shift="sub" font-size="12">L</tspan></text>
   <text x="596" y="464" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#243447">• receptor and environment bonded/nonbonded terms</text>
   <text x="596" y="491" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#243447">• everything not assigned to the essential peptide component</text>
-  <rect x="760" y="510" width="350" height="30" rx="15" fill="#FFFFFF" stroke="#009E73" stroke-width="1.5"/>
-  <text x="935" y="530" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#007A5A">enhances receptor sampling and peptide rebinding</text>
+  <rect x="740" y="510" width="390" height="30" rx="15" fill="#FFFFFF" stroke="#009E73" stroke-width="1.5"/>
+  <text x="935" y="530" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#007A5A">enhances receptor sampling and peptide rebinding</text>
 
   <rect x="200" y="594" width="800" height="50" rx="24" fill="#F7FAFC" stroke="#243447" stroke-width="2"/>
   <text x="600" y="626" text-anchor="middle" font-family="Georgia, Times New Roman, serif" font-size="20" fill="#243447">Pep-GaMD dual boost: ΔV = ΔV<tspan baseline-shift="super" font-size="13">L</tspan> + ΔV<tspan baseline-shift="super" font-size="13">D</tspan></text>

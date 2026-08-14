@@ -1,93 +1,123 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img">
-  <title>Minimal ABFE double-decoupling thermodynamic cycle</title>
-  <desc>JZ4 interactions are removed in solvent and in the restrained protein complex. Physical binding and the standard-state restraint connect the two decoupling legs.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 820" role="img">
+  <title>ABFE restrained double-decoupling thermodynamic cycle</title>
+  <desc>Four well-spaced rows connect a solvent decoupling leg and a restrained complex coupling leg between the physical binding state and the same noninteracting restrained state.</desc>
   <defs>
-    <marker id="arrow-dark" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
       <path d="M0,0 L0,6 L9,3 z" fill="#243447"/>
     </marker>
-    <marker id="arrow-blue" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
-      <path d="M0,0 L0,6 L9,3 z" fill="#0072B2"/>
-    </marker>
+
+    <g id="protein">
+      <path d="M-40 -42 C-8 -58 34 -40 40 -10 C15 -22 -7 -10 -10 10 C-5 29 17 34 38 20 C27 50 -15 57 -42 35 C-64 16 -63 -21 -40 -42 Z"
+            fill="#DCC6FA" stroke="#9A4F7E" stroke-width="2.5"/>
+    </g>
+
+    <g id="ligand-on">
+      <polygon points="0,-24 21,-12 21,12 0,24 -21,12 -21,-12" fill="#FFE08A" stroke="#D55E00" stroke-width="3"/>
+      <text x="0" y="6" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="#9A3E00">L</text>
+    </g>
+
+    <g id="ligand-q0">
+      <polygon points="0,-24 21,-12 21,12 0,24 -21,12 -21,-12" fill="#D8DEE5" stroke="#0072B2" stroke-width="3"/>
+      <text x="0" y="6" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#0072B2">q = 0</text>
+    </g>
+
+    <g id="ligand-ghost">
+      <polygon points="0,-24 21,-12 21,12 0,24 -21,12 -21,-12" fill="#FFFFFF" stroke="#6B7280" stroke-width="3" stroke-dasharray="6 4"/>
+      <text x="0" y="5" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#6B7280">ghost</text>
+    </g>
+
+    <g id="restraint">
+      <path d="M-18 5 C-8 -10 11 -9 16 1 C21 11 10 22 -2 19 L-14 13 C-24 8 -22 -4 -12 -9 C-3 -13 7 -9 10 -2"
+            fill="none" stroke="#CC79A7" stroke-width="4" stroke-linecap="round"/>
+    </g>
   </defs>
 
-  <rect width="1200" height="675" fill="#FFFFFF"/>
-  <text x="60" y="55" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#243447">ABFE double-decoupling cycle</text>
-  <text x="60" y="88" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#6B7280">The ligand is decoupled in two environments.</text>
+  <rect width="1200" height="820" fill="#FFFFFF"/>
+  <text x="60" y="50" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#243447">ABFE restrained double-decoupling cycle</text>
+  <text x="60" y="82" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#6B7280">Solvent decoupling and restrained-complex coupling close one thermodynamic cycle.</text>
 
-  <rect x="85" y="125" width="1030" height="190" rx="20" fill="#F0FAF6" stroke="#009E73" stroke-width="2.5"/>
-  <text x="115" y="160" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="bold" fill="#007A5A">Solvent</text>
+  <rect x="50" y="105" width="1100" height="620" rx="20" fill="#F8FBFD" stroke="#B8C4CE" stroke-width="2"/>
 
-  <rect x="175" y="180" width="190" height="105" rx="15" fill="#FFFFFF" stroke="#D55E00" stroke-width="3"/>
-  <g fill="#FFFFFF" stroke="#009E73" stroke-width="2">
-    <circle cx="198" cy="213" r="7"/><circle cx="210" cy="263" r="7"/><circle cx="340" cy="222" r="7"/>
-  </g>
-  <polygon points="270,195 294,209 294,237 270,251 246,237 246,209" fill="#F9D9C7" stroke="#D55E00" stroke-width="4"/>
-  <text x="270" y="228" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#D55E00">L</text>
-  <text x="270" y="274" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#243447">Interacting</text>
+  <text x="120" y="140" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="bold" fill="#9A4F7E">Protein</text>
+  <text x="340" y="132" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="bold" fill="#0072B2">Ligand in solvent</text>
+  <text x="340" y="154" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#6B7280">decoupling direction ↓</text>
+  <text x="900" y="132" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="bold" fill="#9A4F7E">Complex</text>
+  <text x="900" y="154" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#6B7280">coupling direction ↑</text>
 
-  <line x1="380" y1="232" x2="495" y2="232" stroke="#243447" stroke-width="3" marker-end="url(#arrow-dark)"/>
-  <polygon points="495,232 484,226 484,238" fill="#243447"/>
-  <text x="437" y="211" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#0072B2">charge off</text>
+  <!-- Row 1: physical states. -->
+  <g transform="translate(120 215)"><use href="#protein"/></g>
+  <text x="220" y="225" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="40" font-weight="bold" fill="#243447">+</text>
+  <circle cx="340" cy="215" r="50" fill="#DDF3FA" stroke="#56B4E9" stroke-width="2.5"/>
+  <g transform="translate(340 215)"><use href="#ligand-on"/></g>
 
-  <rect x="510" y="180" width="190" height="105" rx="15" fill="#FFFFFF" stroke="#0072B2" stroke-width="3"/>
-  <polygon points="605,195 629,209 629,237 605,251 581,237 581,209" fill="#E8EEF3" stroke="#0072B2" stroke-width="4"/>
-  <text x="605" y="228" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#0072B2">q = 0</text>
-  <text x="605" y="274" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#243447">LJ remains</text>
+  <circle cx="900" cy="215" r="55" fill="#DDF3FA" stroke="#56B4E9" stroke-width="2.5"/>
+  <g transform="translate(889 215) scale(0.82)"><use href="#protein"/></g>
+  <g transform="translate(922 215)"><use href="#ligand-on"/></g>
 
-  <line x1="715" y1="232" x2="830" y2="232" stroke="#243447" stroke-width="3" marker-end="url(#arrow-dark)"/>
-  <polygon points="830,232 819,226 819,238" fill="#243447"/>
-  <text x="772" y="211" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#6B7280">LJ off</text>
+  <line x1="415" y1="215" x2="825" y2="215" stroke="#243447" stroke-width="4" marker-end="url(#arrow)"/>
+  <rect x="545" y="176" width="150" height="32" rx="16" fill="#F8FBFD"/>
+  <text x="620" y="199" text-anchor="middle" font-family="Georgia, Times New Roman, serif" font-size="20" font-weight="bold" fill="#243447">ΔG°<tspan baseline-shift="sub" font-size="14">bind</tspan></text>
 
-  <rect x="845" y="180" width="190" height="105" rx="15" fill="#FFFFFF" stroke="#6B7280" stroke-width="3" stroke-dasharray="8 6"/>
-  <polygon points="940,195 964,209 964,237 940,251 916,237 916,209" fill="#FFFFFF" stroke="#6B7280" stroke-width="4" stroke-dasharray="7 5"/>
-  <text x="940" y="226" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#6B7280">ghost</text>
-  <text x="940" y="274" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#243447">Decoupled</text>
+  <!-- Row 2: charge-off states. The complex remains restrained. -->
+  <g transform="translate(120 360)"><use href="#protein"/></g>
+  <text x="220" y="370" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="40" font-weight="bold" fill="#243447">+</text>
+  <circle cx="340" cy="360" r="45" fill="#DDF3FA" stroke="#56B4E9" stroke-width="2.5"/>
+  <g transform="translate(340 360)"><use href="#ligand-q0"/></g>
 
-  <rect x="85" y="350" width="1030" height="190" rx="20" fill="#F8F2F7" stroke="#CC79A7" stroke-width="2.5"/>
-  <text x="115" y="385" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="bold" fill="#9A4F7E">Complex</text>
+  <circle cx="900" cy="360" r="45" fill="#DDF3FA" stroke="#56B4E9" stroke-width="2.5"/>
+  <g transform="translate(890 360) scale(0.72)"><use href="#protein"/></g>
+  <g transform="translate(922 360)"><use href="#ligand-on"/><use href="#restraint" transform="translate(12 15)"/></g>
 
-  <rect x="105" y="405" width="165" height="105" rx="15" fill="#FFFFFF" stroke="#0072B2" stroke-width="3"/>
-  <path d="M120 476 C122 431 151 419 177 432 C196 442 202 466 191 488 C170 503 141 500 125 488 Z" fill="#DCEAF7" stroke="#0072B2" stroke-width="3.5"/>
-  <polygon points="198,422 219,434 219,458 198,470 177,458 177,434" fill="#F9D9C7" stroke="#D55E00" stroke-width="3.5"/>
-  <text x="187" y="530" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#243447">Bound</text>
+  <!-- Row 3: LJ-off ghost states. -->
+  <g transform="translate(120 505)"><use href="#protein"/></g>
+  <text x="220" y="515" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="40" font-weight="bold" fill="#243447">+</text>
+  <circle cx="340" cy="505" r="45" fill="#EFF8FC" stroke="#56B4E9" stroke-width="2.5"/>
+  <g transform="translate(340 505)"><use href="#ligand-ghost"/></g>
 
-  <line x1="280" y1="457" x2="320" y2="457" stroke="#243447" stroke-width="3" marker-end="url(#arrow-dark)"/>
-  <polygon points="320,457 309,451 309,463" fill="#243447"/>
-  <text x="300" y="436" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="bold" fill="#9A4F7E">restraint</text>
+  <circle cx="900" cy="505" r="45" fill="#DDF3FA" stroke="#56B4E9" stroke-width="2.5"/>
+  <g transform="translate(890 505) scale(0.72)"><use href="#protein"/></g>
+  <g transform="translate(922 505)"><use href="#ligand-q0"/><use href="#restraint" transform="translate(12 15)"/></g>
 
-  <rect x="330" y="405" width="165" height="105" rx="15" fill="#FFFFFF" stroke="#D55E00" stroke-width="3"/>
-  <path d="M345 476 C347 431 376 419 402 432 C421 442 427 466 416 488 C395 503 366 500 350 488 Z" fill="#DCEAF7" stroke="#0072B2" stroke-width="3.5"/>
-  <polygon points="423,422 444,434 444,458 423,470 402,458 402,434" fill="#F9D9C7" stroke="#D55E00" stroke-width="3.5"/>
-  <line x1="397" y1="424" x2="423" y2="422" stroke="#CC79A7" stroke-width="2.5"/>
-  <line x1="398" y1="467" x2="423" y2="470" stroke="#CC79A7" stroke-width="2.5"/>
-  <text x="412" y="530" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#243447">Restrained</text>
+  <!-- Row 4: identical noninteracting restrained endpoints. -->
+  <g transform="translate(120 650)"><use href="#protein"/></g>
+  <text x="220" y="660" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="40" font-weight="bold" fill="#243447">+</text>
+  <circle cx="340" cy="650" r="45" fill="#EFF8FC" stroke="#56B4E9" stroke-width="2.5"/>
+  <g transform="translate(340 650)"><use href="#ligand-ghost"/><use href="#restraint" transform="translate(12 15)"/></g>
 
-  <line x1="505" y1="457" x2="570" y2="457" stroke="#243447" stroke-width="3" marker-end="url(#arrow-dark)"/>
-  <polygon points="570,457 559,451 559,463" fill="#243447"/>
-  <text x="537" y="436" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#0072B2">charge off</text>
+  <circle cx="900" cy="650" r="45" fill="#EFF8FC" stroke="#56B4E9" stroke-width="2.5"/>
+  <g transform="translate(890 650) scale(0.72)"><use href="#protein"/></g>
+  <g transform="translate(922 650)"><use href="#ligand-ghost"/><use href="#restraint" transform="translate(12 15)"/></g>
 
-  <rect x="580" y="405" width="165" height="105" rx="15" fill="#FFFFFF" stroke="#0072B2" stroke-width="3"/>
-  <path d="M595 476 C597 431 626 419 652 432 C671 442 677 466 666 488 C645 503 616 500 600 488 Z" fill="#DCEAF7" stroke="#0072B2" stroke-width="3.5"/>
-  <polygon points="673,422 694,434 694,458 673,470 652,458 652,434" fill="#E8EEF3" stroke="#0072B2" stroke-width="3.5"/>
-  <line x1="647" y1="424" x2="673" y2="422" stroke="#CC79A7" stroke-width="2.5"/>
-  <line x1="648" y1="467" x2="673" y2="470" stroke="#CC79A7" stroke-width="2.5"/>
-  <text x="662" y="530" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#243447">q = 0 · LJ on</text>
+  <!-- Solvent leg: simulated decoupling followed by the analytic standard-state term. -->
+  <line x1="340" y1="272" x2="340" y2="305" stroke="#0072B2" stroke-width="4" marker-end="url(#arrow)"/>
+  <text x="395" y="285" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#0072B2">charge off</text>
+  <text x="395" y="307" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#243447">ΔG<tspan baseline-shift="sub" font-size="12">solvent,charge</tspan></text>
 
-  <line x1="755" y1="457" x2="820" y2="457" stroke="#243447" stroke-width="3" marker-end="url(#arrow-dark)"/>
-  <polygon points="820,457 809,451 809,463" fill="#243447"/>
-  <text x="787" y="436" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#6B7280">LJ off</text>
+  <line x1="340" y1="412" x2="340" y2="450" stroke="#0072B2" stroke-width="4" marker-end="url(#arrow)"/>
+  <text x="395" y="430" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#0072B2">LJ off</text>
+  <text x="395" y="452" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#243447">ΔG<tspan baseline-shift="sub" font-size="12">solvent,LJ</tspan></text>
 
-  <rect x="830" y="405" width="165" height="105" rx="15" fill="#FFFFFF" stroke="#6B7280" stroke-width="3" stroke-dasharray="8 6"/>
-  <path d="M845 476 C847 431 876 419 902 432 C921 442 927 466 916 488 C895 503 866 500 850 488 Z" fill="#DCEAF7" stroke="#0072B2" stroke-width="3.5"/>
-  <polygon points="923,422 944,434 944,458 923,470 902,458 902,434" fill="#FFFFFF" stroke="#6B7280" stroke-width="3.5" stroke-dasharray="7 5"/>
-  <text x="912" y="530" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#243447">Ghost</text>
+  <line x1="340" y1="557" x2="340" y2="595" stroke="#CC79A7" stroke-width="4" marker-end="url(#arrow)"/>
+  <text x="395" y="575" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#9A4F7E">pose restraint</text>
+  <text x="395" y="597" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#243447">−ΔG°<tspan baseline-shift="sub" font-size="12">release</tspan> · analytic 1 M term</text>
 
-  <path d="M160 285 H62 V405 H95" fill="none" stroke="#0072B2" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow-blue)"/>
-  <text x="42" y="347" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#0072B2" transform="rotate(-90 42 347)">ΔG°bind</text>
+  <!-- Complex leg: reverse traversal of the sampled decoupling calculations. -->
+  <line x1="900" y1="595" x2="900" y2="557" stroke="#6B7280" stroke-width="4" marker-end="url(#arrow)"/>
+  <text x="965" y="575" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#6B7280">LJ on</text>
+  <text x="965" y="597" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#243447">−ΔG<tspan baseline-shift="sub" font-size="12">complex,LJ</tspan></text>
 
-  <path d="M1005 405 H1080 V285 H1050" fill="none" stroke="#CC79A7" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow-dark)"/>
-  <text x="1099" y="347" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#9A4F7E" transform="rotate(-90 1099 347)">standard state</text>
+  <line x1="900" y1="450" x2="900" y2="412" stroke="#0072B2" stroke-width="4" marker-end="url(#arrow)"/>
+  <text x="965" y="430" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#0072B2">charge on</text>
+  <text x="965" y="452" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#243447">−ΔG<tspan baseline-shift="sub" font-size="12">complex,charge</tspan></text>
 
-  <rect x="195" y="570" width="810" height="57" rx="28" fill="#F4ECFA" stroke="#CC79A7" stroke-width="2"/>
-  <text x="600" y="606" text-anchor="middle" font-family="Georgia, Times New Roman, serif" font-size="20" fill="#243447">ΔG°bind = ΔGsolvent − ΔGcomplex + ΔGrest − ΔG°release</text>
+  <line x1="900" y1="305" x2="900" y2="272" stroke="#CC79A7" stroke-width="4" marker-end="url(#arrow)"/>
+  <text x="965" y="285" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#9A4F7E">release restraint</text>
+  <text x="965" y="307" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#243447">+ΔG<tspan baseline-shift="sub" font-size="12">restraint</tspan></text>
+
+  <line x1="410" y1="650" x2="830" y2="650" stroke="#243447" stroke-width="4" marker-end="url(#arrow)"/>
+  <rect x="555" y="628" width="130" height="34" rx="17" fill="#F8FBFD"/>
+  <text x="620" y="652" text-anchor="middle" font-family="Georgia, Times New Roman, serif" font-size="19" font-weight="bold" fill="#243447">ΔG = 0</text>
+
+  <rect x="60" y="750" width="1080" height="48" rx="24" fill="#F4ECFA" stroke="#CC79A7" stroke-width="2"/>
+  <text x="600" y="781" text-anchor="middle" font-family="Georgia, Times New Roman, serif" font-size="19" fill="#243447">ΔG°bind = ΔGsolvent,charge + ΔGsolvent,LJ − ΔGcomplex,charge − ΔGcomplex,LJ + ΔGrestraint − ΔG°release</text>
 </svg>

@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img">
+<title>PCA variance directions</title>
+<desc>Illustrative point cloud with orthogonal principal-component axes and variance magnitudes.</desc>
+<defs>
+<marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#243447"/></marker>
+<marker id="blue-arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#0072B2"/></marker>
+<pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0 10L10 0" stroke="#6B7280" stroke-width="2"/></pattern>
+</defs>
+<rect width="1200" height="675" fill="#FFFFFF"/>
+<text x="60" y="52" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#243447">Principal component analysis</text>
+<text x="60" y="88" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="normal" fill="#6B7280">Illustrative data</text>
+<ellipse cx="570" cy="350" rx="330" ry="110" fill="#E6F4FA" stroke="#0072B2" stroke-width="3" opacity="0.7" transform="rotate(-25 570 350)"/>
+<circle cx="300" cy="395.0" r="7" fill="#56B4E9" stroke="#0072B2" stroke-width="1" opacity="1"/>
+<circle cx="373" cy="403.15" r="7" fill="#56B4E9" stroke="#0072B2" stroke-width="1" opacity="1"/>
+<circle cx="446" cy="411.3" r="7" fill="#56B4E9" stroke="#0072B2" stroke-width="1" opacity="1"/>
+<circle cx="519" cy="329.45" r="7" fill="#56B4E9" stroke="#0072B2" stroke-width="1" opacity="1"/>
+<circle cx="592" cy="337.6" r="7" fill="#56B4E9" stroke="#0072B2" stroke-width="1" opacity="1"/>
+<circle cx="665" cy="255.75" r="7" fill="#56B4E9" stroke="#0072B2" stroke-width="1" opacity="1"/>
+<circle cx="738" cy="263.9" r="7" fill="#56B4E9" stroke="#0072B2" stroke-width="1" opacity="1"/>
+<circle cx="811" cy="182.04999999999998" r="7" fill="#56B4E9" stroke="#0072B2" stroke-width="1" opacity="1"/>
+<circle cx="344" cy="433.2" r="7" fill="#56B4E9" stroke="#0072B2" stroke-width="1" opacity="1"/>
+<circle cx="417" cy="351.35" r="7" fill="#56B4E9" stroke="#0072B2" stroke-width="1" opacity="1"/>
+<circle cx="490" cy="359.5" r="7" fill="#56B4E9" stroke="#0072B2" stroke-width="1" opacity="1"/>
+<circle cx="563" cy="277.65" r="7" fill="#56B4E9" stroke="#0072B2" stroke-width="1" opacity="1"/>
+<circle cx="636" cy="285.79999999999995" r="7" fill="#56B4E9" stroke="#0072B2" stroke-width="1" opacity="1"/>
+<circle cx="709" cy="293.95" r="7" fill="#56B4E9" stroke="#0072B2" stroke-width="1" opacity="1"/>
+<circle cx="782" cy="212.10000000000002" r="7" fill="#56B4E9" stroke="#0072B2" stroke-width="1" opacity="1"/>
+<circle cx="315" cy="463.25" r="7" fill="#56B4E9" stroke="#0072B2" stroke-width="1" opacity="1"/>
+<circle cx="388" cy="381.4" r="7" fill="#56B4E9" stroke="#0072B2" stroke-width="1" opacity="1"/>
+<circle cx="461" cy="389.55" r="7" fill="#56B4E9" stroke="#0072B2" stroke-width="1" opacity="1"/>
+<circle cx="534" cy="307.7" r="7" fill="#56B4E9" stroke="#0072B2" stroke-width="1" opacity="1"/>
+<circle cx="607" cy="315.85" r="7" fill="#56B4E9" stroke="#0072B2" stroke-width="1" opacity="1"/>
+<circle cx="680" cy="234.0" r="7" fill="#56B4E9" stroke="#0072B2" stroke-width="1" opacity="1"/>
+<circle cx="753" cy="242.14999999999998" r="7" fill="#56B4E9" stroke="#0072B2" stroke-width="1" opacity="1"/>
+<circle cx="826" cy="160.29999999999998" r="7" fill="#56B4E9" stroke="#0072B2" stroke-width="1" opacity="1"/>
+<circle cx="359" cy="411.45" r="7" fill="#56B4E9" stroke="#0072B2" stroke-width="1" opacity="1"/>
+<circle cx="432" cy="419.6" r="7" fill="#56B4E9" stroke="#0072B2" stroke-width="1" opacity="1"/>
+<circle cx="505" cy="337.75" r="7" fill="#56B4E9" stroke="#0072B2" stroke-width="1" opacity="1"/>
+<circle cx="578" cy="345.9" r="7" fill="#56B4E9" stroke="#0072B2" stroke-width="1" opacity="1"/>
+<circle cx="651" cy="264.04999999999995" r="7" fill="#56B4E9" stroke="#0072B2" stroke-width="1" opacity="1"/>
+<circle cx="724" cy="272.2" r="7" fill="#56B4E9" stroke="#0072B2" stroke-width="1" opacity="1"/>
+<circle cx="797" cy="190.35" r="7" fill="#56B4E9" stroke="#0072B2" stroke-width="1" opacity="1"/>
+<line x1="250" y1="520" x2="930" y2="190" stroke="#0072B2" stroke-width="5" marker-end="url(#arrow)"/>
+<line x1="440" y1="190" x2="705" y2="545" stroke="#E69F00" stroke-width="4" marker-end="url(#arrow)"/>
+<text x="925" y="175" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#0072B2">PC1: largest variance</text>
+<text x="745" y="560" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="bold" fill="#E69F00">PC2</text>
+<text x="600" y="625" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#243447">PC axes are orthogonal directions in the selected, scaled feature space.</text>
+</svg>

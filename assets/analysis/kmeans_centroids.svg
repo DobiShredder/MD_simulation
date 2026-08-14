@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img">
+<title>K-means centroid assignment</title>
+<desc>Illustrative hard assignment of points to the nearest centroid with Voronoi-like boundaries.</desc>
+<defs>
+<marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#243447"/></marker>
+<marker id="blue-arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#0072B2"/></marker>
+<pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0 10L10 0" stroke="#6B7280" stroke-width="2"/></pattern>
+</defs>
+<rect width="1200" height="675" fill="#FFFFFF"/>
+<text x="60" y="52" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#243447">K-means clustering</text>
+<text x="60" y="88" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="normal" fill="#6B7280">Hard assignment to the nearest centroid — illustrative data</text>
+<polygon points="80,150 430,150 500,600 80,600" fill="#E6F4FA" stroke="#0072B2" stroke-width="2" opacity="0.55"/>
+<polygon points="430,150 1120,150 760,400 500,600" fill="#FFF2D5" stroke="#E69F00" stroke-width="2" opacity="0.55"/>
+<polygon points="500,600 760,400 1120,150 1120,600" fill="#E3F4ED" stroke="#009E73" stroke-width="2" opacity="0.55"/>
+<circle cx="486.0" cy="435.0" r="8" fill="#0072B2" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="510.0" cy="385.0" r="8" fill="#0072B2" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="534.0" cy="430.0" r="8" fill="#0072B2" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="558.0" cy="380.0" r="8" fill="#0072B2" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="582.0" cy="425.0" r="8" fill="#0072B2" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="606.0" cy="375.0" r="8" fill="#0072B2" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="494.0" cy="420.0" r="8" fill="#0072B2" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="518.0" cy="370.0" r="8" fill="#0072B2" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="542.0" cy="415.0" r="8" fill="#0072B2" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="566.0" cy="365.0" r="8" fill="#0072B2" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="590.0" cy="410.0" r="8" fill="#0072B2" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="614.0" cy="360.0" r="8" fill="#0072B2" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="502.0" cy="405.0" r="8" fill="#0072B2" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="526.0" cy="355.0" r="8" fill="#0072B2" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="550.0" cy="400.0" r="8" fill="#0072B2" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="574.0" cy="350.0" r="8" fill="#0072B2" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="598.0" cy="395.0" r="8" fill="#0072B2" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="486.0" cy="345.0" r="8" fill="#0072B2" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="694.0" cy="336.0" r="8" fill="#E69F00" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="718.0" cy="286.0" r="8" fill="#E69F00" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="742.0" cy="331.0" r="8" fill="#E69F00" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="766.0" cy="281.0" r="8" fill="#E69F00" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="790.0" cy="326.0" r="8" fill="#E69F00" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="814.0" cy="276.0" r="8" fill="#E69F00" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="702.0" cy="321.0" r="8" fill="#E69F00" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="726.0" cy="271.0" r="8" fill="#E69F00" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="750.0" cy="316.0" r="8" fill="#E69F00" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="774.0" cy="266.0" r="8" fill="#E69F00" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="798.0" cy="311.0" r="8" fill="#E69F00" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="822.0" cy="261.0" r="8" fill="#E69F00" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="710.0" cy="306.0" r="8" fill="#E69F00" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="734.0" cy="256.0" r="8" fill="#E69F00" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="758.0" cy="301.0" r="8" fill="#E69F00" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="782.0" cy="251.0" r="8" fill="#E69F00" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="806.0" cy="296.0" r="8" fill="#E69F00" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="694.0" cy="246.0" r="8" fill="#E69F00" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="310.0" cy="297.5" r="8" fill="#009E73" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="334.0" cy="247.5" r="8" fill="#009E73" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="358.0" cy="292.5" r="8" fill="#009E73" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="382.0" cy="242.5" r="8" fill="#009E73" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="406.0" cy="287.5" r="8" fill="#009E73" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="430.0" cy="237.5" r="8" fill="#009E73" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="318.0" cy="282.5" r="8" fill="#009E73" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="342.0" cy="232.5" r="8" fill="#009E73" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="366.0" cy="277.5" r="8" fill="#009E73" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="390.0" cy="227.5" r="8" fill="#009E73" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="414.0" cy="272.5" r="8" fill="#009E73" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="438.0" cy="222.5" r="8" fill="#009E73" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="326.0" cy="267.5" r="8" fill="#009E73" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="350.0" cy="217.5" r="8" fill="#009E73" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="374.0" cy="262.5" r="8" fill="#009E73" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="398.0" cy="212.5" r="8" fill="#009E73" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="422.0" cy="257.5" r="8" fill="#009E73" stroke="white" stroke-width="1" opacity="1"/>
+<circle cx="310.0" cy="207.5" r="8" fill="#009E73" stroke="white" stroke-width="1" opacity="1"/>
+<text x="550" y="399" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#243447">×</text>
+<text x="758" y="300" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#243447">×</text>
+<text x="374" y="261" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#243447">×</text>
+<text x="600" y="635" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#243447">n_clusters is chosen before fitting; silhouette is a diagnostic, not an answer.</text>
+</svg>

@@ -118,7 +118,7 @@
 <line x1="545" y1="365" x2="625" y2="405" stroke="#243447" stroke-width="8"/>
 <circle cx="570" cy="465" r="28" fill="#CC79A7" stroke="white" stroke-width="3" opacity="1"/>
 <line x1="625" y1="405" x2="570" y2="465" stroke="#243447" stroke-width="8"/>
-<line x1="585" y1="115" x2="585" y2="600" stroke="#6B7280" stroke-width="2" stroke-dasharray="8 8"/>
+<line x1="585" y1="135" x2="585" y2="570" stroke="#6B7280" stroke-width="2" stroke-dasharray="8 8"/>
 <text x="610" y="155" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#6B7280">OPM membrane normal</text>
 <circle cx="598" cy="305" r="7" fill="#56B4E9" stroke="#56B4E9" stroke-width="1" opacity="1"/>
 <circle cx="603" cy="345" r="7" fill="#56B4E9" stroke="#56B4E9" stroke-width="1" opacity="1"/>

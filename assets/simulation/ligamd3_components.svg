@@ -13,7 +13,7 @@
 
   <rect x="55" y="118" width="375" height="440" rx="18" fill="#F7FAFC" stroke="#CBD5E1" stroke-width="2"/>
   <text x="82" y="153" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#243447">Selected system</text>
-  <text x="82" y="178" font-family="Arial, Helvetica, sans-serif" font-size="15" fill="#6B7280">BEN ligand mask + generated receptor range</text>
+  <text x="82" y="178" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#6B7280">BEN ligand mask + generated receptor range</text>
 
   <path d="M105 263 C105 205 170 184 228 210 C271 229 281 264 267 296 C302 318 298 369 259 387 C222 411 168 397 145 367 C104 360 84 325 101 294 Z"
         fill="#DCEAF7" stroke="#0072B2" stroke-width="4"/>
@@ -33,9 +33,10 @@
   </g>
   <text x="346" y="197" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#009E73">E</text>
 
-  <rect x="84" y="478" width="318" height="55" rx="12" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.5"/>
-  <text x="103" y="501" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#243447">Dashed orange: ligand–protein nonbonded</text>
-  <text x="103" y="522" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#243447">Blue shape / green circles: receptor / environment</text>
+  <rect x="84" y="468" width="318" height="70" rx="12" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.5"/>
+  <text x="103" y="491" font-family="Arial, Helvetica, sans-serif" font-size="15" fill="#243447">Dashed orange: ligand–protein nonbonded</text>
+  <text x="103" y="513" font-family="Arial, Helvetica, sans-serif" font-size="15" fill="#243447">Blue shape: receptor</text>
+  <text x="103" y="532" font-family="Arial, Helvetica, sans-serif" font-size="15" fill="#243447">Green circles: environment</text>
 
   <line x1="443" y1="338" x2="478" y2="338" stroke="#243447" stroke-width="3" marker-end="url(#arrow-dark)"/>
 
@@ -44,27 +45,27 @@
   <text x="531" y="162" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="bold" fill="#FFFFFF">1</text>
   <text x="569" y="153" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="bold" fill="#D55E00">Ligand-essential nonbonded boost ΔV<tspan baseline-shift="super" font-size="12">L</tspan></text>
   <text x="569" y="181" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#243447">V<tspan baseline-shift="sub" font-size="12">L</tspan> = ligand self nonbonded + ligand–protein nonbonded</text>
-  <text x="569" y="209" font-family="Arial, Helvetica, sans-serif" font-size="15" fill="#6B7280">electrostatic + van der Waals terms involving BEN and the receptor</text>
+  <text x="569" y="209" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#6B7280">electrostatic + van der Waals terms involving BEN and the receptor</text>
   <rect x="892" y="218" width="226" height="28" rx="14" fill="#FFFFFF" stroke="#D55E00" stroke-width="1.5"/>
-  <text x="1005" y="237" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#D55E00">promotes ligand dissociation</text>
+  <text x="1005" y="237" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#D55E00">promotes ligand dissociation</text>
 
   <rect x="490" y="278" width="655" height="142" rx="18" fill="#EDF8F4" stroke="#009E73" stroke-width="2.5"/>
   <circle cx="531" cy="315" r="22" fill="#009E73"/>
   <text x="531" y="322" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="bold" fill="#FFFFFF">2</text>
   <text x="569" y="313" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="bold" fill="#007A5A">Remaining nonbonded boost ΔV<tspan baseline-shift="super" font-size="12">D</tspan></text>
   <text x="569" y="341" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#243447">V<tspan baseline-shift="sub" font-size="12">D</tspan> = all system nonbonded − V<tspan baseline-shift="sub" font-size="12">L</tspan></text>
-  <text x="569" y="369" font-family="Arial, Helvetica, sans-serif" font-size="15" fill="#6B7280">protein–protein, protein–environment, ligand–environment and environment–environment</text>
+  <text x="569" y="369" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#6B7280">all nonbonded terms not included in V<tspan baseline-shift="sub" font-size="12">L</tspan></text>
   <rect x="892" y="378" width="226" height="28" rx="14" fill="#FFFFFF" stroke="#009E73" stroke-width="1.5"/>
-  <text x="1005" y="397" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#007A5A">facilitates ligand rebinding</text>
+  <text x="1005" y="397" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#007A5A">facilitates ligand rebinding</text>
 
   <rect x="490" y="438" width="655" height="142" rx="18" fill="#F7EEF5" stroke="#CC79A7" stroke-width="2.5"/>
   <circle cx="531" cy="475" r="22" fill="#CC79A7"/>
   <text x="531" y="482" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="bold" fill="#FFFFFF">3</text>
   <text x="569" y="473" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="bold" fill="#9A4F7E">System bonded boost ΔV<tspan baseline-shift="super" font-size="12">B</tspan></text>
   <text x="569" y="501" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#243447">V<tspan baseline-shift="sub" font-size="12">B</tspan> = bond + angle + dihedral terms of the entire system</text>
-  <text x="569" y="529" font-family="Arial, Helvetica, sans-serif" font-size="15" fill="#6B7280">includes receptor and ligand internal degrees of freedom</text>
+  <text x="569" y="529" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#6B7280">includes receptor and ligand internal degrees of freedom</text>
   <rect x="860" y="538" width="258" height="28" rx="14" fill="#FFFFFF" stroke="#CC79A7" stroke-width="1.5"/>
-  <text x="989" y="557" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#9A4F7E">promotes conformational changes</text>
+  <text x="989" y="557" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#9A4F7E">promotes conformational changes</text>
 
   <rect x="217" y="606" width="766" height="45" rx="22" fill="#F7FAFC" stroke="#243447" stroke-width="2"/>
   <text x="600" y="635" text-anchor="middle" font-family="Georgia, Times New Roman, serif" font-size="19" fill="#243447">Total LiGaMD3 boost: ΔV = ΔV<tspan baseline-shift="super" font-size="12">L</tspan> + ΔV<tspan baseline-shift="super" font-size="12">D</tspan> + ΔV<tspan baseline-shift="super" font-size="12">B</tspan></text>
