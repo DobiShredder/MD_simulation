@@ -68,8 +68,8 @@ fi
 if [[ ! "$gpu_count" =~ ^[1-9][0-9]*$ ]]; then
     die "--gpus must be a positive integer: $gpu_count"
 fi
-if [[ "$gpu_count" -ne "$replica_count" ]]; then
-    die "--gpus must equal the replica count: $replica_count"
+if (( gpu_count > replica_count )); then
+    die "--gpus cannot exceed the replica count: $replica_count"
 fi
 if (( cpu_count % replica_count != 0 )); then
     die "--cpus must be divisible by the replica count: $replica_count"
@@ -100,88 +100,45 @@ if (( ! dry_run )); then
     fi
 fi
 
-stage_state() {
-    local stage=$1
-    local marker="$work_dir/.$stage.complete"
-    local existing=0
-    local any_existing=0
-    local replica
-    local candidate
+source completion_helpers.sh
 
-    while IFS=$'\t' read -r replica _; do
-        if [[ "$replica" == "replica" ]]; then
-            continue
+wait_for_replica_batch() {
+    local stage=$1
+    shift
+    local failed=0
+    local job
+    local process_id
+    local replica
+
+    for job in "$@"; do
+        process_id=${job%%:*}
+        replica=${job#*:}
+        if ! wait "$process_id"; then
+            echo "Error: $stage failed: $work_dir/$replica/$stage.mdrun.log" >&2
+            failed=1
         fi
-        if [[ "$stage" == preproduction ]]; then
-            [[ ! -s "$work_dir/$replica/minimize.gro" ]] || existing=$((existing + 1))
-            [[ ! -s "$work_dir/$replica/equilibrate.gro" ]] || existing=$((existing + 1))
-            [[ ! -s "$work_dir/$replica/equilibrate.cpt" ]] || existing=$((existing + 1))
-            for candidate in \
-                "$work_dir/$replica"/minimize.{tpr,gro,log,edr,trr,cpt} \
-                "$work_dir/$replica"/equilibrate.{tpr,gro,log,edr,trr,cpt} \
-                "$work_dir/$replica"/{minimize,equilibrate}.{grompp,mdrun}.log; do
-                [[ ! -e "$candidate" ]] || any_existing=1
-            done
-        else
-            [[ ! -s "$work_dir/$replica/$stage.gro" ]] || existing=$((existing + 1))
-            [[ ! -s "$work_dir/$replica/$stage.cpt" ]] || existing=$((existing + 1))
-            for candidate in "$work_dir/$replica/$stage".{tpr,gro,cpt,log,edr,trr,xtc} \
-                "$work_dir/$replica/$stage".{grompp,mdrun}.log; do
-                [[ ! -e "$candidate" ]] || any_existing=1
-            done
-        fi
-    done < "$states_file"
-    local expected=$((replica_count * 2))
-    [[ "$stage" != preproduction ]] || expected=$((replica_count * 3))
-    if [[ -f "$marker" && "$existing" -eq "$expected" ]]; then
-        echo complete
-    elif [[ ! -f "$marker" && "$any_existing" -eq 0 ]]; then
-        echo missing
-    else
-        echo partial
+    done
+    if (( failed )); then
+        die "$stage failed for one or more replicas."
     fi
 }
 
-remove_preproduction_outputs() {
-    local replica
-    rm -f -- "$work_dir/.preproduction.complete"
-    while IFS=$'\t' read -r replica _; do
-        [[ "$replica" != replica ]] || continue
-        rm -f -- "$work_dir/$replica"/minimize.{tpr,gro,log,edr,trr,cpt} \
-            "$work_dir/$replica"/equilibrate.{tpr,gro,log,edr,trr,cpt} \
-            "$work_dir/$replica"/{minimize,equilibrate}.{grompp,mdrun}.log
-    done < "$states_file"
-}
-
-mark_gromacs_stage_complete() {
+run_preproduction_stage() {
     local stage=$1
-    local replica
-    while IFS=$'\t' read -r replica _; do
-        [[ "$replica" != replica ]] || continue
-        if [[ "$stage" == preproduction ]]; then
-            [[ -s "$work_dir/$replica/minimize.gro" &&
-               -s "$work_dir/$replica/equilibrate.gro" &&
-               -s "$work_dir/$replica/equilibrate.cpt" ]] || \
-                die "preproduction output is incomplete: $work_dir/$replica"
-        else
-            [[ -s "$work_dir/$replica/$stage.gro" && -s "$work_dir/$replica/$stage.cpt" ]] || \
-                die "$stage output is incomplete: $work_dir/$replica"
-        fi
-    done < "$states_file"
-    touch "$work_dir/.$stage.complete"
-}
-
-run_preproduction() {
+    local input_coordinates=$2
+    local stage_label=$stage
     local replica
     local replica_dir
     local replica_index=0
     local gpu_id
-    local process_id
-    local failed=0
-    local -a process_ids=()
-    local -a process_replicas=()
+    local -a batch=()
 
-    echo "Running minimization on $gpu_count GPUs."
+    if [[ "$stage" == minimize ]]; then
+        stage_label=minimization
+    elif [[ "$stage" == equilibrate ]]; then
+        stage_label="100 ps equilibration"
+    fi
+    echo "Running $stage_label using $gpu_count GPU device(s)."
 
     while IFS=$'\t' read -r replica _; do
         if [[ "$replica" == "replica" ]]; then
@@ -190,86 +147,40 @@ run_preproduction() {
         replica_dir="$work_dir/$replica"
 
         if ! "$gmx" grompp \
-            -f "$replica_dir/minimize.mdp" \
+            -f "$replica_dir/$stage.mdp" \
             -p "$replica_dir/topol.top" \
-            -c "$replica_dir/system.gro" \
-            -o "$replica_dir/minimize.tpr" \
+            -c "$replica_dir/$input_coordinates.gro" \
+            -o "$replica_dir/$stage.tpr" \
             -maxwarn 1 \
-            > "$replica_dir/minimize.grompp.log" 2>&1; then
-            die "minimization tpr generation failed: $replica_dir/minimize.grompp.log"
+            > "$replica_dir/$stage.grompp.log" 2>&1; then
+            die "$stage tpr generation failed: $replica_dir/$stage.grompp.log"
         fi
 
         gpu_id=$((replica_index % gpu_count))
         "$gmx" mdrun \
-            -deffnm "$replica_dir/minimize" \
+            -deffnm "$replica_dir/$stage" \
             -ntmpi 1 \
             -ntomp "$threads_per_replica" \
             -gpu_id "$gpu_id" \
             "${preproduction_gromacs_options[@]}" \
-            > "$replica_dir/minimize.mdrun.log" 2>&1 &
-        process_ids+=("$!")
-        process_replicas+=("$replica")
+            > "$replica_dir/$stage.mdrun.log" 2>&1 &
+        batch+=("$!:$replica")
         replica_index=$((replica_index + 1))
+
+        if [[ "${#batch[@]}" -eq "$gpu_count" ]]; then
+            wait_for_replica_batch "$stage" "${batch[@]}"
+            batch=()
+        fi
     done < "$states_file"
 
-    for replica_index in "${!process_ids[@]}"; do
-        process_id=${process_ids[$replica_index]}
-        replica=${process_replicas[$replica_index]}
-        if ! wait "$process_id"; then
-            echo "Error: minimization failed: $work_dir/$replica/minimize.mdrun.log" >&2
-            failed=1
-        fi
-    done
-    if (( failed )); then
-        die "minimization failed for one or more replicas."
+    if [[ "${#batch[@]}" -gt 0 ]]; then
+        wait_for_replica_batch "$stage" "${batch[@]}"
     fi
+}
 
-    process_ids=()
-    process_replicas=()
-    replica_index=0
-
-    echo "Running 100 ps equilibration on $gpu_count GPUs."
-
-    while IFS=$'\t' read -r replica _; do
-        if [[ "$replica" == "replica" ]]; then
-            continue
-        fi
-        replica_dir="$work_dir/$replica"
-        if ! "$gmx" grompp \
-            -f "$replica_dir/equilibrate.mdp" \
-            -p "$replica_dir/topol.top" \
-            -c "$replica_dir/minimize.gro" \
-            -o "$replica_dir/equilibrate.tpr" \
-            -maxwarn 1 \
-            > "$replica_dir/equilibrate.grompp.log" 2>&1; then
-            die "equilibration tpr generation failed: $replica_dir/equilibrate.grompp.log"
-        fi
-
-        gpu_id=$((replica_index % gpu_count))
-        "$gmx" mdrun \
-            -deffnm "$replica_dir/equilibrate" \
-            -ntmpi 1 \
-            -ntomp "$threads_per_replica" \
-            -gpu_id "$gpu_id" \
-            "${preproduction_gromacs_options[@]}" \
-            > "$replica_dir/equilibrate.mdrun.log" 2>&1 &
-        process_ids+=("$!")
-        process_replicas+=("$replica")
-        replica_index=$((replica_index + 1))
-    done < "$states_file"
-
-    failed=0
-    for replica_index in "${!process_ids[@]}"; do
-        process_id=${process_ids[$replica_index]}
-        replica=${process_replicas[$replica_index]}
-        if ! wait "$process_id"; then
-            echo "Error: equilibration failed: $work_dir/$replica/equilibrate.mdrun.log" >&2
-            failed=1
-        fi
-    done
-    if (( failed )); then
-        die "equilibration failed for one or more replicas."
-    fi
+run_preproduction() {
+    run_preproduction_stage minimize system
+    run_preproduction_stage equilibrate minimize
     mark_gromacs_stage_complete preproduction
 }
 

@@ -17,6 +17,7 @@ temperature ladder를 왕복하는지와 300 K ensemble을 분리해 확인해�
 | `download.sh` | 1UAO PDB/mmCIF를 받고 checksum을 기록합니다. |
 | `prepare.py` | 1UAO의 첫 NMR model을 simulation PDB로 정리합니다. |
 | `build.sh` | ff19SB/TIP3P topology를 만들고 선택한 state file의 temperature·seed로 replica input을 생성합니다. |
+| `completion_helpers.sh` | `run.sh`가 자동으로 불러와 replica별 completion marker를 검사합니다. |
 | `run.sh` | Replica별 heating/equilibration과 `pmemd.cuda.MPI` exchange segment를 실행합니다. |
 | `anal.py` | `remlog`에서 acceptance, state 방문, round trip과 temperature occupancy를 계산합니다. |
 
@@ -105,6 +106,8 @@ replicas cross barriers more readily, while accepted swaps move configurations
 through the ladder. `build.sh` expands `states.tsv`; `run.sh` uses
 `pmemd.cuda.MPI -rem 1`; `anal.py` measures acceptance, visits, round trips,
 and occupancy.
+`completion_helpers.sh` is sourced by the runner for replica-wide completion
+checks.
 
 `temp0` and `ig` are replica-specific. In AMBER REMD, `nstlim=500` is the step
 count between attempts and `numexchg=1000` gives a 1 ns segment.

@@ -23,6 +23,17 @@ def read_states() -> list[dict[str, str]]:
         return list(csv.DictReader(handle, delimiter="\t"))
 
 
+def require_completed_segments() -> None:
+    logs = sorted((WORK / "000").glob("production.[0-9][0-9][0-9].log"))
+    if not logs:
+        raise SystemExit(f"production log not found: {WORK / '000'}")
+    for log in logs:
+        segment = log.stem.rsplit(".", 1)[1]
+        marker = WORK / f".production.{segment}.complete"
+        if not marker.is_file():
+            raise SystemExit(f"production completion marker not found: {marker}")
+
+
 def parse_exchanges(state_count: int) -> list[tuple[int, int, int]]:
     records: list[tuple[int, int, int]] = []
     logs = sorted((WORK / "000").glob("production.*.log"))
@@ -186,6 +197,7 @@ def structure_summary(states: list[dict[str, str]]) -> None:
 
 
 def main() -> None:
+    require_completed_segments()
     states = read_states()
     records = parse_exchanges(len(states))
     write_exchange_outputs(records, states)

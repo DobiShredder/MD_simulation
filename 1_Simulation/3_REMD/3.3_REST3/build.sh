@@ -30,34 +30,19 @@ die() {
     exit 1
 }
 
-validate_states() {
-    local expected_header=$'replica\teffective_temperature_K\tlambda_pp\tlambda_pw\tkappa\tseed'
-    local actual_header
-
-    IFS= read -r actual_header < "$states_file"
-    if [[ "$actual_header" != "$expected_header" ]]; then
-        die "Invalid state-table header: $expected_header"
+refuse_existing_results() {
+    local directory=$1
+    local existing_result=""
+    if [[ -d "$directory" ]]; then
+        existing_result=$(find "$directory" -type f \
+            \( -name '.*.complete' -o -name 'min*.out' -o -name 'minimize.gro' \
+               -o -name 'heat*.out' -o -name 'equil*.out' -o -name 'equilibrate.gro' \
+               -o -name 'equilibrate.cpt' -o -name 'gamd_prepare.out' \
+               -o -name 'production*.out' -o -name 'production*.gro' \
+               -o -name 'production*.cpt' \) -print -quit)
     fi
-
-    if ! awk -F '\t' '
-        function absolute(value) { return value < 0 ? -value : value }
-        NR == 1 { next }
-        NF != 6 { exit 1 }
-        $1 !~ /^[0-9][0-9][0-9]$/ { exit 1 }
-        $2 !~ /^[0-9]+([.][0-9]+)?$/ || $2 < 300 { exit 1 }
-        $3 !~ /^[0-9]+([.][0-9]+)?$/ || $3 <= 0 || $3 > 1 { exit 1 }
-        $4 !~ /^[0-9]+([.][0-9]+)?$/ || $4 <= 0 || $4 > 1 { exit 1 }
-        $5 !~ /^[0-9]+([.][0-9]+)?$/ || $5 <= 0 { exit 1 }
-        $6 !~ /^[0-9]+$/ || $6 <= 0 { exit 1 }
-        seen[$1]++ { exit 1 }
-        count == 0 && ($1 != "000" || absolute($2 - 300) > 0.000001 || absolute($5 - 1) > 0.000001) { exit 1 }
-        count > 0 && $2 <= previous_temperature { exit 1 }
-        absolute($3 - 300 / $2) > 0.00001 { exit 1 }
-        absolute($4 * $4 - $3) > 0.00001 { exit 1 }
-        { previous_temperature = $2; count++ }
-        END { if (count < 2) exit 1 }
-    ' "$states_file"; then
-        die "REST3 state table requires a 000/300 K/kappa=1 reference state, increasing effective temperatures, lambda_pp=300/T, lambda_pw=sqrt(lambda_pp), positive kappa values, unique replicas, and positive integer seeds: $states_file"
+    if [[ -n "$existing_result" ]]; then
+        die "Existing simulation results were found: $existing_result. Use a new WORK_DIR or remove the previous calculation results before rebuilding."
     fi
 }
 
@@ -68,13 +53,17 @@ tleap=${TLEAP:-tleap}
 gmx=${GROMACS:-gmx}
 python_bin=${PYTHON:-python3}
 
+refuse_existing_results "$work_dir"
+
 for input_file in "$input_pdb" "$states_file"; do
     if [[ ! -s "$input_file" ]]; then
         die "Required input not found: $input_file"
     fi
 done
 
-validate_states
+if ! "$python_bin" validate_states.py "$states_file"; then
+    die "REST3 state-table validation failed."
+fi
 
 if (( ! dry_run )); then
     for executable in "$tleap" "$gmx" "$python_bin"; do

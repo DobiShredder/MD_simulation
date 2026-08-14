@@ -40,7 +40,7 @@ Conventional Steered MD는 이 튜토리얼에서는 다루지 않습니다.
 cd 1_Simulation/2_US
 ./download.sh
 python3 prepare.py structure/1UAO.raw.pdb structure/chignolin.pdb
-./prepare.sh
+./prepare.sh structure/chignolin.pdb
 
 cd rmd
 ./run.sh --dry-run
@@ -92,7 +92,8 @@ toward the target and damps backward fluctuations. This repository does not
 provide a separate conventional Steered-MD tutorial.
 
 `download.sh` retrieves the PDB and mmCIF files from RCSB and records their
-checksums. `prepare.py` selects the first NMR model. `prepare.sh` creates
+checksums. `prepare.py` selects the first NMR model. Run
+`./prepare.sh structure/chignolin.pdb` to create
 one ff19SB/TIP3P topology shared by ratchet MD and every
 umbrella window. Seed frames are not resolvated. The CV, atom indices, target,
 window range, and restraint strength are specific to chignolin.

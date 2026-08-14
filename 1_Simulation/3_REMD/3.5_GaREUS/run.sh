@@ -56,61 +56,7 @@ if (( ! dry_run )); then
     done
 fi
 
-completed_stage_count() {
-    local stage=$1
-    local require_gamd_log=${2:-no}
-    local tolerate_partial=${3:-no}
-    local completed=0
-    local existing
-    local replica
-    local replica_dir
-    local required
-
-    while IFS=$'\t' read -r replica _; do
-        if [[ "$replica" == "replica" ]]; then
-            continue
-        fi
-
-        replica_dir="$work_dir/$replica"
-        required=(
-            "$replica_dir/$stage.out"
-            "$replica_dir/$stage.rst7"
-            "$replica_dir/$stage.nc"
-            "$replica_dir/$stage.info"
-        )
-        if [[ "$require_gamd_log" == yes ]]; then
-            required+=("$replica_dir/gamd.$stage.log")
-        fi
-
-        existing=0
-        for output in "${required[@]}"; do
-            if [[ -s "$output" ]]; then
-                existing=$((existing + 1))
-            fi
-        done
-
-        if [[ "$existing" -eq "${#required[@]}" ]]; then
-            completed=$((completed + 1))
-        elif [[ "$existing" -ne 0 ]]; then
-            if [[ "$tolerate_partial" != yes ]]; then
-                die "$stage output is only partially present: $replica_dir"
-            fi
-        fi
-    done < "$states_file"
-
-    echo "$completed"
-}
-
-remove_stage_outputs() {
-    local stage=$1
-    local replica
-    rm -f -- "$work_dir/.$stage.complete"
-    while IFS=$'\t' read -r replica _; do
-        [[ "$replica" != replica ]] || continue
-        rm -f -- "$work_dir/$replica/$stage.out" "$work_dir/$replica/$stage.rst7" \
-            "$work_dir/$replica/$stage.nc" "$work_dir/$replica/$stage.info"
-    done < "$states_file"
-}
+source completion_helpers.sh
 
 run_stage() {
     local stage=$1
@@ -149,7 +95,7 @@ run_stage_if_needed() {
     local input_restart=$2
     local completed
 
-    completed=$(completed_stage_count "$stage" no yes)
+    completed=$(completed_stage_count "$stage" --allow-partial)
     if [[ -f "$work_dir/.$stage.complete" && "$completed" -eq "$replica_count" ]]; then
         return
     fi
@@ -183,7 +129,7 @@ prepare_common_gamd_state() {
     )
     local completion_marker="$work_dir/.gamd_prepare.complete"
 
-    completed_segments=$(completed_stage_count production.001 yes)
+    completed_segments=$(completed_stage_count production.001 --require-gamd-log)
     if [[ "$completed_segments" -ne 0 ]]; then
         return
     fi
@@ -306,7 +252,7 @@ prepare_common_gamd_state
 
 for segment in $(seq 1 "$production_segments"); do
     segment_name=$(printf 'production.%03d' "$segment")
-    completed=$(completed_stage_count "$segment_name" yes)
+    completed=$(completed_stage_count "$segment_name" --require-gamd-log)
 
     if [[ -f "$work_dir/.$segment_name.complete" && "$completed" -eq "$replica_count" ]]; then
         continue
@@ -339,7 +285,7 @@ for segment in $(seq 1 "$production_segments"); do
         die "GaREUS segment $segment Run failed: $exchange_log"
     fi
 
-    completed=$(completed_stage_count "$segment_name" yes)
+    completed=$(completed_stage_count "$segment_name" --require-gamd-log)
     if [[ "$completed" -ne "$replica_count" ]]; then
         die "$segment_name output is incomplete ($completed/$replica_count)."
     fi

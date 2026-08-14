@@ -64,6 +64,11 @@ def main() -> None:
     frame_rows = []
     summary_rows = []
     for segment in range(1, EXPECTED_SEGMENTS + 1):
+        completion_marker = WORK / f".production.{segment:03d}.complete"
+        if not completion_marker.is_file():
+            raise SystemExit(
+                f"Production completion marker not found: {completion_marker}"
+            )
         path = WORK / f"production.{segment:03d}.gamd.log"
         if not path.is_file():
             raise SystemExit(f"GaMD log not found: {path}")

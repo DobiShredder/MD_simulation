@@ -85,8 +85,9 @@ run_standard_stage() {
     local stage=$1
     local input_file=$2
     local input_restart=$3
-    local write_trajectory=$4
-    local reference_restart=${5:-}
+    shift 3
+    local write_trajectory=0
+    local reference_restart=
     local prefix="$work_dir/$stage"
     local completion_marker="$work_dir/.$stage.complete"
     local required=("$prefix.out" "$prefix.info" "$prefix.rst7")
@@ -101,7 +102,24 @@ run_standard_stage() {
     )
     local state
 
-    if [[ "$write_trajectory" == yes ]]; then
+    while (( $# > 0 )); do
+        case "$1" in
+            --trajectory)
+                write_trajectory=1
+                shift
+                ;;
+            --reference)
+                [[ $# -ge 2 ]] || die "--reference requires a restart file."
+                reference_restart=$2
+                shift 2
+                ;;
+            *)
+                die "Unknown run_standard_stage option: $1"
+                ;;
+        esac
+    done
+
+    if (( write_trajectory )); then
         required+=("$prefix.nc")
         command+=(-x "$stage.nc")
     fi
@@ -242,10 +260,10 @@ if (( ! dry_run )); then
     )
 fi
 
-run_standard_stage minimize-solvent inputs/minimize-solvent.in system.rst7 no system.rst7
-run_standard_stage minimize-all inputs/minimize-all.in minimize-solvent.rst7 no
-run_standard_stage heat inputs/heat.in minimize-all.rst7 yes minimize-all.rst7
-run_standard_stage equilibrate inputs/equilibrate.in heat.rst7 yes heat.rst7
+run_standard_stage minimize-solvent inputs/minimize-solvent.in system.rst7 --reference system.rst7
+run_standard_stage minimize-all inputs/minimize-all.in minimize-solvent.rst7
+run_standard_stage heat inputs/heat.in minimize-all.rst7 --trajectory --reference minimize-all.rst7
+run_standard_stage equilibrate inputs/equilibrate.in heat.rst7 --trajectory --reference heat.rst7
 
 for segment_number in $(seq 1 "$production_segments"); do
     run_production_segment "$segment_number"

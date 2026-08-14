@@ -33,6 +33,7 @@ replica는 한 state의 Hamiltonian으로 MD를 진행합니다. Exchange가 acc
 | `prepare.py` | 1UAO의 첫 NMR model을 simulation PDB로 정리합니다. |
 | `make_restraints.py` | Topology에서 terminal Cα index를 찾아 19개 `distance.RST`를 만듭니다. |
 | `build.sh` | 공통 topology와 `states.tsv`를 replica directory에 배치합니다. |
+| `completion_helpers.sh` | `run.sh`가 자동으로 불러와 window별 completion marker를 검사합니다. |
 | `run.sh` | Window별 pre-production과 `pmemd.cuda.MPI -rem 3` exchange를 실행합니다. |
 | `anal.py` | Exchange, window 방문, occupancy와 sampled distance 범위를 요약합니다. |
 
@@ -112,6 +113,8 @@ atom indices from the ff19SB/TIP3P topology and writes one restraint per window.
 The run uses `pmemd.cuda` for individual
 stages and `pmemd.cuda.MPI -rem 3` for exchange. Partial segments are not
 silently resumed.
+`completion_helpers.sh` is sourced by the runner for window-wide completion
+checks.
 
 `make_restraints.py` resolves `iat` and writes `r2=r3` centers with
 `rk2=rk3=10.0`. `nmropt=1`/`DISANG` activate the restraint; `nstlim=500` and

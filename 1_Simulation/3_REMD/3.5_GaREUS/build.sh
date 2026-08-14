@@ -17,11 +17,29 @@ die() {
     exit 1
 }
 
+refuse_existing_results() {
+    local directory=$1
+    local existing_result=""
+    if [[ -d "$directory" ]]; then
+        existing_result=$(find "$directory" -type f \
+            \( -name '.*.complete' -o -name 'min*.out' -o -name 'minimize.gro' \
+               -o -name 'heat*.out' -o -name 'equil*.out' -o -name 'equilibrate.gro' \
+               -o -name 'equilibrate.cpt' -o -name 'gamd_prepare.out' \
+               -o -name 'production*.out' -o -name 'production*.gro' \
+               -o -name 'production*.cpt' \) -print -quit)
+    fi
+    if [[ -n "$existing_result" ]]; then
+        die "Existing simulation results were found: $existing_result. Use a new WORK_DIR or remove the previous calculation results before rebuilding."
+    fi
+}
+
 input_pdb=$1
 states_file="inputs/states.tsv"
 work_dir=${WORK_DIR:-"work"}
 tleap=${TLEAP:-tleap}
 python_bin=${PYTHON:-python3}
+
+refuse_existing_results "$work_dir"
 
 for input_file in "$input_pdb" "$states_file"; do
     if [[ ! -s "$input_file" ]]; then

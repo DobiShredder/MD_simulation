@@ -39,6 +39,11 @@ def main() -> int:
         raise ValueError(
             f"Expected exactly one completed production segment: {len(segment_dirs)}"
         )
+    for segment_dir in segment_dirs:
+        if not (segment_dir / ".complete").is_file():
+            raise ValueError(
+                f"Production completion marker not found: {segment_dir / '.complete'}"
+            )
 
     output_dir = args.work_dir / "analysis"
     output_dir.mkdir(parents=True, exist_ok=True)

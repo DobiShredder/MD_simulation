@@ -53,6 +53,7 @@ box, `min-all.out`과 `heat.out`을 먼저 확인합니다.
 | `KAPPA=100` | Target 반대 방향의 ρ 증가를 억제하는 ratchet strength입니다. Harmonic distance force constant와 직접 비교하지 않습니다. |
 | `plumed=1`, `plumedfile='plumed.dat'` | AMBER에서 PLUMED bias를 활성화합니다. |
 | `--max-error 0.5` | `anal.py`가 target center와 seed frame 사이에 허용하는 distance 차이(Å)입니다. |
+| `--allow-unmarked` | 이 workflow 밖에서 만든 trajectory를 분석할 때만 completion marker 검사를 생략합니다. |
 | `SYSTEM_DIR`, `WORK_DIR`, `AMBER_ENGINE` | 공통 topology 위치, output directory와 PLUMED-enabled engine을 지정합니다. |
 
 `anal.py`는 cpptraj으로 `:1@CA`–`:10@CA` distance를 계산하고 각 window
@@ -80,7 +81,9 @@ component is the PLUMED ρ minimum, not a minimum distance.
 `plumed=1`. The PLUMED file reconstructs the protein, evaluates
 `DISTANCE ATOMS=2,132 NOPBC`, and applies `ABMD TO=3.0 KAPPA=100` in PLUMED
 units. `anal.py --max-error` controls the allowed Å difference when selecting
-first-crossing seeds. `SYSTEM_DIR`, `WORK_DIR`, and `AMBER_ENGINE` select the
+first-crossing seeds. Analysis requires the production completion marker by
+default; use `--allow-unmarked` only for a trajectory created outside this
+workflow. `SYSTEM_DIR`, `WORK_DIR`, and `AMBER_ENGINE` select the
 shared system, output location, and PLUMED-enabled executable.
 
 `run.sh` performs minimization, 200 ps NVT heating, 100 ps NPT equilibration,

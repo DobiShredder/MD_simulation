@@ -46,6 +46,11 @@ def parse_arguments() -> argparse.Namespace:
         help="Tolerance for the difference between the target center and frame distance (Å)",
     )
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument(
+        "--allow-unmarked",
+        action="store_true",
+        help="Allow a trajectory produced outside this tutorial without a completion marker.",
+    )
     return parser.parse_args()
 
 
@@ -229,6 +234,12 @@ def main() -> int:
     for path in (args.topology, args.trajectory, args.windows):
         if not path.is_file():
             raise SystemExit(f"Required input not found: {path}")
+    completion_marker = args.trajectory.parent / ".ratchet.complete"
+    if not args.allow_unmarked and not completion_marker.is_file():
+        raise SystemExit(
+            "Ratchet MD completion marker not found: "
+            f"{completion_marker}. Use --allow-unmarked only for an externally completed trajectory."
+        )
     if args.output.exists():
         raise SystemExit(f"Output directory already exists: {args.output}")
 

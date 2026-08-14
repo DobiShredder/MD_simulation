@@ -27,6 +27,11 @@ def main() -> int:
     segments = sorted((args.work_dir / "production").glob("[0-9][0-9][0-9]"))
     if len(segments) != 1:
         raise ValueError(f"Expected exactly one completed production segment: {len(segments)}")
+    for segment in segments:
+        if not (segment / ".complete").is_file():
+            raise ValueError(
+                f"Production completion marker not found: {segment / '.complete'}"
+            )
 
     output_dir = args.work_dir / "analysis"
     output_dir.mkdir(parents=True, exist_ok=True)

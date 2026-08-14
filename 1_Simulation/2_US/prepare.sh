@@ -8,8 +8,8 @@ if [[ "${1:-}" == "--dry-run" ]]; then
     shift
 fi
 
-if [[ $# -ne 0 ]]; then
-    echo "Usage: $0 [--dry-run]" >&2
+if [[ $# -ne 1 ]]; then
+    echo "Usage: $0 [--dry-run] INPUT.pdb" >&2
     exit 2
 fi
 
@@ -18,11 +18,27 @@ die() {
     exit 1
 }
 
+refuse_existing_results() {
+    local directory=$1
+    local existing_result=""
+    if [[ -d "$directory" ]]; then
+        existing_result=$(find "$directory" -type f \
+            \( -name '.*.complete' -o -name 'min*.out' -o -name 'heat*.out' \
+               -o -name 'equil*.out' -o -name 'production*.out' -o -name 'ratchet.out' \) \
+            -print -quit)
+    fi
+    if [[ -n "$existing_result" ]]; then
+        die "Existing simulation results were found: $existing_result. Use a new WORK_DIR or remove the previous calculation results before rebuilding."
+    fi
+}
+
 # User settings and input/output paths
 tleap=${TLEAP:-tleap}
 
-input_pdb=${INPUT_PDB:-"structure/chignolin.pdb"}
+input_pdb=$1
 work_dir=${WORK_DIR:-"work"}
+
+refuse_existing_results "$work_dir"
 
 # Input and dependency checks
 if (( ! dry_run )); then

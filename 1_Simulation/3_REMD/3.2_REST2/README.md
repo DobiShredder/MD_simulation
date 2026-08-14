@@ -26,8 +26,10 @@ effective-temperature ladder를 구성할 수 있습니다.
 | `convert_topology.py` | Tleap의 AMBER topology를 GROMACS 형식으로 변환합니다. |
 | `mark_hot.py` | Protein atom type에만 `partial_tempering` marker를 붙입니다. |
 | `scale_cmap.py` | ff19SB의 residue별 CMAP section을 복원하고 energy grid를 `lambda`로 scaling합니다. |
+| `validate_states.py` | State file의 각 row와 λ 관계를 검사하고 잘못된 column을 표시합니다. |
 | `build.sh` | 변환·scaling을 호출해 state file의 row 수만큼 topology/TPR를 만들고 scale-one energy를 검사합니다. |
 | `compare_energy.py` | 원본과 scale 1.0 rerun potential 차이를 허용 오차와 비교합니다. |
+| `completion_helpers.sh` | `run.sh`가 자동으로 불러와 replica별 completion marker를 관리합니다. |
 | `run.sh` | 300 K pre-production과 PLUMED-patched GROMACS HREX를 실행합니다. |
 | `anal.py` | Exchange, occupancy와 effective-temperature별 구조 지표를 계산합니다. |
 
@@ -73,9 +75,12 @@ nonbonded type에만 붙이고 CMAP bonded type은 바꾸지 않습니다.
 
 `GROMACS`, `GROMACS_MPI`, `MPI_LAUNCHER`, `MPI_PROCESSES`와
 `MPI_OPTIONS`로 executable과 MPI 환경을 지정합니다. `--cpus`는 job에 할당한
-총 CPU thread 수이고 `--gpus`는 GPU 수입니다. 두 값은 replica에 균등하게
-나눕니다. Replica별 minimization과 equilibration은 GPU별로 동시에 실행하고
-각 process를 `-ntmpi 1`로 제한합니다. Production은 1 ns segment 하나이며 일부
+총 CPU thread 수이고 `--gpus`는 사용할 GPU 수입니다. CPU thread 수는 replica에
+균등하게 나눕니다. GPU 수는 1부터 replica 수까지 지정할 수 있습니다.
+Replica별 minimization과 equilibration은 GPU 수만큼 batch로 실행하고 각
+process를 `-ntmpi 1`로 제한합니다. HREX production에서는 GROMACS가 노출된
+GPU에 MPI rank를 자동 배치하므로 여러 replica가 하나의 GPU를 공유할 수 있습니다.
+Production은 1 ns segment 하나이며 일부
 replica만 완료된 segment에서는 resume하지 않습니다.
 Scheduler는 할당한 GPU만 `CUDA_VISIBLE_DEVICES`에 노출해야 합니다. Script의
 `-gpu_id 0,1,...`은 그 안에서 다시 매겨진 logical device ID입니다.
@@ -119,7 +124,7 @@ Physical bath가 300 K이므로 첫 state는 `000`, 300 K, `lambda_pp=1`,
 | `ref-t=300` | 모든 replica의 physical thermostat temperature입니다. |
 | `-multidir`, `-replex 1000` | 8개 directory를 HREX로 묶고 1,000 steps, 즉 2 ps마다 교환합니다. |
 | `constraints=h-bonds`, `dt=0.002` | LINCS로 수소 bond를 고정하고 2 fs timestep을 사용합니다. |
-| `--cpus`, `--gpus` | 할당받은 총 resource 수입니다. GPU 수는 replica 수와 같고 CPU 수는 replica 수로 나누어져야 합니다. |
+| `--cpus`, `--gpus` | 할당받은 총 CPU thread와 GPU 수입니다. CPU 수는 replica 수로 나누어져야 하며 GPU 수는 1–replica 수 범위입니다. |
 | `PREPRODUCTION_GROMACS_OPTIONS` | Replica별 minimization/equilibration에만 추가할 option입니다. Resource option은 script가 설정합니다. |
 | `HREX_GROMACS_OPTIONS` | External-MPI HREX production에만 추가할 option입니다. `-ntmpi`를 넣지 않습니다. |
 | `ENERGY_TOLERANCE_KJ_MOL` | Scale 1.0 one-frame potential 비교의 절대 tolerance입니다. 이 Chignolin 예제의 기본값은 `0.1 kJ/mol`입니다. |
@@ -167,13 +172,17 @@ residue-specific ff19SB CMAP grids. GROMACS 2024.3 does not support the newer
 `C N XC0 C N`; the unique central C-alpha type selects each residue-specific
 grid. The `_` marker is limited to nonbonded atom types in `[ atoms ]`; CMAP
 lookup continues to use the original bonded types. `build.sh`
-generates and verifies the states selected by the input file,
+generates and verifies the states selected by the input file.
+`validate_states.py` reports the row and column of an invalid schedule, and
+`completion_helpers.sh` keeps marker bookkeeping out of the runner's GROMACS commands.
 `run.sh` uses `-multidir -replex 1000`, and `anal.py` summarizes exchange and
 structure. All thermostats remain at `ref-t=300`; hydrogen bonds are constrained
 for a 2 fs timestep. `ENERGY_TOLERANCE_KJ_MOL` controls the scale-one check.
-Run with `--cpus TOTAL --gpus 8`; the GPU count must match the eight replicas,
-and the CPU count must divide evenly among them. Preproduction runs one replica
-per GPU with `-ntmpi 1`. `HREX_GROMACS_OPTIONS` applies only to external-MPI
+Run with `--cpus TOTAL --gpus GPU_COUNT`. The CPU count must divide evenly among
+the replicas, while `GPU_COUNT` may range from one to the replica count.
+Preproduction runs replica batches of at most `GPU_COUNT` processes with
+`-ntmpi 1`. During HREX, GROMACS automatically maps replica ranks across the
+visible GPU list, so multiple replicas may share one GPU. `HREX_GROMACS_OPTIONS` applies only to external-MPI
 production and must not contain `-ntmpi`.
 The scheduler must expose only allocated devices through `CUDA_VISIBLE_DEVICES`;
 the generated `-gpu_id` values are logical IDs within that visible set.

@@ -31,6 +31,13 @@ die() {
     exit 1
 }
 
+# User settings and input/output paths
+engine=${AMBER_ENGINE:-pmemd.cuda}
+work_dir=${WORK_DIR:-work}
+window_root="$work_dir"
+processed_window_count=0
+skipped_window_count=0
+
 run_command() {
     if (( dry_run )); then
         printf '+'
@@ -61,14 +68,95 @@ stage_state() {
     fi
 }
 
+run_stage() {
+    local window_dir=$1
+    local stage=$2
+    local stage_label=$3
+    local input_file=$4
+    local input_restart=$5
+    shift 5
+    local stage_type=preproduction
+    local reference_restart=""
+    local write_trajectory=0
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --production)
+                stage_type=production
+                shift
+                ;;
+            --trajectory)
+                write_trajectory=1
+                shift
+                ;;
+            --reference)
+                reference_restart=$2
+                shift 2
+                ;;
+            *)
+                die "Unsupported run_stage option: $1"
+                ;;
+        esac
+    done
+
+    local prefix="$window_dir/$stage"
+    local completion_marker="$window_dir/.$stage.complete"
+    local required=("$prefix.out" "$prefix.rst7")
+    local command=(
+        "$engine" -O
+        -i "../inputs/$input_file"
+        -o "$stage.out"
+        -p system.parm7
+        -c "$input_restart"
+        -r "$stage.rst7"
+    )
+    if (( write_trajectory )); then
+        required+=("$prefix.info" "$prefix.nc")
+        command+=(-x "$stage.nc" -inf "$stage.info")
+    fi
+    if [[ -n "$reference_restart" ]]; then
+        command+=(-ref "$reference_restart")
+    fi
+
+    if (( ! dry_run )); then
+        local state
+        state=$(stage_state "$completion_marker" "${required[@]}")
+        if [[ "$state" == complete ]]; then
+            return
+        fi
+        if [[ "$state" == partial ]]; then
+            if [[ "$stage_type" == production ]]; then
+                die "Partial production output detected: $prefix"
+            fi
+            echo "Warning: removing partial $stage_label output and restarting the stage: $prefix" >&2
+            rm -f -- "$completion_marker" "${required[@]}"
+        fi
+    fi
+
+    echo "Running: US window ${window_dir##*/} - $stage_label"
+    if ! (
+        cd "$window_dir"
+        run_command "${command[@]}"
+    ); then
+        die "${window_dir##*/} window $stage_label failed: $prefix.out"
+    fi
+
+    if (( ! dry_run )); then
+        local output
+        for output in "${required[@]}"; do
+            if [[ ! -s "$output" ]]; then
+                die "${window_dir##*/} window $stage_label output is incomplete: $output"
+            fi
+        done
+        touch "$completion_marker"
+    fi
+}
+
 run_window() {
     local window_dir=$1
     local window_id=${window_dir##*/}
     local required_file
     local production_state=missing
-    local min_state
-    local heat_state
-    local equil_state
 
     for required_file in system.parm7 seed.rst7 restraint.RST; do
         if [[ ! -s "$window_dir/$required_file" ]]; then
@@ -92,153 +180,16 @@ run_window() {
         fi
     fi
 
-    # Minimization
-    min_state=$(stage_state \
-        "$window_dir/.min.complete" \
-        "$window_dir/min.out" \
-        "$window_dir/min.rst7")
-    if [[ "$min_state" != complete ]] || (( dry_run )); then
-        if [[ "$min_state" == partial ]] && (( ! dry_run )); then
-            echo "Warning: removing partial minimization output and restarting the stage: $window_dir/min" >&2
-            rm -f -- "$window_dir/.min.complete" "$window_dir/min.out" "$window_dir/min.rst7"
-        fi
-        if ! (
-            cd "$window_dir"
-            run_command \
-                "$engine" \
-                -O \
-                -i ../inputs/min.in \
-                -o min.out \
-                -p system.parm7 \
-                -c seed.rst7 \
-                -r min.rst7
-        ); then
-            die "$window_id window minimization failed: $window_dir/min.out"
-        fi
-
-        if (( ! dry_run )); then
-            if [[ ! -s "$window_dir/min.out" || ! -s "$window_dir/min.rst7" ]]; then
-                die "$window_id window minimization output is incomplete: $window_dir/min"
-            fi
-            touch "$window_dir/.min.complete"
-        fi
-    fi
-
-    # Heating
-    heat_state=$(stage_state \
-        "$window_dir/.heat.complete" \
-        "$window_dir/heat.out" \
-        "$window_dir/heat.rst7" \
-        "$window_dir/heat.info" \
-        "$window_dir/heat.nc")
-    if [[ "$heat_state" != complete ]] || (( dry_run )); then
-        if [[ "$heat_state" == partial ]] && (( ! dry_run )); then
-            echo "Warning: removing partial heating output and restarting the stage: $window_dir/heat" >&2
-            rm -f -- "$window_dir/.heat.complete" "$window_dir/heat.out" \
-                "$window_dir/heat.rst7" "$window_dir/heat.info" "$window_dir/heat.nc"
-        fi
-        if ! (
-            cd "$window_dir"
-            run_command \
-                "$engine" \
-                -O \
-                -i ../inputs/heat.in \
-                -o heat.out \
-                -p system.parm7 \
-                -c min.rst7 \
-                -r heat.rst7 \
-                -x heat.nc \
-                -inf heat.info \
-                -ref min.rst7
-        ); then
-            die "$window_id window heating failed: $window_dir/heat.out"
-        fi
-
-        if (( ! dry_run )); then
-            if [[ ! -s "$window_dir/heat.out" || ! -s "$window_dir/heat.rst7" ||
-                  ! -s "$window_dir/heat.info" || ! -s "$window_dir/heat.nc" ]]; then
-                die "$window_id window heating output is incomplete: $window_dir/heat"
-            fi
-            touch "$window_dir/.heat.complete"
-        fi
-    fi
-
-    # Equilibration
-    equil_state=$(stage_state \
-        "$window_dir/.equil.complete" \
-        "$window_dir/equil.out" \
-        "$window_dir/equil.rst7" \
-        "$window_dir/equil.info" \
-        "$window_dir/equil.nc")
-    if [[ "$equil_state" != complete ]] || (( dry_run )); then
-        if [[ "$equil_state" == partial ]] && (( ! dry_run )); then
-            echo "Warning: removing partial equilibration output and restarting the stage: $window_dir/equil" >&2
-            rm -f -- "$window_dir/.equil.complete" "$window_dir/equil.out" \
-                "$window_dir/equil.rst7" "$window_dir/equil.info" "$window_dir/equil.nc"
-        fi
-        if ! (
-            cd "$window_dir"
-            run_command \
-                "$engine" \
-                -O \
-                -i ../inputs/equil.in \
-                -o equil.out \
-                -p system.parm7 \
-                -c heat.rst7 \
-                -r equil.rst7 \
-                -x equil.nc \
-                -inf equil.info
-        ); then
-            die "$window_id window equilibration failed: $window_dir/equil.out"
-        fi
-
-        if (( ! dry_run )); then
-            if [[ ! -s "$window_dir/equil.out" || ! -s "$window_dir/equil.rst7" ||
-                  ! -s "$window_dir/equil.info" || ! -s "$window_dir/equil.nc" ]]; then
-                die "$window_id window equilibration output is incomplete: $window_dir/equil"
-            fi
-            touch "$window_dir/.equil.complete"
-        fi
-    fi
-
-    # Production
-    if [[ "$production_state" != complete ]] || (( dry_run )); then
-        if ! (
-            cd "$window_dir"
-            run_command \
-                "$engine" \
-                -O \
-                -i ../inputs/production.in \
-                -o production.out \
-                -p system.parm7 \
-                -c equil.rst7 \
-                -r production.rst7 \
-                -x production.nc \
-                -inf production.info
-        ); then
-            die "$window_id window production failed: $window_dir/production.out"
-        fi
-
-        if (( ! dry_run )); then
-            if [[ ! -s "$window_dir/production.out" || ! -s "$window_dir/production.rst7" ||
-                  ! -s "$window_dir/production.info" || ! -s "$window_dir/production.nc" ]]; then
-                die "$window_id window production output is incomplete: $window_dir/production"
-            fi
-            touch "$window_dir/.production.complete"
-        fi
-    fi
+    run_stage "$window_dir" min minimization min.in seed.rst7
+    run_stage "$window_dir" heat heating heat.in min.rst7 \
+        --trajectory --reference min.rst7
+    run_stage "$window_dir" equil equilibration equil.in heat.rst7 \
+        --trajectory
+    run_stage "$window_dir" production production production.in equil.rst7 \
+        --trajectory --production
 
     processed_window_count=$((processed_window_count + 1))
 }
-
-# User settings and input/output paths
-engine=${AMBER_ENGINE:-pmemd.cuda}
-
-work_dir=${WORK_DIR:-work}
-window_root="$work_dir"
-
-processed_window_count=0
-skipped_window_count=0
 
 # Input and dependency checks
 if (( ! dry_run )); then

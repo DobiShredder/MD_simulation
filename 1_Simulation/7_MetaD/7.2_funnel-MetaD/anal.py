@@ -44,6 +44,11 @@ def main() -> int:
 
     if len(segment_dirs) != 1:
         raise ValueError(f"Expected exactly one production segment: {len(segment_dirs)}")
+    for segment_dir in segment_dirs:
+        if not (segment_dir / ".complete").is_file():
+            raise ValueError(
+                f"Production completion marker not found: {segment_dir / '.complete'}"
+            )
 
     required_fields = {
         "time",

@@ -46,9 +46,12 @@ field에 맞춰 정해야 하는 schedule입니다.
 | `prepare.py` | 1UAO의 첫 NMR model을 simulation PDB로 정리합니다. |
 | `convert_topology.py` | AMBER topology를 GROMACS base topology로 변환하고 protein molecule 이름을 정규화합니다. |
 | `generate_rest3.py` | 선택한 state file의 λ·κ와 외부 parser로 REST3 topology를 만듭니다. |
+| `rest3_parser_adapter.py` | Parser 0.2.2 loading, 출력 정리와 solvent parameter 정밀도 보정을 담당합니다. `generate_rest3.py`가 자동으로 사용합니다. |
 | `scale_cmap.py` | 외부 parser가 생략하는 ff19SB의 residue별 CMAP section을 복원하고 grid를 `lambda_pp`로 scaling합니다. |
 | `verify_rest3.py` | Base identity와 water–water/ion–water Lennard-Jones 보존을 검사합니다. |
+| `validate_states.py` | State file의 각 row, λ 관계와 기준 κ를 검사합니다. |
 | `build.sh` | Conversion, topology generation, TPR build와 검사를 순서대로 호출합니다. |
+| `completion_helpers.sh` | `run.sh`가 자동으로 불러와 replica별 completion marker를 관리합니다. |
 | `run.sh` | 300 K pre-production과 2 ps 간격 HREX를 실행합니다. |
 | `anal.py` | Exchange, occupancy와 state별 Rg/terminal distance를 계산합니다. |
 
@@ -85,7 +88,7 @@ replica 0 topology가 base topology와 byte 단위로 같은지 확인하고
 water–water 및 ion–water Lennard-Jones parameter가 보존되는지 검사합니다.
 
 Parser 0.2.2는 solvent override의 σ와 ε를 소수점 4자리로 출력합니다.
-`generate_rest3.py`는 같은 mixing rule을 double precision으로 계산해 16자리로
+`rest3_parser_adapter.py`는 같은 mixing rule을 double precision으로 계산해 16자리로
 기록합니다. 따라서 κ가 적용되는 protein–water interaction은 바뀌지만 explicit
 override가 필요한 water–water와 ion–water parameter는 base topology 값을
 유지합니다.
@@ -107,8 +110,9 @@ CMAP lookup에 사용하지 않습니다. `verify_rest3.py`는 이 값도 base t
 
 Equilibration은 100 ps, production은 1 ns segment 하나이며 교환은 2 ps마다
 시도합니다. `--cpus`와 `--gpus`로 할당받은 총 resource를 입력합니다. GPU 수는
-replica 수와 같아야 하며, preproduction은 GPU별로 병렬 실행하되 각 process를
-`-ntmpi 1`로 제한합니다. 나머지 실행 환경 변수와 resume 규칙은 REST2 예제와
+1부터 replica 수까지 지정할 수 있습니다. Preproduction은 GPU 수만큼 batch로
+실행하고 각 process를 `-ntmpi 1`로 제한합니다. HREX에서는 GROMACS가 여러
+replica rank를 노출된 GPU에 자동 배치합니다. 나머지 실행 환경 변수와 resume 규칙은 REST2 예제와
 같습니다.
 
 새 system에서는 REST2와 같이
@@ -149,7 +153,7 @@ replica<TAB>effective_temperature_K<TAB>lambda_pp<TAB>lambda_pw<TAB>kappa<TAB>se
 | `build.sh INPUT.pdb [states.tsv]` | 첫 argument의 PDB로 topology를 만들고 effective-temperature·λ·κ file을 선택합니다. State file을 생략하면 Chignolin용 `inputs/states.tsv`를 사용합니다. |
 | `kappa_atom_names=['OW']` | TIP3P oxygen type만 κ scaling 대상으로 지정합니다. Water molecule 전체를 hot molecule로 지정하는 option이 아닙니다. |
 | `-replex 1000` | 2 fs timestep에서 2 ps마다 Hamiltonian 교환을 시도합니다. |
-| `--cpus`, `--gpus` | 할당받은 총 resource 수입니다. GPU 수는 replica 수와 같고 CPU 수는 replica 수로 나누어져야 합니다. |
+| `--cpus`, `--gpus` | 할당받은 총 CPU thread와 GPU 수입니다. CPU 수는 replica 수로 나누어져야 하며 GPU 수는 1–replica 수 범위입니다. |
 | `PREPRODUCTION_GROMACS_OPTIONS` | Replica별 minimization/equilibration에만 추가할 option입니다. |
 | `HREX_GROMACS_OPTIONS` | External-MPI HREX production에만 추가하며 `-ntmpi`를 넣지 않습니다. |
 | `REPEX_TOPOLOGY_PARSER_SOURCE` | 자동으로 받은 source 대신 별도 parser checkout을 사용할 때만 지정합니다. |
@@ -219,14 +223,16 @@ summarizes exchange and structure. `kappa_atom_names=['OW']` targets the TIP3P
 oxygen type. The physical thermostat remains at 300 K.
 
 Parser 0.2.2 writes solvent nonbonded overrides with only four decimal places.
-`generate_rest3.py` replaces that writer with the same mixing rule evaluated in
+`rest3_parser_adapter.py` replaces that writer with the same mixing rule evaluated in
 double precision and records 16 digits. This keeps explicit water–water and
 ion–water overrides equal to the base topology while retaining the intended
 kappa-scaled protein–water interaction.
 
-Run with `--cpus TOTAL --gpus 8`; the GPU count must match the eight replicas,
-and the CPU count must divide evenly among them. Preproduction runs one replica
-per GPU with `-ntmpi 1`. `PREPRODUCTION_GROMACS_OPTIONS` and
+Run with `--cpus TOTAL --gpus GPU_COUNT`; the CPU count must divide evenly among
+the replicas, while `GPU_COUNT` may range from one to the replica count.
+Preproduction runs batches of at most `GPU_COUNT` processes with `-ntmpi 1`.
+GROMACS automatically maps HREX ranks across the visible GPUs, so several
+replicas may share one GPU. `PREPRODUCTION_GROMACS_OPTIONS` and
 `HREX_GROMACS_OPTIONS` add options only to their named phases.
 
 This tutorial recommends an external-MPI build of `GROMACS 2024.3` patched

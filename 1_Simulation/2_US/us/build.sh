@@ -18,12 +18,27 @@ die() {
     exit 1
 }
 
+refuse_existing_results() {
+    local directory=$1
+    local existing_result=""
+    if [[ -d "$directory" ]]; then
+        existing_result=$(find "$directory" -type f \
+            \( -name '.*.complete' -o -name 'min.out' -o -name 'heat.out' \
+               -o -name 'equil.out' -o -name 'production.out' \) -print -quit)
+    fi
+    if [[ -n "$existing_result" ]]; then
+        die "Existing simulation results were found: $existing_result. Use a new WORK_DIR or remove the previous calculation results before rebuilding windows."
+    fi
+}
+
 # User settings and input/output paths
 window_file=${WINDOW_FILE:-"windows.tsv"}
 seed_dir=${SEED_DIR:-"../rmd/work/seeds"}
 seed_metadata="$seed_dir/seeds.tsv"
 topology=${TOPOLOGY:-"../work/system.parm7"}
 work_dir=${WORK_DIR:-"work"}
+
+refuse_existing_results "$work_dir"
 window_root="$work_dir"
 
 # Read window settings

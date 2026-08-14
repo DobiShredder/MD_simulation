@@ -8,6 +8,12 @@ force field, 온도·압력과 production length를 대상 system에 맞게 수�
 Protein system의 기본 조합은 ff19SB + TIP3P입니다. KcsA membrane
 tutorial만 Lipid21과 OPC를 사용합니다.
 
+대부분의 topology 또는 window `build.sh`는 같은 work directory에서 기존
+계산 output을 찾으면 중단합니다. 다른 `WORK_DIR`을 사용하거나 보존 여부를
+판단한 뒤 이전 결과를 직접 정리합니다. Runner는 engine이 오류 없이 끝나고
+필수 output이 생성된 stage에만 completion marker를 기록합니다. Analysis는
+marker가 없는 production segment를 완료된 계산으로 사용하지 않습니다.
+
 | 번호 | 방법 | 포함된 템플릿 |
 | --- | --- | --- |
 | 1 | [MD](1_MD/README.md) | Chignolin, T4 lysozyme–JZ4, KcsA AMBER MD |
@@ -28,6 +34,12 @@ Simulation inputs and launch templates are kept here; post-processing lives in
 thermodynamic settings, and production length to the target system.
 Protein templates default to ff19SB with TIP3P. Only the KcsA membrane tutorial
 uses Lipid21 and OPC.
+
+Most topology or window `build.sh` scripts stop when the work directory contains
+simulation results. Select another `WORK_DIR`, or review and remove the old
+results explicitly. Runners write completion markers only after the engine
+exits successfully and required outputs exist; analysis does not treat an
+unmarked production segment as complete.
 
 The conventional MD examples cover Chignolin, T4 lysozyme–JZ4, and KcsA. The
 remaining families provide ratchet MD/umbrella sampling, replica exchange,

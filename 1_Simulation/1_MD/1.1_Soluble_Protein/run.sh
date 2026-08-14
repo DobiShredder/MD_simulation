@@ -27,6 +27,7 @@ run_stage() {
     local required=()
     local option_index
 
+    # AMBER output options define which files must exist before the stage is marked complete.
     for ((option_index = 1; option_index <= $#; option_index++)); do
         case "${!option_index}" in
             -o|-r|-x|-inf)

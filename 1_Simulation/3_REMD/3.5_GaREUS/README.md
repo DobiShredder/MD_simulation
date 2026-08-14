@@ -41,6 +41,7 @@ state에 사용합니다. Analysis에서는 먼저 MBAR로 umbrella bias를 제�
 | `prepare.py` | 1UAO의 첫 NMR model을 simulation PDB로 정리합니다. |
 | `make_restraints.py` | Terminal Cα index와 20개 window restraint를 생성합니다. |
 | `build.sh` | 공통 topology, state table, restraint와 replica별 seed를 배치합니다. |
+| `completion_helpers.sh` | `run.sh`가 자동으로 불러와 window별 output와 marker를 검사합니다. |
 | `run.sh` | Window별 pre-production, GaMD parameter preparation과 GaREUS exchange를 실행합니다. |
 | `anal.py` | Exchange/occupancy, restraint sampling과 GaMD boost 범위를 계산합니다. |
 
@@ -141,6 +142,8 @@ Run the build as `./build.sh structure/chignolin.pdb`. The defaults are
 unique positive seed and separate production GaMD logs. The run uses `pmemd.cuda` for
 individual stages and `pmemd.cuda.MPI -rem 3` for replica exchange, with
 environment overrides for engines and MPI settings.
+`completion_helpers.sh` keeps window-wide output and marker checks separate
+from these simulation commands.
 
 `igamd=3`, `iE=1` select lower-bound dual boost; `sigma0P` and `sigma0D` cap
 the target boost standard deviations. The `ntcmd*` and `nteb*` controls define

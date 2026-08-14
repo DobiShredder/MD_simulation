@@ -99,10 +99,35 @@ run_md_stage() {
     local stage=$1
     local input_file=$2
     local input_restart=$3
-    local with_trajectory=$4
-    local with_gamd_log=$5
-    local with_reference=$6
-    local gamd_state_input=${7:-}
+    shift 3
+    local with_trajectory=no
+    local with_gamd_log=no
+    local reference_restart=""
+    local gamd_state_input=""
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --trajectory)
+                with_trajectory=yes
+                shift
+                ;;
+            --gamd-log)
+                with_gamd_log=yes
+                shift
+                ;;
+            --reference)
+                reference_restart=$2
+                shift 2
+                ;;
+            --gamd-state)
+                gamd_state_input=$2
+                shift 2
+                ;;
+            *)
+                die "Unsupported run_md_stage option: $1"
+                ;;
+        esac
+    done
     local prefix=$stage
     local completion_marker=".$stage.complete"
     local required=("$prefix.out" "$prefix.rst7" "$prefix.info")
@@ -116,8 +141,8 @@ run_md_stage() {
         -inf "$prefix.info"
     )
 
-    if [[ "$with_reference" == yes ]]; then
-        command+=(-ref "$input_restart")
+    if [[ -n "$reference_restart" ]]; then
+        command+=(-ref "$reference_restart")
     fi
     if [[ "$with_trajectory" == yes ]]; then
         required+=("$prefix.nc")
@@ -176,10 +201,13 @@ else
     cd "$work_dir"
 fi
 
-run_md_stage minimize inputs/minimize.in system.rst7 no no no
-run_md_stage heat inputs/heat.in minimize.rst7 yes no yes
-run_md_stage equilibrate inputs/equilibrate.in heat.rst7 yes no no
-run_md_stage gamd_prepare inputs/gamd_prepare.in equilibrate.rst7 yes yes no
+run_md_stage minimize inputs/minimize.in system.rst7
+run_md_stage heat inputs/heat.in minimize.rst7 \
+    --trajectory --reference minimize.rst7
+run_md_stage equilibrate inputs/equilibrate.in heat.rst7 \
+    --trajectory
+run_md_stage gamd_prepare inputs/gamd_prepare.in equilibrate.rst7 \
+    --trajectory --gamd-log
 
 for segment_number in $(seq 1 "$production_segments"); do
     segment=$(printf 'production.%03d' "$segment_number")
@@ -190,7 +218,8 @@ for segment_number in $(seq 1 "$production_segments"); do
         input_restart=$(printf 'production.%03d.rst7' "$((segment_number - 1))")
         gamd_state_input=$(printf 'production.%03d.gamd.rst' "$((segment_number - 1))")
     fi
-    run_md_stage "$segment" inputs/production.in "$input_restart" yes yes no "$gamd_state_input"
+    run_md_stage "$segment" inputs/production.in "$input_restart" \
+        --trajectory --gamd-log --gamd-state "$gamd_state_input"
 done
 
 if (( ! dry_run )); then

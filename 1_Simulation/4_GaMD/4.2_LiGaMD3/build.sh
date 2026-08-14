@@ -16,6 +16,20 @@ die() {
     exit 1
 }
 
+refuse_existing_results() {
+    local directory=$1
+    local existing_result=""
+    if [[ -d "$directory" ]]; then
+        existing_result=$(find "$directory" -type f \
+            \( -name '.*.complete' -o -name 'minimize.out' -o -name 'heat.out' \
+               -o -name 'equilibrate.out' -o -name 'gamd_prepare.out' \
+               -o -name 'production*.out' \) -print -quit)
+    fi
+    if [[ -n "$existing_result" ]]; then
+        die "Existing simulation results were found: $existing_result. Use a new WORK_DIR or remove the previous calculation results before rebuilding."
+    fi
+}
+
 complex_pdb=$1
 ligand_sdf=$2
 metadata=$(dirname "$complex_pdb")/system_metadata.tsv
@@ -26,6 +40,8 @@ tleap=${TLEAP:-tleap}
 python=${PYTHON:-python3}
 ligand_charge=${LIGAND_CHARGE:-1}
 work_dir=${WORK_DIR:-"work"}
+
+refuse_existing_results "$work_dir"
 
 if [[ ! "$ligand_charge" =~ ^-?[0-9]+$ ]]; then
     die "LIGAND_CHARGE must be an integer: $ligand_charge"

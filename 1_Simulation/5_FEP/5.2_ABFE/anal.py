@@ -59,6 +59,14 @@ def extract_window(
         raise SystemExit(f"production output not found: {window_directory}")
 
     for mdout in production_outputs:
+        completion_marker = mdout.with_name(f".{mdout.stem}.complete")
+        if not completion_marker.is_file():
+            raise SystemExit(
+                "production completion marker not found: "
+                f"{completion_marker}. Run run.sh to completion before analysis."
+            )
+
+    for mdout in production_outputs:
         segment = mdout.stem.rsplit(".", 1)[1]
         segment_directory = data_directory / f"segment_{state['window']}_{segment}"
         segment_directory.mkdir(parents=True)

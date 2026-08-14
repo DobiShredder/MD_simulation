@@ -22,6 +22,7 @@ STAGES = [
     ("solvent_charge", "solvent", UNIFORM),
     ("solvent_vdw", "solvent", VDW),
 ]
+RestraintRecord = tuple[str, list[object], float, float]
 
 
 def window_directory(
@@ -85,7 +86,7 @@ def atom_by_name(residue: object, name: str) -> object:
 def restraint_records(
     topology: object,
     protein_anchor_residue: int,
-) -> list[tuple[str, list[object], float, float]]:
+) -> list[RestraintRecord]:
     protein = topology.residues[protein_anchor_residue - 1]
     if protein.name != "GLN":
         raise SystemExit(
@@ -108,7 +109,11 @@ def restraint_records(
     ]
 
 
-def write_restraints(path: Path, records: list[tuple[str, list[object], float, float]], scale: float) -> None:
+def write_restraints(
+    path: Path,
+    records: list[RestraintRecord],
+    scale: float,
+) -> None:
     lines: list[str] = []
     for kind, atoms, reference, force in records:
         indices = ",".join(str(atom.idx + 1) for atom in atoms)
@@ -180,70 +185,112 @@ def alchemical_options(
     return common
 
 
+def prepare_alchemical_topologies(work_dir: Path) -> None:
+    """Create the neutral-ligand topologies used by the VDW stages."""
+    for environment in ("complex", "solvent"):
+        write_uncharged_topology(
+            work_dir / "build" / f"{environment}.parm7",
+            work_dir / "build" / f"{environment}_uncharged.parm7",
+        )
+
+
+def write_restraint_metadata(work_dir: Path, records: list[RestraintRecord]) -> None:
+    """Record the six Boresch restraints next to the generated windows."""
+    lines = ["restraint\treference\tforce_constant\tatom_indices"]
+    for kind, atoms, reference, force in records:
+        atom_indices = ",".join(str(atom.idx + 1) for atom in atoms)
+        lines.append(f"{kind}\t{reference:.8f}\t{force:.8f}\t{atom_indices}")
+    (work_dir / "restraints.tsv").write_text(
+        "\n".join(lines) + "\n",
+        encoding="utf-8",
+    )
+
+
+def write_window(
+    work_dir: Path,
+    input_dir: Path,
+    stage: str,
+    environment: str,
+    schedule: list[float],
+    window_index: int,
+    lambda_value: float,
+    state_index: int,
+    records: list[RestraintRecord],
+) -> str:
+    """Generate links, restraints, and AMBER inputs for one ABFE window."""
+    window = f"{window_index:03d}"
+    directory = window_directory(work_dir, stage, environment, window)
+    directory.mkdir(parents=True, exist_ok=True)
+
+    topology_name = (
+        f"{environment}_uncharged.parm7"
+        if stage.endswith("vdw")
+        else f"{environment}.parm7"
+    )
+    relative_link(work_dir / "build" / topology_name, directory / "system.parm7")
+    relative_link(
+        work_dir / "build" / f"{environment}.rst7",
+        directory / "system.rst7",
+    )
+
+    restraint_scale = 1.0 if environment == "complex" else 0.0
+    write_restraints(directory / "disang.rest", records, restraint_scale)
+
+    replacements = {
+        "@STAGE@": stage,
+        "@LAMBDA@": f"{lambda_value:.6f}",
+        "@RANDOM_SEED@": str(61000 + state_index),
+        "@RESTRAINT_OPTIONS@": "nmropt=1," if environment == "complex" else "",
+        "@WT_END@": "&wt type='END', /" if environment == "complex" else "",
+        "@DISANG@": "DISANG=disang.rest" if environment == "complex" else "",
+    }
+    for name in ("heat", "equilibrate", "production"):
+        replacements["@ALCHEMICAL_OPTIONS@"] = alchemical_options(
+            stage,
+            lambda_value,
+            schedule,
+            collect_mbar=name == "production",
+        )
+        render(
+            input_dir / f"{name}.in.template",
+            directory / f"{name}.in",
+            replacements,
+        )
+    render(input_dir / "minimize.in", directory / "minimize.in", replacements)
+
+    return (
+        f"{stage}\t{environment}\t{window}\t{lambda_value:.6f}\t"
+        f"{61000 + state_index}\t{directory}"
+    )
+
+
 def main() -> None:
     args = parse_arguments()
     topology = parmed.load_file(
         str(args.work_dir / "build" / "complex.parm7"),
         xyz=str(args.work_dir / "build" / "complex.rst7"),
     )
-    for environment in ("complex", "solvent"):
-        write_uncharged_topology(
-            args.work_dir / "build" / f"{environment}.parm7",
-            args.work_dir / "build" / f"{environment}_uncharged.parm7",
-        )
+    prepare_alchemical_topologies(args.work_dir)
     records = restraint_records(topology, args.protein_anchor_residue)
-    metadata = ["restraint\treference\tforce_constant\tatom_indices"]
-    for kind, atoms, reference, force in records:
-        atom_indices = ",".join(str(atom.idx + 1) for atom in atoms)
-        metadata.append(
-            f"{kind}\t{reference:.8f}\t{force:.8f}\t{atom_indices}"
-        )
-    (args.work_dir / "restraints.tsv").write_text("\n".join(metadata) + "\n", encoding="utf-8")
+    write_restraint_metadata(args.work_dir, records)
 
     states = ["stage\tenvironment\twindow\tlambda\tseed\tdirectory"]
     state_index = 0
     for stage, environment, schedule in STAGES:
         for window_index, lambda_value in enumerate(schedule):
             state_index += 1
-            window = f"{window_index:03d}"
-            directory = window_directory(args.work_dir, stage, environment, window)
-            directory.mkdir(parents=True, exist_ok=True)
-            topology_name = (
-                f"{environment}_uncharged.parm7"
-                if stage.endswith("vdw")
-                else f"{environment}.parm7"
-            )
-            relative_link(args.work_dir / "build" / topology_name, directory / "system.parm7")
-            relative_link(
-                args.work_dir / "build" / f"{environment}.rst7",
-                directory / "system.rst7",
-            )
-            restraint_scale = 1.0 if environment == "complex" else 0.0
-            write_restraints(directory / "disang.rest", records, restraint_scale)
-            replacements = {
-                "@STAGE@": stage,
-                "@LAMBDA@": f"{lambda_value:.6f}",
-                "@RANDOM_SEED@": str(61000 + state_index),
-                "@RESTRAINT_OPTIONS@": "nmropt=1," if environment == "complex" else "",
-                "@WT_END@": "&wt type='END', /" if environment == "complex" else "",
-                "@DISANG@": "DISANG=disang.rest" if environment == "complex" else "",
-            }
-            for name in ("heat", "equilibrate", "production"):
-                replacements["@ALCHEMICAL_OPTIONS@"] = alchemical_options(
-                    stage,
-                    lambda_value,
-                    schedule,
-                    collect_mbar=name == "production",
-                )
-                render(args.input_dir / f"{name}.in.template", directory / f"{name}.in", replacements)
-            render(
-                args.input_dir / "minimize.in",
-                directory / "minimize.in",
-                replacements,
-            )
             states.append(
-                f"{stage}\t{environment}\t{window}\t{lambda_value:.6f}\t"
-                f"{61000 + state_index}\t{directory}"
+                write_window(
+                    args.work_dir,
+                    args.input_dir,
+                    stage,
+                    environment,
+                    schedule,
+                    window_index,
+                    lambda_value,
+                    state_index,
+                    records,
+                )
             )
     (args.work_dir / "states.tsv").write_text("\n".join(states) + "\n", encoding="utf-8")
 

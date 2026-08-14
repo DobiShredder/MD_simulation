@@ -16,6 +16,20 @@ die() {
     exit 1
 }
 
+refuse_existing_results() {
+    local directory=$1
+    local existing_result=""
+    if [[ -d "$directory" ]]; then
+        existing_result=$(find "$directory" -type f \
+            \( -name '.*.complete' -o -name 'min*.out' -o -name 'heat*.out' \
+               -o -name 'equil*.out' -o -name 'production*.out' \) \
+            -print -quit)
+    fi
+    if [[ -n "$existing_result" ]]; then
+        die "Existing simulation results were found: $existing_result. Use a new WORK_DIR or remove the previous calculation results before rebuilding."
+    fi
+}
+
 complex_pdb=$1
 ligand_sdf=$2
 structure_dir=$(dirname "$complex_pdb")
@@ -25,6 +39,8 @@ antechamber=${ANTECHAMBER:-antechamber}
 parmchk2=${PARMCHK2:-parmchk2}
 tleap=${TLEAP:-tleap}
 python=${PYTHON:-python3}
+
+refuse_existing_results "$work_dir"
 
 if (( dry_run )); then
     echo "Build: 3HTB ff19SB/GAFF2/AM1-BCC/TIP3P ABFE"

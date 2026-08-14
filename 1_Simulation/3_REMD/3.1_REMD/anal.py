@@ -25,6 +25,17 @@ def read_states() -> list[dict[str, str]]:
         return list(csv.DictReader(handle, delimiter="\t"))
 
 
+def require_completed_segments() -> None:
+    logs = sorted(WORK.glob("exchange.[0-9][0-9][0-9].log"))
+    if not logs:
+        raise SystemExit(f"exchange log not found: {WORK}")
+    for log in logs:
+        segment = log.stem.rsplit(".", 1)[1]
+        marker = WORK / f".production.{segment}.complete"
+        if not marker.is_file():
+            raise SystemExit(f"production completion marker not found: {marker}")
+
+
 def temperature_state(value: float, temperatures: list[float]) -> int:
     state = min(range(len(temperatures)), key=lambda index: abs(temperatures[index] - value))
 
@@ -233,6 +244,7 @@ def write_visit_outputs(
 
 
 def main() -> None:
+    require_completed_segments()
     states = read_states()
     temperatures = [float(state["temperature_K"]) for state in states]
     records, direct_visits = parse_logs(temperatures)

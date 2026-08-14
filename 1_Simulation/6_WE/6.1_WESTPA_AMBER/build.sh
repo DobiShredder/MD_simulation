@@ -16,11 +16,25 @@ die() {
     exit 1
 }
 
+refuse_existing_results() {
+    local directory=$1
+    local existing_result=""
+    if [[ -d "$directory" ]]; then
+        existing_result=$(find "$directory" -type f \
+            \( -name 'west.h5' -o -name 'segment.out' \) -print -quit)
+    fi
+    if [[ -n "$existing_result" ]]; then
+        die "Existing WESTPA results were found: $existing_result. Use a new WORK_DIR or run init.sh --reset before rebuilding."
+    fi
+}
+
 source ./env.sh
 input_pdb=$1
 tleap=${TLEAP:-tleap}
 build_dir="$WORK_DIR/common_files"
 basis_dir="$WORK_DIR/bstates"
+
+refuse_existing_results "$WORK_DIR"
 
 if (( dry_run )); then
     echo "Build: Chignolin ff19SB/TIP3P basis state"
