@@ -36,6 +36,10 @@ python3 anal.py
 갱신합니다. 자동 temperature grid를 사용하므로 state 수는 생성된 `DELTAFS`에서
 확인합니다.
 
+Production 전 100 ps NPT equilibration은 `skinnb=5.0 Å`로 GPU pair-list 여유를
+늘립니다. 같은 solvent box를 사용하는 WT-MetaD에서 확인한 설정이며 실제
+cutoff는 `cut=10.0 Å`로 유지됩니다.
+
 Production은 나누지 않고 `work/`에서 1 ns를 한 번에 실행하며 `opes.state`와
 `DELTAFS`를 같은 directory에 저장합니다. `anal.py`가 출력하는 `ecv.ene`는
 expanded CV이며 instantaneous physical temperature가 아닙니다.
@@ -64,7 +68,9 @@ Keyword는 PLUMED 2.10
 `build.sh structure/alanine-dipeptide.pdb` builds the solvated system from the
 supplied PDB. This example combines OPES_EXPANDED with `ECV_MULTITHERMAL` to sample a
 300–500 K potential-energy target using one walker. The thermostat remains at
-300 K, while production uses a fixed box (`ntb=1`, `ntp=0`). The unsegmented
+300 K. The 100 ps NPT equilibration uses `skinnb=5.0 Å` to enlarge the GPU
+pair-list margin while retaining `cut=10.0 Å`; production then uses a fixed box
+(`ntb=1`, `ntp=0`). The unsegmented
 1 ns production writes its restart, trajectory, `COLVAR`, `opes.state`, and
 `DELTAFS` directly under `work/`. `ecv.ene` is an expanded CV, not an
 instantaneous physical temperature; temperature-resolved observables require

@@ -35,6 +35,10 @@ free-energy barrier를 제한하며 simulation 온도와 system에 맞춰 정해
 `SIGMA=0.15` radian은 두 torsion의 initial kernel width입니다. `opes.rct`는
 reweighting에 쓰는 offset이고 bias 자체가 아닙니다.
 
+100 ps NPT equilibration은 `skinnb=5.0 Å`로 GPU pair-list 여유를 늘립니다.
+같은 solvent box를 사용하는 WT-MetaD에서 확인한 설정이며 실제 cutoff는
+`cut=10.0 Å`로 유지됩니다.
+
 Production은 나누지 않고 `work/`에서 1 ns를 한 번에 실행합니다.
 `STATE_WFILE=opes.state`는 마지막 adaptive state를 저장하고 `KERNELS`는
 읽을 수 있는 kernel history를 기록합니다. Restart, trajectory, `COLVAR`,
@@ -63,6 +67,8 @@ supplied PDB. OPES_METAD adaptively estimates the φ/ψ distribution and builds 
 by `BARRIER=50` kJ/mol. `PACE=500` updates the bias every 1 ps, and the initial
 kernel widths are 0.15 rad. The unsegmented 1 ns production writes its restart,
 trajectory, `COLVAR`, `KERNELS`, and final `opes.state` directly under `work/`.
+The 100 ps NPT equilibration uses `skinnb=5.0 Å` to enlarge the GPU pair-list
+margin while retaining the physical `cut=10.0 Å` cutoff.
 `anal.py` reports CV, bias, effective-sample-size, and kernel-count diagnostics.
 PLUMED 2.10 must be configured with `--enable-modules=opes`; verify the action
 with `plumed manual --action OPES_METAD`. The parse-only check uses separate

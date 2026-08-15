@@ -10,3 +10,6 @@
   ntpr=5000, ntwx=5000, ntwr=5000,
   ioutfm=1,
 /
+&ewald
+  skinnb=5.0,
+/
