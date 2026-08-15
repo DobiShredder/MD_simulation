@@ -41,6 +41,13 @@ PLUMED 기본 energy unit은 kJ/mol이며 `SIGMA=0.2`의 단위는 radian입니�
 `BIASFACTOR=10`은 well-tempered tempering 정도를 정합니다. `GRID_MIN/MAX`는
 periodic torsion의 -π–π 범위를 덮고 `CALC_RCT`가 reweighting용 offset을 계산합니다.
 
+LEaP가 만든 초기 solvent box는 NPT equilibration에서 수축할 수 있습니다.
+`equilibrate.in.template`의 `skinnb=5.0 Å`는 실제 `cut=10 Å`를 바꾸지 않고
+GPU nonbonded pair-list의 여유 폭을 늘립니다. 따라서 100 ps equilibration을
+`pmemd.cuda`에서 한 번에 실행할 때 box 변화로 인한 grid-cell 중단 가능성을
+낮춥니다. 더 큰 system에 이 값을 그대로 사용하지 말고
+`2 × (cut + skinnb)`가 shortest box dimension보다 작은지 확인합니다.
+
 첫 segment는 새 `HILLS`를 만듭니다. 다음 segment는 이전 누적 `HILLS`를 복사하고
 PLUMED의 `RESTART`를 사용합니다. `md.rst7`, trajectory, log, `COLVAR`와
 `HILLS` 중 일부만 있으면 해당 segment에서 중단합니다. `HILLS`는 bias를
@@ -61,6 +68,13 @@ This example biases the φ and ψ torsions of alanine dipeptide with
 well-tempered metadynamics. `PACE=500` deposits a Gaussian every 1 ps,
 `HEIGHT=1.2` is in kJ/mol, `SIGMA=0.2` is in radians, and `BIASFACTOR=10`
 controls tempering. The -π to π grid supports `CALC_RCT`.
+
+The LEaP solvent box can contract during NPT equilibration. The
+`skinnb=5.0 Å` setting in `equilibrate.in.template` increases the GPU
+nonbonded pair-list margin without changing the physical `cut=10 Å` cutoff.
+This reduces grid-cell failures during a single 100 ps `pmemd.cuda` run.
+For another system, confirm that `2 × (cut + skinnb)` remains smaller than
+the shortest box dimension before reusing this value.
 
 `build.sh structure/alanine-dipeptide.pdb` creates and validates the
 ff19SB/TIP3P system from the supplied PDB. `run.sh` performs
