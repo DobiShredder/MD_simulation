@@ -10,6 +10,7 @@
 AMBER가 MD를 계산하고 PLUMED가 collective variable(CV)과 bias를 처리합니다.
 7.1, 7.3과 7.4는 ff19SB/TIP3P capped alanine dipeptide를 사용합니다.
 7.2는 ff19SB/GAFF2/TIP3P trypsin–benzamidine를 사용합니다.
+네 system 모두 solute와 box edge 사이에 20 Å TIP3P buffer를 둡니다.
 
 | Directory | Method | Bias 대상 | 상태 파일 |
 |---|---|---|---|
@@ -27,12 +28,12 @@ CV 대신 300–500 K multithermal target distribution을 구성합니다. 서�
 각 runnable directory에서 `build.sh`, `run.sh --dry-run`, `run.sh`,
 `python3 anal.py` 순서로 실행합니다. `build.sh`의 첫 argument는 준비한
 PDB입니다. Funnel MetaD는 ligand SDF도 두 번째 argument로 받습니다.
-Production은 1 ns segment 하나입니다.
-AMBER restart와 PLUMED bias state가 모두 있어야 다음 segment를 시작합니다.
+Production은 나누지 않고 1 ns를 한 번에 실행하며 output과 PLUMED state를
+각 tutorial의 `work/`에 직접 저장합니다.
 
 Minimization, heating과 equilibration의 partial output은 해당 stage를 다시
 시작하기 전에 삭제합니다. Production은 AMBER restart와 `HILLS`, `opes.state`
-같은 bias state를 함께 보존하고 partial segment에서 중단합니다. Completion
+같은 bias state를 함께 보존하고 partial output에서 중단합니다. Completion
 marker는 engine 정상 종료와 method별 필수 output을 모두 확인한 뒤 기록합니다.
 
 PLUMED가 연결된 Amber의 `pmemd.cuda`가 기본 engine입니다. AmberTools만 설치한
@@ -44,19 +45,20 @@ PLUMED가 연결된 Amber의 `pmemd.cuda`가 기본 engine입니다. AmberTools�
 
 AMBER propagates the MD while PLUMED evaluates the collective variables and
 bias. Three examples use an ff19SB/TIP3P capped alanine dipeptide, while Funnel
-MetaD uses ff19SB/GAFF2/TIP3P trypsin–benzamidine. They cover well-tempered MetaD on φ/ψ, Funnel MetaD for 3PTB
+MetaD uses ff19SB/GAFF2/TIP3P trypsin–benzamidine. All four systems use a 20 Å
+TIP3P buffer between the solute and the box edge. They cover well-tempered MetaD on φ/ψ, Funnel MetaD for 3PTB
 trypsin–benzamidine, OPES_METAD on φ/ψ, and multithermal OPES_EXPANDED over
 300–500 K. Funnel MetaD requires PLUMED's optional `funnel` module.
 
 Run `build.sh`, `run.sh --dry-run`, `run.sh`, and `python3 anal.py` in a
 runnable directory. The first build argument is the prepared PDB; Funnel MetaD
-also accepts the ligand SDF as its second argument. Production consists of one
-1 ns segment. Continuation
-requires both the AMBER restart and the method-specific PLUMED state. The default
+also accepts the ligand SDF as its second argument. Production runs as one
+unsegmented 1 ns calculation and writes its outputs and PLUMED state directly
+under the tutorial `work/` directory. The default
 engine is a PLUMED-enabled `pmemd.cuda`; a PLUMED-enabled `sander` can be selected
 with `AMBER_ENGINE=sander`.
 
 Partial minimization, heating, and equilibration output is removed before that
 stage is restarted. Production preserves the AMBER restart and bias state and
-stops on a partial segment. A completion marker is written only after successful
+stops on partial output. A completion marker is written only after successful
 engine and method-specific output checks.

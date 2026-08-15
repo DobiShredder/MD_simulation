@@ -4,7 +4,7 @@ loadamberparams frcmod.ionsjc_tip3p
 
 system = loadpdb input.pdb
 check system
-solvatebox system TIP3PBOX 12.0 0.75
+solvatebox system TIP3PBOX 20.0 0.75
 addions system Na+ 0
 addions system Cl- 0
 savepdb system system.pdb

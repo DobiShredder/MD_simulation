@@ -17,7 +17,7 @@ refuse_existing_results() {
     if [[ -d "$directory" ]]; then
         existing_result=$(find "$directory" -type f \
             \( -name '.*.complete' -o -name 'minimize.out' -o -name 'heat.out' \
-               -o -name 'equilibrate.out' -o -name 'md.out' \) -print -quit)
+               -o -name 'equilibrate.out' -o -name 'production.out' \) -print -quit)
     fi
     if [[ -n "$existing_result" ]]; then
         die "Existing simulation results were found: $existing_result. Use a new WORK_DIR or remove the previous calculation results before rebuilding."

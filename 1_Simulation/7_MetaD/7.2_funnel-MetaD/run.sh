@@ -21,7 +21,6 @@ work_dir=${WORK_DIR:-work}
 engine=${AMBER_ENGINE:-pmemd.cuda}
 plumed=${PLUMED:-plumed}
 seed_base=${RANDOM_SEED:-72000}
-production_segments=1
 read -r -a amber_options <<< "${AMBER_OPTIONS:-}"
 
 if [[ ! "$seed_base" =~ ^[1-9][0-9]*$ ]]; then
@@ -150,33 +149,17 @@ run_standard_stage() {
     fi
 }
 
-run_production_segment() {
-    local segment_number=$1
-    local segment
-    local segment_dir
-    local input_restart
-    local previous_dir=""
+run_production() {
+    local completion_marker="$work_dir/.production.complete"
     local state
-
-    segment=$(printf '%03d' "$segment_number")
-    segment_dir="$work_dir/production/$segment"
-    local completion_marker="$segment_dir/.complete"
-
-    if [[ "$segment_number" -eq 1 ]]; then
-        input_restart=../../equilibrate.rst7
-    else
-        previous_dir="$work_dir/production/$(printf '%03d' "$((segment_number - 1))")"
-        input_restart="../$(printf '%03d' "$((segment_number - 1))")/md.rst7"
-    fi
-
     local required=(
-        "$segment_dir/md.out"
-        "$segment_dir/md.info"
-        "$segment_dir/md.rst7"
-        "$segment_dir/md.nc"
-        "$segment_dir/COLVAR"
-        "$segment_dir/HILLS"
-        "$segment_dir/FUNNEL_GRID"
+        "$work_dir/production.out"
+        "$work_dir/production.info"
+        "$work_dir/production.rst7"
+        "$work_dir/production.nc"
+        "$work_dir/COLVAR"
+        "$work_dir/HILLS"
+        "$work_dir/FUNNEL_GRID"
     )
 
     if (( ! dry_run )); then
@@ -185,41 +168,29 @@ run_production_segment() {
             return 0
         fi
         if [[ "$state" == partial ]]; then
-            die "production $segment Partial output detected."
+            die "production Partial output detected: $work_dir"
         fi
 
-        mkdir -p "$segment_dir"
         render_amber_input \
             inputs/production.in.template \
-            "$segment_dir/production.in" \
-            "$((seed_base + 100 + segment_number))"
-        cp "$work_dir/funnel-reference.pdb" "$segment_dir/funnel-reference.pdb"
-
-        if [[ "$segment_number" -eq 1 ]]; then
-            cp "$work_dir/plumed.initial.dat" "$segment_dir/plumed.dat"
-        else
-            if [[ ! -s "$previous_dir/HILLS" ]]; then
-                die "previous HILLS is missing: $previous_dir/HILLS"
-            fi
-            cp "$work_dir/plumed.restart.dat" "$segment_dir/plumed.dat"
-            cp "$previous_dir/HILLS" "$segment_dir/HILLS"
-        fi
+            "$work_dir/production.in" \
+            "$((seed_base + 101))"
     fi
 
-    run_command "production $segment" "$segment_dir" \
+    run_command "production" "$work_dir" \
         "$engine" "${amber_options[@]}" -O \
         -i production.in \
-        -o md.out \
-        -p ../../system.parm7 \
-        -c "$input_restart" \
-        -r md.rst7 \
-        -x md.nc \
-        -inf md.info
+        -o production.out \
+        -p system.parm7 \
+        -c equilibrate.rst7 \
+        -r production.rst7 \
+        -x production.nc \
+        -inf production.info
 
     if (( ! dry_run )); then
         for output in "${required[@]}"; do
             if [[ ! -s "$output" ]]; then
-                die "production $segment Output not found: $output"
+                die "production Output not found: $output"
             fi
         done
         touch "$completion_marker"
@@ -237,7 +208,7 @@ if (( ! dry_run )); then
         "$topology" \
         "$initial_restart" \
         "$work_dir/funnel-reference.pdb" \
-        "$work_dir/plumed.initial.dat" \
+        "$work_dir/plumed.dat" \
         "$work_dir/atom_count.txt"; do
         if [[ ! -s "$input" ]]; then
             die "Run build.sh first. $input"
@@ -254,7 +225,7 @@ if (( ! dry_run )); then
     (
         cd "$work_dir"
         "$plumed" driver \
-            --plumed plumed.initial.dat \
+            --plumed plumed.dat \
             --parse-only \
             --natoms "$atom_count"
     )
@@ -265,10 +236,8 @@ run_standard_stage minimize-all inputs/minimize-all.in minimize-solvent.rst7
 run_standard_stage heat inputs/heat.in minimize-all.rst7 --trajectory --reference minimize-all.rst7
 run_standard_stage equilibrate inputs/equilibrate.in heat.rst7 --trajectory --reference heat.rst7
 
-for segment_number in $(seq 1 "$production_segments"); do
-    run_production_segment "$segment_number"
-done
+run_production
 
 if (( ! dry_run )); then
-    echo "1 ns Funnel MetaD production Completed: $work_dir/production"
+    echo "1 ns Funnel MetaD production Completed: $work_dir"
 fi

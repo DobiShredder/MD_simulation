@@ -1,4 +1,4 @@
-1 ns OPES Expanded multithermal production segment
+1 ns OPES Expanded multithermal production
 &cntrl
   imin=0, irest=1, ntx=5,
   nstlim=500000, dt=0.002,

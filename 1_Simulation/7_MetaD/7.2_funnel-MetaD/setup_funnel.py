@@ -186,11 +186,8 @@ def main() -> None:
     for token, value in replacements.items():
         template = template.replace(token, value)
 
-    (args.output_dir / "plumed.initial.dat").write_text(
+    (args.output_dir / "plumed.dat").write_text(
         template.replace("@RESTART@", ""), encoding="utf-8"
-    )
-    (args.output_dir / "plumed.restart.dat").write_text(
-        template.replace("@RESTART@", "RESTART"), encoding="utf-8"
     )
     (args.output_dir / "atom_count.txt").write_text(
         f"{len(topology.atoms)}\n", encoding="ascii"

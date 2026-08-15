@@ -20,7 +20,6 @@ work_dir=${WORK_DIR:-work}
 engine=${AMBER_ENGINE:-pmemd.cuda}
 plumed=${PLUMED:-plumed}
 seed_base=${RANDOM_SEED:-71000}
-production_segments=1
 read -r -a amber_options <<< "${AMBER_OPTIONS:-}"
 
 [[ "$seed_base" =~ ^[1-9][0-9]*$ ]] || die "RANDOM_SEED must be a positive integer."
@@ -143,80 +142,47 @@ run_standard_stage() {
 
 render_plumed_input() {
     local output=$1
-    local continuation=$2
 
-    if [[ "$continuation" == yes ]]; then
-        sed 's/@RESTART@/RESTART/' \
-            inputs/plumed.dat.template \
-            > "$output"
-    else
-        sed 's/@RESTART@//' \
-            inputs/plumed.dat.template \
-            > "$output"
-    fi
+    sed 's/@RESTART@//' inputs/plumed.dat.template > "$output"
 }
 
-run_production_segment() {
-    local number=$1
-    local segment
-    local segment_dir
-    local input_restart
-    local previous_dir=""
-    local continuation=no
+run_production() {
+    local completion_marker="$work_dir/.production.complete"
     local state
-
-    segment=$(printf '%03d' "$number")
-    segment_dir="$work_dir/production/$segment"
-    local completion_marker="$segment_dir/.complete"
-
-    if [[ "$number" -eq 1 ]]; then
-        input_restart=../../equilibrate.rst7
-    else
-        previous_dir="$work_dir/production/$(printf '%03d' "$((number - 1))")"
-        input_restart="../$(printf '%03d' "$((number - 1))")/md.rst7"
-        continuation=yes
-    fi
-
     local required=(
-        "$segment_dir/md.out"
-        "$segment_dir/md.info"
-        "$segment_dir/md.rst7"
-        "$segment_dir/md.nc"
-        "$segment_dir/COLVAR"
-        "$segment_dir/HILLS"
+        "$work_dir/production.out"
+        "$work_dir/production.info"
+        "$work_dir/production.rst7"
+        "$work_dir/production.nc"
+        "$work_dir/COLVAR"
+        "$work_dir/HILLS"
     )
 
     if (( ! dry_run )); then
         state=$(stage_state "$completion_marker" "${required[@]}")
         [[ "$state" != complete ]] || return 0
-        [[ "$state" != partial ]] || die "production $segment Partial output detected."
+        [[ "$state" != partial ]] || die "production Partial output detected: $work_dir"
 
-        mkdir -p "$segment_dir"
         render_amber_input \
             inputs/production.in.template \
-            "$segment_dir/production.in" \
-            "$((seed_base + 100 + number))"
-        render_plumed_input "$segment_dir/plumed.dat" "$continuation"
-
-        if [[ "$continuation" == yes ]]; then
-            [[ -s "$previous_dir/HILLS" ]] || die "previous HILLS is missing: $previous_dir/HILLS"
-            cp "$previous_dir/HILLS" "$segment_dir/HILLS"
-        fi
+            "$work_dir/production.in" \
+            "$((seed_base + 101))"
+        render_plumed_input "$work_dir/plumed.dat"
     fi
 
-    run_command "production $segment" "$segment_dir" \
+    run_command "production" "$work_dir" \
         "$engine" "${amber_options[@]}" -O \
         -i production.in \
-        -o md.out \
-        -p ../../system.parm7 \
-        -c "$input_restart" \
-        -r md.rst7 \
-        -x md.nc \
-        -inf md.info
+        -o production.out \
+        -p system.parm7 \
+        -c equilibrate.rst7 \
+        -r production.rst7 \
+        -x production.nc \
+        -inf production.info
 
     if (( ! dry_run )); then
         for output in "${required[@]}"; do
-            [[ -s "$output" ]] || die "production $segment Output not found: $output"
+            [[ -s "$output" ]] || die "production Output not found: $output"
         done
         touch "$completion_marker"
     fi
@@ -233,7 +199,7 @@ if (( ! dry_run )); then
     cp inputs/minimize.in "$work_dir/inputs/minimize.in"
     render_amber_input inputs/heat.in.template "$work_dir/inputs/heat.in" "$((seed_base + 1))"
     render_amber_input inputs/equilibrate.in.template "$work_dir/inputs/equilibrate.in" "$((seed_base + 2))"
-    render_plumed_input "$work_dir/plumed.parse.dat" no
+    render_plumed_input "$work_dir/plumed.parse.dat"
     atom_count=$(<"$work_dir/atom_count.txt")
     (
         cd "$work_dir"
@@ -248,10 +214,8 @@ run_standard_stage minimize inputs/minimize.in system.rst7
 run_standard_stage heat inputs/heat.in minimize.rst7 --trajectory --reference minimize.rst7
 run_standard_stage equilibrate inputs/equilibrate.in heat.rst7 --trajectory
 
-for segment_number in $(seq 1 "$production_segments"); do
-    run_production_segment "$segment_number"
-done
+run_production
 
 if (( ! dry_run )); then
-    echo "1 ns WT-MetaD production Completed: $work_dir/production"
+    echo "1 ns WT-MetaD production Completed: $work_dir"
 fi

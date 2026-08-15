@@ -36,9 +36,9 @@ python3 anal.py
 갱신합니다. 자동 temperature grid를 사용하므로 state 수는 생성된 `DELTAFS`에서
 확인합니다.
 
-첫 segment가 `opes.state`와 `DELTAFS`를 만듭니다. Continuation은 두 파일을
-복사하고 `STATE_RFILE`과 `RESTART`를 사용합니다. `anal.py`가 출력하는
-`ecv.ene`는 expanded CV이며 instantaneous physical temperature가 아닙니다.
+Production은 나누지 않고 `work/`에서 1 ns를 한 번에 실행하며 `opes.state`와
+`DELTAFS`를 같은 directory에 저장합니다. `anal.py`가 출력하는 `ecv.ene`는
+expanded CV이며 instantaneous physical temperature가 아닙니다.
 Temperature별 observable은 별도 reweighting이 필요합니다.
 
 1 ns는 state 파일과 fixed-volume workflow를 학습하기 위한 길이입니다.
@@ -52,7 +52,8 @@ Keyword는 PLUMED 2.10
 `build.sh structure/alanine-dipeptide.pdb` builds the solvated system from the
 supplied PDB. This example combines OPES_EXPANDED with `ECV_MULTITHERMAL` to sample a
 300–500 K potential-energy target using one walker. The thermostat remains at
-300 K, while production uses a fixed box (`ntb=1`, `ntp=0`). `opes.state` and
-`DELTAFS` are both carried into continuation segments. `ecv.ene` is an expanded
-CV, not an instantaneous physical temperature; temperature-resolved observables
-require separate reweighting. The 1 ns run is a workflow example.
+300 K, while production uses a fixed box (`ntb=1`, `ntp=0`). The unsegmented
+1 ns production writes its restart, trajectory, `COLVAR`, `opes.state`, and
+`DELTAFS` directly under `work/`. `ecv.ene` is an expanded CV, not an
+instantaneous physical temperature; temperature-resolved observables require
+separate reweighting. The 1 ns run is a workflow example.
