@@ -8,8 +8,12 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 
 
-### A comprehensive collection of Molecular Dynamics (MD) simulation tutorials using **AMBER** and **GROMACS**.
-### This repository covers enhanced sampling techniques ranging from conventional MD to free energy calculations.
+#### A comprehensive collection of Molecular Dynamics (MD) simulation tutorials using **AMBER** and **GROMACS**.
+#### This repository covers enhanced sampling techniques ranging from conventional MD to free energy calculations.
+
+  
+  
+  ### 간단한 가이드 영상 : https://www.youtube.com/playlist?list=PLZsYTpu8zwms
 
 
 
