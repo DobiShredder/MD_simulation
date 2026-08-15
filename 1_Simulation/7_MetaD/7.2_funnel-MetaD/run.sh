@@ -29,6 +29,7 @@ fi
 
 topology="$work_dir/system.parm7"
 initial_restart="$work_dir/system.rst7"
+funnel_grid="$work_dir/FUNNEL_GRID"
 
 stage_state() {
     local marker=$1
@@ -57,6 +58,14 @@ render_amber_input() {
     local seed=$3
 
     sed "s/@RANDOM_SEED@/$seed/g" "$template" > "$output"
+}
+
+check_plumed_action() {
+    local action=$1
+
+    if ! "$plumed" manual --action "$action" >/dev/null 2>&1; then
+        die "PLUMED action $action is unavailable. Rebuild PLUMED 2.10 with ./configure --enable-modules=funnel and ensure that the AMBER engine uses that PLUMED kernel."
+    fi
 }
 
 run_command() {
@@ -159,7 +168,6 @@ run_production() {
         "$work_dir/production.nc"
         "$work_dir/COLVAR"
         "$work_dir/HILLS"
-        "$work_dir/FUNNEL_GRID"
     )
 
     if (( ! dry_run )); then
@@ -204,6 +212,9 @@ if (( ! dry_run )); then
         fi
     done
 
+    check_plumed_action FUNNEL_PS
+    check_plumed_action FUNNEL
+
     for input in \
         "$topology" \
         "$initial_restart" \
@@ -229,6 +240,9 @@ if (( ! dry_run )); then
             --parse-only \
             --natoms "$atom_count"
     )
+    if [[ ! -s "$funnel_grid" ]]; then
+        die "PLUMED setup did not create the funnel grid: $funnel_grid"
+    fi
 fi
 
 run_standard_stage minimize-solvent inputs/minimize-solvent.in system.rst7 --reference system.rst7
