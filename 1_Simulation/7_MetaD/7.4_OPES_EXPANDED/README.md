@@ -41,6 +41,18 @@ Production은 나누지 않고 `work/`에서 1 ns를 한 번에 실행하며 `op
 expanded CV이며 instantaneous physical temperature가 아닙니다.
 Temperature별 observable은 별도 reweighting이 필요합니다.
 
+PLUMED 2.10은 `opes` module을 기본으로 build하지 않습니다. PLUMED configure에
+`--enable-modules=opes`를 추가하고 실행 전에 두 action을 확인합니다.
+
+```bash
+plumed manual --action ECV_MULTITHERMAL
+plumed manual --action OPES_EXPANDED
+```
+
+`run.sh`는 같은 검사를 수행합니다. Parse-only 검사는 별도 임시 filename을
+사용하므로 production의 `DELTAFS`, `opes.state`와 `COLVAR`를 생성하거나
+partial production으로 판정하지 않습니다.
+
 1 ns는 state 파일과 fixed-volume workflow를 학습하기 위한 길이입니다.
 Keyword는 PLUMED 2.10
 [`OPES_EXPANDED`](https://www.plumed.org/doc-v2.10/user-doc/html/_o_p_e_s__e_x_p_a_n_d_e_d.html)와
@@ -56,4 +68,8 @@ supplied PDB. This example combines OPES_EXPANDED with `ECV_MULTITHERMAL` to sam
 1 ns production writes its restart, trajectory, `COLVAR`, `opes.state`, and
 `DELTAFS` directly under `work/`. `ecv.ene` is an expanded CV, not an
 instantaneous physical temperature; temperature-resolved observables require
-separate reweighting. The 1 ns run is a workflow example.
+separate reweighting. PLUMED 2.10 must be configured with
+`--enable-modules=opes`; verify `ECV_MULTITHERMAL` and `OPES_EXPANDED` with
+`plumed manual --action ACTION`. The parse-only check uses separate temporary
+filenames and cannot be mistaken for partial production. The 1 ns run is a
+workflow example.

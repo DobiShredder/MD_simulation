@@ -41,6 +41,10 @@ PLUMED가 연결된 Amber의 `pmemd.cuda`가 기본 engine입니다. AmberTools�
 수 있습니다. 설치된 executable이 PLUMED 연동을 지원하는지는 짧은 coupled run으로
 확인해야 합니다.
 
+Funnel MetaD는 optional `funnel` module, 두 OPES example은 optional `opes`
+module이 필요합니다. 네 example을 모두 실행할 PLUMED 2.10은 configure에
+`--enable-modules=funnel+opes`를 지정합니다.
+
 ## English
 
 AMBER propagates the MD while PLUMED evaluates the collective variables and
@@ -48,7 +52,9 @@ bias. Three examples use an ff19SB/TIP3P capped alanine dipeptide, while Funnel
 MetaD uses ff19SB/GAFF2/TIP3P trypsin–benzamidine. All four systems use a 20 Å
 TIP3P buffer between the solute and the box edge. They cover well-tempered MetaD on φ/ψ, Funnel MetaD for 3PTB
 trypsin–benzamidine, OPES_METAD on φ/ψ, and multithermal OPES_EXPANDED over
-300–500 K. Funnel MetaD requires PLUMED's optional `funnel` module.
+300–500 K. Funnel MetaD requires PLUMED's optional `funnel` module, while both
+OPES examples require the optional `opes` module. Configure both with
+`--enable-modules=funnel+opes` when all four tutorials will be used.
 
 Run `build.sh`, `run.sh --dry-run`, `run.sh`, and `python3 anal.py` in a
 runnable directory. The first build argument is the prepared PDB; Funnel MetaD

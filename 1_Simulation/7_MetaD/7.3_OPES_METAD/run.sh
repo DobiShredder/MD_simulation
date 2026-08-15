@@ -25,6 +25,14 @@ read -r -a amber_options <<< "${AMBER_OPTIONS:-}"
 [[ "$seed_base" =~ ^[1-9][0-9]*$ ]] || die "RANDOM_SEED must be a positive integer."
 topology="$work_dir/system.parm7"
 initial_restart="$work_dir/system.rst7"
+parse_input_name=plumed.parse.dat
+parse_kernels_name=plumed.parse.KERNELS
+parse_state_name=plumed.parse.state
+parse_colvar_name=plumed.parse.COLVAR
+parse_input="$work_dir/$parse_input_name"
+parse_kernels="$work_dir/$parse_kernels_name"
+parse_state="$work_dir/$parse_state_name"
+parse_colvar="$work_dir/$parse_colvar_name"
 
 stage_state() {
     local marker=$1
@@ -48,6 +56,14 @@ render_amber_input() {
     local output=$2
     local seed=$3
     sed "s/@RANDOM_SEED@/$seed/g" "$template" > "$output"
+}
+
+check_plumed_action() {
+    local action=$1
+
+    if ! "$plumed" manual --action "$action" >/dev/null 2>&1; then
+        die "PLUMED action $action is unavailable. Rebuild PLUMED 2.10 with ./configure --enable-modules=opes and ensure that the AMBER engine uses that PLUMED kernel."
+    fi
 }
 
 run_command() {
@@ -130,9 +146,16 @@ run_standard_stage() {
 
 render_plumed_input() {
     local output=$1
+    local kernels_file=${2:-KERNELS}
+    local state_file=${3:-opes.state}
+    local colvar_file=${4:-COLVAR}
+
     sed \
         -e 's/@RESTART@//' \
         -e 's/@STATE_RFILE@//' \
+        -e "s/FILE=KERNELS/FILE=$kernels_file/" \
+        -e "s/STATE_WFILE=opes.state/STATE_WFILE=$state_file/" \
+        -e "s/FILE=COLVAR/FILE=$colvar_file/" \
         inputs/plumed.dat.template \
         > "$output"
 }
@@ -173,6 +196,7 @@ run_production() {
 if (( ! dry_run )); then
     command -v "$engine" >/dev/null 2>&1 || die "AMBER engine not found: $engine"
     command -v "$plumed" >/dev/null 2>&1 || die "PLUMED not found: $plumed"
+    check_plumed_action OPES_METAD
     [[ -s "$topology" && -s "$initial_restart" ]] || die "Run build.sh first. $work_dir"
     [[ -s "$work_dir/atom_count.txt" ]] || die "atom_count.txt not found. Run build.sh again."
     mkdir -p "$work_dir"
@@ -180,15 +204,19 @@ if (( ! dry_run )); then
     cp inputs/minimize.in "$work_dir/inputs/minimize.in"
     render_amber_input inputs/heat.in.template "$work_dir/inputs/heat.in" "$((seed_base + 1))"
     render_amber_input inputs/equilibrate.in.template "$work_dir/inputs/equilibrate.in" "$((seed_base + 2))"
-    render_plumed_input "$work_dir/plumed.parse.dat"
+    render_plumed_input "$parse_input" \
+        "$parse_kernels_name" \
+        "$parse_state_name" \
+        "$parse_colvar_name"
     atom_count=$(<"$work_dir/atom_count.txt")
     (
         cd "$work_dir"
         "$plumed" driver \
-            --plumed plumed.parse.dat \
+            --plumed "$parse_input_name" \
             --parse-only \
             --natoms "$atom_count"
     )
+    rm -f -- "$parse_input" "$parse_kernels" "$parse_state" "$parse_colvar"
 fi
 
 run_standard_stage minimize inputs/minimize.in system.rst7
