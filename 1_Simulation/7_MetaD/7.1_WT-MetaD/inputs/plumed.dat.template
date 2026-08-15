@@ -15,6 +15,6 @@ metad: METAD ...
   GRID_MAX=pi,pi
   GRID_BIN=200,200
   CALC_RCT
-... METAD
+...
 
 PRINT ARG=phi,psi,metad.bias,metad.rbias STRIDE=5000 FILE=COLVAR

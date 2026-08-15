@@ -10,7 +10,7 @@ fps: FUNNEL_PS ...
   REFERENCE=@REFERENCE@
   ANCHOR=@ANCHOR@
   POINTS=@POINTS@
-... FUNNEL_PS
+...
 
 funnel: FUNNEL ...
   ARG=fps.lp,fps.ld
@@ -23,7 +23,7 @@ funnel: FUNNEL ...
   NBINS=500
   NBINZ=500
   FILE=FUNNEL_GRID
-... FUNNEL
+...
 
 lower: LOWER_WALLS ARG=fps.lp AT=-0.3 KAPPA=35100 EXP=2
 upper: UPPER_WALLS ARG=fps.lp AT=3.5 KAPPA=35100 EXP=2
@@ -40,6 +40,6 @@ metad: METAD ...
   GRID_MAX=3.7
   GRID_BIN=420
   CALC_RCT
-... METAD
+...
 
 PRINT ARG=fps.lp,fps.ld,funnel.bias,lower.bias,upper.bias,metad.bias,metad.rbias STRIDE=5000 FILE=COLVAR

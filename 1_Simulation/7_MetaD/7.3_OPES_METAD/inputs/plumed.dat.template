@@ -13,6 +13,6 @@ opes: OPES_METAD ...
   @STATE_RFILE@
   STATE_WFILE=opes.state
   STATE_WSTRIDE=50000
-... OPES_METAD
+...
 
 PRINT ARG=phi,psi,opes.bias,opes.rct,opes.neff,opes.nker STRIDE=5000 FILE=COLVAR
