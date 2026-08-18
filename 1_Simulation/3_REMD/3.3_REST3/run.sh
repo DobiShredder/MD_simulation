@@ -92,6 +92,9 @@ if (( ! dry_run )); then
     if ! "$gmx_mpi" mdrun -h -hrex > "$option_check_log" 2>&1; then
         die "GROMACS MPI build does not recognize the -hrex option: $option_check_log"
     fi
+    if ! grep -Fq "HREX_WORKLOAD_FIX_1" "$option_check_log"; then
+        die "GROMACS MPI build lacks the REST HREX swapped-energy fix: $option_check_log"
+    fi
     if ! "$gmx_mpi" mdrun \
         -h \
         -plumed "$work_dir/000/plumed.dat" \

@@ -35,16 +35,19 @@ effective-temperature ladder를 구성할 수 있습니다.
 
 ### 실행
 
-AMBER 26, ParmEd, `GROMACS 2024.3`, `PLUMED 2.10.0`과 `gawk`가
-필요합니다. GROMACS는 PLUMED 2.10.0이 제공하는 GROMACS patch를
-적용하고 외부 MPI를 사용해 build합니다. 일반 PLUMED interface만 활성화한
-GROMACS에는 이 계산에 필요한 `-hrex`가 없습니다.
+AMBER 26, ParmEd, `GROMACS 2024.3` 또는 `2024.6`, `PLUMED 2.10`과 `gawk`가
+필요합니다. GROMACS는 PLUMED의 GROMACS 2024.3 patch를 적용한 다음
+[`gromacs-2024.3-plumed-2.10-hrex-energy.patch`](../patches/gromacs-2024.3-plumed-2.10-hrex-energy.patch)를
+추가로 적용하고 외부 MPI로 build합니다. PLUMED 원본 patch는 swapped
+coordinate의 energy workload가 누락되어 HREX acceptance를 잘못 계산합니다.
+수정된 `mdrun -h`에는 `HREX_WORKLOAD_FIX_1`이 표시되며 `run.sh`가 이를
+확인합니다. 적용 command와 검증 범위는 [상위 README](../README.md)에
+정리되어 있습니다.
 
-권장 조합은 `GROMACS 2024.3 + PLUMED 2.10.0`입니다. PLUMED의 GROMACS
-2024.3 patch에는 서로 다른 topology의 Hamiltonian을 교차 평가하는 `-hrex`
-경로가 포함됩니다. GROMACS 2025 patch와 GROMACS의 built-in PLUMED
-interface는 이 경로를 제공하지 않습니다. `-hrex`만 제거하면 서로 다른
-scaled topology 사이의 exchange acceptance가 올바르게 계산되지 않습니다.
+GROMACS 2025 patch와 built-in PLUMED interface는 서로 다른 topology의
+Hamiltonian을 교차 평가하는 `-hrex` 경로를 제공하지 않습니다. `-hrex`만
+제거하면 scaled topology 사이의 exchange acceptance가 올바르게 계산되지
+않습니다.
 
 ```bash
 python3 -m pip install -r requirements.txt
@@ -156,14 +159,15 @@ the full solvent box.
 The build converts the AMBER system with ParmEd, marks only protein atom types,
 creates scaled topologies with PLUMED `partial_tempering`, and compares the
 scale-one and original potential energies. This tutorial requires an external-
-MPI build of `GROMACS 2024.3` with the GROMACS patch supplied by
-`PLUMED 2.10.0`.
-
-The recommended combination is `GROMACS 2024.3 + PLUMED 2.10.0`. The PLUMED
-patch for GROMACS 2024.3 includes the `-hrex` path that cross-evaluates
-different replica topologies. The GROMACS 2025 patch and the built-in GROMACS
-PLUMED interface do not provide this path. Removing only `-hrex` would produce
-incorrect exchange acceptance between the separately scaled topologies.
+MPI build of GROMACS 2024.3 or 2024.6 with the PLUMED 2.10 GROMACS 2024.3 patch
+followed by the repository HREX energy correction. The upstream patch omits
+the swapped-coordinate energy workload and therefore computes invalid HREX
+acceptance. The corrected help output contains `HREX_WORKLOAD_FIX_1`, which
+`run.sh` checks before simulation. See the [parent README](../README.md) for
+the patch command and validation scope. The GROMACS 2025 patch and built-in
+PLUMED interface do not provide this arbitrary-topology `-hrex` path. Removing
+only `-hrex` would produce incorrect exchange acceptance between the separately
+scaled topologies.
 
 `convert_topology.py` performs the AMBER-to-GROMACS conversion, `mark_hot.py`
 marks protein atom types, and `scale_cmap.py` preserves and scales the

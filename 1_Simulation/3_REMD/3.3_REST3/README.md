@@ -57,13 +57,18 @@ field에 맞춰 정해야 하는 schedule입니다.
 
 ### 실행
 
-AMBER 26, ParmEd, `GROMACS 2024.3`, `PLUMED 2.10.0`과
-`repex-topology-parser==0.2.2` source가 필요합니다. GROMACS는 PLUMED 2.10.0이
-제공하는 GROMACS patch를 적용하고 외부 MPI를 사용해 build합니다.
+AMBER 26, ParmEd, `GROMACS 2024.3` 또는 `2024.6`, `PLUMED 2.10`과
+`repex-topology-parser==0.2.2` source가 필요합니다. GROMACS는 PLUMED의
+GROMACS 2024.3 patch를 적용한 다음
+[`gromacs-2024.3-plumed-2.10-hrex-energy.patch`](../patches/gromacs-2024.3-plumed-2.10-hrex-energy.patch)를
+추가로 적용하고 외부 MPI로 build합니다. PLUMED 원본 patch는 swapped
+coordinate의 energy workload가 누락되어 HREX acceptance를 잘못 계산합니다.
+수정된 `mdrun -h`에는 `HREX_WORKLOAD_FIX_1`이 표시되며 `run.sh`가 이를
+확인합니다. 적용 command와 검증 범위는 [상위 README](../README.md)에
+정리되어 있습니다.
 
-권장 조합은 `GROMACS 2024.3 + PLUMED 2.10.0`입니다. 이 PLUMED patch에는
-서로 다른 REST3 topology를 교차 평가하는 `-hrex` 경로가 포함됩니다.
-GROMACS 2025 patch와 GROMACS의 built-in PLUMED interface는 이 경로를
+이 patch 조합에는 서로 다른 REST3 topology를 교차 평가하는 `-hrex` 경로가
+포함됩니다. GROMACS 2025 patch와 built-in PLUMED interface는 이 경로를
 제공하지 않습니다.
 
 ```bash
@@ -235,10 +240,15 @@ GROMACS automatically maps HREX ranks across the visible GPUs, so several
 replicas may share one GPU. `PREPRODUCTION_GROMACS_OPTIONS` and
 `HREX_GROMACS_OPTIONS` add options only to their named phases.
 
-This tutorial recommends an external-MPI build of `GROMACS 2024.3` patched
-with `PLUMED 2.10.0`. That patch includes the `-hrex` path required to
-cross-evaluate the different REST3 topologies. The GROMACS 2025 patch and the
-built-in GROMACS PLUMED interface do not provide this path.
+This tutorial requires an external-MPI build of GROMACS 2024.3 or 2024.6 with
+the PLUMED 2.10 GROMACS 2024.3 patch followed by the repository HREX energy
+correction. The upstream patch omits the swapped-coordinate energy workload
+and therefore computes invalid HREX acceptance. The corrected help output
+contains `HREX_WORKLOAD_FIX_1`, which `run.sh` checks before simulation. See the
+[parent README](../README.md) for the patch command and validation scope. This
+patch combination provides the `-hrex` path required to cross-evaluate the
+different REST3 topologies. The GROMACS 2025 patch and built-in PLUMED
+interface do not provide this path.
 
 The published kappa schedule was calibrated for a99SB-disp IDPs, not validated
 for ff19SB/TIP3P Chignolin. REST2 compaction at high effective temperature was
