@@ -138,7 +138,7 @@ Physical bath가 300 K이므로 첫 state는 `000`, 300 K, `lambda_pp=1`,
 - `work/NNN/production.001.xtc`
 - `work/exchange_summary.tsv`, `replica_visits.tsv`,
   `state_occupancy.tsv`
-- `work/structure_by_temperature.tsv`: Rg와 residue 1–10 CA distance
+- `work/structure_by_temperature.tsv`: Rg와 protein 양 끝 residue의 Cα distance
 
 REST2의 높은 effective temperature에서 나타나는 compaction은 mini-protein
 folding sampling을 돕기 위해 사용되어 온 method 특성입니다. 짧은 Chignolin
@@ -213,6 +213,7 @@ as a tab-separated file with `replica`, `effective_temperature_K`,
 default MPI process count from the selected file.
 
 The analysis writes exchange acceptance, state visits, occupancy, radius of
-gyration, and terminal Cα distance as TSV files. High-temperature compaction
+gyration, and the distance between the first and last protein Cα atoms as TSV
+files. High-temperature compaction
 in REST2 has been used intentionally to assist mini-protein folding sampling;
 this short example does not establish convergence or force-field quality.

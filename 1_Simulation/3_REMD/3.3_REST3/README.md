@@ -171,8 +171,8 @@ parameter가 아닙니다. REST2의 높은 effective temperature에서 나타나
 compaction은 mini-protein folding을 돕기 위해 의도적으로 사용된 특성이므로,
 이 예제는 Chignolin에서 REST3가 REST2보다 우수하다고 가정하지 않습니다.
 
-분석은 exchange acceptance, state 방문, occupancy, Rg와 residue 1–10 CA
-distance를 TSV로 저장합니다.
+분석은 exchange acceptance, state 방문, occupancy, Rg와 protein 양 끝
+residue의 Cα distance를 TSV로 저장합니다.
 
 - [REST3 원 논문](https://pmc.ncbi.nlm.nih.gov/articles/PMC10795075/)
 - [repex-topology-parser](https://github.com/koreyr/repex_topology_parser)

@@ -34,8 +34,36 @@ def require_completed_segments() -> None:
             raise SystemExit(f"production completion marker not found: {marker}")
 
 
-def parse_exchanges(state_count: int) -> list[tuple[int, int, int]]:
-    records: list[tuple[int, int, int]] = []
+def parse_gromacs_exchange_line(
+    line: str, state_count: int, event_index: int
+) -> list[tuple[int, int, int]]:
+    payload = line.split("Repl ex", 1)[1]
+    replica_labels = list(re.finditer(r"\d+", payload))
+    if len(replica_labels) != state_count:
+        return []
+
+    # GROMACS prints the current replica order. An "x" between two labels
+    # marks an accepted exchange across that state boundary.
+    accepted_boundaries = {
+        boundary
+        for boundary in range(1, state_count)
+        if "x"
+        in payload[
+            replica_labels[boundary - 1].end() : replica_labels[boundary].start()
+        ]
+    }
+
+    # The first exchange event attempts (0,1), (2,3), ...; the next event
+    # attempts (1,2), (3,4), ... . The pattern then alternates.
+    offset = event_index % 2
+    return [
+        (state_a, state_a + 1, int(state_a + 1 in accepted_boundaries))
+        for state_a in range(offset, state_count - 1, 2)
+    ]
+
+
+def parse_exchanges(state_count: int) -> list[list[tuple[int, int, int]]]:
+    events: list[list[tuple[int, int, int]]] = []
     logs = sorted((WORK / "000").glob("production.*.log"))
     event_index = 0
 
@@ -45,54 +73,42 @@ def parse_exchanges(state_count: int) -> list[tuple[int, int, int]]:
             if explicit:
                 a = int(explicit.group("a"))
                 b = int(explicit.group("b"))
-                records.append((a, b, int(explicit.group("ok"))))
+                events.append([(a, b, int(explicit.group("ok")))])
                 continue
 
             if "Repl ex" not in line:
                 continue
 
-            numbers = [int(value) for value in re.findall(r"\d+", line)]
-            if len(numbers) < 2:
-                continue
-
-            accepted_pairs = [
-                (int(left), int(right))
-                for left, right in re.findall(r"\\b(\\d+)\\s+x\\s+(\\d+)\\b", line)
-            ]
-            if accepted_pairs:
-                offset = min(accepted_pairs[0]) % 2
-            else:
-                offset = (event_index + 1) % 2
-            for index in range(offset, state_count - 1, 2):
-                left = str(index)
-                right = str(index + 1)
-                accepted = int(
-                    re.search(rf"\b{left}\s+x\s+{right}\b", line) is not None
-                )
-                records.append((index, index + 1, accepted))
+            event = parse_gromacs_exchange_line(line, state_count, event_index)
+            if event:
+                events.append(event)
             event_index += 1
 
-    if not records:
+    if not events:
         raise SystemExit("GROMACS replica-exchange record not found.")
 
-    return records
+    return events
 
 
 def write_exchange_outputs(
-    records: list[tuple[int, int, int]], states: list[dict[str, str]]
+    events: list[list[tuple[int, int, int]]], states: list[dict[str, str]]
 ) -> None:
     totals: dict[tuple[int, int], list[int]] = defaultdict(lambda: [0, 0])
     labels = list(range(len(states)))
     visits = [[state] for state in labels]
 
-    for state_a, state_b, accepted in records:
-        totals[(state_a, state_b)][0] += 1
-        totals[(state_a, state_b)][1] += accepted
+    for event in events:
+        for state_a, state_b, accepted in event:
+            totals[(state_a, state_b)][0] += 1
+            totals[(state_a, state_b)][1] += accepted
 
-        if accepted:
-            replica_a = labels.index(state_a)
-            replica_b = labels.index(state_b)
-            labels[replica_a], labels[replica_b] = labels[replica_b], labels[replica_a]
+            if accepted:
+                replica_a = labels.index(state_a)
+                replica_b = labels.index(state_b)
+                labels[replica_a], labels[replica_b] = (
+                    labels[replica_b],
+                    labels[replica_a],
+                )
 
         for replica, state in enumerate(labels):
             visits[replica].append(state)
@@ -170,18 +186,19 @@ def structure_summary(states: list[dict[str, str]]) -> None:
                 [str(path) for path in trajectories],
             )
             protein = universe.select_atoms("protein")
-            first_ca = universe.select_atoms("protein and resid 1 and name CA")
-            last_ca = universe.select_atoms("protein and resid 10 and name CA")
+            ca_atoms = protein.select_atoms("name CA")
 
-            if len(first_ca) != 1 or len(last_ca) != 1:
-                raise SystemExit("Could not select exactly one CA atom from each of residues 1 and 10.")
+            if len(ca_atoms) < 2:
+                raise SystemExit("Could not select the terminal protein CA atoms.")
 
             radii: list[float] = []
             distances: list[float] = []
 
             for _ in universe.trajectory:
                 radii.append(float(protein.radius_of_gyration()))
-                distances.append(float(np.linalg.norm(first_ca.positions[0] - last_ca.positions[0])))
+                distances.append(
+                    float(np.linalg.norm(ca_atoms.positions[0] - ca_atoms.positions[-1]))
+                )
 
             writer.writerow(
                 [
@@ -199,8 +216,8 @@ def structure_summary(states: list[dict[str, str]]) -> None:
 def main() -> None:
     require_completed_segments()
     states = read_states()
-    records = parse_exchanges(len(states))
-    write_exchange_outputs(records, states)
+    events = parse_exchanges(len(states))
+    write_exchange_outputs(events, states)
     structure_summary(states)
     print(f"REST2 Analysis results: {WORK}")
 
