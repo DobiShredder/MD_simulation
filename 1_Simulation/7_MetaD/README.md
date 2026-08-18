@@ -1,8 +1,8 @@
 # Metadynamics and OPES / Metadynamics 및 OPES
 
-![Adaptive bias가 낮추는 effective barrier / Effective barrier lowered by adaptive bias](../../assets/simulation/adaptive_bias.svg)
+![방문한 CV 위치에 computational sand처럼 쌓이는 bias / Bias deposited like computational sand at visited CV positions](../../assets/simulation/adaptive_bias.svg)
 
-*선택한 target에 맞춘 bias가 barrier crossing을 늘리지만 그 자체로 수렴을 보장하지 않습니다. / Target-dependent bias increases barrier crossing but does not establish convergence by itself.*
+*방문한 CV 위치에 computational sand처럼 bias를 쌓아 basin을 채우고 effective barrier를 낮춥니다. / Bias is deposited like computational sand at visited CV positions, filling the basin and lowering the effective barrier.*
 
 
 ## 한국어
@@ -20,10 +20,21 @@ AMBER가 MD를 계산하고 PLUMED가 collective variable(CV)과 bias를 처리�
 | `7.4_OPES_EXPANDED/` | multithermal OPES_EXPANDED | potential energy | `opes.state`, `DELTAFS` |
 
 WT-MetaD, Funnel MetaD와 OPES_METAD는 선택한 CV 공간의 barrier를
-낮춥니다. Funnel MetaD는 ligand의 solvent 탐색 부피를 cone과 cylinder로
-제한합니다. OPES Expanded는
-CV 대신 300–500 K multithermal target distribution을 구성합니다. 서로 다른
-목표를 가진 method이므로 bias 크기만으로 성능을 비교하지 않습니다.
+낮춥니다. MetaD를 computational sand에 비유하면, simulation walker가 방문한
+CV 위치마다 sand에 해당하는 bias를 떨어뜨립니다. 방문이 반복된 basin이
+채워지면 effective barrier가 낮아져 다른 영역으로 이동하기 쉬워집니다.
+Bias를 CV 공간 전체에 미리 적용하는 것은 아닙니다.
+
+MetaD는 방문한 CV 위치에 bias를 직접 누적합니다. OPES_METAD는 방문 data를
+reweighting하여 unbiased probability distribution `P_n(s)`를 먼저 추정하고,
+그 분포를 well-tempered target distribution으로 바꾸는 bias를 계산합니다.
+OPES_EXPANDED는 kernel density estimate 대신 expanded state별 free-energy
+offset `ΔF_n(λ)`를 추정하여 target bias를 계산합니다.
+
+Funnel MetaD는 ligand의 solvent 탐색 부피를 cone과 cylinder로 제한합니다.
+OPES Expanded example은 CV 공간 대신 300–500 K multithermal target을
+구성합니다. 서로 다른 목표를 가진 method이므로 bias 크기만으로 성능을
+비교하지 않습니다.
 
 각 runnable directory에서 `build.sh`, `run.sh --dry-run`, `run.sh`,
 `python3 anal.py` 순서로 실행합니다. `build.sh`의 첫 argument는 준비한
@@ -55,6 +66,18 @@ trypsin–benzamidine, OPES_METAD on φ/ψ, and multithermal OPES_EXPANDED over
 300–500 K. Funnel MetaD requires PLUMED's optional `funnel` module, while both
 OPES examples require the optional `opes` module. Configure both with
 `--enable-modules=funnel+opes` when all four tutorials will be used.
+
+Metadynamics can be viewed as adding computational sand: the simulation walker
+deposits bias at the CV positions it has visited. As the sampled basin fills,
+its effective barrier decreases and escape becomes more frequent. The bias is
+not distributed uniformly over the full CV space in advance.
+
+MetaD directly accumulates bias at visited CV positions. OPES_METAD instead
+reweights the accumulated samples to estimate the unbiased probability
+distribution `P_n(s)`, then calculates the bias needed to transform it toward
+a well-tempered target distribution. OPES_EXPANDED does not use a kernel-density
+estimate; it estimates the free-energy offsets `ΔF_n(λ)` of expanded states and
+calculates the corresponding target bias.
 
 Run `build.sh`, `run.sh --dry-run`, `run.sh`, and `python3 anal.py` in a
 runnable directory. The first build argument is the prepared PDB; Funnel MetaD

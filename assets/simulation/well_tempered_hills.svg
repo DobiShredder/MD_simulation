@@ -1,28 +1,75 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img">
-<title>Well-tempered metadynamics hill deposition</title>
-<desc>Schematic showing Gaussian hills deposited along a collective variable with decreasing height over time.</desc>
+<title>Well-tempered metadynamics reduces the next hill at a biased location</title>
+<desc>Three visits to the same collective-variable position show accumulated bias growing while the newly deposited Gaussian hill becomes smaller according to the well-tempered scaling factor.</desc>
 <defs>
-<marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#243447"/></marker>
-<marker id="blue-arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#0072B2"/></marker>
-<pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0 10L10 0" stroke="#6B7280" stroke-width="2"/></pattern>
+  <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+    <path d="M0,0 L0,6 L9,3 z" fill="#243447"/>
+  </marker>
+  <marker id="orange-arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+    <path d="M0,0 L0,6 L8,3 z" fill="#D55E00"/>
+  </marker>
 </defs>
+
 <rect width="1200" height="675" fill="#FFFFFF"/>
-<text x="60" y="52" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#243447">Well-tempered MetaD</text>
-<text x="60" y="88" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="normal" fill="#6B7280">Gaussian hill height decreases as bias accumulates</text>
-<line x1="100" y1="555" x2="1100" y2="555" stroke="#243447" stroke-width="2"/>
-<text x="600" y="610" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#243447">collective variable s</text>
-<polyline points="160,537.9105825597021 165,530.1350443435399 170,519.8128263584807 175,506.56967943859775 180,490.168425717903 185,470.5903584868291 190,448.1108044681313 195,423.35273967149385 200,397.3020284747153 205,371.2714477569938 210,346.8082752416299 215,325.55080532800514 220,309.050538084241 225,298.58614964658176 230,295.0 235,298.58614964658176 240,309.050538084241 245,325.55080532800514 250,346.8082752416299 255,371.2714477569938 260,397.3020284747153 265,423.35273967149385 270,448.1108044681313 275,470.5903584868291 280,490.168425717903 285,506.56967943859775 290,519.8128263584807 295,530.1350443435399 300,537.9105825597021" fill="none" stroke="#0072B2" stroke-width="4"/>
-<text x="230" y="580" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="normal" fill="#6B7280">t1</text>
-<polyline points="320,540.5397237043633 325,533.9604221368415 330,525.2262376879452 335,514.0204979865058 340,500.14251406899484 345,483.57645718116305 350,464.55529608841874 355,443.6061643374179 360,421.56325486322066 365,399.5373788713024 370,378.83777135830223 375,360.85068143138903 380,346.88891684051157 385,338.03443431633843 390,335.0 395,338.03443431633843 400,346.88891684051157 405,360.85068143138903 410,378.83777135830223 415,399.5373788713024 420,421.56325486322066 425,443.6061643374179 430,464.55529608841874 435,483.57645718116305 440,500.14251406899484 445,514.0204979865058 450,525.2262376879452 455,533.9604221368415 460,540.5397237043633" fill="none" stroke="#56B4E9" stroke-width="4"/>
-<text x="390" y="580" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="normal" fill="#6B7280">t2</text>
-<polyline points="475,543.1688648490245 480,537.7857999301431 485,530.6396490174097 490,521.4713165344139 495,510.1166024200867 500,496.562555875497 505,480.99978770870626 510,463.8595890033419 515,445.82448125172596 520,427.80330998561107 525,410.86726747497454 530,396.1505575347728 535,384.72729559678226 540,377.48271898609505 545,375.0 550,377.48271898609505 555,384.72729559678226 560,396.1505575347728 565,410.86726747497454 570,427.80330998561107 575,445.82448125172596 580,463.8595890033419 585,480.99978770870626 590,496.562555875497 595,510.1166024200867 600,521.4713165344139 605,530.6396490174097 610,537.7857999301431 615,543.1688648490245" fill="none" stroke="#009E73" stroke-width="4"/>
-<text x="545" y="580" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="normal" fill="#6B7280">t3</text>
-<polyline points="620,545.4693633506031 625,541.1330054992819 630,535.3763839306912 635,527.9907827638334 640,518.8439297272921 645,507.9253922330393 650,495.3887178764578 655,481.58133558602543 660,467.05305434166814 665,452.53599971063113 670,438.89307657706286 675,427.03794912523364 680,417.835877008519 685,411.9999680721321 690,410.0 695,411.9999680721321 700,417.835877008519 705,427.03794912523364 710,438.89307657706286 715,452.53599971063113 720,467.05305434166814 725,481.58133558602543 730,495.3887178764578 735,507.9253922330393 740,518.8439297272921 745,527.9907827638334 750,535.3763839306912 755,541.1330054992819 760,545.4693633506031" fill="none" stroke="#E69F00" stroke-width="4"/>
-<text x="690" y="580" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="normal" fill="#6B7280">t4</text>
-<polyline points="765,547.6384047949485 770,544.2889421787556 775,539.8424482774993 780,534.1377080658575 785,527.0725526169429 790,518.6389236558648 795,508.955423463195 800,498.29041093541275 805,487.06856611218507 810,475.8553928799358 815,465.3174108733175 820,456.1603469105253 825,449.0525394824423 830,444.5448029246814 835,443.0 840,444.5448029246814 845,449.0525394824423 850,456.1603469105253 855,465.3174108733175 860,475.8553928799358 865,487.06856611218507 870,498.29041093541275 875,508.955423463195 880,518.6389236558648 885,527.0725526169429 890,534.1377080658575 895,539.8424482774993 900,544.2889421787556 905,547.6384047949485" fill="none" stroke="#CC79A7" stroke-width="4"/>
-<text x="835" y="580" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="normal" fill="#6B7280">t5</text>
-<polyline points="890,549.413075067595 895,546.8710721892343 900,543.4965009248879 905,539.1670105856954 910,533.8050622539298 915,527.4045402745403 920,520.055455306889 925,511.96147258491146 930,503.44489392442614 935,494.9348963820941 940,486.9373207520713 945,479.98776328030937 950,474.5934451429249 955,471.1723950767671 960,470.0 965,471.1723950767671 970,474.5934451429249 975,479.98776328030937 980,486.9373207520713 985,494.9348963820941 990,503.44489392442614 995,511.96147258491146 1000,520.055455306889 1005,527.4045402745403 1010,533.8050622539298 1015,539.1670105856954 1020,543.4965009248879 1025,546.8710721892343 1030,549.413075067595" fill="none" stroke="#D55E00" stroke-width="4"/>
-<text x="960" y="580" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="normal" fill="#6B7280">t6</text>
-<line x1="200" y1="130" x2="1000" y2="130" stroke="#243447" stroke-width="3" marker-end="url(#arrow)"/>
-<text x="600" y="112" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="bold" fill="#243447">simulation time</text>
+<text x="55" y="50" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#243447">Well-tempered MetaD: more local bias → smaller next hill</text>
+<text x="55" y="84" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#6B7280">Schematic revisits to the same collective-variable position s*</text>
+
+<line x1="392" y1="320" x2="420" y2="320" stroke="#243447" stroke-width="3" marker-end="url(#arrow)"/>
+<line x1="777" y1="320" x2="805" y2="320" stroke="#243447" stroke-width="3" marker-end="url(#arrow)"/>
+<text x="406" y="298" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#6B7280">revisit</text>
+<text x="791" y="298" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#6B7280">revisit</text>
+
+<!-- First visit -->
+<rect x="45" y="125" width="340" height="405" rx="16" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="2"/>
+<circle cx="80" cy="162" r="19" fill="#243447"/>
+<text x="80" y="169" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#FFFFFF">1</text>
+<text x="110" y="168" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#243447">First visit to s*</text>
+<text x="70" y="205" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#6B7280">little accumulated bias</text>
+<line x1="75" y1="440" x2="355" y2="440" stroke="#243447" stroke-width="2"/>
+<line x1="215" y1="245" x2="215" y2="440" stroke="#6B7280" stroke-width="2" stroke-dasharray="6 6"/>
+<text x="215" y="465" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" fill="#243447">visited position s*</text>
+<path d="M85 440 C140 440 165 420 215 420 C265 420 290 440 345 440 L85 440 Z" fill="#B9E0F5" stroke="#0072B2" stroke-width="3"/>
+<path d="M120 436 C165 425 180 270 215 270 C250 270 265 425 310 436 C270 432 255 420 215 420 C175 420 160 432 120 436 Z" fill="#F6C37A" stroke="#D55E00" stroke-width="3"/>
+<line x1="326" y1="415" x2="326" y2="278" stroke="#D55E00" stroke-width="2.5" marker-end="url(#orange-arrow)"/>
+<text x="318" y="348" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#D55E00">large</text>
+<text x="318" y="366" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#D55E00">new hill</text>
+<rect x="91" y="486" width="248" height="28" rx="8" fill="#E4F1F8"/>
+<text x="215" y="505" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#0072B2">low V(s*,t) → large w(t)</text>
+
+<!-- Repeated visits -->
+<rect x="430" y="125" width="340" height="405" rx="16" fill="#F3F9FC" stroke="#56B4E9" stroke-width="2"/>
+<circle cx="465" cy="162" r="19" fill="#0072B2"/>
+<text x="465" y="169" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#FFFFFF">2</text>
+<text x="495" y="168" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#243447">Repeated visits</text>
+<text x="455" y="205" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#6B7280">bias has accumulated at s*</text>
+<line x1="460" y1="440" x2="740" y2="440" stroke="#243447" stroke-width="2"/>
+<line x1="600" y1="245" x2="600" y2="440" stroke="#6B7280" stroke-width="2" stroke-dasharray="6 6"/>
+<text x="600" y="465" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" fill="#243447">visited position s*</text>
+<path d="M470 440 C520 435 550 330 600 330 C650 330 680 435 730 440 L470 440 Z" fill="#8CCBEA" stroke="#0072B2" stroke-width="3"/>
+<path d="M505 415 C550 385 570 270 600 270 C630 270 650 385 695 415 C655 375 640 330 600 330 C560 330 545 375 505 415 Z" fill="#F6C37A" stroke="#D55E00" stroke-width="3"/>
+<line x1="711" y1="325" x2="711" y2="278" stroke="#D55E00" stroke-width="2.5" marker-end="url(#orange-arrow)"/>
+<text x="703" y="295" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#D55E00">smaller</text>
+<text x="703" y="313" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#D55E00">new hill</text>
+<rect x="476" y="486" width="248" height="28" rx="8" fill="#DDEFF8"/>
+<text x="600" y="505" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#0072B2">higher V(s*,t) → smaller w(t)</text>
+
+<!-- Later revisit -->
+<rect x="815" y="125" width="340" height="405" rx="16" fill="#F8F3FA" stroke="#B58BC4" stroke-width="2"/>
+<circle cx="850" cy="162" r="19" fill="#7A5195"/>
+<text x="850" y="169" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#FFFFFF">3</text>
+<text x="880" y="168" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#243447">Later revisit</text>
+<text x="840" y="205" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#6B7280">large local bias tempers deposition</text>
+<line x1="845" y1="440" x2="1125" y2="440" stroke="#243447" stroke-width="2"/>
+<line x1="985" y1="225" x2="985" y2="440" stroke="#6B7280" stroke-width="2" stroke-dasharray="6 6"/>
+<text x="985" y="465" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" fill="#243447">visited position s*</text>
+<path d="M855 440 C905 425 935 265 985 265 C1035 265 1065 425 1115 440 L855 440 Z" fill="#56B4E9" stroke="#0072B2" stroke-width="3"/>
+<path d="M890 390 C935 335 955 240 985 240 C1015 240 1035 335 1080 390 C1040 325 1025 265 985 265 C945 265 930 325 890 390 Z" fill="#F6C37A" stroke="#D55E00" stroke-width="3"/>
+<line x1="1096" y1="261" x2="1096" y2="242" stroke="#D55E00" stroke-width="2.5" marker-end="url(#orange-arrow)"/>
+<text x="1088" y="235" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#D55E00">tiny new hill</text>
+<rect x="861" y="486" width="248" height="28" rx="8" fill="#EBDDF0"/>
+<text x="985" y="505" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#7A5195">high V(s*,t) → tiny w(t)</text>
+
+<rect x="210" y="558" width="780" height="48" rx="12" fill="#FFF9ED" stroke="#E9B44C" stroke-width="2"/>
+<text x="600" y="589" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="bold" fill="#243447">w(t) = w<tspan baseline-shift="sub" font-size="14">0</tspan> exp[−V(s(t),t) / (k<tspan baseline-shift="sub" font-size="14">B</tspan> ΔT)]</text>
+<text x="600" y="640" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#6B7280">Blue = accumulated bias · Orange = newly deposited hill · Schematic</text>
 </svg>

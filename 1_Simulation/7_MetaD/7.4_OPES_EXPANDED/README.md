@@ -1,8 +1,8 @@
 # OPES Expanded Multithermal
 
-![OPES Expanded의 multithermal target / Multithermal target in OPES Expanded](../../../assets/simulation/multithermal_target.svg)
+![OPES Expanded가 potential-energy data로 temperature-state weight를 추정하고 multithermal bias를 계산하는 흐름 / OPES Expanded estimates temperature-state weights from potential-energy data and calculates a multithermal bias](../../../assets/simulation/multithermal_target.svg)
 
-*Potential-energy 공간에서 여러 temperature state를 잇는 target distribution을 구성합니다. / A target distribution connects multiple temperature states in potential-energy space.*
+*Potential-energy sample로 `ΔF_n(T)`를 추정한 뒤 300–500 K expanded target에 필요한 bias를 계산합니다. / Potential-energy samples estimate `ΔF_n(T)`, from which the bias for a 300–500 K expanded target is calculated.*
 
 
 ## 한국어
@@ -10,6 +10,9 @@
 OPES_EXPANDED와 `ECV_MULTITHERMAL`을 연결해 300–500 K의 potential-energy
 distribution을 한 simulation에서 sampling합니다. Temperature replica를 만드는
 REMD와 달리 하나의 walker가 expanded target distribution을 따라갑니다.
+OPES_METAD처럼 CV probability distribution을 kernel density estimate로
+구성하지 않습니다. Potential-energy data로 temperature state별 free-energy
+offset `ΔF_n(T)`를 추정하고, 이 state들을 잇는 multithermal bias를 계산합니다.
 
 ```bash
 cd 1_Simulation/7_MetaD/7.4_OPES_EXPANDED
@@ -68,7 +71,10 @@ Keyword는 PLUMED 2.10
 `build.sh structure/alanine-dipeptide.pdb` builds the solvated system from the
 supplied PDB. This example combines OPES_EXPANDED with `ECV_MULTITHERMAL` to sample a
 300–500 K potential-energy target using one walker. The thermostat remains at
-300 K. The 100 ps NPT equilibration uses `skinnb=5.0 Å` to enlarge the GPU
+300 K. Unlike OPES_METAD, OPES_EXPANDED does not construct a kernel-density
+estimate of a CV probability distribution. It estimates the temperature-state
+free-energy offsets `ΔF_n(T)` from potential-energy samples and calculates the
+multithermal bias that connects those states. The 100 ps NPT equilibration uses `skinnb=5.0 Å` to enlarge the GPU
 pair-list margin while retaining `cut=10.0 Å`; production then uses a fixed box
 (`ntb=1`, `ntp=0`). The unsegmented
 1 ns production writes its restart, trajectory, `COLVAR`, `opes.state`, and

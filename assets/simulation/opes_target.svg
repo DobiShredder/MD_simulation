@@ -1,19 +1,94 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img">
-<title>OPES_METAD target distribution</title>
-<desc>Schematic sampled and target distributions used by OPES_METAD.</desc>
+<title>OPES METAD estimates a probability distribution before calculating bias</title>
+<desc>A four-step schematic shows visited collective-variable samples, kernel-density estimation of the unbiased distribution, selection of a well-tempered target distribution, and calculation of the bias that drives the next sampling cycle.</desc>
 <defs>
-<marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#243447"/></marker>
-<marker id="blue-arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#0072B2"/></marker>
-<pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0 10L10 0" stroke="#6B7280" stroke-width="2"/></pattern>
+  <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+    <path d="M0,0 L0,6 L9,3 z" fill="#243447"/>
+  </marker>
+  <marker id="arrow-blue" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+    <path d="M0,0 L0,6 L9,3 z" fill="#0072B2"/>
+  </marker>
+  <marker id="arrow-purple" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+    <path d="M0,0 L0,6 L9,3 z" fill="#7A5195"/>
+  </marker>
 </defs>
+
 <rect width="1200" height="675" fill="#FFFFFF"/>
-<text x="60" y="52" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#243447">OPES_METAD target distribution</text>
-<text x="60" y="88" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="normal" fill="#6B7280">Schematic distribution, not simulation output</text>
-<line x1="105" y1="555" x2="1090" y2="555" stroke="#243447" stroke-width="2"/>
-<line x1="105" y1="555" x2="105" y2="145" stroke="#243447" stroke-width="2"/>
-<polyline points="120,552.461502685271 128,551.7574103098098 136,550.8844507606734 144,549.8097996587067 152,548.4962931561962 160,546.9023629388462 168,544.9821119632987 176,542.6855631809104 184,539.9591128913077 192,536.7462178196729 200,532.9883402160801 208,528.6261680166001 216,523.6011172909961 224,517.8571118957194 232,511.3426207063894 240,504.0129164811846 248,495.83250297970125 256,486.7776393088658 264,476.83887364163064 272,466.023483635342 280,454.3577093041562 288,441.88865698901736 296,428.68575151600146 304,414.8416185175308 312,400.4722907747894 320,385.71665148882795 328,370.7350533062093 336,355.7070839216548 344,340.8284858715425 352,326.30727798427426 360,312.3591667640361 368,299.20237540187185 376,287.0520536814286 384,276.1144613959875 392,266.5811388861033 400,258.6232892290986 408,252.38659631492666 416,247.98669105867765 424,245.50545460401793 432,244.98831359544002 440,246.44264018037404 448,249.83732069080247 456,255.10350474763035 464,262.13649389304464 472,270.79867890023496 480,280.9233905806439 488,292.3194927728543 496,304.776520261695 504,318.0701499500525 512,331.9677912125973 520,346.23409070961844 528,360.63616695741894 536,374.94841887226534 544,388.9567880043017 552,402.4623935523975 560,415.28449961751295 568,427.26281265964093 576,438.259141158794 584,448.1584768563786 592,456.8695760628229 600,464.32512944692263 608,470.4816093138787 616,475.31887523658446 624,478.8396033453292 632,481.0685835303931 640,482.0519046520248 648,481.85602322959164 656,480.56668868946394 664,478.2876806002587 672,475.1393025208182 680,471.2565746358522 688,466.7870740068828 696,461.88838692331467 704,456.72516152915284 712,451.465778836223 720,446.27869393940387 728,441.3285337623146 736,436.772069791187 744,432.7542108644999 752,429.40417938973354 760,426.8320421892038 768,425.12576320693415 776,424.3489291963605 784,424.5392719542359 792,425.7080733677992 800,427.8404950582029 808,430.89682592923515 816,434.81459201697214 824,439.5114272722755 832,444.88856460508396 840,450.83477642476157 848,457.23057498186444 856,463.9524760748915 864,470.87713516210783 872,477.885181694406 880,484.86460381691666 888,491.713569100932 896,498.34260489932046 904,504.6761013715975 912,510.6531384214828 920,516.2276722903457 928,521.3681464215825 936,526.0566131353723 944,530.2874669681979 952,534.0658972100398 960,537.4061667480382 968,540.3298177790455 976,542.8638935734485 984,545.0392507099052 992,546.8890195296137 1000,548.4472533574865 1008,549.747790495139 1016,550.8233380456784 1024,551.7047739419237 1032,552.4206534966573 1040,552.9968994975677 1048,553.4566502358168 1056,553.8202376248242 1064,554.1052673621958 1072,554.3267744803887" fill="none" stroke="#6B7280" stroke-width="4"/>
-<polyline points="120,513.1564653191223 128,510.7317082891616 136,508.21075946375095 144,505.5930479898584 152,502.87825315608313 160,500.0663196300579 168,497.15747225076564 176,494.1522302651017 184,491.0514208957654 192,487.85619212607884 200,484.56802458665027 208,481.18874242897687 216,477.7205230721626 224,474.16590571093855 232,470.5277984761548 240,466.8094841428772 248,463.0146242861841 256,459.1472617907245 264,455.21182162705543 272,451.21310981571423 280,447.15631050887055 288,443.04698112920653 296,438.89104551634597 304,434.6947850426361 312,430.4648276723113 320,426.20813495096 328,421.931986925686 336,417.6439650103099 344,413.351932824291 352,409.0640150486507 360,404.78857435693635 368,400.53418649404654 376,396.30961359042453 384,392.12377581358663 392,387.9857214730511 400,383.90459570834133 408,379.88960790272336 416,375.94999797757265 424,372.0950017336247 432,368.3338154157284 440,364.67555968697513 448,361.1292432061209 456,357.7037260089491 464,354.4076828995598 472,351.24956706144206 480,348.23757410052167 488,345.3796067331408 496,342.68324033107376 504,340.15568953320354 512,337.80377612936877 520,335.63389841615424 528,333.652002217068 536,331.8635537506641 544,330.27351451979587 552,328.88631838338836 560,327.70585095899014 568,326.7354314900046 576,325.97779729602183 584,325.43509090819884 592,325.1088499743048 600,325.0 608,325.1088499743048 616,325.43509090819884 624,325.97779729602183 632,326.7354314900046 640,327.70585095899014 648,328.88631838338836 656,330.27351451979587 664,331.8635537506641 672,333.652002217068 680,335.63389841615424 688,337.80377612936877 696,340.15568953320354 704,342.68324033107376 712,345.3796067331408 720,348.23757410052167 728,351.24956706144206 736,354.4076828995598 744,357.7037260089491 752,361.1292432061209 760,364.67555968697513 768,368.3338154157284 776,372.0950017336247 784,375.94999797757265 792,379.88960790272336 800,383.90459570834133 808,387.9857214730511 816,392.12377581358663 824,396.30961359042453 832,400.53418649404654 840,404.78857435693635 848,409.0640150486507 856,413.351932824291 864,417.6439650103099 872,421.931986925686 880,426.20813495096 888,430.4648276723113 896,434.6947850426361 904,438.89104551634597 912,443.04698112920653 920,447.15631050887055 928,451.21310981571423 936,455.21182162705543 944,459.1472617907245 952,463.0146242861841 960,466.8094841428772 968,470.5277984761548 976,474.16590571093855 984,477.7205230721626 992,481.18874242897687 1000,484.56802458665027 1008,487.85619212607884 1016,491.0514208957654 1024,494.1522302651017 1032,497.15747225076564 1040,500.0663196300579 1048,502.87825315608313 1056,505.5930479898584 1064,508.21075946375095 1072,510.7317082891616" fill="none" stroke="#0072B2" stroke-width="5" stroke-dasharray="10 7"/>
-<text x="390" y="210" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#6B7280">sampled distribution</text>
-<text x="760" y="300" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#0072B2">target distribution</text>
-<text x="600" y="610" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#243447">collective variable s</text>
+<text x="55" y="50" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#243447">OPES_METAD: estimate first, then calculate bias</text>
+<text x="55" y="84" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#6B7280">Schematic 1D view of the φ/ψ workflow — sampled data update an estimate of P(s)</text>
+
+<!-- Step arrows -->
+<line x1="292" y1="310" x2="325" y2="310" stroke="#243447" stroke-width="3" marker-end="url(#arrow)"/>
+<line x1="577" y1="310" x2="610" y2="310" stroke="#243447" stroke-width="3" marker-end="url(#arrow)"/>
+<line x1="862" y1="310" x2="895" y2="310" stroke="#243447" stroke-width="3" marker-end="url(#arrow)"/>
+
+<!-- Step 1 -->
+<rect x="45" y="125" width="245" height="390" rx="16" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="2"/>
+<circle cx="78" cy="162" r="19" fill="#243447"/>
+<text x="78" y="169" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#FFFFFF">1</text>
+<text x="108" y="168" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#243447">Collect samples</text>
+<text x="70" y="205" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#6B7280">visited CV positions s(t)</text>
+<line x1="70" y1="420" x2="265" y2="420" stroke="#243447" stroke-width="2"/>
+<text x="168" y="455" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#243447">collective variable s</text>
+<circle cx="89" cy="393" r="6" fill="#0072B2"/>
+<circle cx="103" cy="378" r="6" fill="#0072B2"/>
+<circle cx="116" cy="399" r="6" fill="#0072B2"/>
+<circle cx="128" cy="369" r="6" fill="#0072B2"/>
+<circle cx="141" cy="387" r="6" fill="#0072B2"/>
+<circle cx="154" cy="359" r="6" fill="#0072B2"/>
+<circle cx="169" cy="383" r="6" fill="#0072B2"/>
+<circle cx="181" cy="396" r="6" fill="#0072B2"/>
+<circle cx="206" cy="350" r="6" fill="#0072B2"/>
+<circle cx="219" cy="371" r="6" fill="#0072B2"/>
+<circle cx="233" cy="361" r="6" fill="#0072B2"/>
+<circle cx="247" cy="389" r="6" fill="#0072B2"/>
+<path d="M82 305 C110 275 130 340 158 300 C185 260 212 320 250 274" fill="none" stroke="#0072B2" stroke-width="3" stroke-dasharray="7 6" marker-end="url(#arrow-blue)"/>
+<text x="168" y="488" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#0072B2">sampling history</text>
+
+<!-- Step 2 -->
+<rect x="330" y="125" width="245" height="390" rx="16" fill="#FFF9ED" stroke="#E9B44C" stroke-width="2"/>
+<circle cx="363" cy="162" r="19" fill="#D55E00"/>
+<text x="363" y="169" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#FFFFFF">2</text>
+<text x="393" y="168" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#243447">Estimate P<tspan baseline-shift="sub" font-size="14">n</tspan>(s)</text>
+<text x="355" y="205" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#6B7280">reweighting + kernel density</text>
+<line x1="355" y1="420" x2="550" y2="420" stroke="#243447" stroke-width="2"/>
+<line x1="355" y1="420" x2="355" y2="245" stroke="#243447" stroke-width="2"/>
+<path d="M362 416 C378 414 383 351 405 347 C427 343 429 405 446 407 C462 408 469 285 493 280 C517 276 527 392 548 408" fill="none" stroke="#D55E00" stroke-width="5"/>
+<path d="M370 416 C380 410 386 365 405 365 C424 365 430 409 440 416" fill="none" stroke="#E69F00" stroke-width="2.5" opacity="0.65"/>
+<path d="M457 416 C470 405 474 304 493 304 C512 304 526 405 540 416" fill="none" stroke="#E69F00" stroke-width="2.5" opacity="0.65"/>
+<text x="452" y="455" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#243447">estimated P<tspan baseline-shift="sub" font-size="11">n</tspan>(s)</text>
+<rect x="361" y="468" width="183" height="28" rx="8" fill="#FCE8D5"/>
+<text x="452" y="487" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#D55E00">compressed kernels</text>
+
+<!-- Step 3 -->
+<rect x="615" y="125" width="245" height="390" rx="16" fill="#F1F8FC" stroke="#56B4E9" stroke-width="2"/>
+<circle cx="648" cy="162" r="19" fill="#0072B2"/>
+<text x="648" y="169" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#FFFFFF">3</text>
+<text x="678" y="168" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#243447">Define target</text>
+<text x="640" y="205" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#6B7280">well-tempered p<tspan baseline-shift="super" font-size="12">target</tspan>(s)</text>
+<line x1="640" y1="420" x2="835" y2="420" stroke="#243447" stroke-width="2"/>
+<line x1="640" y1="420" x2="640" y2="245" stroke="#243447" stroke-width="2"/>
+<path d="M646 410 C665 390 675 323 704 320 C730 317 735 379 752 382 C770 386 780 310 807 308 C823 307 829 375 834 405" fill="none" stroke="#0072B2" stroke-width="5" stroke-dasharray="10 7"/>
+<path d="M650 410 C675 380 690 355 715 353 C747 350 765 353 790 350 C815 347 823 380 833 407" fill="none" stroke="#56B4E9" stroke-width="4"/>
+<text x="737" y="455" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#243447">desired sampled distribution</text>
+<text x="737" y="488" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#0072B2">p<tspan baseline-shift="super" font-size="11">WT</tspan>(s) ∝ P<tspan baseline-shift="sub" font-size="11">n</tspan>(s)<tspan baseline-shift="super" font-size="11">1/γ</tspan></text>
+
+<!-- Step 4 -->
+<rect x="900" y="125" width="255" height="390" rx="16" fill="#F8F3FA" stroke="#B58BC4" stroke-width="2"/>
+<circle cx="933" cy="162" r="19" fill="#7A5195"/>
+<text x="933" y="169" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#FFFFFF">4</text>
+<text x="963" y="168" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#243447">Calculate bias</text>
+<text x="925" y="205" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#6B7280">from estimate and target</text>
+<line x1="925" y1="420" x2="1130" y2="420" stroke="#243447" stroke-width="2"/>
+<line x1="925" y1="420" x2="925" y2="245" stroke="#243447" stroke-width="2"/>
+<path d="M932 405 C950 390 958 305 980 300 C1000 295 1008 392 1025 394 C1043 397 1050 280 1075 275 C1100 270 1115 375 1125 405" fill="none" stroke="#7A5195" stroke-width="5"/>
+<text x="1028" y="455" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#243447">V<tspan baseline-shift="sub" font-size="11">n</tspan>(s)</text>
+<rect x="937" y="468" width="181" height="28" rx="8" fill="#EBDDF0"/>
+<text x="1028" y="487" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#7A5195">apply to next MD steps</text>
+
+<!-- Feedback loop: the calculated bias changes the next sampling cycle -->
+<path d="M1028 525 L1028 565 L168 565 L168 525" fill="none" stroke="#7A5195" stroke-width="4" stroke-dasharray="10 7" stroke-linejoin="round" marker-end="url(#arrow-purple)"/>
+<text x="598" y="605" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#7A5195">calculated bias → next sampling cycle</text>
+
+<text x="600" y="646" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#6B7280">MetaD deposits bias directly; OPES estimates P<tspan baseline-shift="sub" font-size="11">n</tspan>(s) before calculating bias.</text>
 </svg>

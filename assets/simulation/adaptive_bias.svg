@@ -1,21 +1,89 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img">
-<title>Bias-assisted barrier crossing</title>
-<desc>Schematic comparison of an original free-energy barrier and the reduced effective barrier after adaptive bias accumulation.</desc>
+<title>Metadynamics explained as computational sand</title>
+<desc>A walker moves through a collective-variable free-energy landscape and deposits computational sand at visited positions. The accumulated bias fills the sampled basin and lowers the effective barrier for escape.</desc>
 <defs>
-<marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#243447"/></marker>
-<marker id="blue-arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#0072B2"/></marker>
-<pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0 10L10 0" stroke="#6B7280" stroke-width="2"/></pattern>
+  <marker id="arrow-dark" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+    <path d="M0,0 L0,6 L9,3 z" fill="#243447"/>
+  </marker>
+  <marker id="arrow-blue" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+    <path d="M0,0 L0,6 L9,3 z" fill="#0072B2"/>
+  </marker>
+  <marker id="arrow-orange" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+    <path d="M0,0 L0,6 L9,3 z" fill="#D55E00"/>
+  </marker>
+  <pattern id="sand" width="22" height="18" patternUnits="userSpaceOnUse">
+    <rect width="22" height="18" fill="#F6C56F"/>
+    <circle cx="5" cy="5" r="2.3" fill="#D55E00" opacity="0.75"/>
+    <circle cx="16" cy="12" r="2" fill="#E69F00" opacity="0.9"/>
+  </pattern>
 </defs>
+
 <rect width="1200" height="675" fill="#FFFFFF"/>
-<text x="60" y="52" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#243447">Adaptive bias lowers sampled barriers</text>
-<text x="60" y="88" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="normal" fill="#6B7280">Schematic — the bias depends on the selected method and target</text>
-<line x1="100" y1="560" x2="1100" y2="560" stroke="#243447" stroke-width="2"/>
-<line x1="100" y1="560" x2="100" y2="130" stroke="#243447" stroke-width="2"/>
-<polyline points="110,484.4956006628197 120,485.97285605169 130,487.8234894841157 140,490.1025987986273 150,492.86073482241994 160,496.1391162025315 170,499.96414184546586 180,504.34150382641315 190,509.25032556187114 200,514.6378516058617 210,520.4152779377939 220,526.4553178573616 230,532.5920360489308 240,538.6233471764195 250,544.3163706348425 260,549.4155758273549 270,553.653368640203 280,556.762493101978 290,558.4893889967524 300,558.6074905121515 310,556.9293989227765 320,553.3169271972914 330,547.6881939557732 340,540.021219880603 350,530.3538189551548 360,518.7799377593218 370,505.4429332382668 380,490.5265511983054 390,474.24454235602025 400,456.8299124372199 410,438.5247463202842 420,419.5713880310302 430,400.2055257066547 440,380.65145848926414 450,361.11954789199376 460,341.8056133869651 470,322.8918469335198 480,304.54870954547266 490,286.93723911217904 500,270.21123649476186 510,254.5188923236694 520,240.00355089313987 530,226.80345937451705 540,215.05050076568506 550,204.86804144003833 560,196.36812734545384 570,189.6483302781741 580,184.7885752467824 590,181.8482735121853 600,180.86404789481884 610,181.8482735121853 620,184.7885752467824 630,189.6483302781741 640,196.36812734545384 650,204.86804144003833 660,215.05050076568506 670,226.80345937451705 680,240.00355089313987 690,254.5188923236694 700,270.21123649476186 710,286.93723911217904 720,304.54870954547266 730,322.8918469335198 740,341.8056133869651 750,361.11954789199376 760,380.6514584892641 770,400.2055257066547 780,419.5713880310302 790,438.5247463202842 800,456.8299124372199 810,474.24454235602025 820,490.5265511983054 830,505.4429332382668 840,518.7799377593217 850,530.3538189551548 860,540.021219880603 870,547.6881939557732 880,553.3169271972914 890,556.9293989227765 900,558.6074905121515 910,558.4893889967524 920,556.762493101978 930,553.653368640203 940,549.4155758273549 950,544.3163706348425 960,538.6233471764195 970,532.5920360489308 980,526.4553178573616 990,520.415277937794 1000,514.6378516058617 1010,509.25032556187114 1020,504.34150382641315 1030,499.96414184546586 1040,496.1391162025315 1050,492.86073482241994 1060,490.1025987986273 1070,487.8234894841157 1080,485.97285605169 1090,484.4956006628197" fill="none" stroke="#6B7280" stroke-width="5"/>
-<polyline points="110,470 120,470 130,470 140,470 150,470 160,470 170,470 180,470 190,470 200,470 210,470 220,470 230,470 240,470 250,470 260,470 270,470 280,470 290,470 300,470 310,470 320,470 330,470 340,470 350,470 360,470 370,470 380,470 390,470 400,470 410,470 420,470 430,463.73155984306015 440,450.9887176097447 450,438.51907512488157 460,426.452374463563 470,414.89475432653 480,403.9316697521156 490,393.63160213876364 500,384.0500056438702 510,375.23301369973717 520,367.2205461793714 530,360.04859396912207 540,353.75059487191237 550,348.35793765831767 560,343.89972893103266 570,340.4020242312081 580,337.88675876330205 590,336.3706159554959 600,335.86404789481884 610,336.3706159554959 620,337.88675876330205 630,340.4020242312081 640,343.89972893103266 650,348.35793765831767 660,353.75059487191237 670,360.04859396912207 680,367.2205461793714 690,375.23301369973717 700,384.0500056438702 710,393.63160213876364 720,403.9316697521156 730,414.89475432653 740,426.452374463563 750,438.51907512488157 760,450.98871760974464 770,463.73155984306015 780,470 790,470 800,470 810,470 820,470 830,470 840,470 850,470 860,470 870,470 880,470 890,470 900,470 910,470 920,470 930,470 940,470 950,470 960,470 970,470 980,470 990,470 1000,470 1010,470 1020,470 1030,470 1040,470 1050,470 1060,470 1070,470 1080,470 1090,470" fill="none" stroke="#0072B2" stroke-width="5"/>
-<text x="850" y="220" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#6B7280">original free-energy landscape</text>
-<text x="785" y="380" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#0072B2">effective biased landscape</text>
-<path d="M330 455 Q580 120 860 455" stroke="#E69F00" stroke-width="3" fill="none" opacity="1" stroke-dasharray="10 7"/>
-<text x="600" y="155" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#E69F00">adaptive bias</text>
-<text x="600" y="625" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#243447">Enhanced crossing does not by itself establish convergence.</text>
+
+<text x="60" y="52" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#243447">Metadynamics as computational sand</text>
+<text x="60" y="86" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#6B7280">The walker deposits bias at positions already visited in collective-variable space</text>
+
+<!-- Axes -->
+<line x1="95" y1="570" x2="1100" y2="570" stroke="#243447" stroke-width="2" marker-end="url(#arrow-dark)"/>
+<line x1="95" y1="570" x2="95" y2="125" stroke="#243447" stroke-width="2" marker-end="url(#arrow-dark)"/>
+<text x="600" y="630" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#243447">collective variable s</text>
+<text x="36" y="350" text-anchor="middle" transform="rotate(-90 36 350)" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#243447">free energy</text>
+
+<!-- Sand accumulated in the visited basin -->
+<path d="M110 456 C170 456 190 520 280 520 C390 520 445 230 585 188 L585 302 C515 314 480 348 420 358 C340 371 255 363 190 376 C152 384 130 405 110 418 Z"
+      fill="url(#sand)" stroke="none"/>
+<path d="M110 418 C150 398 184 382 230 375 C300 364 360 375 420 358 C480 342 515 312 585 302"
+      fill="none" stroke="#D55E00" stroke-width="5"/>
+
+<!-- Original landscape -->
+<path d="M110 456 C170 456 190 520 280 520 C400 520 440 180 600 180 C760 180 800 520 920 520 C1010 520 1030 456 1090 456"
+      fill="none" stroke="#6B7280" stroke-width="5"/>
+<text x="785" y="150" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#6B7280">original free-energy landscape</text>
+
+<!-- Visited positions and deposition -->
+<path d="M155 394 C205 360 250 388 300 365 C350 342 390 382 440 350 C468 332 492 326 520 318"
+      fill="none" stroke="#243447" stroke-width="3" stroke-dasharray="7 7"/>
+<circle cx="185" cy="381" r="7" fill="#FFFFFF" stroke="#243447" stroke-width="3"/>
+<circle cx="280" cy="372" r="7" fill="#FFFFFF" stroke="#243447" stroke-width="3"/>
+<circle cx="370" cy="365" r="7" fill="#FFFFFF" stroke="#243447" stroke-width="3"/>
+<circle cx="455" cy="343" r="7" fill="#FFFFFF" stroke="#243447" stroke-width="3"/>
+
+<circle cx="185" cy="405" r="3.2" fill="#D55E00"/>
+<circle cx="180" cy="417" r="3.2" fill="#E69F00"/>
+<circle cx="280" cy="397" r="3.2" fill="#D55E00"/>
+<circle cx="286" cy="410" r="3.2" fill="#E69F00"/>
+<circle cx="370" cy="390" r="3.2" fill="#D55E00"/>
+<circle cx="364" cy="403" r="3.2" fill="#E69F00"/>
+<circle cx="455" cy="368" r="3.2" fill="#D55E00"/>
+<circle cx="461" cy="380" r="3.2" fill="#E69F00"/>
+
+<text x="165" y="285" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="bold" fill="#D55E00">drop computational sand</text>
+<text x="165" y="313" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#243447">at each visited s(t<tspan baseline-shift="sub" font-size="12">i</tspan>)</text>
+<line x1="300" y1="320" x2="368" y2="379" stroke="#D55E00" stroke-width="2.5" marker-end="url(#arrow-orange)"/>
+
+<!-- Current walker and escape -->
+<circle cx="520" cy="310" r="15" fill="#0072B2" stroke="#FFFFFF" stroke-width="4"/>
+<text x="500" y="265" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#0072B2">walker</text>
+<line x1="505" y1="272" x2="515" y2="292" stroke="#0072B2" stroke-width="2.5" marker-end="url(#arrow-blue)"/>
+
+<path d="M535 297 C565 248 590 228 620 236 C680 250 730 350 790 420"
+      fill="none" stroke="#0072B2" stroke-width="5" marker-end="url(#arrow-blue)"/>
+
+<!-- Barrier comparison -->
+<line x1="640" y1="185" x2="640" y2="301" stroke="#0072B2" stroke-width="3" stroke-dasharray="7 6"/>
+<line x1="628" y1="185" x2="652" y2="185" stroke="#0072B2" stroke-width="3"/>
+<line x1="628" y1="301" x2="652" y2="301" stroke="#0072B2" stroke-width="3"/>
+<text x="675" y="232" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="bold" fill="#0072B2">lower effective barrier</text>
+<text x="675" y="260" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#243447">the filled basin is easier to leave</text>
+
+<!-- Minimal legend -->
+<rect x="795" y="345" width="255" height="118" rx="12" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
+<circle cx="825" cy="378" r="10" fill="#0072B2"/>
+<text x="850" y="385" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#243447">current configuration</text>
+<rect x="815" y="405" width="20" height="16" fill="url(#sand)" stroke="#D55E00" stroke-width="1"/>
+<text x="850" y="420" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#243447">accumulated bias</text>
+<line x1="815" y1="444" x2="838" y2="444" stroke="#6B7280" stroke-width="4"/>
+<text x="850" y="450" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#243447">unbiased landscape</text>
+
+<text x="600" y="660" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#6B7280">Schematic — bias follows sampling history; it is not spread uniformly over the whole CV space.</text>
 </svg>

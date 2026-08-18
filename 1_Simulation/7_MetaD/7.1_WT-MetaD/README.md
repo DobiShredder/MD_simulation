@@ -1,15 +1,16 @@
 # Well-Tempered Metadynamics
 
-![WT-MetaD에서 감소하는 Gaussian hill height / Decreasing Gaussian hill height in WT-MetaD](../../../assets/simulation/well_tempered_hills.svg)
+![WT-MetaD에서 같은 CV 위치의 accumulated bias가 커질수록 새 Gaussian hill이 작아지는 과정 / A new Gaussian hill becomes smaller as accumulated bias grows at the same CV position in WT-MetaD](../../../assets/simulation/well_tempered_hills.svg)
 
-*Bias가 쌓일수록 새로 추가되는 hill의 height가 감소합니다. / Newly deposited hills become smaller as the bias accumulates.*
+*같은 CV 위치를 다시 방문하면 accumulated bias는 커지고 그 위에 추가되는 새 hill은 작아집니다. / Revisiting the same CV position increases its accumulated bias and reduces the next deposited hill.*
 
 
 ## 한국어
 
 Alanine dipeptide의 φ와 ψ torsion에 well-tempered MetaD bias를 적용합니다.
-방문한 위치에 Gaussian을 쌓되, bias가 누적될수록 높이를 낮춰 일반 MetaD보다
-완만하게 free-energy surface를 채웁니다.
+방문한 위치에 Gaussian을 쌓되, 현재 위치 `s(t)`의 accumulated bias
+`V(s(t),t)`가 클수록 새 hill의 height를 지수적으로 낮춥니다. 따라서 hill이
+simulation time에 따라 모든 위치에서 일률적으로 작아지는 것이 아닙니다.
 
 ### 실행
 
@@ -65,7 +66,9 @@ PLUMED가 없는 분석 환경에서는 `python3 anal.py --skip-fes`로 diagnost
 ## English
 
 This example biases the φ and ψ torsions of alanine dipeptide with
-well-tempered metadynamics. `PACE=500` deposits a Gaussian every 1 ps,
+well-tempered metadynamics. The next hill is exponentially tempered by the
+accumulated bias at the current position `s(t)`; hill height does not decrease
+uniformly everywhere as a function of simulation time. `PACE=500` deposits a Gaussian every 1 ps,
 `HEIGHT=1.2` is in kJ/mol, `SIGMA=0.2` is in radians, and `BIASFACTOR=10`
 controls tempering. The -π to π grid supports `CALC_RCT`.
 

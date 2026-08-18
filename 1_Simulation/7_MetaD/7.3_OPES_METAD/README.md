@@ -1,14 +1,16 @@
 # OPES_METAD
 
-![OPES_METAD의 sampled distribution과 target distribution / Sampled and target distributions in OPES_METAD](../../../assets/simulation/opes_target.svg)
+![OPES_METAD가 방문 data로 probability distribution을 추정하고 target bias를 계산하는 흐름 / OPES_METAD estimates a probability distribution from visited data and calculates a target bias](../../../assets/simulation/opes_target.svg)
 
-*OPES는 sampled distribution을 추정하고 선택한 target distribution을 향하는 bias를 갱신합니다. / OPES estimates the sampled distribution and updates a bias toward the selected target distribution.*
+*방문한 CV data로 `P_n(s)`를 먼저 추정한 뒤 well-tempered target에 필요한 bias를 계산합니다. / Visited CV data first estimate `P_n(s)`, from which the bias required for a well-tempered target is calculated.*
 
 
 ## 한국어
 
-OPES_METAD는 simulation 중에 CV distribution을 추정하고, 설정한 barrier 안에서
-target distribution에 접근하도록 bias를 갱신합니다. 여기서는 alanine
+MetaD가 방문한 CV 위치에 bias를 직접 누적한다면, OPES_METAD는 방문 data를
+reweighting하고 kernel density estimate를 사용해 unbiased probability
+distribution `P_n(s)`를 먼저 추정합니다. 이어서 well-tempered target
+distribution을 sampling하는 데 필요한 bias를 계산합니다. 여기서는 alanine
 dipeptide의 φ와 ψ를 bias합니다.
 
 ```bash
@@ -41,7 +43,9 @@ reweighting에 쓰는 offset이고 bias 자체가 아닙니다.
 
 Production은 나누지 않고 `work/`에서 1 ns를 한 번에 실행합니다.
 `STATE_WFILE=opes.state`는 마지막 adaptive state를 저장하고 `KERNELS`는
-읽을 수 있는 kernel history를 기록합니다. Restart, trajectory, `COLVAR`,
+distribution estimate에 사용된 compressed kernel history를 기록합니다.
+각 kernel을 MetaD hill과 같은 direct bias deposit으로 해석하지 않습니다.
+Restart, trajectory, `COLVAR`,
 `KERNELS`와 `opes.state`는 모두 `work/`에 저장합니다.
 
 PLUMED 2.10은 `opes` module을 기본으로 build하지 않습니다. PLUMED configure에
@@ -63,10 +67,15 @@ partial production으로 판정하지 않습니다.
 ## English
 
 `build.sh structure/alanine-dipeptide.pdb` builds the solvated system from the
-supplied PDB. OPES_METAD adaptively estimates the φ/ψ distribution and builds a bias bounded
-by `BARRIER=50` kJ/mol. `PACE=500` updates the bias every 1 ps, and the initial
+supplied PDB. Unlike MetaD, which directly accumulates bias at visited CV
+positions, OPES_METAD reweights the visited data and uses a kernel-density
+estimate of the unbiased `P_n(s)`. It then calculates the bias required for a
+well-tempered target distribution, bounded here by `BARRIER=50` kJ/mol.
+`PACE=500` updates the estimate and bias every 1 ps, and the initial
 kernel widths are 0.15 rad. The unsegmented 1 ns production writes its restart,
 trajectory, `COLVAR`, `KERNELS`, and final `opes.state` directly under `work/`.
+`KERNELS` records the compressed density-estimation history, not direct MetaD
+hill deposits.
 The 100 ps NPT equilibration uses `skinnb=5.0 Å` to enlarge the GPU pair-list
 margin while retaining the physical `cut=10.0 Å` cutoff.
 `anal.py` reports CV, bias, effective-sample-size, and kernel-count diagnostics.
