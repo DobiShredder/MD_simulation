@@ -4,13 +4,39 @@ set -euo pipefail
 dry_run=0
 positional_arguments=()
 
+show_help() {
+    cat <<'EOF'
+Usage: ./build.sh [--dry-run] INPUT.pdb [temperatures.txt]
+
+Build REST2 replica topologies from an effective-temperature list.
+
+Temperature input:
+  Separate values with commas, semicolons, vertical bars, or whitespace.
+  Text after # is ignored. The first value must be 300 K, and subsequent
+  values must increase strictly.
+
+Generated scaling:
+  lambda_pp = 300 / T
+  lambda_pw = sqrt(lambda_pp)
+  The complete table is written to work/states.tsv by default.
+
+Options:
+  --dry-run    Validate inputs and print the planned build without running it.
+  -h, --help   Show this help message and exit.
+EOF
+}
+
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --dry-run)
             dry_run=1
             ;;
+        -h|--help)
+            show_help
+            exit 0
+            ;;
         -*)
-            echo "Usage: $0 [--dry-run] INPUT.pdb [states.tsv]" >&2
+            show_help >&2
             exit 2
             ;;
         *)
@@ -21,7 +47,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if (( ${#positional_arguments[@]} < 1 || ${#positional_arguments[@]} > 2 )); then
-    echo "Usage: $0 [--dry-run] INPUT.pdb [states.tsv]" >&2
+    show_help >&2
     exit 2
 fi
 
@@ -47,8 +73,9 @@ refuse_existing_results() {
 }
 
 input_pdb=${positional_arguments[0]}
-states_file=${positional_arguments[1]:-"inputs/states.tsv"}
+temperature_file=${positional_arguments[1]:-"inputs/temperatures.txt"}
 work_dir=${WORK_DIR:-"work"}
+states_file="$work_dir/states.tsv"
 tleap=${TLEAP:-tleap}
 gmx=${GROMACS:-gmx}
 plumed=${PLUMED:-plumed}
@@ -57,15 +84,16 @@ energy_tolerance=${ENERGY_TOLERANCE_KJ_MOL:-0.1}
 
 refuse_existing_results "$work_dir"
 
-for input_file in "$input_pdb" "$states_file"; do
+for input_file in "$input_pdb" "$temperature_file"; do
     if [[ ! -s "$input_file" ]]; then
         die "Required input not found: $input_file"
     fi
 done
 
-if ! "$python_bin" validate_states.py "$states_file"; then
-    die "REST2 state-table validation failed."
+if ! replica_count=$("$python_bin" generate_states.py --count "$temperature_file"); then
+    die "REST2 temperature-list validation failed."
 fi
+last_replica=$(printf '%03d' "$((replica_count - 1))")
 
 if (( ! dry_run )); then
     for executable in "$tleap" "$gmx" "$plumed" "$python_bin"; do
@@ -79,14 +107,12 @@ if (( ! dry_run )); then
     fi
 fi
 
-replica_count=$(awk 'NR > 1 {count++} END {print count + 0}' "$states_file")
-last_replica=$(awk 'END {print $1}' "$states_file")
-
 if (( dry_run )); then
     echo "Converting the ff19SB/TIP3P AMBER system to GROMACS topology."
     echo "Marking only protein atoms and generating $replica_count REST2 topologies."
     echo "Comparing potential energies of the scale-1.0 and original topologies."
-    echo "State table: $states_file"
+    echo "Temperature input: $temperature_file"
+    echo "Generated state table: $states_file"
     echo "Output directories: $work_dir/000 ... $last_replica"
     exit 0
 fi
@@ -95,6 +121,13 @@ echo "Generating an ff19SB/TIP3P AMBER system."
 mkdir -p "$work_dir"
 cp "$input_pdb" "$work_dir/input.pdb"
 cp inputs/tleap.in "$work_dir/tleap.in"
+
+if ! "$python_bin" generate_states.py "$temperature_file" "$states_file"; then
+    die "REST2 state-table generation failed."
+fi
+if ! "$python_bin" validate_states.py "$states_file"; then
+    die "Generated REST2 state-table validation failed."
+fi
 
 if ! (
     cd "$work_dir"
@@ -170,8 +203,6 @@ while IFS=$'\t' read -r replica effective_temperature lambda_pp _ seed; do
     cp "inputs/minimize.mdp" "$replica_dir/minimize.mdp"
     cp "inputs/production.mdp" "$replica_dir/production.mdp"
 done < "$states_file"
-
-cp "$states_file" "$work_dir/states.tsv"
 
 # At scale=1 the Hamiltonian must match the original, so compare the energy of one frame.
 energy_dir="$work_dir/energy_check"

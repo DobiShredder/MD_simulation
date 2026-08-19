@@ -26,8 +26,9 @@ effective-temperature ladder를 구성할 수 있습니다.
 | `convert_topology.py` | Tleap의 AMBER topology를 GROMACS 형식으로 변환합니다. |
 | `mark_hot.py` | Protein atom type에만 `partial_tempering` marker를 붙입니다. |
 | `scale_cmap.py` | ff19SB의 residue별 CMAP section을 복원하고 energy grid를 `lambda`로 scaling합니다. |
-| `validate_states.py` | State file의 각 row와 λ 관계를 검사하고 잘못된 column을 표시합니다. |
-| `build.sh` | 변환·scaling을 호출해 state file의 row 수만큼 topology/TPR를 만들고 scale-one energy를 검사합니다. |
+| `generate_states.py` | Effective-temperature 목록에서 `lambda_pp`, `lambda_pw`와 seed를 포함한 state table을 생성합니다. `build.sh`가 자동 호출합니다. |
+| `validate_states.py` | 생성된 state table의 각 row와 λ 관계를 검사하고 잘못된 column을 표시합니다. |
+| `build.sh` | Temperature file을 state table로 변환하고 row 수만큼 topology/TPR를 만들며 scale-one energy를 검사합니다. |
 | `compare_energy.py` | 원본과 scale 1.0 rerun potential 차이를 허용 오차와 비교합니다. |
 | `completion_helpers.sh` | `run.sh`가 자동으로 불러와 replica별 completion marker를 관리합니다. |
 | `run.sh` | 300 K pre-production과 PLUMED-patched GROMACS HREX를 실행합니다. |
@@ -91,38 +92,38 @@ Scheduler는 할당한 GPU만 `CUDA_VISIBLE_DEVICES`에 노출해야 합니다. 
 새 system의 `effective_temperature_K`는
 [remd-temperature-generator](https://virtualchemistry.org/remd-temperature-generator/)에
 hot solute atom 수를 protein atom 수로 넣고 water molecule 수를 0으로 두어
-초기 ladder를 만듭니다. 출력 temperature마다 `lambda_pp=T0/Tm`,
-`lambda_pw=sqrt(lambda_pp)`를 계산합니다. Water=0은 solvent 자유도를 predictor에서
+초기 ladder를 만듭니다. 출력 temperature를 text file로 저장하면 `build.sh`가
+각 값에서 `lambda_pp=T0/Tm`, `lambda_pw=sqrt(lambda_pp)`를 계산합니다.
+Water=0은 solvent 자유도를 predictor에서
 제외하는 근사이며 REST2 acceptance를 보장하지 않습니다. 짧은 pilot run에서
 adjacent acceptance, state 방문과 round trip을 확인한 뒤 ladder를 조정합니다.
 
-기본 `inputs/states.tsv`는 Chignolin의 protein atom 수로 미리 계산한 8-state
-file입니다. 다른 system에서는 generator temperature마다
-`lambda_pp=300/Tm`, `lambda_pw=sqrt(lambda_pp)`를 계산해 다음 tab-separated
-형식으로 저장합니다.
+기본 `inputs/temperatures.txt`에는 Chignolin용 8-state ladder가 들어 있습니다.
+Temperature는 comma, semicolon, vertical bar, space, tab 또는 newline으로
+구분할 수 있고 `#` 뒤에는 comment를 쓸 수 있습니다.
 
 ```text
-replica<TAB>effective_temperature_K<TAB>lambda_pp<TAB>lambda_pw<TAB>seed
-000<TAB>300.000<TAB>1.00000000<TAB>1.00000000<TAB>310001
-001<TAB>322.711<TAB>0.92962399<TAB>0.96417010<TAB>317920
+# REST2 effective temperatures in K
+300.000, 317.890, 336.847, 356.935
+378.220; 400.775 | 424.675 450.000
 ```
 
 ```bash
-./build.sh structure/chignolin.pdb /path/to/states.tsv
+./build.sh structure/chignolin.pdb /path/to/temperatures.txt
 ./run.sh --cpus 48 --gpus 8 --dry-run
 ```
 
-Physical bath가 300 K이므로 첫 state는 `000`, 300 K, `lambda_pp=1`,
-`lambda_pw=1`이어야 합니다. `build.sh`는 file을 검사해 `work/states.tsv`로
-복사하고, `run.sh`는 data row 수를 replica 수와 기본 MPI process 수로
-사용합니다.
+Physical bath가 300 K이므로 첫 temperature는 300 K이어야 하며 이후 값은
+증가해야 합니다. `build.sh`는 `work/states.tsv`를 생성하고 `run.sh`는 그
+data row 수를 replica 수와 기본 MPI process 수로 사용합니다.
 
 ### 주요 option
 
 | Option | 의미 |
 | --- | --- |
-| `states.tsv`의 `effective_temperature_K` | 300–450 K ladder와 topology scaling factor를 정의합니다. Bath temperature는 아닙니다. |
-| `build.sh INPUT.pdb [states.tsv]` | 첫 argument의 PDB로 topology를 만들고 effective-temperature·scaling file을 선택합니다. State file을 생략하면 Chignolin용 `inputs/states.tsv`를 사용합니다. |
+| `temperatures.txt` | Effective-temperature ladder를 정의합니다. 값의 개수가 replica 수가 되며 bath temperature는 바뀌지 않습니다. |
+| `build.sh INPUT.pdb [temperatures.txt]` | 첫 argument의 PDB로 topology를 만들고 두 번째 file의 temperature에서 `work/states.tsv`를 생성합니다. File을 생략하면 `inputs/temperatures.txt`를 사용합니다. |
+| `build.sh --help` | 허용하는 temperature 구분자, scaling 식과 생성 output을 표시합니다. |
 | Protein `_` marker | `partial_tempering`이 scaling할 hot region을 protein atom으로 제한합니다. |
 | `ref-t=300` | 모든 replica의 physical thermostat temperature입니다. |
 | `-multidir`, `-replex 1000` | 8개 directory를 HREX로 묶고 1,000 steps, 즉 2 ps마다 교환합니다. |
@@ -175,8 +176,9 @@ residue-specific ff19SB CMAP grids. GROMACS 2024.3 does not support the newer
 `atomtype-residuetype` CMAP syntax, so headers use atom types such as
 `C N XC0 C N`; the unique central C-alpha type selects each residue-specific
 grid. The `_` marker is limited to nonbonded atom types in `[ atoms ]`; CMAP
-lookup continues to use the original bonded types. `build.sh`
-generates and verifies the states selected by the input file.
+lookup continues to use the original bonded types. `generate_states.py`
+converts the temperature input into a state table, and `build.sh` generates and
+verifies the corresponding scaled topologies.
 `validate_states.py` reports the row and column of an invalid schedule, and
 `completion_helpers.sh` keeps marker bookkeeping out of the runner's GROMACS commands.
 `run.sh` uses `-multidir -replex 1000`, and `anal.py` summarizes exchange and
@@ -198,19 +200,21 @@ can change the numerical difference between equivalent topologies.
 For a new REST2 system, use the
 [remd-temperature-generator](https://virtualchemistry.org/remd-temperature-generator/)
 with the hot-solute atom count entered as the protein-atom count and zero water
-molecules. Convert each output temperature with `lambda_pp=T0/Tm` and
-`lambda_pw=sqrt(lambda_pp)`. This removes solvent degrees of freedom from the
+molecules. Save its effective temperatures in a text file; `build.sh` calculates
+`lambda_pp=T0/Tm` and `lambda_pw=sqrt(lambda_pp)`. This removes solvent degrees of freedom from the
 predictor but does not guarantee REST2 acceptance; refine the initial ladder
 from adjacent acceptance, state visits, and round trips in a pilot run.
 
-The bundled `inputs/states.tsv` is an eight-state ladder precomputed from the
-Chignolin protein-atom count. For another system, write the generator output
-as a tab-separated file with `replica`, `effective_temperature_K`,
-`lambda_pp`, `lambda_pw`, and `seed`, where `lambda_pp=300/Tm` and
-`lambda_pw=sqrt(lambda_pp)`, then run
-`./build.sh structure/chignolin.pdb /path/to/states.tsv`. The identity row is `000` at
-300 K with both lambdas equal to one. The runner derives the replica count and
-default MPI process count from the selected file.
+The bundled `inputs/temperatures.txt` contains an eight-state ladder for
+Chignolin. For another system, save the effective temperatures produced by the
+generator and run `./build.sh structure/chignolin.pdb /path/to/temperatures.txt`.
+Values may be separated by commas, semicolons, vertical bars, spaces, tabs, or
+newlines, and text following `#` is treated as a comment. The first temperature
+must be 300 K and the remaining values must increase. The build assigns
+deterministic seeds and writes `work/states.tsv`; its data-row count sets the
+replica count and the default MPI process count.
+Run `./build.sh --help` to display the accepted delimiters, scaling equations,
+and generated state-table path.
 
 The analysis writes exchange acceptance, state visits, occupancy, radius of
 gyration, and the distance between the first and last protein Cα atoms as TSV

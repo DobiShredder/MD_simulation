@@ -9,8 +9,9 @@
 
 Chignolin을 ff19SB/TIP3P로 만들고 8-replica solvent-scaled REST3를
 실행합니다. Effective temperature는 geometric ladder로 300–450 K를
-사용합니다. `states.tsv`에는
-`λpp=T0/Tm`, `λpw=sqrt(T0/Tm)`과 다음 κ를 기록합니다.
+사용합니다. `build.sh`는 temperature 목록에서
+`λpp=T0/Tm`, `λpw=sqrt(T0/Tm)`을 계산하고 별도 κ 목록과 합쳐
+`work/states.tsv`를 생성합니다.
 
 REST2에서 높은 effective temperature state는 `λ=T0/Tm<1`입니다.
 Protein–protein interaction은 `λ`, protein–water electrostatic과 vdW interaction은
@@ -45,7 +46,8 @@ field에 맞춰 정해야 하는 schedule입니다.
 | `download.sh` | 1UAO PDB/mmCIF와 외부 parser source를 받고 checksum을 검사합니다. |
 | `prepare.py` | 1UAO의 첫 NMR model을 simulation PDB로 정리합니다. |
 | `convert_topology.py` | AMBER topology를 GROMACS base topology로 변환하고 protein molecule 이름을 정규화합니다. |
-| `generate_rest3.py` | 선택한 state file의 λ·κ와 외부 parser로 REST3 topology를 만듭니다. |
+| `generate_states.py` | Temperature와 κ 목록에서 λ와 seed를 포함한 state table을 생성합니다. `build.sh`가 자동 호출합니다. |
+| `generate_rest3.py` | 생성된 state table의 λ·κ와 외부 parser로 REST3 topology를 만듭니다. |
 | `rest3_parser_adapter.py` | Parser 0.2.2 loading, 출력 정리와 solvent parameter 정밀도 보정을 담당합니다. `generate_rest3.py`가 자동으로 사용합니다. |
 | `scale_cmap.py` | 외부 parser가 생략하는 ff19SB의 residue별 CMAP section을 복원하고 grid를 `lambda_pp`로 scaling합니다. |
 | `verify_rest3.py` | Base identity와 water–water/ion–water Lennard-Jones 보존을 검사합니다. |
@@ -128,26 +130,32 @@ modeling하지 않습니다. Predicted exchange probability를 REST3 값으로 �
 말고 κ schedule을 적용한 pilot run의 adjacent acceptance와 round trip으로
 state 간격을 검증합니다.
 
-기본 `inputs/states.tsv`는 Chignolin의 protein atom 수로 준비한 8-state
-temperature/λ ladder와 이 예제의 κ schedule을 함께 기록합니다. 다른
-system에서는 generator temperature로 λ를 다시 계산하고 system에 맞게 선택한
-κ를 다음 tab-separated 형식으로 저장합니다.
+기본 `inputs/temperatures.txt`는 Chignolin용 8-state ladder이고
+`inputs/kappa.txt`는 이 예제의 κ schedule입니다. 두 file 모두 comma,
+semicolon, vertical bar, space, tab 또는 newline으로 값을 구분할 수 있고 `#`
+뒤에는 comment를 쓸 수 있습니다.
 
 ```text
-replica<TAB>effective_temperature_K<TAB>lambda_pp<TAB>lambda_pw<TAB>kappa<TAB>seed
-000<TAB>300.000<TAB>1.00000000<TAB>1.00000000<TAB>1.000<TAB>410001
-001<TAB>317.890<TAB>0.94372206<TAB>0.97145358<TAB>1.000<TAB>417920
+# temperatures.txt
+300.000, 317.890, 336.847, 356.935
+378.220; 400.775 | 424.675 450.000
+
+# kappa.txt
+1.000, 1.000, 1.000, 1.000
+1.005; 1.010; 1.015; 1.020
 ```
 
 ```bash
-./build.sh structure/chignolin.pdb /path/to/states.tsv
+./build.sh structure/chignolin.pdb /path/to/temperatures.txt /path/to/kappa.txt
+./build.sh --help
 ./run.sh --cpus 48 --gpus 8 --dry-run
 ```
 
-첫 state는 `000`, 300 K, `lambda_pp=1`, `lambda_pw=1`, `kappa=1`이어야
-합니다. Temperature만으로 κ가 결정되지는 않습니다. `build.sh`는 file을
-검사해 `work/states.tsv`로 복사하며 `run.sh`는 data row 수를 replica 수와
-기본 MPI process 수로 사용합니다.
+첫 temperature는 300 K이고 이후 값은 증가해야 합니다. κ는 모두 0보다 커야
+하며 첫 값은 1이어야 합니다. 두 목록의 값 개수는 같아야 합니다. Temperature만으로
+κ가 결정되지는 않습니다. `build.sh`는 λ와 deterministic seed를 계산해
+`work/states.tsv`를 만들며 `run.sh`는 data row 수를 replica 수와 기본 MPI
+process 수로 사용합니다.
 
 ### 주요 option
 
@@ -155,7 +163,8 @@ replica<TAB>effective_temperature_K<TAB>lambda_pp<TAB>lambda_pw<TAB>kappa<TAB>se
 | --- | --- |
 | `lambda_pp`, `lambda_pw` | Protein–protein과 protein–water scaling factor입니다. Geometric temperature ladder에서 계산합니다. |
 | `kappa` | Protein–water vdW의 `√λ` scaling에 곱하는 REST3 correction입니다. `κ=1`은 REST2이고, 이 예제에서는 높은 state에서 1.005–1.020을 사용합니다. |
-| `build.sh INPUT.pdb [states.tsv]` | 첫 argument의 PDB로 topology를 만들고 effective-temperature·λ·κ file을 선택합니다. State file을 생략하면 Chignolin용 `inputs/states.tsv`를 사용합니다. |
+| `build.sh INPUT.pdb [temperatures.txt] [kappa.txt]` | 첫 argument의 PDB로 topology를 만들고 두 목록에서 `work/states.tsv`를 생성합니다. 생략한 목록은 각각 `inputs/temperatures.txt`와 `inputs/kappa.txt`를 사용합니다. |
+| `build.sh --help` | 허용하는 구분자, λ 식, κ 제약과 생성 output을 표시합니다. |
 | `kappa_atom_names=['OW']` | TIP3P oxygen type만 κ scaling 대상으로 지정합니다. Water molecule 전체를 hot molecule로 지정하는 option이 아닙니다. |
 | `-replex 1000` | 2 fs timestep에서 2 ps마다 Hamiltonian 교환을 시도합니다. |
 | `--cpus`, `--gpus` | 할당받은 총 CPU thread와 GPU 수입니다. CPU 수는 replica 수로 나누어져야 하며 GPU 수는 1–replica 수 범위입니다. |
@@ -217,8 +226,9 @@ ParmEd names the first multi-residue molecule `system1`, which parser 0.2.2
 mistakes for the `[ system ]` section. `convert_topology.py` renames that
 molecule definition and reference to `Protein_chain_A` without changing any
 atoms, residues, or force-field parameters. It then creates the base topology.
-`generate_rest3.py` applies
-the `states.tsv` lambda/kappa schedule, and `scale_cmap.py` restores and scales
+`generate_states.py` creates `work/states.tsv` from temperature and kappa
+lists. `generate_rest3.py` applies that lambda/kappa schedule, and
+`scale_cmap.py` restores and scales
 the residue-specific ff19SB CMAP section omitted by parser 0.2.2. GROMACS
 2024.3 headers use atom types such as `C N XC0 C N`; each unique central
 C-alpha type selects its residue-specific grid. CMAP bonded types remain
@@ -263,11 +273,15 @@ ladder. The predictor does not model REST3's kappa-dependent solute-water vdW
 scaling, so do not interpret its predicted probability as a REST3 acceptance
 rate; validate and refine the states with a REST3 pilot run.
 
-The bundled `inputs/states.tsv` contains an eight-state temperature/lambda
-ladder prepared from the Chignolin protein-atom count plus this example's
-kappa schedule. For another system, save `replica`,
-`effective_temperature_K`, `lambda_pp`, `lambda_pw`, `kappa`, and `seed` in a
-tab-separated file and run `./build.sh structure/chignolin.pdb /path/to/states.tsv`.
-The identity row is `000` at 300 K with both lambdas and kappa equal to one.
-Temperature determines the lambdas but not kappa. The runner derives the
-replica count and default MPI process count from the selected file.
+The bundled `inputs/temperatures.txt` contains an eight-state Chignolin ladder,
+and `inputs/kappa.txt` contains this example's kappa schedule. For another
+system, run
+`./build.sh structure/chignolin.pdb /path/to/temperatures.txt /path/to/kappa.txt`.
+Values in either file may be separated by commas, semicolons, vertical bars,
+spaces, tabs, or newlines; text following `#` is ignored. The first temperature
+must be 300 K, subsequent temperatures must increase, and the first kappa must
+be one. Both lists must contain the same number of values. Temperature
+determines the lambdas but not kappa. The build assigns deterministic seeds and
+writes `work/states.tsv`; the runner uses its row count as the replica count and
+default MPI process count. Run `./build.sh --help` to display the input rules,
+scaling equations, and generated output path.

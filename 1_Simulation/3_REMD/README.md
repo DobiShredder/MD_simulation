@@ -88,10 +88,12 @@ molecule 수를 0으로 둔 결과를 initial effective-temperature ladder로
 round trip을 확인합니다. REST3의 κ-dependent solute–water scaling은 generator에
 포함되지 않으므로 REST2 ladder를 출발점으로만 사용하고 별도로 검증합니다.
 
-각 예제의 `inputs/states.tsv`는 Chignolin system에 대해 미리 계산한 기본
-ladder입니다. 다른 system에서는 atom 수와 water 수에 맞춰 새 ladder file을
-만들고 `./build.sh structure/chignolin.pdb /path/to/states.tsv`로 전달합니다. File의 data
-row 수가 replica 수가 되며 `run.sh`의 기본 MPI process 수도 같은 값입니다.
+REST2와 REST3의 `inputs/temperatures.txt`에는 Chignolin용 기본 ladder가 들어
+있으며 `build.sh`가 lambda와 seed를 포함한 `work/states.tsv`를 생성합니다.
+REST3는 temperature와 별도로 `inputs/kappa.txt`도 읽습니다. REUS와 GaREUS는
+`inputs/states.tsv`를 사용합니다. 다른 system에서는 새 ladder file을 각 하위
+README에 적힌 `build.sh` argument로 전달합니다. State 수가 replica 수가 되며
+`run.sh`의 기본 MPI process 수도 같은 값입니다.
 
 ## English
 
@@ -144,7 +146,10 @@ acceptance and round trips in a pilot run. REST3 adds kappa-dependent
 solute-water scaling that the predictor does not model, so the REST2 ladder is
 only a starting point for REST3 validation.
 
-Each `inputs/states.tsv` is a precomputed default ladder for Chignolin. For a
-different system, generate a new ladder using its atom and water counts and
-pass it with `./build.sh structure/chignolin.pdb /path/to/states.tsv`. The number of data
-rows sets both the replica count and the default MPI process count.
+REST2 and REST3 store their precomputed Chignolin ladders in
+`inputs/temperatures.txt`; each `build.sh` generates `work/states.tsv` with
+lambdas and seeds. REST3 also reads a separate `inputs/kappa.txt`. REUS and
+GaREUS use `inputs/states.tsv` directly. For a different system, generate a
+ladder using its atom and water counts and pass the file as described in the
+corresponding child README. The state count sets both the replica count and the
+default MPI process count.
