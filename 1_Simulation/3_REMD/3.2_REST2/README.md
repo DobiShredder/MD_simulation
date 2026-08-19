@@ -8,7 +8,7 @@
 ## 한국어
 
 Chignolin을 ff19SB/TIP3P로 만들고 8-replica REST2를 실행합니다. Protein
-Hamiltonian만 300–500 K effective temperature에 맞춰 scaling하며 실제 bath
+Hamiltonian만 300–450 K effective temperature에 맞춰 scaling하며 실제 bath
 temperature는 300 K입니다. Equilibration은 100 ps, production은 replica당
 1 ns이고 교환은 2 ps마다 시도합니다.
 
@@ -121,7 +121,7 @@ Physical bath가 300 K이므로 첫 state는 `000`, 300 K, `lambda_pp=1`,
 
 | Option | 의미 |
 | --- | --- |
-| `states.tsv`의 `effective_temperature_K` | 300–500 K ladder와 topology scaling factor를 정의합니다. Bath temperature는 아닙니다. |
+| `states.tsv`의 `effective_temperature_K` | 300–450 K ladder와 topology scaling factor를 정의합니다. Bath temperature는 아닙니다. |
 | `build.sh INPUT.pdb [states.tsv]` | 첫 argument의 PDB로 topology를 만들고 effective-temperature·scaling file을 선택합니다. State file을 생략하면 Chignolin용 `inputs/states.tsv`를 사용합니다. |
 | Protein `_` marker | `partial_tempering`이 scaling할 hot region을 protein atom으로 제한합니다. |
 | `ref-t=300` | 모든 replica의 physical thermostat temperature입니다. |
@@ -147,7 +147,7 @@ folding sampling을 돕기 위해 사용되어 온 method 특성입니다. 짧�
 ## English
 
 This example runs eight-state REST2 for ff19SB/TIP3P Chignolin. Only protein
-interactions are scaled over effective temperatures of 300–500 K; the physical
+interactions are scaled over effective temperatures of 300–450 K; the physical
 bath remains at 300 K. Equilibration is 100 ps, production is one 1 ns segment,
 and exchanges are attempted every 2 ps.
 
