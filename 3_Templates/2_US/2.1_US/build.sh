@@ -52,15 +52,14 @@ die() {
 }
 
 input=$1
-work_dir=${WORK_DIR:-work}
+work_dir=work
 tleap=${TLEAP:-tleap}
 python=${PYTHON:-python3}
 
-if [[ -d "$work_dir" ]]; then
-    existing_result=$(find "$work_dir" -type f \( -name '.*.complete' -o -name '*.out' \) -print -quit)
-    if [[ -n "$existing_result" ]]; then
-        die "Existing simulation results were found: $existing_result"
-    fi
+existing_result=$(find "$work_dir" rmd/work us/work -type f \
+    \( -name '.*.complete' -o -name '*.out' \) -print -quit 2>/dev/null || true)
+if [[ -n "$existing_result" ]]; then
+    die "Existing simulation results were found: $existing_result"
 fi
 
 if (( ! dry_run )); then
@@ -79,17 +78,17 @@ if (( ! dry_run )); then
 fi
 
 if (( dry_run )); then
-    printf '+ %q generate_inputs.py %q %q\n' "$python" "$config" "$work_dir/inputs"
+    printf '+ %q generate_inputs.py build %q %q\n' "$python" "$config" "$work_dir"
     printf '+ %q -f %q\n' "$tleap" "$work_dir/inputs/tleap.solvate.in"
     echo '+ python3 ../../common/count_waters.py work/solvated.pdb'
-    echo '+ python3 generate_inputs.py config.toml work/inputs --salt-pairs N'
+    echo '+ python3 generate_inputs.py build config.toml work --salt-pairs N'
     printf '+ %q -f %q\n' "$tleap" "$work_dir/inputs/tleap.final.in"
     exit 0
 fi
 
 mkdir -p "$work_dir/inputs"
 cp "$input" "$work_dir/input.pdb"
-"$python" generate_inputs.py "$config" "$work_dir/inputs"
+"$python" -B generate_inputs.py build "$config" "$work_dir"
 
 echo "Solvating the input structure to determine the water count."
 if ! (
@@ -100,7 +99,7 @@ if ! (
 fi
 
 water_count=$("$python" ../../common/count_waters.py "$work_dir/solvated.pdb")
-salt_concentration=$("$python" - "$config" <<'PY'
+salt_concentration=$("$python" -B - "$config" <<'PY'
 import sys
 sys.path.insert(0, "../../common")
 from pathlib import Path
@@ -111,7 +110,7 @@ PY
 salt_pairs=$(awk -v waters="$water_count" -v concentration="$salt_concentration" \
     'BEGIN { printf "%d", waters * concentration / 55.5 + 0.5 }')
 
-"$python" generate_inputs.py "$config" "$work_dir/inputs" --salt-pairs "$salt_pairs"
+"$python" -B generate_inputs.py build "$config" "$work_dir" --salt-pairs "$salt_pairs"
 
 echo "Building the final solvated system ($water_count waters, $salt_pairs salt formula units)."
 if ! (

@@ -41,6 +41,9 @@ temperature ramp를 바꿉니다. `energy_interval_steps`는 energy와 log 기�
 `-cpt`는 wall-clock minute 단위이므로 `restart_interval_steps`로 치환하지
 않습니다. `equilibration_ensemble`과 `production_ensemble`은 각 stage의
 `NVT` 또는 `NPT` 설정을 따로 지정합니다.
+Membrane protein을 제외한 template의 기본 minimization은
+`maxcyc=5000`, `ncyc=2500`입니다. Membrane protein은 기존
+`maxcyc=10000`, `ncyc=5000`을 유지합니다.
 
 Config key에는 unit suffix를 붙이지 않습니다. `temperature`, `pressure`,
 `timestep`, distance, force constant의 unit은 관련 section header 바로
@@ -114,6 +117,8 @@ steps, the initial heating temperature, energy and restart intervals, and
 separate equilibration and production ensembles. `restart_interval_steps` maps
 to AMBER `ntwr`; it is not converted to GROMACS `-cpt`, whose unit is wall-clock
 minutes.
+The default minimization is `maxcyc=5000`, `ncyc=2500` for every template
+except membrane protein, which retains `maxcyc=10000`, `ncyc=5000`.
 
 Config keys do not carry unit suffixes. Units for `temperature`, `pressure`,
 `timestep`, distances, and force constants are stated once immediately below

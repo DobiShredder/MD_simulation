@@ -77,7 +77,7 @@ die() {
 
 # User settings and input/output paths
 engine=${AMBER_ENGINE:-pmemd.cuda}
-work_dir=${WORK_DIR:-work/windows}
+work_dir=${WORK_DIR:-work}
 window_root="$work_dir"
 processed_window_count=0
 skipped_window_count=0
@@ -250,11 +250,11 @@ if (( ! dry_run )); then
 fi
 
 if [[ ! -d "$window_root" ]]; then
-    die "generated window is missing. Run ./build.sh first."
+    die "Generated window is missing. Run ./build.sh first."
 fi
 
 if [[ ! -d "$work_dir/inputs" ]]; then
-    die "Generated umbrella inputs are missing. Run prepare_windows.py first."
+    die "Generated umbrella inputs are missing. Run ./build.sh first."
 fi
 
 # Run the selected window or all windows

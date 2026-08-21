@@ -145,8 +145,8 @@ def write_md_inputs(output: Path, values: dict[str, object]) -> None:
         render_cntrl(
             "Minimize solvent while restraining the solute",
             [
-                "imin=1", f"maxcyc={int(values['minimization_steps']) // 2}",
-                f"ncyc={int(values['minimization_steepest_steps']) // 2}",
+                "imin=1", f"maxcyc={values['minimization_steps']}",
+                f"ncyc={values['minimization_steepest_steps']}",
                 "ntc=1", "ntf=1", "ntb=1", "cut=10.0",
                 "ntr=1", "restraint_wt=10.0",
                 f"restraintmask='!:WAT,{values['cation']},{values['anion']} & !@H='",

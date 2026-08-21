@@ -207,7 +207,7 @@ def write_md_inputs(output: Path, values: dict[str, object]) -> None:
     (output / "min-all.in").write_text(
         render_cntrl(
             "Minimize the complete system",
-            ["imin=1", "maxcyc=10000", "ncyc=5000", "ntc=1", "ntf=1",
+            ["imin=1", "maxcyc=5000", "ncyc=2500", "ntc=1", "ntf=1",
              "ntb=1", "cut=10.0", "ntr=0"],
         ),
         encoding="utf-8",
