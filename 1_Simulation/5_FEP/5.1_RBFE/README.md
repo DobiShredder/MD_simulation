@@ -26,7 +26,6 @@ protein complex와 물에서 각각 계산하고 두 값의 차이로 `ΔΔG_bin
 ./download.sh
 python3 prepare.py structure/4W53.raw.pdb structure/protein.pdb
 ./build.sh structure/protein.pdb
-./run.sh --dry-run
 ./run.sh
 python3 anal.py
 ```
@@ -36,12 +35,10 @@ python3 anal.py
 Complex와 solvent environment는 각각 lambda 0.0–1.0의 11개 window를 사용합니다.
 `timask1`/`timask2`는 BNZ와 MBN end state를, `scmask1`/`scmask2`는 soft-core
 대상을 지정합니다. 각 window는 200 ps heating, 100 ps NPT equilibration과
-1 ns production segment 하나를 실행합니다. 완성된 stage는 건너뜁니다.
-중단된 minimization, heating 또는 equilibration의 partial output은 해당 stage를
-시작하기 전에 삭제합니다. Production partial output은 자동으로 삭제하지 않고
-중단합니다. 정상 종료는 engine이 exit status 0을 반환하고 필수 output이 모두
-생성된 뒤 `.<stage>.complete` marker를 기록했는지로 판별합니다. Marker가 없으면
-필수 output이 모두 있어도 partial stage로 처리합니다.
+1 ns production을 실행합니다. Minimization, heating과 equilibration은
+`*.out`과 `*.rst7`이 모두 있으면 건너뜁니다. 둘 중 일부만 있으면 해당 stage를
+다시 실행합니다. 어느 window든 production output이 있으면 덮어쓰지 않고
+계산 전에 중단합니다.
 
 Solvent environment는 `solvatebox system TIP3PBOX 20.0`을 사용합니다. 가장 짧은
 box dimension도 `cut=10 Å`의 GPU neighbor list에 필요한 공간을 갖도록 ligand와
@@ -65,10 +62,10 @@ full matrix가 있으면 MBAR를 사용합니다. 먼 lambda state의 energy가 
 전환하며 임의의 energy로 `********`를 대체하지 않습니다. Complex와 solvent는
 각각 사용 가능한 estimator를 선택하고 `free_energy.tsv`에 이를 기록합니다.
 
-FE-ToolKit의 automatic equilibration,
-correlated-sample stride와 20회 bootstrap을 사용합니다. 각 window에 존재하는
-`production.NNN.out`을 번호순으로 모두 읽으므로 production을 추가 segment로
-연장해도 같은 command로 분석합니다. 주요 output은 다음과 같습니다.
+FE-ToolKit의 automatic equilibration, correlated-sample stride와 20회
+bootstrap을 사용합니다. 각 window의 `production.out`을 읽습니다. 더 긴 계산과
+segment 구성은 `3_Templates/5_FEP/5.1_RBFE`에서 설정합니다. 주요 output은
+다음과 같습니다.
 
 | Output | 내용 |
 | --- | --- |
@@ -93,12 +90,10 @@ needed.
 Run `download.sh`, `prepare.py`, `build.sh`, `run.sh`, and `anal.py` in that
 order. The complex and solvent environments each contain eleven lambda windows. AMBER
 soft-core masks define the two ligand end states. Every window uses 200 ps of
-heating, 100 ps of NPT equilibration, and one 1 ns production segment. Completed
-stages are skipped. Partial minimization, heating, or equilibration output is
-removed before that stage is restarted. Partial production output is preserved
-and stops the workflow. A stage is complete only after the engine exits with
-status 0, every required output is present, and `.<stage>.complete` is written.
-Outputs without this marker are treated as partial even when every file exists.
+heating, 100 ps of NPT equilibration, and one 1 ns production run.
+Minimization, heating, and equilibration are skipped when both their `*.out`
+and `*.rst7` files exist; incomplete pairs are rerun. Existing production output
+in any window stops the workflow before it can be overwritten.
 
 The solvent environment uses a 20 Å solute-to-box-edge buffer so its shortest
 dimension is large enough for the GPU neighbor list with the 10 Å cutoff. The
@@ -119,8 +114,7 @@ complex and solvent estimators are selected independently and recorded in
 `free_energy.tsv`.
 
 The analysis writes bootstrap uncertainties, per-state sampling diagnostics,
-an overlap matrix, and an HTML convergence report. It combines every
-`production.NNN.out` present in each window; the default run creates
-`production.001.out`, while additional numbered segments require no
-analysis-code change. Inspect neighboring-state overlap and equilibration
-warnings before interpreting the final value.
+an overlap matrix, and an HTML convergence report from each window's
+`production.out`. Use `3_Templates/5_FEP/5.1_RBFE` for longer or segmented
+calculations. Inspect neighboring-state overlap and equilibration warnings
+before interpreting the final value.

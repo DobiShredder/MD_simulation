@@ -64,6 +64,12 @@ structure and scientific choices
 
 - [시뮬레이션 튜토리얼](1_Simulation/README.md)
 - [분석 튜토리얼](2_Analysis/README.md)
+- [사용자 structure용 config template](3_Templates/README.md)
+
+`1_Simulation/`에서 method와 engine input을 익힌 뒤 같은 계산을 자신의 structure에
+적용할 때 `3_Templates/`를 사용합니다. Template는 build-ready PDB와
+`config.toml`을 받으며 system별 protonation, missing atom과 selection은 자동으로
+결정하지 않습니다.
 
 
 

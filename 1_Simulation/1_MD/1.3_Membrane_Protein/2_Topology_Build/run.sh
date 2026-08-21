@@ -2,12 +2,10 @@
 set -euo pipefail
 
 dry_run=0
-
 if [[ "${1:-}" == "--dry-run" ]]; then
     dry_run=1
     shift
 fi
-
 if [[ $# -ne 1 ]]; then
     echo "Usage: $0 [--dry-run] SYSTEM-COORDINATES.pdb" >&2
     exit 2
@@ -18,42 +16,30 @@ die() {
     exit 1
 }
 
-# Inputs and user settings
 coordinate_pdb=$1
-tleap=${TLEAP:-tleap}
-python=${PYTHON:-python3}
-
-work_dir=${WORK_DIR:-work}
+work_dir=work
 amber_named_pdb="$work_dir/amber-named.pdb"
 generated_tleap="$work_dir/tleap.in"
 
-# Input and dependency checks
-if (( ! dry_run )); then
-    if [[ ! -f "$coordinate_pdb" ]]; then
-        die "coordinate PDB not found: $coordinate_pdb"
-    fi
-
-    if ! command -v "$tleap" >/dev/null 2>&1; then
-        die "tleap not found: $tleap"
-    fi
-    if ! command -v "$python" >/dev/null 2>&1; then
-        die "Python executable not found: $python"
-    fi
+if [[ ! -f "$coordinate_pdb" ]]; then
+    die "Coordinate PDB not found: $coordinate_pdb"
+fi
+if (( ! dry_run )) && ! command -v tleap >/dev/null 2>&1; then
+    die "tleap not found."
+fi
+if (( ! dry_run )) && ! command -v python3 >/dev/null 2>&1; then
+    die "python3 not found."
+fi
+if (( ! dry_run )) && find "$work_dir" -type f \
+    \( -name 'min*.out' -o -name 'heat*.out' -o -name 'equil*.out' \
+       -o -name 'production*.out' \) -print -quit 2>/dev/null | grep -q .; then
+    die "Simulation output already exists in $work_dir. Remove it before rebuilding."
 fi
 
-# Dry run prints commands without creating files.
 if (( dry_run )); then
-    printf 'mkdir -p %q\n' "$work_dir"
-    printf 'cp %q %q\n' "$coordinate_pdb" "$amber_named_pdb"
-    printf '%q %q %q %q %q\n' \
-        "$python" \
-        prepare_tleap.py \
-        "$amber_named_pdb" \
-        tleap.in \
-        "$generated_tleap"
-    printf 'cd %q\n' "$work_dir"
-    printf '%q \\\n' "$tleap"
-    printf '  -f tleap.in\n'
+    printf '+ cp %q %q\n' "$coordinate_pdb" "$amber_named_pdb"
+    printf '+ python3 prepare_tleap.py %q %q %q\n' "$amber_named_pdb" tleap.in "$generated_tleap"
+    printf '+ (cd %q && tleap -f tleap.in)\n' "$work_dir"
     exit 0
 fi
 
@@ -67,7 +53,7 @@ if [[ ! -s "$amber_named_pdb" ]]; then
     die "Could not prepare the tleap input PDB: $amber_named_pdb"
 fi
 
-"$python" \
+python3 \
     prepare_tleap.py \
     "$amber_named_pdb" \
     tleap.in \
@@ -76,7 +62,7 @@ fi
 # Apply ff19SB, Lipid21, and OPC to the converted coordinate file.
 if ! (
     cd "$work_dir"
-    "$tleap" \
+    tleap \
         -f tleap.in \
         > leap.log 2>&1
 ); then

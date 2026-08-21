@@ -33,7 +33,6 @@ replica는 한 state의 Hamiltonian으로 MD를 진행합니다. Exchange가 acc
 | `prepare.py` | 1UAO의 첫 NMR model을 simulation PDB로 정리합니다. |
 | `make_restraints.py` | Topology에서 terminal Cα index를 찾아 19개 `distance.RST`를 만듭니다. |
 | `build.sh` | 공통 topology와 `states.tsv`를 replica directory에 배치합니다. |
-| `completion_helpers.sh` | `run.sh`가 자동으로 불러와 window별 completion marker를 검사합니다. |
 | `run.sh` | Window별 pre-production과 `pmemd.cuda.MPI -rem 3` exchange를 실행합니다. |
 | `anal.py` | Exchange, window 방문, occupancy와 sampled distance 범위를 요약합니다. |
 
@@ -46,7 +45,6 @@ python3 -m pip install -r requirements.txt
 ./download.sh
 python3 prepare.py structure/1UAO.raw.pdb structure/chignolin.pdb
 ./build.sh structure/chignolin.pdb
-./run.sh --dry-run
 ./run.sh
 python3 anal.py
 ```
@@ -58,11 +56,11 @@ window 범위를 먼저 바꿉니다.
 
 기본 engine은 단일-window stage에 `pmemd.cuda`, replica exchange에
 `pmemd.cuda.MPI -rem 3`입니다. `AMBER_ENGINE`,
-`AMBER_MPI_ENGINE`, `MPI_LAUNCHER`, `MPI_PROCESSES`,
-`MPI_OPTIONS`와 `AMBER_OPTIONS`로 실행 환경을 지정합니다.
+`AMBER_MPI_ENGINE`과 `MPI_LAUNCHER`로 executable을 지정합니다.
 
-Production은 1 ns segment 하나입니다. 모든 window가 완료된 마지막
-segment에서만 이어서 실행합니다.
+Production은 1 ns입니다. Preparation output이 모든 window에 있으면 해당
+stage를 건너뛰고, 일부만 있으면 전부 다시 실행합니다. Production output은
+덮어쓰지 않습니다.
 
 ### 주요 option
 
@@ -72,13 +70,12 @@ segment에서만 이어서 실행합니다.
 | `iat`, `r2=r3` | Terminal Cα atom pair와 window center를 정의합니다. |
 | `rk2=rk3=10.0` | 각 harmonic window의 force constant(kcal mol⁻¹ Å⁻²)입니다. |
 | `nmropt=1`, `DISANG` | AMBER NMR-style restraint input을 활성화합니다. |
-| `nstlim=500`, `numexchg=1000` | AMBER REMD 의미에 따라 500 steps마다 1,000회 교환하여 1 ns segment를 만듭니다. |
+| `nstlim=500`, `numexchg=1000` | AMBER REMD 의미에 따라 500 steps마다 1,000회 교환하여 총 1 ns를 계산합니다. |
 | `DUMPFREQ=500`, `DUMPAVE` | 2 fs timestep 기준 1 ps마다 restraint coordinate를 기록합니다. |
-| `MPI_PROCESSES=19` | Window 수와 MPI rank 수를 같게 설정합니다. |
 
 ### Output
 
-- `work/NNN/production.001.nc` … `production.010.nc`
+- `work/NNN/production.nc`
 - `work/exchange_summary.tsv`, `replica_visits.tsv`,
   `window_occupancy.tsv`
 - `work/restraint_sampling.tsv`
@@ -92,7 +89,7 @@ Window overlap과 PMF는
 This REUS example exchanges 19 windows along the Chignolin residue 1–10 Cα
 distance. Centers span 6–24 Å at 1 Å spacing, with
 `rk2=rk3=10 kcal mol⁻¹ Å⁻²`. Heating is 200 ps, equilibration is 100 ps,
-production is one 1 ns segment per window, and exchanges are attempted every
+production is 1 ns per window, and exchanges are attempted every
 1 ps.
 
 REUS exchanges configurations among Hamiltonians with different umbrella
@@ -111,17 +108,15 @@ the connectivity of the reconstructed PMF.
 Run the build as `./build.sh structure/chignolin.pdb`. It resolves the two Cα
 atom indices from the ff19SB/TIP3P topology and writes one restraint per window.
 The run uses `pmemd.cuda` for individual
-stages and `pmemd.cuda.MPI -rem 3` for exchange. Partial segments are not
-silently resumed.
-`completion_helpers.sh` is sourced by the runner for window-wide completion
-checks.
+stages and `pmemd.cuda.MPI -rem 3` for exchange. Complete preparation stages
+are skipped; incomplete window sets are rerun. Production is not overwritten.
 
 `make_restraints.py` resolves `iat` and writes `r2=r3` centers with
 `rk2=rk3=10.0`. `nmropt=1`/`DISANG` activate the restraint; `nstlim=500` and
-`numexchg=1000` attempt exchange every 1 ps for a 1 ns segment. `DUMPAVE` records the restraint coordinate at
-the same interval. `MPI_PROCESSES` must equal the 19 windows.
+`numexchg=1000` attempt exchange every 1 ps for a 1 ns run. `DUMPAVE` records the restraint coordinate at
+the same interval. The runner launches 19 MPI processes.
 
 Analysis writes acceptance, state visits, window occupancy, and sampled
 restraint-distance ranges as TSV files. Window trajectories are written to
-`work/NNN/production.001.nc`. Use the linked analysis tutorial for overlap and
+`work/NNN/production.nc`. Use the linked analysis tutorial for overlap and
 PMF calculation.

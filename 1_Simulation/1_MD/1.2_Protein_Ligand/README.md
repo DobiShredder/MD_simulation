@@ -39,7 +39,6 @@ cd 1_Simulation/1_MD/1.2_Protein_Ligand
 python3 prepare.py structure/3HTB.raw.pdb structure/complex.pdb
 ./prepare.sh structure/JZ4_ideal.sdf
 ./build.sh structure/complex.pdb
-./run.sh --dry-run
 ./run.sh
 ```
 
@@ -54,7 +53,7 @@ His31은 neutral-pH baseline으로 `HIE`를 사용합니다.
 
 | Option | 의미 |
 | --- | --- |
-| `LIGAND_CHARGE=0` | `antechamber -nc`에 전달할 JZ4 net charge입니다. Chemical state를 바꾸지 않았다면 수정하지 않습니다. |
+| `antechamber -nc 0` | 이 예제에서 사용하는 neutral JZ4의 net charge입니다. 다른 chemical state는 template에서 별도 system으로 준비합니다. |
 | `-at gaff2`, `-c bcc` | GAFF2 atom type과 AM1-BCC charge method를 선택합니다. |
 | `ntt=3`, `gamma_ln=1.0` | Heating 이후 300 K Langevin thermostat를 사용합니다. |
 | `ntb=2`, `ntp=1`, `barostat=2` | Equilibration과 production을 isotropic Monte Carlo-barostat NPT로 실행합니다. |
@@ -109,7 +108,7 @@ chemical system even if the trajectory finishes normally.
 
 The preparation removes phosphate, BME, and crystallographic waters. It keeps
 resolved residues 1–163 and does not model unresolved C-terminal Leu164.
-`LIGAND_CHARGE` defaults to zero. The MD controls use a 2 fs SHAKE timestep,
+`prepare.sh` passes the neutral JZ4 charge as `antechamber -nc 0`. The MD controls use a 2 fs SHAKE timestep,
 Langevin thermostat, and isotropic Monte Carlo-barostat NPT. Initial
 solute-heavy-atom restraints are removed for production.
 

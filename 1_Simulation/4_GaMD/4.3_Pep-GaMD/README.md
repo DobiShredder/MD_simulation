@@ -41,15 +41,14 @@ essential peptide component를 제외한 receptor와 environment potential입니
 | `prepare.py` | Chain A receptor와 resolved chain B PPPVPPRR를 정리하고 residue metadata를 만듭니다. |
 | `build.sh` | ff19SB/TIP3P topology를 만들고 peptide mask renderer를 호출합니다. |
 | `render_inputs.py` | Metadata의 residue 58–65를 `timask1`/`scmask1`에 기록합니다. |
-| `run.sh` | Conventional stage, Pep-GaMD preparation과 production segment 하나를 실행합니다. |
-| `anal.py` | 두 boost component와 total boost의 segment별 통계를 저장합니다. |
+| `run.sh` | Conventional stage, Pep-GaMD preparation과 production을 실행합니다. |
+| `anal.py` | 두 boost component와 total boost의 통계를 저장합니다. |
 
 ~~~bash
 cd 1_Simulation/4_GaMD/4.3_Pep-GaMD
 ./download.sh
 python3 prepare.py structure/1CKB.raw.pdb structure/sh3-peptide.pdb
 ./build.sh structure/sh3-peptide.pdb
-./run.sh --dry-run
 ./run.sh
 python3 anal.py
 ~~~
@@ -57,8 +56,8 @@ python3 anal.py
 `prepare.py`는 chain A 57 residues와 chain B의 PPPVPPRR sequence를 검사합니다.
 `build.sh`는 생성된 residue 범위로 `timask1`과 `scmask1`을 채웁니다.
 `igamd=15`는 peptide potential과 나머지 system potential에 dual boost를
-적용합니다. 완료된 segment의 MD restart와 `*.gamd.rst` state snapshot은
-한 쌍으로 이어집니다.
+적용합니다. Preparation stage의 핵심 output이 모두 있으면 건너뛰고, 일부만
+있으면 해당 stage를 다시 실행합니다. Production output은 덮어쓰지 않습니다.
 
 ### 주요 option
 
@@ -69,7 +68,7 @@ python3 anal.py
 | `timask1`, `scmask1=':58-65'` | Prepared topology의 resolved PPPVPPRR peptide를 선택합니다. Generated input에서 확인합니다. |
 | `sigma0P=sigma0D=6.0` | 두 boost component의 target standard deviation 상한(kcal/mol)입니다. |
 | `ntcmd*`, `nteb*`, `ntave=50000` | Initial conventional statistics와 GaMD equilibration schedule, 100 ps averaging interval을 정의합니다. `*prep`과 전체 step 값을 독립 구간처럼 더하지 않습니다. |
-| `WORK_DIR`, `RANDOM_SEED` | Independent run의 output/state와 heating velocity를 분리합니다. |
+| Heating seed `43001` | 이 고정 example의 initial velocity seed입니다. |
 | `ntr=1`, `-ref minimize.rst7` | Heating restraint의 reference로 minimization restart를 사용합니다. |
 
 Amber 26 manual은 Pep-GaMD를 serial GPU `pmemd.cuda` 전용으로 설명합니다.
@@ -77,8 +76,8 @@ Amber 26 manual은 Pep-GaMD를 serial GPU `pmemd.cuda` 전용으로 설명합니
 중단합니다.
 
 1 ns에서 peptide dissociation·rebinding, binding free energy 또는 kinetics가
-수렴할 것으로 기대하지 않습니다. Independent run은 다른 `WORK_DIR`와
-`RANDOM_SEED`를 사용합니다.
+수렴할 것으로 기대하지 않습니다. System별 설정과 independent run은
+`3_Templates/4_GaMD/4.3_Pep-GaMD`에서 구성합니다.
 
 ## English
 
@@ -86,7 +85,7 @@ PDB 1CKB supplies the C-crk N-terminal SH3 domain and the eight resolved
 PPPVPPRR peptide residues. The PDB entity contains ten peptide residues, but
 only residues with coordinates are retained. The generated peptide range is
 used for the `igamd=15` dual boost.
-Each completed production segment retains paired MD and GaMD state snapshots.
+The fixed tutorial preserves the GaMD preparation state used by production.
 
 Pep-GaMD separates peptide-essential and remaining-system potentials to
 accelerate flexible peptide rearrangement and motion. `prepare.py` validates
@@ -112,11 +111,13 @@ than four durations to sum; `ntave=50000` gives a 100 ps average.
 Heating passes `minimize.rst7` to `-ref` for the `ntr=1` positional restraint.
 Amber 26 documents Pep-GaMD only for serial GPU `pmemd.cuda`; `run.sh` rejects
 CPU and MPI engine overrides.
-`WORK_DIR` and `RANDOM_SEED` values define independent runs.
+The fixed heating seed is `43001`.
 
 The 1 ns example demonstrates preparation, restart, and reweighting data flow;
-it cannot establish peptide binding thermodynamics or kinetics. Use separate
-`WORK_DIR` values and positive `RANDOM_SEED` values for independent runs.
+it cannot establish peptide binding thermodynamics or kinetics. Preparation
+stages are skipped only when their primary output and restart both exist;
+incomplete pairs are rerun, and existing production output is protected. Use
+`3_Templates/4_GaMD/4.3_Pep-GaMD` for independent runs.
 
 ## References / 참고 자료
 

@@ -50,7 +50,6 @@ ligand의 Boresch restraint를 풀어 1 M 상태로 보내는 analytic 값이므
 ./download.sh
 python3 prepare.py structure/3HTB.raw.pdb structure/complex.pdb
 ./build.sh structure/complex.pdb structure/JZ4_ideal.sdf
-./run.sh --dry-run
 ./run.sh
 python3 anal.py
 ```
@@ -82,11 +81,10 @@ Window는 `work/restraint/complex/`, `work/charge/{complex,solvent}/`와
 
 Solvent topology는 ligand와 box edge 사이에 20 Å buffer를 둡니다. 이는
 `cut=10 Å`를 사용하는 `pmemd.cuda`가 작은 solvent box를 거부하지 않도록 가장
-짧은 box dimension을 늘립니다. 완성된 stage는 건너뜁니다. 중단된 minimization,
-heating 또는 equilibration의 partial output은 삭제한 뒤 해당 stage를 다시
-실행합니다. Production partial output은 보존하고 중단합니다. 정상 종료는 engine
-exit status, 필수 output과 `.<stage>.complete` marker를 모두 사용해 판별합니다.
-Marker가 없는 output은 파일이 모두 있어도 partial stage로 처리합니다.
+짧은 box dimension을 늘립니다. Minimization, heating과 equilibration은
+`*.out`과 `*.rst7`이 모두 있으면 건너뜁니다. 둘 중 일부만 있으면 해당 stage를
+다시 실행합니다. 어느 window든 production output이 있으면 덮어쓰지 않고
+계산 전에 중단합니다.
 
 Restraint stage는 λ=0의 restrained complex에서 λ=1의 unrestrained complex로
 진행합니다. 모든 window는 같은 full-strength `DISANG` file을 사용하고,
@@ -115,9 +113,8 @@ cycle과 standard-state correction을 다시 검토합니다.
 MBAR를 사용하고, 없으면 모든 adjacent pair가 기록된 stage에 BAR를 사용합니다.
 사용한 estimator는 `free_energy.tsv`에 stage별로 기록합니다. FE-ToolKit의
 automatic equilibration, correlated-sample stride와 20회 bootstrap을 사용합니다.
-각 window에 존재하는
-`production.NNN.out`을 번호순으로 모두 읽으므로 production을 추가 segment로
-연장해도 analysis code를 수정하지 않습니다.
+각 window의 `production.out`을 읽습니다. 더 긴 계산과 segment 구성은
+`3_Templates/5_FEP/5.2_ABFE`에서 설정합니다.
 
 | Output | 내용 |
 | --- | --- |
@@ -164,7 +161,7 @@ ff19SB, GAFF2/AM1-BCC, and TIP3P, writes original and zero-JZ4-charge topologies
 then creates 65 windows. Restraint and charge
 stages use eleven lambda states; the soft-core LJ stages use sixteen states with
 additional endpoint spacing. Each window contains 200 ps heating, 100 ps
-equilibration, and one 1 ns production segment.
+equilibration, and one 1 ns production run.
 JZ4 is parameterized with a net charge of zero. The protein anchors are GLN102
 `CG-CB-CA`, and the ligand anchors are JZ4 `C7-C8-C9`.
 
@@ -177,11 +174,9 @@ stage uses the asymmetric unique-atom masks `timask1=':JZ4'` and
 
 The solvent topology uses a 20 Å solute-to-box-edge buffer to keep the shortest
 box dimension out of the `pmemd.cuda` small-box guard with the 10 Å cutoff.
-Completed stages are skipped. Partial minimization, heating, or equilibration
-output is removed before restarting that stage. Partial production output is
-preserved and stops the workflow. Completion requires a zero engine exit status,
-all required outputs, and a `.<stage>.complete` marker. Outputs without the
-marker are partial even when every expected file is present.
+Minimization, heating, and equilibration are skipped when both their `*.out`
+and `*.rst7` files exist; incomplete pairs are rerun. Existing production output
+in any window stops the workflow before it can be overwritten.
 
 The restraint stage uses one full-strength `DISANG` definition in every window.
 `gti_nmropt=1` removes that restraint from the restrained state at lambda zero
@@ -198,9 +193,9 @@ Soft-core interactions use the Amber 26 `aces26=1` format and require
 `anal.py` uses FE-ToolKit MBAR when a stage has the full cross-state energy
 matrix and falls back to adjacent-state BAR when all neighboring pairs are
 available. The selected estimator is recorded for each stage in
-`free_energy.tsv`. It combines every `production.NNN.out` present in each window; the
-default run creates `production.001.out`, while additional numbered segments
-require no analysis-code change. It then adds the analytical standard-state term. The leading PME
+`free_energy.tsv`. It reads `production.out` from each window and then adds the
+analytical standard-state term. Use `3_Templates/5_FEP/5.2_ABFE` for longer or
+segmented calculations. The leading PME
 net-charge correction is zero because JZ4 is neutral. Outputs include bootstrap uncertainty,
 per-state sampling diagnostics, stage overlap matrices, and an HTML convergence
 report. The short windows and approximate correction are suitable for learning

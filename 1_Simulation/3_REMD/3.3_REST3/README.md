@@ -53,7 +53,6 @@ field에 맞춰 정해야 하는 schedule입니다.
 | `verify_rest3.py` | Base identity와 water–water/ion–water Lennard-Jones 보존을 검사합니다. |
 | `validate_states.py` | State file의 각 row, λ 관계와 기준 κ를 검사합니다. |
 | `build.sh` | Conversion, topology generation, TPR build와 검사를 순서대로 호출합니다. |
-| `completion_helpers.sh` | `run.sh`가 자동으로 불러와 replica별 completion marker를 관리합니다. |
 | `run.sh` | 300 K pre-production과 2 ps 간격 HREX를 실행합니다. |
 | `anal.py` | Exchange, occupancy와 state별 Rg/terminal distance를 계산합니다. |
 
@@ -78,7 +77,6 @@ python3 -m pip install parmed MDAnalysis numpy
 ./download.sh
 python3 prepare.py structure/1UAO.raw.pdb structure/chignolin.pdb
 ./build.sh structure/chignolin.pdb
-./run.sh --cpus 48 --gpus 8 --dry-run
 ./run.sh --cpus 48 --gpus 8
 python3 anal.py
 ```
@@ -115,12 +113,13 @@ grid를 `lambda_pp`로 scaling합니다. REST3의 scaled nonbonded atom type은
 CMAP lookup에 사용하지 않습니다. `verify_rest3.py`는 이 값도 base topology와
 비교합니다.
 
-Equilibration은 100 ps, production은 1 ns segment 하나이며 교환은 2 ps마다
+Equilibration은 100 ps, production은 1 ns이며 교환은 2 ps마다
 시도합니다. `--cpus`와 `--gpus`로 할당받은 총 resource를 입력합니다. GPU 수는
 1부터 replica 수까지 지정할 수 있습니다. Preproduction은 GPU 수만큼 batch로
 실행하고 각 process를 `-ntmpi 1`로 제한합니다. HREX에서는 GROMACS가 여러
-replica rank를 노출된 GPU에 자동 배치합니다. 나머지 실행 환경 변수와 resume 규칙은 REST2 예제와
-같습니다.
+replica rank를 노출된 GPU에 자동 배치합니다. Preparation output이 모든
+replica에 있으면 해당 stage를 건너뛰고, 일부만 있으면 전부 다시 실행합니다.
+Production output은 덮어쓰지 않습니다.
 
 새 system에서는 REST2와 같이
 [remd-temperature-generator](https://virtualchemistry.org/remd-temperature-generator/)에
@@ -145,17 +144,10 @@ semicolon, vertical bar, space, tab 또는 newline으로 값을 구분할 수 �
 1.005; 1.010; 1.015; 1.020
 ```
 
-```bash
-./build.sh structure/chignolin.pdb /path/to/temperatures.txt /path/to/kappa.txt
-./build.sh --help
-./run.sh --cpus 48 --gpus 8 --dry-run
-```
-
 첫 temperature는 300 K이고 이후 값은 증가해야 합니다. κ는 모두 0보다 커야
 하며 첫 값은 1이어야 합니다. 두 목록의 값 개수는 같아야 합니다. Temperature만으로
 κ가 결정되지는 않습니다. `build.sh`는 λ와 deterministic seed를 계산해
-`work/states.tsv`를 만들며 `run.sh`는 data row 수를 replica 수와 기본 MPI
-process 수로 사용합니다.
+`work/states.tsv`를 만들며 `run.sh`는 data row 수를 replica 수로 사용합니다.
 
 ### 주요 option
 
@@ -163,14 +155,10 @@ process 수로 사용합니다.
 | --- | --- |
 | `lambda_pp`, `lambda_pw` | Protein–protein과 protein–water scaling factor입니다. Geometric temperature ladder에서 계산합니다. |
 | `kappa` | Protein–water vdW의 `√λ` scaling에 곱하는 REST3 correction입니다. `κ=1`은 REST2이고, 이 예제에서는 높은 state에서 1.005–1.020을 사용합니다. |
-| `build.sh INPUT.pdb [temperatures.txt] [kappa.txt]` | 첫 argument의 PDB로 topology를 만들고 두 목록에서 `work/states.tsv`를 생성합니다. 생략한 목록은 각각 `inputs/temperatures.txt`와 `inputs/kappa.txt`를 사용합니다. |
-| `build.sh --help` | 허용하는 구분자, λ 식, κ 제약과 생성 output을 표시합니다. |
+| `build.sh INPUT.pdb` | 첫 argument의 PDB와 bundled temperature/κ 목록으로 `work/states.tsv`를 생성합니다. |
 | `kappa_atom_names=['OW']` | TIP3P oxygen type만 κ scaling 대상으로 지정합니다. Water molecule 전체를 hot molecule로 지정하는 option이 아닙니다. |
 | `-replex 1000` | 2 fs timestep에서 2 ps마다 Hamiltonian 교환을 시도합니다. |
 | `--cpus`, `--gpus` | 할당받은 총 CPU thread와 GPU 수입니다. CPU 수는 replica 수로 나누어져야 하며 GPU 수는 1–replica 수 범위입니다. |
-| `PREPRODUCTION_GROMACS_OPTIONS` | Replica별 minimization/equilibration에만 추가할 option입니다. |
-| `HREX_GROMACS_OPTIONS` | External-MPI HREX production에만 추가하며 `-ntmpi`를 넣지 않습니다. |
-| `REPEX_TOPOLOGY_PARSER_SOURCE` | 자동으로 받은 source 대신 별도 parser checkout을 사용할 때만 지정합니다. |
 
 ### 해석 범위
 
@@ -247,8 +235,7 @@ Run with `--cpus TOTAL --gpus GPU_COUNT`; the CPU count must divide evenly among
 the replicas, while `GPU_COUNT` may range from one to the replica count.
 Preproduction runs batches of at most `GPU_COUNT` processes with `-ntmpi 1`.
 GROMACS automatically maps HREX ranks across the visible GPUs, so several
-replicas may share one GPU. `PREPRODUCTION_GROMACS_OPTIONS` and
-`HREX_GROMACS_OPTIONS` add options only to their named phases.
+replicas may share one GPU.
 
 This tutorial requires an external-MPI build of GROMACS 2024.3 or 2024.6 with
 the PLUMED 2.10 GROMACS 2024.3 patch followed by the repository HREX energy
@@ -274,14 +261,12 @@ scaling, so do not interpret its predicted probability as a REST3 acceptance
 rate; validate and refine the states with a REST3 pilot run.
 
 The bundled `inputs/temperatures.txt` contains an eight-state Chignolin ladder,
-and `inputs/kappa.txt` contains this example's kappa schedule. For another
-system, run
-`./build.sh structure/chignolin.pdb /path/to/temperatures.txt /path/to/kappa.txt`.
+and `inputs/kappa.txt` contains this example's kappa schedule. The tutorial
+build always reads these bundled files; use `3_Templates/3_REMD/3.3_REST3` for
+another system or schedule.
 Values in either file may be separated by commas, semicolons, vertical bars,
 spaces, tabs, or newlines; text following `#` is ignored. The first temperature
 must be 300 K, subsequent temperatures must increase, and the first kappa must
 be one. Both lists must contain the same number of values. Temperature
 determines the lambdas but not kappa. The build assigns deterministic seeds and
-writes `work/states.tsv`; the runner uses its row count as the replica count and
-default MPI process count. Run `./build.sh --help` to display the input rules,
-scaling equations, and generated output path.
+writes `work/states.tsv`; the runner uses its row count as the replica count.

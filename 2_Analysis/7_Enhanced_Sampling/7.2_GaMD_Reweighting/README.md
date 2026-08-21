@@ -20,7 +20,7 @@ GaMD log는 각각 100 frames여야 합니다.
 
 - `run.sh`: 선택한 profile에 맞는 cpptraj input을 만들고 CV를 계산한 다음,
   아래 두 Python script를 순서대로 실행합니다.
-- `prepare.py`: production segment 하나의 GaMD log를 읽어 CV frame과 boost
+- `prepare.py`: production run의 GaMD log를 읽어 CV frame과 boost
   potential record가 일대일로 대응하는지 검사합니다.
 - `reweight.py`: 확인된 CV와 boost potential에 2차 cumulant expansion을 적용해
   1D PMF와 bin별 진단값을 계산합니다.
@@ -44,7 +44,7 @@ convergence를 함께 확인합니다. Kinetic reweighting과 2D PMF는 포함�
 
 ## English
 
-cpptraj calculates one profile-specific CV from the production segment.
+cpptraj calculates one profile-specific CV from the production run.
 `prepare.py` checks the one-to-one correspondence between 100 CV and boost
 records, and `reweight.py` applies second-order cumulant expansion to produce a
 one-dimensional PMF. `run.sh` executes these steps in order.

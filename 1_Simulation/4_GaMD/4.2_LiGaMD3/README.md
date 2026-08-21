@@ -43,15 +43,14 @@ potential로 receptor와 ligand의 internal conformational change를 가속합�
 | `protonate_benzamidine.py` | RCSB neutral SDF를 BEN(+1)로 바꾸는 내부 helper입니다. |
 | `build.sh` | BEN GAFF2/AM1-BCC parameter, solvated topology와 generated GaMD input을 만듭니다. |
 | `render_inputs.py` | Final topology에서 BEN 앞 receptor atom 범위를 찾아 template marker를 치환합니다. |
-| `run.sh` | Conventional stage, triple-boost preparation과 production segment 하나를 실행합니다. |
-| `anal.py` | `gamd.log`의 두 boost-energy column과 그 합의 segment별 통계를 저장합니다. |
+| `run.sh` | Conventional stage, triple-boost preparation과 production을 실행합니다. |
+| `anal.py` | `gamd.log`의 두 boost-energy column과 그 합의 통계를 저장합니다. |
 
 ~~~bash
 cd 1_Simulation/4_GaMD/4.2_LiGaMD3
 ./download.sh
 python3 prepare.py structure/3PTB.raw.pdb structure/complex.pdb
 ./build.sh structure/complex.pdb structure/BEN_ideal.sdf
-./run.sh --dry-run
 ./run.sh --allow-unverified
 python3 anal.py
 ~~~
@@ -61,8 +60,9 @@ python3 anal.py
 기본 charge가 +1이면 RCSB neutral SDF의 imine N에 H 하나와 formal charge를
 추가한 뒤 GAFF2/AM1-BCC를 적용합니다.
 `igamd=28`은 ligand essential nonbonded, 나머지 nonbonded와 system bonded
-potential에 세 boost를 적용합니다. 완료된 segment의 MD restart와
-`*.gamd.rst` state snapshot은 한 쌍으로 이어집니다.
+potential에 세 boost를 적용합니다. Preparation stage의 핵심 output이 모두
+있으면 건너뛰고, 일부만 있으면 해당 stage를 다시 실행합니다. Production
+output은 덮어쓰지 않습니다.
 Amber 26의 LiGaMD3 `gamd.log`는 세 물리적 boost를 각각 별도 column으로
 기록하지 않습니다. 기존 형식의 `Boost-Energy-Potential`과
 `Boost-Energy-Dihedral` 두 aggregate column을 기록합니다. `anal.py`는 두 값을
@@ -80,7 +80,7 @@ production log의 103줄은 header 3줄과 GaMD record 100개입니다.
 | `bgpro2atm`, `edpro2atm` | Final topology에서 계산한 receptor atom 범위입니다. 직접 고정하지 않고 generated input을 확인합니다. |
 | `ntave=50000` | Triple-boost statistics averaging interval이며 2 fs 기준 100 ps입니다. |
 | `ntcmd*`, `nteb*` | Initial conventional statistics와 GaMD equilibration schedule입니다. `*prep`과 전체 step 값을 독립 구간처럼 더하지 않습니다. |
-| `LIGAND_CHARGE=1` | AM1-BCC parameterization에 사용하는 BEN net charge입니다. |
+| BEN net charge `+1` | AM1-BCC parameterization에 사용하는 고정 charge입니다. |
 | `--allow-unverified` | Amber26 GPU 검증 전 실제 실행을 의도적으로 opt-in합니다. |
 | `ntr=1`, `-ref minimize.rst7` | Heating restraint의 reference로 minimization restart를 사용합니다. |
 
@@ -99,7 +99,7 @@ Amber 26 manual은 LiGaMD3를 serial GPU `pmemd.cuda` 전용으로 설명합니�
 PDB 3PTB is built with ff19SB, GAFF2/AM1-BCC, and TIP3P for an experimental
 Amber26 LiGaMD3 workflow. `build.sh` resolves the receptor atom range from the
 final topology and writes complete inputs under `work/inputs/`.
-Each completed production segment retains paired MD and GaMD state snapshots.
+The fixed tutorial preserves the GaMD preparation state used by production.
 
 LiGaMD3 separates ligand-essential nonbonded, remaining nonbonded, and bonded
 potentials into three boosts. `prepare.py` validates the complex metadata,
@@ -131,13 +131,17 @@ thresholds.
 `sigma0P/D/B=6.0` limit component fluctuations; `timask1`/`scmask1` select
 `:BEN`; `bgpro2atm`/`edpro2atm` delimit receptor atoms. `ntave=50000` is a
 100 ps averaging interval. The `ntcmd*`/`nteb*` values define overlapping
-conventional-statistics and GaMD-equilibration schedules. `LIGAND_CHARGE`
-controls BEN parameterization, and
-actual runs remain gated by `run.sh --allow-unverified`.
+conventional-statistics and GaMD-equilibration schedules. BEN is parameterized
+with a fixed net charge of +1, and actual runs remain gated by
+`run.sh --allow-unverified`.
 Heating passes `minimize.rst7` to `-ref` for the `ntr=1` positional restraint.
 
 Amber 26 documents LiGaMD3 only for serial GPU `pmemd.cuda`; `run.sh` rejects
 CPU and MPI engine overrides.
+
+Preparation stages are skipped only when their primary output and restart both
+exist; incomplete pairs are rerun. Existing production output is protected.
+Use `3_Templates/4_GaMD/4.2_LiGaMD3` for system-specific production settings.
 
 Actual execution requires `run.sh --allow-unverified` until a short Amber26
 GPU run confirms the GaMD parameters and state, logged total boost, restart

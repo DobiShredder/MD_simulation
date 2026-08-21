@@ -17,7 +17,6 @@ offset `ΔF_n(T)`를 추정하고, 이 state들을 잇는 multithermal bias를 �
 ```bash
 cd 1_Simulation/7_MetaD/7.4_OPES_EXPANDED
 ./build.sh structure/alanine-dipeptide.pdb
-./run.sh --dry-run
 ./run.sh
 python3 anal.py
 ```
@@ -43,7 +42,7 @@ Production 전 100 ps NPT equilibration은 `skinnb=5.0 Å`로 GPU pair-list 여�
 늘립니다. 같은 solvent box를 사용하는 WT-MetaD에서 확인한 설정이며 실제
 cutoff는 `cut=10.0 Å`로 유지됩니다.
 
-Production은 나누지 않고 `work/`에서 1 ns를 한 번에 실행하며 `opes.state`와
+Production은 `work/`에서 1 ns를 실행하며 `opes.state`와
 `DELTAFS`를 같은 directory에 저장합니다. `anal.py`가 출력하는 `ecv.ene`는
 expanded CV이며 instantaneous physical temperature가 아닙니다.
 Temperature별 observable은 별도 reweighting이 필요합니다.
@@ -76,7 +75,7 @@ estimate of a CV probability distribution. It estimates the temperature-state
 free-energy offsets `ΔF_n(T)` from potential-energy samples and calculates the
 multithermal bias that connects those states. The 100 ps NPT equilibration uses `skinnb=5.0 Å` to enlarge the GPU
 pair-list margin while retaining `cut=10.0 Å`; production then uses a fixed box
-(`ntb=1`, `ntp=0`). The unsegmented
+(`ntb=1`, `ntp=0`). The
 1 ns production writes its restart, trajectory, `COLVAR`, `opes.state`, and
 `DELTAFS` directly under `work/`. `ecv.ene` is an expanded CV, not an
 instantaneous physical temperature; temperature-resolved observables require

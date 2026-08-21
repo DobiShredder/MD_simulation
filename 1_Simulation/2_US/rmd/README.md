@@ -25,11 +25,9 @@ definition이 다릅니다. `ratchet.end_to_end_min`도 distance가 아니라 PL
 cd 1_Simulation/2_US
 ./download.sh
 python3 prepare.py structure/1UAO.raw.pdb structure/chignolin.pdb
-./prepare.sh
+./prepare.sh structure/chignolin.pdb
 cd rmd
-./run.sh --dry-run
 ./run.sh
-python3 anal.py --dry-run
 python3 anal.py
 ```
 
@@ -52,12 +50,10 @@ box, `min-all.out`과 `heat.out`을 먼저 확인합니다.
 | `ABMD TO=3.0` | End-to-end distance target이며 PLUMED 기본 length unit인 nm를 사용합니다. |
 | `KAPPA=100` | Target 반대 방향의 ρ 증가를 억제하는 ratchet strength입니다. Harmonic distance force constant와 직접 비교하지 않습니다. |
 | `plumed=1`, `plumedfile='plumed.dat'` | AMBER에서 PLUMED bias를 활성화합니다. |
-| `--max-error 0.5` | `anal.py`가 target center와 seed frame 사이에 허용하는 distance 차이(Å)입니다. |
-| `--allow-unmarked` | 이 workflow 밖에서 만든 trajectory를 분석할 때만 completion marker 검사를 생략합니다. |
-| `SYSTEM_DIR`, `WORK_DIR`, `AMBER_ENGINE` | 공통 topology 위치, output directory와 PLUMED-enabled engine을 지정합니다. |
+| `max_error_angstrom=0.75` | `anal.py`가 target center와 seed frame 사이에 허용하는 고정 distance 차이(Å)입니다. |
 
 `anal.py`는 cpptraj으로 `:1@CA`–`:10@CA` distance를 계산하고 각 window
-center의 first-crossing frame을 선택합니다. 허용 오차는 0.5 Å입니다. Seed는
+center의 first-crossing frame을 선택합니다. 허용 오차는 0.75 Å입니다. Seed는
 `work/seeds/seed_NNN.rst7`, 선택 정보는 `seeds.tsv`에 저장됩니다. 오차 범위
 안의 frame이 없으면 종료합니다.
 
@@ -80,11 +76,9 @@ component is the PLUMED ρ minimum, not a minimum distance.
 `run.sh` handles the AMBER stages and activates `inputs/plumed.dat` through
 `plumed=1`. The PLUMED file reconstructs the protein, evaluates
 `DISTANCE ATOMS=2,132 NOPBC`, and applies `ABMD TO=3.0 KAPPA=100` in PLUMED
-units. `anal.py --max-error` controls the allowed Å difference when selecting
-first-crossing seeds. Analysis requires the production completion marker by
-default; use `--allow-unmarked` only for a trajectory created outside this
-workflow. `SYSTEM_DIR`, `WORK_DIR`, and `AMBER_ENGINE` select the
-shared system, output location, and PLUMED-enabled executable.
+units. `anal.py` uses a fixed 0.75 Å tolerance when selecting first-crossing
+seeds. `AMBER_ENGINE` selects the PLUMED-enabled executable when the default
+`pmemd.cuda` command is not used.
 
 `run.sh` performs minimization, 200 ps NVT heating, 100 ps NPT equilibration,
 and 1 ns ratchet MD with a PLUMED-enabled `pmemd.cuda`. It stops before ratchet
@@ -93,6 +87,6 @@ are handled by checking the initial periodic box, minimization, and heating
 rather than splitting an unsuitable equilibration into short jobs.
 
 The PLUMED input is copied into `work/`. `anal.py` selects ordered
-first-crossing frames within 0.5 Å and writes AMBER restart seeds. It exits
+first-crossing frames within 0.75 Å and writes AMBER restart seeds. It exits
 when a requested window was not sampled. The biased pathway is used for seed
 generation, not for an equilibrium PMF or kinetics.

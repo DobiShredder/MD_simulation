@@ -16,9 +16,8 @@ temperature ladder를 왕복하는지와 300 K ensemble을 분리해 확인해�
 | --- | --- |
 | `download.sh` | 1UAO PDB/mmCIF를 받고 checksum을 기록합니다. |
 | `prepare.py` | 1UAO의 첫 NMR model을 simulation PDB로 정리합니다. |
-| `build.sh` | ff19SB/TIP3P topology를 만들고 선택한 state file의 temperature·seed로 replica input을 생성합니다. |
-| `completion_helpers.sh` | `run.sh`가 자동으로 불러와 replica별 completion marker를 검사합니다. |
-| `run.sh` | Replica별 heating/equilibration과 `pmemd.cuda.MPI` exchange segment를 실행합니다. |
+| `build.sh` | ff19SB/TIP3P topology를 만들고 bundled state file의 temperature·seed로 replica input을 생성합니다. |
+| `run.sh` | Replica별 heating/equilibration과 `pmemd.cuda.MPI` exchange calculation을 실행합니다. |
 | `anal.py` | `remlog`에서 acceptance, state 방문, round trip과 temperature occupancy를 계산합니다. |
 
 ### 실행
@@ -30,15 +29,12 @@ AMBER 26의 `tleap`, `pmemd.cuda`, `pmemd.cuda.MPI`와 MPI launcher가
 ./download.sh
 python3 prepare.py structure/1UAO.raw.pdb structure/chignolin.pdb
 ./build.sh structure/chignolin.pdb
-./run.sh --dry-run
 ./run.sh
 python3 anal.py
 ```
 
-`AMBER_ENGINE`, `AMBER_MPI_ENGINE`, `MPI_LAUNCHER`,
-`MPI_PROCESSES`, `MPI_OPTIONS`와 `AMBER_OPTIONS`로 실행 환경을
-바꿀 수 있습니다. 기본 MPI process 수는 state file의 data row 수이며 replica
-수와 같아야 합니다.
+`AMBER_ENGINE`, `AMBER_MPI_ENGINE`과 `MPI_LAUNCHER`로 executable을
+바꿀 수 있습니다. MPI process 수는 bundled state 수와 같은 20으로 고정됩니다.
 
 새 system에서는
 [remd-temperature-generator](https://virtualchemistry.org/remd-temperature-generator/)에
@@ -49,8 +45,8 @@ python3 anal.py
 round trip을 보고 replica 수와 temperature 간격을 다시 조정합니다.
 
 기본 `inputs/states.tsv`는 Chignolin의 atom과 water 수로 미리 계산한
-20-replica file입니다. 다른 system에서는 generator 결과를 다음 형식의
-tab-separated file로 저장해 사용합니다.
+20-replica file입니다. 다른 system과 temperature ladder는
+`3_Templates/3_REMD/3.1_REMD`에서 설정합니다.
 
 ```text
 replica<TAB>temperature_K<TAB>seed
@@ -58,19 +54,14 @@ replica<TAB>temperature_K<TAB>seed
 001<TAB>303.65<TAB>112648
 ```
 
-```bash
-./build.sh structure/chignolin.pdb /path/to/states.tsv
-./run.sh --dry-run
-```
-
 Replica ID는 `000`부터 시작하는 세 자리 고유 값이고 temperature는 행 순서대로
-증가해야 합니다. `build.sh`는 선택한 file을 `work/states.tsv`로 복사하며,
+증가해야 합니다. `build.sh`는 bundled file을 `work/states.tsv`로 복사하며,
 `run.sh`는 이 file에서 temperature와 replica 수를 읽습니다.
 
-Heating은 200 ps, NPT equilibration은 100 ps입니다. Production input 하나는
-1 ns이고 `run.sh`가 segment 하나를 실행합니다. 모든 replica가
-완료된 마지막 segment에서만 이어서 실행합니다. 일부 replica에만 restart
-file이 있으면 해당 stage를 자동으로 덮어쓰지 않습니다.
+Heating은 200 ps, NPT equilibration은 100 ps, production은 1 ns입니다.
+Preparation stage의 output과 restart가 모든 replica에 있으면 건너뜁니다.
+일부 replica의 결과만 있으면 state를 맞추기 위해 해당 stage를 전부 다시
+실행합니다. Production output은 덮어쓰지 않습니다.
 
 ### 주요 option
 
@@ -78,16 +69,15 @@ file이 있으면 해당 stage를 자동으로 덮어쓰지 않습니다.
 | --- | --- |
 | `-rem 1` | AMBER temperature REMD mode를 선택합니다. |
 | `temp0=@TEMP@` | `states.tsv`의 replica별 target temperature로 치환됩니다. |
-| `nstlim=500`, `numexchg=1000` | REMD에서 `nstlim`은 교환 사이의 step 수입니다. 500 steps마다 1,000회 교환하여 segment당 1 ns가 됩니다. |
+| `nstlim=500`, `numexchg=1000` | REMD에서 `nstlim`은 교환 사이의 step 수입니다. 500 steps마다 1,000회 교환하여 총 1 ns가 됩니다. |
 | `ig=@SEED@` | Replica마다 다른 positive random seed를 사용합니다. |
-| `build.sh INPUT.pdb [states.tsv]` | 첫 argument의 PDB로 topology를 만들고 temperature·seed file을 선택합니다. State file을 생략하면 Chignolin용 `inputs/states.tsv`를 사용합니다. |
-| `MPI_PROCESSES` | AMBER replica 수와 MPI rank 수를 1:1로 맞춥니다. 기본값은 state file의 data row 수입니다. |
-| `AMBER_MPI_ENGINE`, `MPI_LAUNCHER`, `MPI_OPTIONS` | MPI executable과 launcher 설정을 바꿉니다. |
+| `build.sh INPUT.pdb` | 첫 argument의 PDB와 Chignolin용 `inputs/states.tsv`로 replica를 만듭니다. |
+| `AMBER_MPI_ENGINE`, `MPI_LAUNCHER` | MPI executable과 launcher command를 바꿉니다. |
 
 ### Output
 
-- `work/NNN/production.001.nc`
-- `work/exchange.001.log`
+- `work/NNN/production.nc`
+- `work/exchange.log`
 - `work/exchange_summary.tsv`
 - `work/replica_visits.tsv`
 - `work/temperature_occupancy.tsv`
@@ -99,25 +89,22 @@ file이 있으면 해당 stage를 자동으로 덮어쓰지 않습니다.
 
 This example builds ff19SB/TIP3P Chignolin and runs 20-replica T-REMD from
 300 to 373 K. Heating is 200 ps, NPT equilibration is 100 ps, and production is
-one 1 ns segment per replica. Exchanges are attempted every 1 ps.
+1 ns per replica. Exchanges are attempted every 1 ps.
 
 T-REMD keeps one Hamiltonian and varies bath temperature. High-temperature
 replicas cross barriers more readily, while accepted swaps move configurations
 through the ladder. `build.sh` expands `states.tsv`; `run.sh` uses
 `pmemd.cuda.MPI -rem 1`; `anal.py` measures acceptance, visits, round trips,
 and occupancy.
-`completion_helpers.sh` is sourced by the runner for replica-wide completion
-checks.
 
 `temp0` and `ig` are replica-specific. In AMBER REMD, `nstlim=500` is the step
-count between attempts and `numexchg=1000` gives a 1 ns segment.
-`MPI_PROCESSES` must equal the state-file row count; the MPI engine, launcher, and
-extra options are configurable through the documented environment variables.
+count between attempts and `numexchg=1000` gives a 1 ns run. The runner launches
+one MPI process for each of the 20 bundled states.
 
 Run `download.sh`, `prepare.py`, `build.sh`, `run.sh`, and `anal.py`
-in that order. AMBER and MPI commands can be overridden with the environment
-variables listed above. Restarting is allowed only from the last segment
-completed by every replica; a partial segment is reported as an error.
+in that order. A preparation stage is skipped when every replica has its output
+and restart; an incomplete replica set is rerun. Production output is not
+overwritten.
 
 For a new system, generate `states.tsv` temperatures with the
 [remd-temperature-generator](https://virtualchemistry.org/remd-temperature-generator/)
@@ -127,14 +114,12 @@ with OPLS/AA and GROMACS, so verify adjacent acceptance and round trips in a
 short ff19SB/AMBER pilot before fixing the ladder.
 
 The bundled `inputs/states.tsv` is precomputed from the Chignolin atom and
-water counts. For a different system, save the generator result as a
-tab-separated file with columns `replica`, `temperature_K`, and `seed`, then
-run `./build.sh structure/chignolin.pdb /path/to/states.tsv`. Replica IDs are unique
-three-digit values starting at `000`, and temperatures increase by row. The
-build copies the selected file to `work/states.tsv`; the runner reads its
-temperatures and replica count.
+water counts. Use `3_Templates/3_REMD/3.1_REMD` for another system or
+temperature ladder. Replica IDs are unique three-digit values starting at
+`000`, and temperatures increase by row. The build copies the bundled file to
+`work/states.tsv`.
 
 The analysis writes adjacent-state acceptance, replica state ranges, round-trip
 counts, and temperature occupancy as TSV files. Replica trajectories are
-written to `work/NNN/production.001.nc`. These short training runs do not
+written to `work/NNN/production.nc`. These short training runs do not
 establish convergence.

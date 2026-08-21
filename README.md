@@ -21,13 +21,15 @@
 > 이 코드들은 범용 production protocol이 아닌 시작 템플릿입니다.
 > 실제 system에 맞는 force field, protonation, equilibration, sampling 및 수렴 여부를
 > 사용자가 반드시 직접 디자인하고 검증해야합니다.
-> 학습용 production 길이는 method별 README에 적힌 짧은 기본값을 사용합니다. (약 1~2 ns 수준)
+> `1_Simulation/`의 학습용 production 길이는 method별 README에 적힌 짧은
+> 기본값을 사용합니다. 실제 계산용 `3_Templates/`의 기본 길이는 별도로 정합니다.
 >
 > These are starting templates, not universal production protocols. Users must
 > design and validate the force field, protonation states, atom selections,
 > equilibration, sampling strategy, and convergence criteria for their own
 > systems. Each method uses a short tutorial-scale production length documented
-> in its local README.
+> in its local README. Config-driven `3_Templates/` workflows use separate,
+> method-specific production defaults.
 
 
 
@@ -36,6 +38,8 @@
 1. Read the [integrated tutorial guide / 통합 튜토리얼 가이드](GUIDE.md).
 2. Choose a [simulation tutorial / 시뮬레이션 튜토리얼](1_Simulation/README.md).
 3. Process its trajectory with an [analysis tutorial / 분석 튜토리얼](2_Analysis/README.md).
+4. Apply a learned workflow to your structure with the
+   [config-driven templates / 설정 기반 template](3_Templates/README.md).
 
 
 
@@ -56,14 +60,22 @@ MD_simulation/
 │   ├── 5_FEP/               # RBFE and ABFE
 │   ├── 6_WE/                # WESTPA + AMBER weighted ensemble
 │   └── 7_MetaD/             # MetaD and OPES variants
-└── 2_Analysis/
-    ├── 1_Preprocessing/
-    ├── 2_Basic/
-    ├── 3_Interactions/
-    ├── 4_Dimension_Reduction/
-    ├── 5_Clustering/
-    ├── 6_Binding_Energy/
-    └── 7_Enhanced_Sampling/
+├── 2_Analysis/
+│   ├── 1_Preprocessing/
+│   ├── 2_Basic/
+│   ├── 3_Interactions/
+│   ├── 4_Dimension_Reduction/
+│   ├── 5_Clustering/
+│   ├── 6_Binding_Energy/
+│   └── 7_Enhanced_Sampling/
+└── 3_Templates/
+    ├── 1_MD/                # Conventional MD starting workflows
+    ├── 2_US/                # Umbrella sampling
+    ├── 3_REMD/              # T-REMD, REST2, REST3, REUS and GaREUS
+    ├── 4_GaMD/              # GaMD variants
+    ├── 5_FEP/               # RBFE and ABFE
+    ├── 6_WE/                # WESTPA + AMBER weighted ensemble
+    └── 7_MetaD/             # MetaD and OPES variants
 ```
 
 ## Simulation tutorials / 시뮬레이션 튜토리얼

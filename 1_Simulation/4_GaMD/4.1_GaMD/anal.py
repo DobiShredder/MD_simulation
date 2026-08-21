@@ -1,17 +1,14 @@
 #!/usr/bin/env python3
-"""Check boost distributions and segment continuity in GaMD production logs."""
+"""Check boost distributions in the GaMD production log."""
 
 from __future__ import annotations
 
 import csv
 import math
-import os
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent
-WORK = Path(os.environ.get("WORK_DIR", ROOT / "work"))
+WORK = Path("work")
 COMPONENT_COUNT = 2
-EXPECTED_SEGMENTS = 1
 EXPECTED_FRAMES = 100
 TEMPERATURE_K = 300.0
 GAS_CONSTANT = 0.00198720425864083
@@ -74,13 +71,8 @@ def main() -> None:
     all_records: list[tuple[int, int, list[float]]] = []
     summaries: list[list[str]] = []
 
-    for segment in range(1, EXPECTED_SEGMENTS + 1):
-        completion_marker = WORK / f".production.{segment:03d}.complete"
-        if not completion_marker.is_file():
-            raise SystemExit(
-                f"Production completion marker not found: {completion_marker}"
-            )
-        path = WORK / f"production.{segment:03d}.gamd.log"
+    for segment in (1,):
+        path = WORK / "production.gamd.log"
         if not path.is_file():
             raise SystemExit(f"GaMD log not found: {path}")
         records = parse_log(path)

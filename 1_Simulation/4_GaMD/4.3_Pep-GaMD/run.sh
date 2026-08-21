@@ -2,11 +2,9 @@
 set -euo pipefail
 
 dry_run=0
-if [[ "${1:-}" == "--dry-run" ]]; then
+if [[ "${1:-}" == "--dry-run" && $# -eq 1 ]]; then
     dry_run=1
-    shift
-fi
-if [[ $# -ne 0 ]]; then
+elif [[ $# -ne 0 ]]; then
     echo "Usage: $0 [--dry-run]" >&2
     exit 2
 fi
@@ -16,200 +14,134 @@ die() {
     exit 1
 }
 
-work_dir=${WORK_DIR:-work}
 engine=${AMBER_ENGINE:-pmemd.cuda}
-random_seed=${RANDOM_SEED:-43001}
-production_segments=1
+work_dir=work
 topology=system.parm7
-read -r -a amber_options <<< "${AMBER_OPTIONS:-}"
 
-if [[ ! "$random_seed" =~ ^[1-9][0-9]*$ ]]; then
-    die "RANDOM_SEED must be a positive integer: $random_seed"
+if (( ! dry_run )) && ! command -v "$engine" >/dev/null 2>&1; then
+    die "AMBER engine not found: $engine"
+fi
+if (( ! dry_run )) && [[ "$(basename "$engine")" != "pmemd.cuda" ]]; then
+    die "Amber 26 Pep-GaMD supports only the serial GPU pmemd.cuda engine: $engine"
+fi
+for input in "$work_dir/system.parm7" "$work_dir/system.rst7" \
+    "$work_dir/inputs/gamd_prepare.in" "$work_dir/inputs/production.in"; do
+    if [[ ! -s "$input" ]]; then
+        die "Run build.sh first: $input"
+    fi
+done
+
+if (( dry_run )); then
+    printf '+ (cd %q && %q -O -i inputs/minimize.in -o minimize.out -p system.parm7 -c system.rst7 -r minimize.rst7 -inf minimize.info)\n' "$work_dir" "$engine"
+    printf '+ (cd %q && %q -O -i inputs/heat.in -o heat.out -p system.parm7 -c minimize.rst7 -r heat.rst7 -inf heat.info -x heat.nc -ref minimize.rst7)\n' "$work_dir" "$engine"
+    printf '+ (cd %q && %q -O -i inputs/equilibrate.in -o equilibrate.out -p system.parm7 -c heat.rst7 -r equilibrate.rst7 -inf equilibrate.info -x equilibrate.nc)\n' "$work_dir" "$engine"
+    printf '+ (cd %q && %q -O -i inputs/gamd_prepare.in -o gamd_prepare.out -p system.parm7 -c equilibrate.rst7 -r gamd_prepare.rst7 -inf gamd_prepare.info -x gamd_prepare.nc -gamd gamd_prepare.gamd.log)\n' "$work_dir" "$engine"
+    printf '+ (cd %q && %q -O -i inputs/production.in -o production.out -p system.parm7 -c gamd_prepare.rst7 -r production.rst7 -inf production.info -x production.nc -gamd production.gamd.log)\n' "$work_dir" "$engine"
+    exit 0
 fi
 
-if (( ! dry_run )); then
-    if ! command -v "$engine" >/dev/null 2>&1; then
-        die "AMBER engine not found: $engine"
-    fi
-    if [[ "$(basename "$engine")" != "pmemd.cuda" ]]; then
-        die "Amber 26 Pep-GaMD supports only the serial GPU pmemd.cuda engine: $engine"
-    fi
-    for input in "$work_dir/system.parm7" "$work_dir/system.rst7" \
-        "$work_dir/inputs/gamd_prepare.in" "$work_dir/inputs/production.in"; do
-        if [[ ! -s "$input" ]]; then
-            die "Run build.sh first: $input"
-        fi
-    done
-
-    cp inputs/minimize.in "$work_dir/inputs/minimize.in"
-    cp inputs/equilibrate.in "$work_dir/inputs/equilibrate.in"
-
-    sed "s/@RANDOM_SEED@/$random_seed/g" \
-        inputs/heat.in.template \
-        > "$work_dir/inputs/heat.in"
-fi
+cp inputs/minimize.in "$work_dir/inputs/minimize.in"
+cp inputs/equilibrate.in "$work_dir/inputs/equilibrate.in"
+sed 's/@RANDOM_SEED@/43001/g' inputs/heat.in.template > "$work_dir/inputs/heat.in"
 
 stage_state() {
-    local marker=$1
-    shift
-    local existing=0
-    local path
-    for path in "$@"; do
-        if [[ -s "$path" ]]; then
-            existing=$((existing + 1))
-        fi
-    done
-    if [[ -f "$marker" && "$existing" -eq "$#" ]]; then
+    local output_file=$1
+    local restart_file=$2
+
+    if [[ -s "$output_file" && -s "$restart_file" ]]; then
         echo complete
-    elif [[ ! -f "$marker" && "$existing" -eq 0 ]]; then
+    elif [[ ! -e "$output_file" && ! -e "$restart_file" ]]; then
         echo missing
     else
         echo partial
     fi
 }
 
-run_command() {
-    local stage=$1
-    shift
-    if (( dry_run )); then
-        printf '+ '
-        printf '%q ' "$@"
-        printf '\n'
-        return
-    fi
-    echo "Running: $stage"
-    if ! "$@"; then
-        die "$stage calculation failed."
-    fi
-}
-
-run_md_stage() {
+run_preparation_stage() {
     local stage=$1
     local input_file=$2
     local input_restart=$3
     shift 3
-    local with_trajectory=no
-    local with_gamd_log=no
-    local reference_restart=""
-    local gamd_state_input=""
-
-    while [[ $# -gt 0 ]]; do
-        case "$1" in
-            --trajectory)
-                with_trajectory=yes
-                shift
-                ;;
-            --gamd-log)
-                with_gamd_log=yes
-                shift
-                ;;
-            --reference)
-                reference_restart=$2
-                shift 2
-                ;;
-            --gamd-state)
-                gamd_state_input=$2
-                shift 2
-                ;;
-            *)
-                die "Unsupported run_md_stage option: $1"
-                ;;
-        esac
-    done
-    local prefix=$stage
-    local completion_marker=".$stage.complete"
-    local required=("$prefix.out" "$prefix.rst7" "$prefix.info")
-    local command=(
-        "$engine" "${amber_options[@]}" -O
-        -i "$input_file"
-        -o "$prefix.out"
-        -p "$topology"
-        -c "$input_restart"
-        -r "$prefix.rst7"
-        -inf "$prefix.info"
-    )
-
-    if [[ -n "$reference_restart" ]]; then
-        command+=(-ref "$reference_restart")
-    fi
-    if [[ "$with_trajectory" == yes ]]; then
-        required+=("$prefix.nc")
-        command+=(-x "$prefix.nc")
-    fi
-    if [[ "$with_gamd_log" == yes ]]; then
-        required+=("$prefix.gamd.log" "$prefix.gamd.rst")
-        command+=(-gamd "$prefix.gamd.log")
-    fi
-    if (( dry_run )); then
-        run_command "$stage" "${command[@]}"
-        return
-    fi
 
     local state
-    state=$(stage_state "$completion_marker" "${required[@]}")
+    state=$(stage_state "$stage.out" "$stage.rst7")
     if [[ "$state" == complete ]]; then
+        echo "Skipping: $stage outputs already exist."
         return
     fi
     if [[ "$state" == partial ]]; then
-        case "$stage" in
-            minimize|heat|equilibrate)
-                echo "Warning: removing partial $stage output and restarting the stage." >&2
-                rm -f -- "$completion_marker" "${required[@]}"
-                ;;
-            *)
-                die "Partial production or GaMD-state output detected for $stage."
-                ;;
-        esac
+        echo "Warning: incomplete $stage outputs found; rerunning the stage." >&2
     fi
-    if [[ -n "$gamd_state_input" ]]; then
-        if [[ ! -s "$gamd_state_input" ]]; then
-            die "Previous GaMD state not found: $gamd_state_input"
-        fi
-        cp "$gamd_state_input" gamd-restart.dat
+
+    echo "Running: $stage"
+    if ! "$engine" \
+        -O \
+        -i "$input_file" \
+        -o "$stage.out" \
+        -p "$topology" \
+        -c "$input_restart" \
+        -r "$stage.rst7" \
+        -inf "$stage.info" \
+        "$@"; then
+        die "$stage calculation failed: $work_dir/$stage.out"
     fi
-    run_command "$stage" "${command[@]}"
-    if [[ "$with_gamd_log" == yes ]]; then
-        if [[ ! -s gamd-restart.dat ]]; then
-            die "$stage GaMD state was not created: gamd-restart.dat"
-        fi
-        cp gamd-restart.dat "$prefix.gamd.rst"
+    if [[ ! -s "$stage.out" || ! -s "$stage.rst7" ]]; then
+        die "$stage outputs were not created."
     fi
-    for output in "${required[@]}"; do
-        if [[ ! -s "$output" ]]; then
-            die "$stage Output was not created: $output"
-        fi
-    done
-    touch "$completion_marker"
 }
 
-if (( dry_run )); then
-    echo "Pep-GaMD: 200 ps heating + 100 ps NPT + 4 ns parameter preparation + 1 ns production"
-    printf '+ cd %q\n' "$work_dir"
+cd "$work_dir"
+
+run_preparation_stage minimize inputs/minimize.in system.rst7
+run_preparation_stage heat inputs/heat.in minimize.rst7 \
+    -x heat.nc \
+    -ref minimize.rst7
+run_preparation_stage equilibrate inputs/equilibrate.in heat.rst7 \
+    -x equilibrate.nc
+
+gamd_state=$(stage_state gamd_prepare.out gamd_prepare.rst7)
+if [[ "$gamd_state" == complete && -s gamd_prepare.gamd.log && -s gamd_prepare.gamd.rst ]]; then
+    echo "Skipping: gamd_prepare outputs already exist."
 else
-    cd "$work_dir"
-fi
-
-run_md_stage minimize inputs/minimize.in system.rst7
-run_md_stage heat inputs/heat.in minimize.rst7 \
-    --trajectory --reference minimize.rst7
-run_md_stage equilibrate inputs/equilibrate.in heat.rst7 \
-    --trajectory
-run_md_stage gamd_prepare inputs/gamd_prepare.in equilibrate.rst7 \
-    --trajectory --gamd-log
-
-for segment_number in $(seq 1 "$production_segments"); do
-    segment=$(printf 'production.%03d' "$segment_number")
-    if [[ "$segment_number" -eq 1 ]]; then
-        input_restart=gamd_prepare.rst7
-        gamd_state_input=gamd_prepare.gamd.rst
-    else
-        input_restart=$(printf 'production.%03d.rst7' "$((segment_number - 1))")
-        gamd_state_input=$(printf 'production.%03d.gamd.rst' "$((segment_number - 1))")
+    if [[ "$gamd_state" != missing || -e gamd_prepare.gamd.log || -e gamd_prepare.gamd.rst ]]; then
+        echo "Warning: incomplete gamd_prepare outputs found; rerunning the stage." >&2
     fi
-    run_md_stage "$segment" inputs/production.in "$input_restart" \
-        --trajectory --gamd-log --gamd-state "$gamd_state_input"
-done
-
-if (( ! dry_run )); then
-    echo "1 ns Pep-GaMD production completed."
+    echo "Running: gamd_prepare"
+    if ! "$engine" \
+        -O \
+        -i inputs/gamd_prepare.in \
+        -o gamd_prepare.out \
+        -p "$topology" \
+        -c equilibrate.rst7 \
+        -r gamd_prepare.rst7 \
+        -inf gamd_prepare.info \
+        -x gamd_prepare.nc \
+        -gamd gamd_prepare.gamd.log; then
+        die "gamd_prepare calculation failed: $work_dir/gamd_prepare.out"
+    fi
+    if [[ ! -s gamd-restart.dat ]]; then
+        die "gamd_prepare state was not created: $work_dir/gamd-restart.dat"
+    fi
+    cp gamd-restart.dat gamd_prepare.gamd.rst
 fi
+
+if compgen -G 'production.*' >/dev/null; then
+    die "Production output already exists in $work_dir. Remove it only if you intend to restart production."
+fi
+
+cp gamd_prepare.gamd.rst gamd-restart.dat
+echo "Running: production"
+if ! "$engine" \
+    -O \
+    -i inputs/production.in \
+    -o production.out \
+    -p "$topology" \
+    -c gamd_prepare.rst7 \
+    -r production.rst7 \
+    -inf production.info \
+    -x production.nc \
+    -gamd production.gamd.log; then
+    die "production calculation failed: $work_dir/production.out"
+fi
+
+echo "1 ns Pep-GaMD production completed: $work_dir/production.nc"

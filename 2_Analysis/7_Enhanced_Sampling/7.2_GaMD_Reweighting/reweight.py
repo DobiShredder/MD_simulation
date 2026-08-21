@@ -41,7 +41,7 @@ def read_cv(path: Path) -> np.ndarray:
 
 
 def read_boosts(directory: Path, components: int) -> np.ndarray:
-    path = directory / "production.001.gamd.log"
+    path = directory / "production.gamd.log"
     if not path.is_file():
         raise SystemExit(f"GaMD log not found: {path}")
 

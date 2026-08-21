@@ -1,0 +1,42 @@
+[build]
+protein_force_field = "ff19SB"
+water_model = "OPC"
+box_shape = "rectangular"
+solute_box_distance_angstrom = 14.0
+disulfide_bonds = []
+salt_type = "NaCl"
+# Unit: mM
+salt_concentration = 150.0
+tempered_region = "solute"
+
+[run]
+equilibration_engine = "gmx"
+production_engine = "gmx_mpi"
+temperature_kelvin = 300.0
+pressure_bar = 1.0
+equilibration_ensemble = "NPT"
+production_ensemble = "NPT"
+timestep_fs = 2.0
+constraint_mode = "h-bonds"
+minimization_steps = 5000
+minimization_steepest_steps = 2500
+heating_initial_temperature_kelvin = 20.0
+heating_steps = 250000
+equilibration_steps = 500000
+production_steps = 50000000
+production_segments = 10
+trajectory_interval_steps = 5000
+energy_interval_steps = 5000
+restart_interval_steps = 5000
+
+[replica_exchange]
+temperature_mode = "auto"
+minimum_kelvin = 300.0
+maximum_kelvin = 450.0
+target_exchange_probability = 0.20
+generator_tolerance = 0.0001
+exchange_interval_steps = 1000
+cpu_threads_per_replica = 1
+gpu_count = 1
+random_seed = "random"
+temperature_file = "inputs/temperatures.txt"

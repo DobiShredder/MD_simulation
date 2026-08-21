@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Summarize OPES Expanded multithermal bias and energy range."""
 
-import argparse
 from pathlib import Path
 import numpy as np
 
@@ -32,23 +31,18 @@ def count_deltafs_states(path: Path) -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("work_dir", nargs="?", type=Path, default=Path(__file__).parent / "work")
-    args = parser.parse_args()
-    completion_marker = args.work_dir / ".production.complete"
-    if not completion_marker.is_file():
-        raise ValueError(f"Production completion marker not found: {completion_marker}")
+    work_dir = Path("work")
     for filename in ("COLVAR", "DELTAFS", "opes.state"):
-        path = args.work_dir / filename
+        path = work_dir / filename
         if not path.is_file():
             raise ValueError(f"Production output not found: {path}")
 
-    output_dir = args.work_dir / "analysis"
+    output_dir = work_dir / "analysis"
     output_dir.mkdir(parents=True, exist_ok=True)
-    values = read_colvar(args.work_dir / "COLVAR")
+    values = read_colvar(work_dir / "COLVAR")
     required = {"time", "ene", "ecv.ene", "opes.bias"}
     if not required.issubset(values):
-        raise ValueError(f"Required COLVAR fields are missing: {args.work_dir / 'COLVAR'}")
+        raise ValueError(f"Required COLVAR fields are missing: {work_dir / 'COLVAR'}")
 
     with (output_dir / "production_summary.tsv").open("w", encoding="utf-8") as handle:
         handle.write(
@@ -61,7 +55,7 @@ def main() -> int:
             values["ene"].min(), values["ene"].max(),
             values["ecv.ene"].min(), values["ecv.ene"].max(),
             values["opes.bias"].min(), values["opes.bias"].max(),
-            count_deltafs_states(args.work_dir / "DELTAFS"),
+            count_deltafs_states(work_dir / "DELTAFS"),
         )
         handle.write("\t".join(map(str, row)) + "\n")
     print(f"OPES Expanded diagnostics results: {output_dir}")

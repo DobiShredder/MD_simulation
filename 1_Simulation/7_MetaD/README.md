@@ -36,16 +36,16 @@ OPES Expanded example은 CV 공간 대신 300–500 K multithermal target을
 구성합니다. 서로 다른 목표를 가진 method이므로 bias 크기만으로 성능을
 비교하지 않습니다.
 
-각 runnable directory에서 `build.sh`, `run.sh --dry-run`, `run.sh`,
-`python3 anal.py` 순서로 실행합니다. `build.sh`의 첫 argument는 준비한
+각 runnable directory에서 `build.sh`, `run.sh`, `python3 anal.py` 순서로
+실행합니다. `build.sh`의 첫 argument는 준비한
 PDB입니다. Funnel MetaD는 ligand SDF도 두 번째 argument로 받습니다.
 Production은 나누지 않고 1 ns를 한 번에 실행하며 output과 PLUMED state를
 각 tutorial의 `work/`에 직접 저장합니다.
 
-Minimization, heating과 equilibration의 partial output은 해당 stage를 다시
-시작하기 전에 삭제합니다. Production은 AMBER restart와 `HILLS`, `opes.state`
-같은 bias state를 함께 보존하고 partial output에서 중단합니다. Completion
-marker는 engine 정상 종료와 method별 필수 output을 모두 확인한 뒤 기록합니다.
+Minimization, heating과 equilibration은 `*.out`과 `*.rst7`이 모두 있으면
+건너뜁니다. 둘 중 일부만 있으면 해당 stage를 다시 실행합니다. Production
+output이 하나라도 있으면 AMBER restart와 `HILLS`, `opes.state` 같은 bias state를
+덮어쓰지 않도록 중단합니다.
 
 PLUMED가 연결된 Amber의 `pmemd.cuda`가 기본 engine입니다. AmberTools만 설치한
 환경에서는 PLUMED를 포함해 build한 `sander`를 `AMBER_ENGINE=sander`로 지정할
@@ -79,15 +79,14 @@ a well-tempered target distribution. OPES_EXPANDED does not use a kernel-density
 estimate; it estimates the free-energy offsets `ΔF_n(λ)` of expanded states and
 calculates the corresponding target bias.
 
-Run `build.sh`, `run.sh --dry-run`, `run.sh`, and `python3 anal.py` in a
+Run `build.sh`, `run.sh`, and `python3 anal.py` in a
 runnable directory. The first build argument is the prepared PDB; Funnel MetaD
 also accepts the ligand SDF as its second argument. Production runs as one
-unsegmented 1 ns calculation and writes its outputs and PLUMED state directly
+single 1 ns calculation and writes its outputs and PLUMED state directly
 under the tutorial `work/` directory. The default
 engine is a PLUMED-enabled `pmemd.cuda`; a PLUMED-enabled `sander` can be selected
 with `AMBER_ENGINE=sander`.
 
-Partial minimization, heating, and equilibration output is removed before that
-stage is restarted. Production preserves the AMBER restart and bias state and
-stops on partial output. A completion marker is written only after successful
-engine and method-specific output checks.
+Minimization, heating, and equilibration are skipped when both their `*.out`
+and `*.rst7` files exist; incomplete pairs are rerun. Existing production output
+stops the workflow before the AMBER restart or bias state can be overwritten.

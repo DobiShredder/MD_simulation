@@ -30,7 +30,6 @@ effective-temperature ladder를 구성할 수 있습니다.
 | `validate_states.py` | 생성된 state table의 각 row와 λ 관계를 검사하고 잘못된 column을 표시합니다. |
 | `build.sh` | Temperature file을 state table로 변환하고 row 수만큼 topology/TPR를 만들며 scale-one energy를 검사합니다. |
 | `compare_energy.py` | 원본과 scale 1.0 rerun potential 차이를 허용 오차와 비교합니다. |
-| `completion_helpers.sh` | `run.sh`가 자동으로 불러와 replica별 completion marker를 관리합니다. |
 | `run.sh` | 300 K pre-production과 PLUMED-patched GROMACS HREX를 실행합니다. |
 | `anal.py` | Exchange, occupancy와 effective-temperature별 구조 지표를 계산합니다. |
 
@@ -55,7 +54,6 @@ python3 -m pip install -r requirements.txt
 ./download.sh
 python3 prepare.py structure/1UAO.raw.pdb structure/chignolin.pdb
 ./build.sh structure/chignolin.pdb
-./run.sh --cpus 48 --gpus 8 --dry-run
 ./run.sh --cpus 48 --gpus 8
 python3 anal.py
 ```
@@ -64,7 +62,7 @@ python3 anal.py
 atom type에만 `_` marker를 붙입니다. PLUMED `partial_tempering`으로
 8개 topology를 만들고, scale 1.0 topology와 원본 topology의 potential
 energy를 한 frame rerun으로 비교합니다. 이 Chignolin tutorial의 허용값은
-`0.1 kJ/mol`이며 `ENERGY_TOLERANCE_KJ_MOL`로 바꿀 수 있습니다. 이 값은
+`0.1 kJ/mol`입니다. 이 값은
 범용 기준이 아닙니다. System 크기, GROMACS precision, hardware와 병렬 energy
 합산 순서가 달라지면 같은 topology에서도 수치 차이가 달라질 수 있습니다.
 
@@ -77,23 +75,23 @@ residue별 grid를 구분합니다. `scale_cmap.py`는 PLUMED가 처리하지 �
 grid를 각 REST2 state에 맞게 보정합니다. `_` marker는 `[ atoms ]`의
 nonbonded type에만 붙이고 CMAP bonded type은 바꾸지 않습니다.
 
-`GROMACS`, `GROMACS_MPI`, `MPI_LAUNCHER`, `MPI_PROCESSES`와
-`MPI_OPTIONS`로 executable과 MPI 환경을 지정합니다. `--cpus`는 job에 할당한
+`GROMACS`, `GROMACS_MPI`와 `MPI_LAUNCHER`로 executable을 지정합니다.
+`--cpus`는 job에 할당한
 총 CPU thread 수이고 `--gpus`는 사용할 GPU 수입니다. CPU thread 수는 replica에
 균등하게 나눕니다. GPU 수는 1부터 replica 수까지 지정할 수 있습니다.
 Replica별 minimization과 equilibration은 GPU 수만큼 batch로 실행하고 각
 process를 `-ntmpi 1`로 제한합니다. HREX production에서는 GROMACS가 노출된
 GPU에 MPI rank를 자동 배치하므로 여러 replica가 하나의 GPU를 공유할 수 있습니다.
-Production은 1 ns segment 하나이며 일부
-replica만 완료된 segment에서는 resume하지 않습니다.
+Production은 1 ns이며 기존 production output은 덮어쓰지 않습니다.
 Scheduler는 할당한 GPU만 `CUDA_VISIBLE_DEVICES`에 노출해야 합니다. Script의
 `-gpu_id 0,1,...`은 그 안에서 다시 매겨진 logical device ID입니다.
 
 새 system의 `effective_temperature_K`는
 [remd-temperature-generator](https://virtualchemistry.org/remd-temperature-generator/)에
 hot solute atom 수를 protein atom 수로 넣고 water molecule 수를 0으로 두어
-초기 ladder를 만듭니다. 출력 temperature를 text file로 저장하면 `build.sh`가
-각 값에서 `lambda_pp=T0/Tm`, `lambda_pw=sqrt(lambda_pp)`를 계산합니다.
+초기 ladder를 만듭니다. 다른 system에는 `3_Templates/3_REMD/3.2_REST2`를
+사용합니다. Template가 각 temperature에서 `lambda_pp=T0/Tm`,
+`lambda_pw=sqrt(lambda_pp)`를 계산합니다.
 Water=0은 solvent 자유도를 predictor에서
 제외하는 근사이며 REST2 acceptance를 보장하지 않습니다. 짧은 pilot run에서
 adjacent acceptance, state 방문과 round trip을 확인한 뒤 ladder를 조정합니다.
@@ -108,35 +106,26 @@ Temperature는 comma, semicolon, vertical bar, space, tab 또는 newline으로
 378.220; 400.775 | 424.675 450.000
 ```
 
-```bash
-./build.sh structure/chignolin.pdb /path/to/temperatures.txt
-./run.sh --cpus 48 --gpus 8 --dry-run
-```
-
 Physical bath가 300 K이므로 첫 temperature는 300 K이어야 하며 이후 값은
 증가해야 합니다. `build.sh`는 `work/states.tsv`를 생성하고 `run.sh`는 그
-data row 수를 replica 수와 기본 MPI process 수로 사용합니다.
+data row 수를 replica 수로 사용합니다.
 
 ### 주요 option
 
 | Option | 의미 |
 | --- | --- |
 | `temperatures.txt` | Effective-temperature ladder를 정의합니다. 값의 개수가 replica 수가 되며 bath temperature는 바뀌지 않습니다. |
-| `build.sh INPUT.pdb [temperatures.txt]` | 첫 argument의 PDB로 topology를 만들고 두 번째 file의 temperature에서 `work/states.tsv`를 생성합니다. File을 생략하면 `inputs/temperatures.txt`를 사용합니다. |
-| `build.sh --help` | 허용하는 temperature 구분자, scaling 식과 생성 output을 표시합니다. |
+| `build.sh INPUT.pdb` | 첫 argument의 PDB와 bundled `inputs/temperatures.txt`로 `work/states.tsv`를 생성합니다. |
 | Protein `_` marker | `partial_tempering`이 scaling할 hot region을 protein atom으로 제한합니다. |
 | `ref-t=300` | 모든 replica의 physical thermostat temperature입니다. |
 | `-multidir`, `-replex 1000` | 8개 directory를 HREX로 묶고 1,000 steps, 즉 2 ps마다 교환합니다. |
 | `constraints=h-bonds`, `dt=0.002` | LINCS로 수소 bond를 고정하고 2 fs timestep을 사용합니다. |
 | `--cpus`, `--gpus` | 할당받은 총 CPU thread와 GPU 수입니다. CPU 수는 replica 수로 나누어져야 하며 GPU 수는 1–replica 수 범위입니다. |
-| `PREPRODUCTION_GROMACS_OPTIONS` | Replica별 minimization/equilibration에만 추가할 option입니다. Resource option은 script가 설정합니다. |
-| `HREX_GROMACS_OPTIONS` | External-MPI HREX production에만 추가할 option입니다. `-ntmpi`를 넣지 않습니다. |
-| `ENERGY_TOLERANCE_KJ_MOL` | Scale 1.0 one-frame potential 비교의 절대 tolerance입니다. 이 Chignolin 예제의 기본값은 `0.1 kJ/mol`입니다. |
 
 ### Output
 
 - `work/NNN/topol.top`
-- `work/NNN/production.001.xtc`
+- `work/NNN/production.xtc`
 - `work/exchange_summary.tsv`, `replica_visits.tsv`,
   `state_occupancy.tsv`
 - `work/structure_by_temperature.tsv`: Rg와 protein 양 끝 residue의 Cα distance
@@ -179,42 +168,36 @@ grid. The `_` marker is limited to nonbonded atom types in `[ atoms ]`; CMAP
 lookup continues to use the original bonded types. `generate_states.py`
 converts the temperature input into a state table, and `build.sh` generates and
 verifies the corresponding scaled topologies.
-`validate_states.py` reports the row and column of an invalid schedule, and
-`completion_helpers.sh` keeps marker bookkeeping out of the runner's GROMACS commands.
+`validate_states.py` reports the row and column of an invalid schedule.
 `run.sh` uses `-multidir -replex 1000`, and `anal.py` summarizes exchange and
 structure. All thermostats remain at `ref-t=300`; hydrogen bonds are constrained
-for a 2 fs timestep. `ENERGY_TOLERANCE_KJ_MOL` controls the scale-one check.
+for a 2 fs timestep. The scale-one check uses a fixed 0.1 kJ/mol tolerance.
 Run with `--cpus TOTAL --gpus GPU_COUNT`. The CPU count must divide evenly among
 the replicas, while `GPU_COUNT` may range from one to the replica count.
 Preproduction runs replica batches of at most `GPU_COUNT` processes with
 `-ntmpi 1`. During HREX, GROMACS automatically maps replica ranks across the
-visible GPU list, so multiple replicas may share one GPU. `HREX_GROMACS_OPTIONS` applies only to external-MPI
-production and must not contain `-ntmpi`.
+visible GPU list, so multiple replicas may share one GPU.
 The scheduler must expose only allocated devices through `CUDA_VISIBLE_DEVICES`;
 the generated `-gpu_id` values are logical IDs within that visible set.
-This Chignolin tutorial uses a fixed absolute tolerance of `0.1 kJ/mol`, which
-can be overridden with `ENERGY_TOLERANCE_KJ_MOL`. It is not a universal cutoff:
+This Chignolin tutorial uses a fixed absolute tolerance of `0.1 kJ/mol`. It is not a universal cutoff:
 system size, GROMACS precision, hardware, and parallel energy-reduction order
 can change the numerical difference between equivalent topologies.
 
 For a new REST2 system, use the
 [remd-temperature-generator](https://virtualchemistry.org/remd-temperature-generator/)
 with the hot-solute atom count entered as the protein-atom count and zero water
-molecules. Save its effective temperatures in a text file; `build.sh` calculates
-`lambda_pp=T0/Tm` and `lambda_pw=sqrt(lambda_pp)`. This removes solvent degrees of freedom from the
+molecules. Use `3_Templates/3_REMD/3.2_REST2` for another system or ladder; the
+template calculates `lambda_pp=T0/Tm` and `lambda_pw=sqrt(lambda_pp)`. This removes solvent degrees of freedom from the
 predictor but does not guarantee REST2 acceptance; refine the initial ladder
 from adjacent acceptance, state visits, and round trips in a pilot run.
 
 The bundled `inputs/temperatures.txt` contains an eight-state ladder for
-Chignolin. For another system, save the effective temperatures produced by the
-generator and run `./build.sh structure/chignolin.pdb /path/to/temperatures.txt`.
+Chignolin. The tutorial build always reads this bundled file.
 Values may be separated by commas, semicolons, vertical bars, spaces, tabs, or
 newlines, and text following `#` is treated as a comment. The first temperature
 must be 300 K and the remaining values must increase. The build assigns
 deterministic seeds and writes `work/states.tsv`; its data-row count sets the
-replica count and the default MPI process count.
-Run `./build.sh --help` to display the accepted delimiters, scaling equations,
-and generated state-table path.
+replica count.
 
 The analysis writes exchange acceptance, state visits, occupancy, radius of
 gyration, and the distance between the first and last protein Cα atoms as TSV

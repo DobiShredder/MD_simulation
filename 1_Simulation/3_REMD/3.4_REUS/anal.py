@@ -10,8 +10,7 @@ from pathlib import Path
 
 import numpy as np
 
-ROOT = Path(__file__).resolve().parent
-WORK = ROOT / "work"
+WORK = Path("work")
 EXPLICIT = re.compile(
     r"state_a=(?P<a>\d+)\s+state_b=(?P<b>\d+)\s+accepted=(?P<ok>[01])"
 )
@@ -25,21 +24,16 @@ def read_states() -> list[dict[str, str]]:
         return list(csv.DictReader(handle, delimiter="\t"))
 
 
-def require_completed_segments() -> None:
-    logs = sorted(WORK.glob("exchange.[0-9][0-9][0-9].log"))
-    if not logs:
-        raise SystemExit(f"exchange log not found: {WORK}")
-    for log in logs:
-        segment = log.stem.rsplit(".", 1)[1]
-        marker = WORK / f".production.{segment}.complete"
-        if not marker.is_file():
-            raise SystemExit(f"production completion marker not found: {marker}")
+def require_production_output() -> None:
+    path = WORK / "exchange.log"
+    if not path.is_file():
+        raise SystemExit(f"exchange log not found: {path}")
 
 
 def parse_exchanges(state_count: int) -> list[tuple[int, int, int]]:
     records: list[tuple[int, int, int]] = []
 
-    for path in sorted(WORK.glob("exchange.*.log")):
+    for path in [WORK / "exchange.log"]:
         for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
             match = EXPLICIT.search(line)
             if match:
@@ -138,7 +132,7 @@ def write_exchange_outputs(
 def read_distances(replica_dir: Path) -> list[float]:
     values: list[float] = []
 
-    for path in sorted(replica_dir.glob("restraint.production.*.dat")):
+    for path in [replica_dir / "restraint.production.dat"]:
         for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
             stripped = line.strip()
             if not stripped or stripped.startswith(("#", "@")):
@@ -189,7 +183,7 @@ def write_restraint_sampling(states: list[dict[str, str]]) -> None:
 
 
 def main() -> None:
-    require_completed_segments()
+    require_production_output()
     states = read_states()
     records = parse_exchanges(len(states))
     write_exchange_outputs(records, states)

@@ -8,14 +8,13 @@
 ## 한국어
 
 세 method는 각각 Chignolin, trypsin–benzamidine와 SH3–peptide system을
-독립적으로 build합니다. 4 ns 동안 boost 통계를 준비한 뒤 1 ns production
-segment 하나를 실행합니다. 완료된 segment마다 MD restart와 GaMD state
-snapshot을 함께 저장하므로 두 state가 모두 정상인 마지막 segment에서 resume합니다.
+독립적으로 build합니다. 4 ns 동안 boost 통계를 준비한 뒤 1 ns production을
+실행합니다. Parameter preparation에서 만든 GaMD state를 production이 이어받습니다.
 
-Minimization, heating과 conventional equilibration의 partial output은 해당
-stage를 다시 시작하기 전에 삭제합니다. GaMD parameter preparation과 production은
-MD restart 외에 GaMD state를 포함하므로 partial output을 보존하고 중단합니다.
-정상 완료 marker는 engine과 필수 output 검사가 모두 통과한 뒤 기록합니다.
+Minimization, heating과 conventional equilibration은 main output과 restart가
+모두 있으면 건너뜁니다. 둘 중 일부만 있으면 해당 stage를 다시 실행합니다.
+GaMD parameter preparation은 GaMD state도 함께 확인하며, production output은
+덮어쓰지 않습니다.
 
 GaMD는 potential energy가 threshold보다 낮을 때 smooth harmonic boost를 더해
 energy barrier를 낮춥니다. 특정 CV를 미리 정하지 않는 대신 boost distribution이
@@ -30,20 +29,20 @@ reweighting variance도 증가합니다.
 세 폴더는 같은 역할 이름을 사용합니다. `download.sh`와 `prepare.py`가 source
 structure를 정리하고, `build.sh`가 force field와 system별 generated input을
 만듭니다. `run.sh`는 conventional preparation, GaMD parameter preparation과
-segmented production을 실행합니다. `anal.py`는 GaMD log의 component별 범위,
+고정된 production을 실행합니다. `anal.py`는 GaMD log의 component별 범위,
 평균, 표준편차, anharmonicity와 frame 수를 진단합니다.
 
 ## English
 
 The three independent examples use Chignolin, trypsin–benzamidine, and an
 SH3–peptide complex. Each prepares boost statistics for 4 ns and runs one 1 ns
-production segment. The completed segment preserves its MD restart and GaMD
-state snapshot as one resumable pair.
+production calculation. Production continues from the saved GaMD preparation
+state.
 
-Partial minimization, heating, and conventional equilibration output is removed
-before restarting that stage. GaMD parameter preparation and production preserve
-partial output and stop because the GaMD state must remain paired with the MD
-restart. Completion markers are written only after engine and output checks.
+Minimization, heating, and conventional equilibration are skipped when both the
+main output and restart exist. Incomplete pairs are rerun. GaMD parameter
+preparation also checks its GaMD state, and existing production output is never
+overwritten.
 
 GaMD adds a smooth harmonic boost below an energy threshold to reduce barriers
 without choosing a CV. Cumulant reweighting relies on a sufficiently narrow,

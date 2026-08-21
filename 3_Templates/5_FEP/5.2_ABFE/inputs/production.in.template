@@ -1,0 +1,17 @@
+ABFE production: @STAGE@, lambda @LAMBDA@
+&cntrl
+  imin=0, irest=1, ntx=5,
+  nstlim=@PRODUCTION_STEPS@, dt=@TIMESTEP_PS@,
+  temp0=@TEMPERATURE@,
+  ntt=3, gamma_ln=1.0, ig=-1,
+  ntb=2, ntp=1, barostat=2,
+  pres0=@PRESSURE@, taup=2.0,
+  ntc=2, ntf=1,
+  cut=10.0,
+  ntpr=@TRAJECTORY_INTERVAL@, ntwx=@TRAJECTORY_INTERVAL@, ntwr=@TRAJECTORY_INTERVAL@,
+  ioutfm=1,
+  @ALCHEMICAL_OPTIONS@
+  @RESTRAINT_OPTIONS@
+/
+@WT_END@
+@DISANG@

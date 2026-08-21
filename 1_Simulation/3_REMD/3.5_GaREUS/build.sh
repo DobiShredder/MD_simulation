@@ -1,14 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-dry_run=0
-if [[ "${1:-}" == "--dry-run" ]]; then
-    dry_run=1
-    shift
-fi
-
 if [[ $# -ne 1 ]]; then
-    echo "Usage: $0 [--dry-run] INPUT.pdb" >&2
+    echo "Usage: $0 INPUT.pdb" >&2
     exit 2
 fi
 
@@ -17,29 +11,15 @@ die() {
     exit 1
 }
 
-refuse_existing_results() {
-    local directory=$1
-    local existing_result=""
-    if [[ -d "$directory" ]]; then
-        existing_result=$(find "$directory" -type f \
-            \( -name '.*.complete' -o -name 'min*.out' -o -name 'minimize.gro' \
-               -o -name 'heat*.out' -o -name 'equil*.out' -o -name 'equilibrate.gro' \
-               -o -name 'equilibrate.cpt' -o -name 'gamd_prepare.out' \
-               -o -name 'production*.out' -o -name 'production*.gro' \
-               -o -name 'production*.cpt' \) -print -quit)
-    fi
-    if [[ -n "$existing_result" ]]; then
-        die "Existing simulation results were found: $existing_result. Use a new WORK_DIR or remove the previous calculation results before rebuilding."
-    fi
-}
-
 input_pdb=$1
 states_file="inputs/states.tsv"
-work_dir=${WORK_DIR:-"work"}
+work_dir=work
 tleap=${TLEAP:-tleap}
 python_bin=${PYTHON:-python3}
 
-refuse_existing_results "$work_dir"
+if find "$work_dir" -type f -name 'production.out' -print -quit 2>/dev/null | grep -q .; then
+    die "Production output already exists in $work_dir. Remove it before rebuilding."
+fi
 
 for input_file in "$input_pdb" "$states_file"; do
     if [[ ! -s "$input_file" ]]; then
@@ -47,25 +27,16 @@ for input_file in "$input_pdb" "$states_file"; do
     fi
 done
 
-if (( ! dry_run )); then
-    if ! command -v "$tleap" >/dev/null 2>&1; then
-        die "tleap not found: $tleap"
-    fi
-    if ! "$python_bin" -c "import parmed" >/dev/null 2>&1; then
-        die "ParmEd is required: $python_bin -m pip install parmed"
-    fi
+if ! command -v "$tleap" >/dev/null 2>&1; then
+    die "tleap not found: $tleap"
+fi
+if ! "$python_bin" -c "import parmed" >/dev/null 2>&1; then
+    die "ParmEd is required: $python_bin -m pip install parmed"
 fi
 
 window_count=$(awk 'NR > 1 {count++} END {print count + 0}' "$states_file")
 if [[ "$window_count" -ne 20 ]]; then
     die "states.tsv must contain 20 windows: $window_count"
-fi
-
-if (( dry_run )); then
-    echo "Generating ff19SB/TIP3P systems for 20 GaREUS windows."
-    echo "CV: :1@CA–:10@CA, 6–25 Å, 1 Å spacing"
-    echo "Output directories: $work_dir/000 ... 019"
-    exit 0
 fi
 
 echo "Generating ff19SB/TIP3P systems for 20 GaREUS windows."

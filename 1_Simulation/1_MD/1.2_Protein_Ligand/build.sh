@@ -1,15 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-dry_run=0
-
-if [[ "${1:-}" == "--dry-run" ]]; then
-    dry_run=1
-    shift
-fi
-
 if [[ $# -ne 1 ]]; then
-    echo "Usage: $0 [--dry-run] COMPLEX.pdb" >&2
+    echo "Usage: $0 COMPLEX.pdb" >&2
     exit 2
 fi
 
@@ -18,59 +11,25 @@ die() {
     exit 1
 }
 
-refuse_existing_results() {
-    local directory=$1
-    local existing_result=""
-    if [[ -d "$directory" ]]; then
-        existing_result=$(find "$directory" -type f \
-            \( -name '.*.complete' -o -name 'min*.out' -o -name 'heat*.out' \
-               -o -name 'equil*.out' -o -name 'production*.out' \) \
-            -print -quit)
-    fi
-    if [[ -n "$existing_result" ]]; then
-        die "Existing simulation results were found: $existing_result. Use a new WORK_DIR or remove the previous calculation results before rebuilding."
-    fi
-}
-
-# Inputs and user settings
 complex_pdb=$1
-tleap=${TLEAP:-tleap}
-
-work_dir=${WORK_DIR:-"work"}
-
-refuse_existing_results "$work_dir"
+work_dir=work
 
 ligand_mol2="$work_dir/jz4.mol2"
 ligand_frcmod="$work_dir/jz4.frcmod"
 
-# Input and dependency checks
-if (( ! dry_run )); then
-    if [[ ! -f "$complex_pdb" ]]; then
-        die "complex PDB not found: $complex_pdb"
-    fi
-
-    if [[ ! -s "$ligand_mol2" ]]; then
-        die "Ligand mol2 is missing. Run ./prepare.sh first."
-    fi
-
-    if [[ ! -s "$ligand_frcmod" ]]; then
-        die "Ligand frcmod is missing. Run ./prepare.sh first."
-    fi
-
-    if ! command -v "$tleap" >/dev/null 2>&1; then
-        die "tleap not found: $tleap"
-    fi
+if [[ ! -f "$complex_pdb" ]]; then
+    die "Complex PDB not found: $complex_pdb"
 fi
-
-# Dry run prints commands without creating files.
-if (( dry_run )); then
-    printf 'mkdir -p %q\n' "$work_dir"
-    printf 'cp %q %q\n' "$complex_pdb" "$work_dir/complex.pdb"
-    printf 'cp %q %q\n' "tleap.in" "$work_dir/tleap.in"
-    printf 'cd %q\n' "$work_dir"
-    printf '%q \\\n' "$tleap"
-    printf '  -f tleap.in\n'
-    exit 0
+if [[ ! -s "$ligand_mol2" || ! -s "$ligand_frcmod" ]]; then
+    die "Ligand parameters are missing. Run ./prepare.sh first."
+fi
+if ! command -v tleap >/dev/null 2>&1; then
+    die "tleap not found."
+fi
+if find "$work_dir" -type f \
+    \( -name 'min*.out' -o -name 'heat*.out' -o -name 'equil*.out' \
+       -o -name 'production*.out' \) -print -quit 2>/dev/null | grep -q .; then
+    die "Simulation output already exists in $work_dir. Remove it before rebuilding."
 fi
 
 # Combine the protein and ligand into one solvated system.
@@ -82,7 +41,7 @@ cp "tleap.in" "$work_dir/tleap.in"
 
 if ! (
     cd "$work_dir"
-    "$tleap" \
+    tleap \
         -f tleap.in \
         > leap.log 2>&1
 ); then

@@ -8,8 +8,7 @@ import re
 from collections import defaultdict
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent
-WORK = ROOT / "work"
+WORK = Path("work")
 EXCHANGE_HEADER = re.compile(r"^#\s*exchange\s+(?P<number>\d+)", re.IGNORECASE)
 EXPLICIT = re.compile(
     r"state_a=(?P<a>\d+)\s+state_b=(?P<b>\d+)\s+accepted=(?P<ok>[01])"
@@ -25,15 +24,13 @@ def read_states() -> list[dict[str, str]]:
         return list(csv.DictReader(handle, delimiter="\t"))
 
 
-def require_completed_segments() -> None:
-    logs = sorted(WORK.glob("exchange.[0-9][0-9][0-9].log"))
-    if not logs:
-        raise SystemExit(f"exchange log not found: {WORK}")
-    for log in logs:
-        segment = log.stem.rsplit(".", 1)[1]
-        marker = WORK / f".production.{segment}.complete"
-        if not marker.is_file():
-            raise SystemExit(f"production completion marker not found: {marker}")
+def require_production_outputs(states: list[dict[str, str]]) -> None:
+    if not (WORK / "exchange.log").is_file():
+        raise SystemExit(f"exchange log not found: {WORK / 'exchange.log'}")
+    for state in states:
+        output = WORK / state["replica"] / "production.out"
+        if not output.is_file():
+            raise SystemExit(f"production output not found: {output}")
 
 
 def temperature_state(value: float, temperatures: list[float]) -> int:
@@ -81,7 +78,7 @@ def parse_logs(
     visits = [[replica] for replica in range(len(temperatures))]
     found_temperature_rows = False
 
-    for path in sorted(WORK.glob("exchange.*.log")):
+    for path in sorted(WORK.glob("exchange*.log")):
         exchange_number = 0
         rows: list[tuple[int, float, float, float]] = []
 
@@ -140,7 +137,7 @@ def parse_logs(
 
     if not records:
         raise SystemExit(
-            "Exchange record not found. Check work/exchange.*.log."
+            "Exchange record not found. Check work/exchange.log."
         )
 
     return records, visits if found_temperature_rows else None
@@ -244,8 +241,8 @@ def write_visit_outputs(
 
 
 def main() -> None:
-    require_completed_segments()
     states = read_states()
+    require_production_outputs(states)
     temperatures = [float(state["temperature_K"]) for state in states]
     records, direct_visits = parse_logs(temperatures)
 

@@ -1,0 +1,46 @@
+[build]
+protein_force_field = "ff19SB"
+ligand_force_field = "GAFF2"
+water_model = "OPC"
+box_shape = "rectangular"
+charge_method = "RESP"
+ligand_a_residue_name = "LGA"
+ligand_b_residue_name = "LGB"
+ligand_a_net_charge = 0
+ligand_b_net_charge = 0
+ligand_a_mol2 = "inputs/ligand_a.mol2"
+ligand_a_frcmod = "inputs/ligand_a.frcmod"
+ligand_b_mol2 = "inputs/ligand_b.mol2"
+ligand_b_frcmod = "inputs/ligand_b.frcmod"
+atom_mapping_file = "atom_mapping.tsv"
+complex_box_distance_angstrom = 14.0
+solvent_box_distance_angstrom = 20.0
+disulfide_bonds = []
+salt_type = "NaCl"
+# Unit: mM
+salt_concentration = 150.0
+
+[run]
+engine = "pmemd.cuda"
+temperature_kelvin = 300.0
+pressure_bar = 1.0
+equilibration_ensemble = "NPT"
+production_ensemble = "NPT"
+timestep_fs = 2.0
+minimization_steps = 5000
+minimization_steepest_steps = 5000
+heating_initial_temperature_kelvin = 0.0
+heating_steps = 250000
+equilibration_steps = 500000
+production_steps_per_window = 10000000
+production_segments = 1
+trajectory_interval_steps = 5000
+energy_interval_steps = 5000
+restart_interval_steps = 5000
+mbar_interval_steps = 5000
+random_seed = "random"
+
+[alchemical]
+ligand_a_mask = ":LGA"
+ligand_b_mask = ":LGB"
+lambda_values = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]

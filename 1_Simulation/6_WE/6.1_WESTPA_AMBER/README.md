@@ -32,7 +32,6 @@ event 수나 target weight를 folding/unfolding rate로 해석하지 않습니�
 python3 prepare.py structure/1UAO.raw.pdb structure/chignolin.pdb
 ./build.sh structure/chignolin.pdb
 ./init.sh
-./run.sh --dry-run
 ./run.sh
 python3 anal.py
 ```
@@ -41,6 +40,9 @@ python3 anal.py
 
 `build.sh`는 ff19SB/TIP3P 12 Å box를 만들고 minimization, 100 ps heating과
 100 ps NPT equilibration을 거쳐 `work/bstates/basis.rst7`을 생성합니다.
+각 preparation stage의 `*.out`과 restart가 모두 있으면 건너뛰고, 둘 중 일부만
+있으면 해당 stage를 다시 실행합니다. `west.h5`나 segment output이 있으면
+기존 WESTPA state를 보호하기 위해 build를 중단합니다.
 Minimized structure인 `work/common_files/reference.rst7`에 residue 2–9 Cα를
 least-squares fit한 RMSD를 Å 단위로 계산합니다. Terminal residue를 제외하면
 말단 움직임이 progress coordinate를 지배하는 현상을 줄일 수 있습니다.
@@ -63,15 +65,9 @@ random-number stream을 반복하지 않게 합니다. 기존 `work/west.h5`를 
 실행할 때는 `./run.sh`을 다시 실행합니다. 새 run을 시작할 때만
 `./init.sh --reset`을 사용합니다.
 
-기본 engine은 한 GPU에서 serial로 실행하는 `pmemd.cuda`입니다. CPU에서
-workflow를 확인할 때는 다음처럼 process work manager를 사용할 수 있습니다.
-
-```bash
-AMBER_ENGINE=sander \
-WESTPA_WORK_MANAGER=processes \
-WESTPA_WORKERS=8 \
-./run.sh
-```
+기본 engine은 한 GPU에서 serial work manager로 실행하는 `pmemd.cuda`입니다.
+Executable만 `AMBER_ENGINE`으로 바꿀 수 있습니다. CPU worker 수와 system별
+WESTPA 설정은 `3_Templates/6_WE/6.1_WESTPA_AMBER`에서 구성합니다.
 
 `iteration_summary.tsv`의 total weight는 1에 가까워야 합니다.
 `bin_occupancy.tsv`는 iteration별 segment 수와 weight를 보여주며,
@@ -88,7 +84,9 @@ continuing from the parent restart.
 Run `download.sh`, `prepare.py`, `build.sh`, `init.sh`, `run.sh`, and `anal.py`
 in order. The build uses ff19SB, a 12 Å TIP3P box, minimization, 100 ps heating,
 and 100 ps NPT equilibration. RMSD is least-squares fitted to the minimized
-reference using the Cα atoms of residues 2–9.
+reference using the Cα atoms of residues 2–9. A preparation stage is skipped
+when both its output and restart exist; an incomplete pair is rerun. Existing
+`west.h5` or segment output protects the initialized WESTPA state from rebuilds.
 
 The default configuration maintains four walkers per bin for 20 iterations.
 The `[3.0, inf)` Å bin is labeled as a partially unfolded target, with 3.25 Å as
@@ -108,7 +106,7 @@ Segments continue parent coordinates and velocities with `irest=1` and
 independent random streams. Re-run `run.sh` to continue an initialized WESTPA
 run; use `init.sh --reset` only to discard it and start again.
 
-The default is serial `pmemd.cuda` on one GPU. CPU checks may set
-`AMBER_ENGINE=sander`, `WESTPA_WORK_MANAGER=processes`, and a positive
-`WESTPA_WORKERS` count. Analysis reports total weight, effective walker count,
-RMSD range, bin occupancy, and target arrivals.
+The default is serial `pmemd.cuda` on one GPU, with only the executable exposed
+through `AMBER_ENGINE`. Configure CPU workers and system-specific WESTPA options
+in `3_Templates/6_WE/6.1_WESTPA_AMBER`. Analysis reports total weight, effective
+walker count, RMSD range, bin occupancy, and target arrivals.

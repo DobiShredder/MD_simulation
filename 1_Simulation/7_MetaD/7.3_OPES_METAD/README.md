@@ -16,7 +16,6 @@ dipeptide의 φ와 ψ를 bias합니다.
 ```bash
 cd 1_Simulation/7_MetaD/7.3_OPES_METAD
 ./build.sh structure/alanine-dipeptide.pdb
-./run.sh --dry-run
 ./run.sh
 python3 anal.py
 ```
@@ -41,7 +40,7 @@ reweighting에 쓰는 offset이고 bias 자체가 아닙니다.
 같은 solvent box를 사용하는 WT-MetaD에서 확인한 설정이며 실제 cutoff는
 `cut=10.0 Å`로 유지됩니다.
 
-Production은 나누지 않고 `work/`에서 1 ns를 한 번에 실행합니다.
+Production은 `work/`에서 1 ns를 실행합니다.
 `STATE_WFILE=opes.state`는 마지막 adaptive state를 저장하고 `KERNELS`는
 distribution estimate에 사용된 compressed kernel history를 기록합니다.
 각 kernel을 MetaD hill과 같은 direct bias deposit으로 해석하지 않습니다.
@@ -72,7 +71,7 @@ positions, OPES_METAD reweights the visited data and uses a kernel-density
 estimate of the unbiased `P_n(s)`. It then calculates the bias required for a
 well-tempered target distribution, bounded here by `BARRIER=50` kJ/mol.
 `PACE=500` updates the estimate and bias every 1 ps, and the initial
-kernel widths are 0.15 rad. The unsegmented 1 ns production writes its restart,
+kernel widths are 0.15 rad. The 1 ns production writes its restart,
 trajectory, `COLVAR`, `KERNELS`, and final `opes.state` directly under `work/`.
 `KERNELS` records the compressed density-estimation history, not direct MetaD
 hill deposits.

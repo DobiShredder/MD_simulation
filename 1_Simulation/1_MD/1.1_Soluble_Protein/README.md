@@ -58,7 +58,6 @@ cd 1_Simulation/1_MD/1.1_Soluble_Protein
 ./download.sh
 python3 prepare.py structure/1UAO.raw.pdb structure/chignolin.pdb
 ./build.sh structure/chignolin.pdb
-./run.sh --dry-run
 ./run.sh
 ~~~
 

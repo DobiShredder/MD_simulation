@@ -2,7 +2,6 @@
 """Summarize the WT-MetaD production run and sampled range."""
 
 import argparse
-import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -26,7 +25,6 @@ def read_colvar(path: Path) -> dict[str, np.ndarray]:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("work_dir", nargs="?", type=Path, default=Path(__file__).parent / "work")
     parser.add_argument(
         "--skip-fes",
         action="store_true",
@@ -34,20 +32,18 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    completion_marker = args.work_dir / ".production.complete"
-    if not completion_marker.is_file():
-        raise ValueError(f"Production completion marker not found: {completion_marker}")
+    work_dir = Path("work")
     for filename in ("COLVAR", "HILLS"):
-        path = args.work_dir / filename
+        path = work_dir / filename
         if not path.is_file():
             raise ValueError(f"Production output not found: {path}")
 
-    output_dir = args.work_dir / "analysis"
+    output_dir = work_dir / "analysis"
     output_dir.mkdir(parents=True, exist_ok=True)
-    values = read_colvar(args.work_dir / "COLVAR")
+    values = read_colvar(work_dir / "COLVAR")
     required = {"time", "phi", "psi", "metad.bias", "metad.rbias"}
     if not required.issubset(values):
-        raise ValueError(f"Required COLVAR fields are missing: {args.work_dir / 'COLVAR'}")
+        raise ValueError(f"Required COLVAR fields are missing: {work_dir / 'COLVAR'}")
     if np.any(np.diff(values["time"]) <= 0):
         raise ValueError("Time does not increase within the production COLVAR file.")
 
@@ -94,7 +90,7 @@ def main() -> int:
             plumed,
             "sum_hills",
             "--hills",
-            str(args.work_dir / "HILLS"),
+            str(work_dir / "HILLS"),
             "--outfile",
             str(output_dir / "fes.dat"),
             "--mintozero",

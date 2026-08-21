@@ -16,15 +16,15 @@ refuse_existing_results() {
     local existing_result=""
     if [[ -d "$directory" ]]; then
         existing_result=$(find "$directory" -type f \
-            \( -name '.*.complete' -o -name 'minimize.out' -o -name 'heat.out' \
+            \( -name 'minimize.out' -o -name 'heat.out' \
                -o -name 'equilibrate.out' -o -name 'production.out' \) -print -quit)
     fi
     if [[ -n "$existing_result" ]]; then
-        die "Existing simulation results were found: $existing_result. Use a new WORK_DIR or remove the previous calculation results before rebuilding."
+        die "Existing simulation results were found: $existing_result. Remove the previous calculation results before rebuilding."
     fi
 }
 
-work_dir=${WORK_DIR:-"work"}
+work_dir=work
 
 refuse_existing_results "$work_dir"
 tleap=${TLEAP:-tleap}
@@ -32,10 +32,6 @@ input_pdb=$1
 
 if [[ ! -s "$input_pdb" ]]; then
     die "Input PDB not found: $input_pdb"
-fi
-
-if [[ "$work_dir" != /* ]]; then
-    work_dir="$(pwd)/$work_dir"
 fi
 
 command -v "$tleap" >/dev/null 2>&1 || die "tleap not found: $tleap"

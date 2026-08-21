@@ -11,8 +11,7 @@ from pathlib import Path
 import MDAnalysis as mda
 import numpy as np
 
-ROOT = Path(__file__).resolve().parent
-WORK = ROOT / "work"
+WORK = Path("work")
 EXPLICIT = re.compile(
     r"state_a=(?P<a>\d+)\s+state_b=(?P<b>\d+)\s+accepted=(?P<ok>[01])"
 )
@@ -23,15 +22,10 @@ def read_states() -> list[dict[str, str]]:
         return list(csv.DictReader(handle, delimiter="\t"))
 
 
-def require_completed_segments() -> None:
-    logs = sorted((WORK / "000").glob("production.[0-9][0-9][0-9].log"))
-    if not logs:
-        raise SystemExit(f"production log not found: {WORK / '000'}")
-    for log in logs:
-        segment = log.stem.rsplit(".", 1)[1]
-        marker = WORK / f".production.{segment}.complete"
-        if not marker.is_file():
-            raise SystemExit(f"production completion marker not found: {marker}")
+def require_production_output() -> None:
+    path = WORK / "000" / "production.log"
+    if not path.is_file():
+        raise SystemExit(f"production log not found: {path}")
 
 
 def parse_gromacs_exchange_line(
@@ -64,7 +58,7 @@ def parse_gromacs_exchange_line(
 
 def parse_exchanges(state_count: int) -> list[list[tuple[int, int, int]]]:
     events: list[list[tuple[int, int, int]]] = []
-    logs = sorted((WORK / "000").glob("production.*.log"))
+    logs = [WORK / "000" / "production.log"]
     event_index = 0
 
     for path in logs:
@@ -177,9 +171,9 @@ def structure_summary(states: list[dict[str, str]]) -> None:
         for state in states:
             replica = state["replica"]
             replica_dir = WORK / replica
-            trajectories = sorted(replica_dir.glob("production.*.xtc"))
-            if not trajectories:
-                raise SystemExit(f"trajectory not found: {replica_dir}")
+            trajectories = [replica_dir / "production.xtc"]
+            if not trajectories[0].is_file():
+                raise SystemExit(f"trajectory not found: {trajectories[0]}")
 
             universe = mda.Universe(
                 str(replica_dir / "system.gro"),
@@ -214,7 +208,7 @@ def structure_summary(states: list[dict[str, str]]) -> None:
 
 
 def main() -> None:
-    require_completed_segments()
+    require_production_output()
     states = read_states()
     events = parse_exchanges(len(states))
     write_exchange_outputs(events, states)

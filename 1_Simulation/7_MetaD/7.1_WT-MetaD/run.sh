@@ -2,11 +2,9 @@
 set -euo pipefail
 
 dry_run=0
-if [[ "${1:-}" == "--dry-run" ]]; then
+if [[ "${1:-}" == "--dry-run" && $# -eq 1 ]]; then
     dry_run=1
-    shift
-fi
-if [[ $# -ne 0 ]]; then
+elif [[ $# -ne 0 ]]; then
     echo "Usage: $0 [--dry-run]" >&2
     exit 2
 fi
@@ -16,162 +14,97 @@ die() {
     exit 1
 }
 
-work_dir=${WORK_DIR:-work}
+work_dir=work
 engine=${AMBER_ENGINE:-pmemd.cuda}
 plumed=${PLUMED:-plumed}
-seed_base=${RANDOM_SEED:-71000}
-read -r -a amber_options <<< "${AMBER_OPTIONS:-}"
 
-[[ "$seed_base" =~ ^[1-9][0-9]*$ ]] || die "RANDOM_SEED must be a positive integer."
-
-topology="$work_dir/system.parm7"
-initial_restart="$work_dir/system.rst7"
-
-stage_state() {
-    local marker=$1
-    shift
-    local present=0
-    local path
-
-    for path in "$@"; do
-        [[ -s "$path" ]] && present=$((present + 1))
+if (( ! dry_run )); then
+    for executable in "$engine" "$plumed"; do
+        if ! command -v "$executable" >/dev/null 2>&1; then
+            die "Executable not found: $executable"
+        fi
     done
+fi
+if [[ ! -s "$work_dir/system.parm7" || ! -s "$work_dir/system.rst7" ]]; then
+    die "Run build.sh first: $work_dir"
+fi
+if [[ ! -s "$work_dir/atom_count.txt" ]]; then
+    die "Run build.sh first: $work_dir/atom_count.txt"
+fi
 
-    if [[ -f "$marker" && "$present" -eq "$#" ]]; then
-        echo complete
-    elif [[ ! -f "$marker" && "$present" -eq 0 ]]; then
-        echo missing
-    else
-        echo partial
-    fi
-}
+if (( dry_run )); then
+    for stage in minimize heat equilibrate; do
+        printf '+ (cd %q && %q -O -i inputs/%s.in -o %s.out -p system.parm7 -c PREVIOUS.rst7 -r %s.rst7 -inf %s.info)\n' \
+            "$work_dir" "$engine" "$stage" "$stage" "$stage" "$stage"
+    done
+    printf '+ (cd %q && %q -O -i inputs/production.in -o production.out -p system.parm7 -c equilibrate.rst7 -r production.rst7 -inf production.info -x production.nc)\n' "$work_dir" "$engine"
+    exit 0
+fi
 
-render_amber_input() {
-    local template=$1
-    local output=$2
-    local seed=$3
+mkdir -p "$work_dir/inputs"
+cp inputs/minimize.in "$work_dir/inputs/minimize.in"
+sed 's/@RANDOM_SEED@/71001/g' inputs/heat.in.template > "$work_dir/inputs/heat.in"
+sed 's/@RANDOM_SEED@/71002/g' inputs/equilibrate.in.template > "$work_dir/inputs/equilibrate.in"
+sed 's/@RESTART@//' inputs/plumed.dat.template > "$work_dir/plumed.parse.dat"
+atom_count=$(<"$work_dir/atom_count.txt")
+(
+    cd "$work_dir"
+    "$plumed" driver --plumed plumed.parse.dat --parse-only --natoms "$atom_count"
+)
 
-    sed "s/@RANDOM_SEED@/$seed/g" "$template" > "$output"
-}
-
-run_command() {
+run_stage() {
     local stage=$1
-    local directory=$2
+    local input_restart=$2
     shift 2
+    local output_file="$work_dir/$stage.out"
+    local restart_file="$work_dir/$stage.rst7"
 
-    if (( dry_run )); then
-        printf '+ (cd %q && ' "$directory"
-        printf '%q ' "$@"
-        printf ')\n'
+    if [[ -s "$output_file" && -s "$restart_file" ]]; then
+        echo "Skipping: $stage outputs already exist."
         return
+    fi
+    if [[ -e "$output_file" || -e "$restart_file" ]]; then
+        echo "Warning: incomplete $stage outputs found; rerunning the stage." >&2
     fi
 
     echo "Running: $stage"
     if ! (
-        cd "$directory"
-        "$@"
+        cd "$work_dir"
+        "$engine" \
+            -O \
+            -i "inputs/$stage.in" \
+            -o "$stage.out" \
+            -p system.parm7 \
+            -c "$input_restart" \
+            -r "$stage.rst7" \
+            -inf "$stage.info" \
+            "$@"
     ); then
-        die "$stage Calculation failed: $directory"
+        die "$stage calculation failed: $output_file"
+    fi
+    if [[ ! -s "$output_file" || ! -s "$restart_file" ]]; then
+        die "$stage outputs were not created."
     fi
 }
 
-run_standard_stage() {
-    local stage=$1
-    local input_file=$2
-    local input_restart=$3
-    shift 3
-    local write_trajectory=0
-    local reference_restart=
-    local prefix="$work_dir/$stage"
-    local completion_marker="$work_dir/.$stage.complete"
-    local required=("$prefix.out" "$prefix.info" "$prefix.rst7")
-    local command=(
-        "$engine" "${amber_options[@]}" -O
-        -i "$input_file"
-        -o "$stage.out"
-        -p system.parm7
-        -c "$input_restart"
-        -r "$stage.rst7"
-        -inf "$stage.info"
-    )
-    local state
+run_stage minimize system.rst7
+run_stage heat minimize.rst7 -x heat.nc -ref minimize.rst7
+run_stage equilibrate heat.rst7 -x equilibrate.nc
 
-    while (( $# > 0 )); do
-        case "$1" in
-            --trajectory)
-                write_trajectory=1
-                shift
-                ;;
-            --reference)
-                [[ $# -ge 2 ]] || die "--reference requires a restart file."
-                reference_restart=$2
-                shift 2
-                ;;
-            *)
-                die "Unknown run_standard_stage option: $1"
-                ;;
-        esac
-    done
-
-    if (( write_trajectory )); then
-        required+=("$prefix.nc")
-        command+=(-x "$stage.nc")
+for output in production.out production.rst7 production.info production.nc; do
+    if [[ -e "$work_dir/$output" ]]; then
+        die "Production output already exists: $work_dir/$output"
     fi
-    if [[ -n "$reference_restart" ]]; then
-        command+=(-ref "$reference_restart")
-    fi
+done
 
-    if (( ! dry_run )); then
-        state=$(stage_state "$completion_marker" "${required[@]}")
-        [[ "$state" != complete ]] || return 0
-        if [[ "$state" == partial ]]; then
-            echo "Warning: removing partial $stage output and restarting the stage." >&2
-            rm -f -- "$completion_marker" "${required[@]}"
-        fi
-    fi
+sed 's/@RANDOM_SEED@/71101/g' inputs/production.in.template > "$work_dir/production.in"
+sed 's/@RESTART@//' inputs/plumed.dat.template > "$work_dir/plumed.dat"
 
-    run_command "$stage" "$work_dir" "${command[@]}"
-
-    if (( ! dry_run )); then
-        for output in "${required[@]}"; do
-            [[ -s "$output" ]] || die "$stage Output not found: $output"
-        done
-        touch "$completion_marker"
-    fi
-}
-
-render_plumed_input() {
-    local output=$1
-
-    sed 's/@RESTART@//' inputs/plumed.dat.template > "$output"
-}
-
-run_production() {
-    local completion_marker="$work_dir/.production.complete"
-    local state
-    local required=(
-        "$work_dir/production.out"
-        "$work_dir/production.info"
-        "$work_dir/production.rst7"
-        "$work_dir/production.nc"
-        "$work_dir/COLVAR"
-        "$work_dir/HILLS"
-    )
-
-    if (( ! dry_run )); then
-        state=$(stage_state "$completion_marker" "${required[@]}")
-        [[ "$state" != complete ]] || return 0
-        [[ "$state" != partial ]] || die "production Partial output detected: $work_dir"
-
-        render_amber_input \
-            inputs/production.in.template \
-            "$work_dir/production.in" \
-            "$((seed_base + 101))"
-        render_plumed_input "$work_dir/plumed.dat"
-    fi
-
-    run_command "production" "$work_dir" \
-        "$engine" "${amber_options[@]}" -O \
+echo "Running: production"
+if ! (
+    cd "$work_dir"
+    "$engine" \
+        -O \
         -i production.in \
         -o production.out \
         -p system.parm7 \
@@ -179,43 +112,13 @@ run_production() {
         -r production.rst7 \
         -x production.nc \
         -inf production.info
-
-    if (( ! dry_run )); then
-        for output in "${required[@]}"; do
-            [[ -s "$output" ]] || die "production Output not found: $output"
-        done
-        touch "$completion_marker"
+); then
+    die "production calculation failed: $work_dir/production.out"
+fi
+for output in production.out production.rst7 production.nc COLVAR HILLS; do
+    if [[ ! -s "$work_dir/$output" ]]; then
+        die "Production output was not created: $work_dir/$output"
     fi
-}
+done
 
-if (( ! dry_run )); then
-    command -v "$engine" >/dev/null 2>&1 || die "AMBER engine not found: $engine"
-    command -v "$plumed" >/dev/null 2>&1 || die "PLUMED not found: $plumed"
-    [[ -s "$topology" && -s "$initial_restart" ]] || die "Run build.sh first. $work_dir"
-    [[ -s "$work_dir/atom_count.txt" ]] || die "atom_count.txt not found. Run build.sh again."
-
-    mkdir -p "$work_dir"
-    mkdir -p "$work_dir/inputs"
-    cp inputs/minimize.in "$work_dir/inputs/minimize.in"
-    render_amber_input inputs/heat.in.template "$work_dir/inputs/heat.in" "$((seed_base + 1))"
-    render_amber_input inputs/equilibrate.in.template "$work_dir/inputs/equilibrate.in" "$((seed_base + 2))"
-    render_plumed_input "$work_dir/plumed.parse.dat"
-    atom_count=$(<"$work_dir/atom_count.txt")
-    (
-        cd "$work_dir"
-        "$plumed" driver \
-            --plumed plumed.parse.dat \
-            --parse-only \
-            --natoms "$atom_count"
-    )
-fi
-
-run_standard_stage minimize inputs/minimize.in system.rst7
-run_standard_stage heat inputs/heat.in minimize.rst7 --trajectory --reference minimize.rst7
-run_standard_stage equilibrate inputs/equilibrate.in heat.rst7 --trajectory
-
-run_production
-
-if (( ! dry_run )); then
-    echo "1 ns WT-MetaD production Completed: $work_dir"
-fi
+echo "1 ns WT-MetaD production completed: $work_dir/production.nc"

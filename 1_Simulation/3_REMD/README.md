@@ -49,7 +49,6 @@ compilation까지 확인했습니다. Corrected HREX의 실제 GPU/external-MPI 
 ./download.sh
 python3 prepare.py structure/1UAO.raw.pdb structure/chignolin.pdb
 ./build.sh structure/chignolin.pdb
-./run.sh --dry-run
 ./run.sh
 python3 anal.py
 ```
@@ -60,20 +59,18 @@ pre-production과 replica exchange를 실행합니다. `anal.py`는 exchange log
 acceptance, state 방문, occupancy와 round trip을 계산합니다. REST2/REST3에는
 scaled topology를 만드는 추가 helper가 있습니다.
 
-Production은 replica당 1 ns이며 1 ns segment 하나로 나뉩니다. 모든
-replica가 같은 segment를 완료했을 때만 resume합니다. MPI launcher, engine,
-process 수와 추가 option은 각 README에 적힌 environment variable로
-지정합니다.
+Production은 replica당 1 ns를 한 번 실행합니다. T-REMD, REUS와 GaREUS는
+state 수만큼 MPI rank를 사용합니다. REST2/REST3는 아래 resource argument와
+최소 executable environment variable만 제공합니다.
 
 REST2/REST3는 `run.sh --cpus N --gpus N`으로 할당 resource를 받습니다.
 Replica별 preproduction은 GPU별로 병렬 실행하면서 한 process를
 `-ntmpi 1`로 제한하고, production은 replica당 external-MPI rank 하나를
 사용합니다.
 
-모든 replica의 engine 정상 종료와 필수 output을 확인한 뒤 stage marker를
-기록합니다. Partial minimization, heating과 equilibration은 모든 replica에서
-해당 stage output을 제거하고 다시 실행합니다. Partial production/exchange
-segment는 자동으로 삭제하지 않습니다.
+Minimization, heating과 equilibration은 모든 replica의 main output과 restart가
+있으면 건너뜁니다. 일부 replica만 incomplete하면 해당 stage를 모든 replica에서
+다시 실행합니다. Production/exchange output은 덮어쓰지 않습니다.
 
 Exchange acceptance, state 방문과 occupancy는 `anal.py`에서 계산합니다.
 REUS/GaREUS PMF처럼 더 긴 후처리는
@@ -91,9 +88,8 @@ round trip을 확인합니다. REST3의 κ-dependent solute–water scaling은 g
 REST2와 REST3의 `inputs/temperatures.txt`에는 Chignolin용 기본 ladder가 들어
 있으며 `build.sh`가 lambda와 seed를 포함한 `work/states.tsv`를 생성합니다.
 REST3는 temperature와 별도로 `inputs/kappa.txt`도 읽습니다. REUS와 GaREUS는
-`inputs/states.tsv`를 사용합니다. 다른 system에서는 새 ladder file을 각 하위
-README에 적힌 `build.sh` argument로 전달합니다. State 수가 replica 수가 되며
-`run.sh`의 기본 MPI process 수도 같은 값입니다.
+`inputs/states.tsv`를 사용합니다. 다른 system과 schedule은
+`3_Templates/3_REMD/`에서 구성합니다. State 수가 replica 수가 됩니다.
 
 ## English
 
@@ -118,20 +114,18 @@ The corrected GPU/external-MPI HREX run still requires external runtime
 validation. The standard PLUMED interface and GROMACS 2025 patch do not provide
 the required arbitrary-topology `-hrex` path.
 
-Use `download.sh`, `prepare.py`, `build.sh`, `run.sh`, and `anal.py`
-in order. Production is one 1 ns segment per replica. A run resumes only from
-the last segment completed by every replica; partial segments are reported as
-errors. Engine and MPI settings are supplied through the environment variables
-documented by each method.
+Use `download.sh`, `prepare.py`, `build.sh`, `run.sh`, and `anal.py` in order.
+Production is one 1 ns run per replica. T-REMD, REUS, and GaREUS use one MPI
+rank per state; REST2/REST3 expose only their resource arguments and minimal
+executable settings.
 
 REST2/REST3 accept allocated resources through `run.sh --cpus N --gpus N`.
 Per-replica preproduction runs concurrently across GPUs with `-ntmpi 1` per
 process, while production uses one external-MPI rank per replica.
 
-A stage marker is written only after successful engine exits and required-output
-checks across every replica. Partial minimization, heating, and equilibration
-outputs are removed across all replicas before the stage is restarted. Partial
-production or exchange segments are preserved and reported as errors.
+Minimization, heating, and equilibration are skipped when all replicas have
+their main output and restart. If any replica is incomplete, that stage is
+rerun across all replicas. Existing production/exchange output is protected.
 
 In every folder, download and preparation handle the source structure, build
 creates topology/state inputs, run performs pre-production and exchange, and
@@ -149,7 +143,5 @@ only a starting point for REST3 validation.
 REST2 and REST3 store their precomputed Chignolin ladders in
 `inputs/temperatures.txt`; each `build.sh` generates `work/states.tsv` with
 lambdas and seeds. REST3 also reads a separate `inputs/kappa.txt`. REUS and
-GaREUS use `inputs/states.tsv` directly. For a different system, generate a
-ladder using its atom and water counts and pass the file as described in the
-corresponding child README. The state count sets both the replica count and the
-default MPI process count.
+GaREUS use `inputs/states.tsv` directly. Configure a different system or ladder
+under `3_Templates/3_REMD/`. The state count sets the replica count.

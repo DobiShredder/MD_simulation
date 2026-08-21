@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -31,20 +30,12 @@ def read_colvar(path: Path) -> dict[str, np.ndarray]:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "work_dir",
-        nargs="?",
-        type=Path,
-        default=Path(__file__).parent / "work",
-    )
     parser.add_argument("--skip-fes", action="store_true")
     args = parser.parse_args()
 
-    completion_marker = args.work_dir / ".production.complete"
-    if not completion_marker.is_file():
-        raise ValueError(f"Production completion marker not found: {completion_marker}")
+    work_dir = Path("work")
     for filename in ("COLVAR", "HILLS", "FUNNEL_GRID"):
-        path = args.work_dir / filename
+        path = work_dir / filename
         if not path.is_file():
             raise ValueError(f"Production output not found: {path}")
 
@@ -58,7 +49,7 @@ def main() -> int:
         "metad.bias",
         "metad.rbias",
     }
-    values = read_colvar(args.work_dir / "COLVAR")
+    values = read_colvar(work_dir / "COLVAR")
     if not required_fields.issubset(values):
         missing = sorted(required_fields - values.keys())
         raise ValueError(f"Required COLVAR fields are missing: {missing}")
@@ -68,7 +59,7 @@ def main() -> int:
     funnel_bias = values["funnel.bias"]
     metad_bias = values["metad.bias"]
 
-    output_dir = args.work_dir / "analysis"
+    output_dir = work_dir / "analysis"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     with (output_dir / "production_summary.tsv").open("w", encoding="utf-8") as handle:
@@ -115,7 +106,7 @@ def main() -> int:
                 plumed,
                 "sum_hills",
                 "--hills",
-                str(args.work_dir / "HILLS"),
+                str(work_dir / "HILLS"),
                 "--outfile",
                 str(output_dir / "fes.dat"),
                 "--mintozero",

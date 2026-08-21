@@ -43,13 +43,11 @@ python3 prepare.py structure/1UAO.raw.pdb structure/chignolin.pdb
 ./prepare.sh structure/chignolin.pdb
 
 cd rmd
-./run.sh --dry-run
 ./run.sh
 python3 anal.py
 
 cd ../us
 ./build.sh
-./run.sh --dry-run --window 1
 ./run.sh
 ```
 
@@ -59,10 +57,9 @@ ff19SB/TIP3P `system.parm7`을 ratchet MD와 모든 umbrella
 window가 공유합니다. Window별 solvation은 하지 않습니다. CV, atom index,
 ABMD target, window 범위와 force constant는 chignolin용 설정입니다.
 
-Ratchet MD와 umbrella window는 engine 정상 종료와 필수 output 검사를 통과한
-stage에만 completion marker를 기록합니다. Partial preparation stage는 해당
-output을 삭제하고 다시 실행하며 partial ratchet/umbrella production은 보존하고
-중단합니다.
+Preparation stage의 output과 restart가 모두 있으면 건너뛰고, 일부만 있으면
+해당 stage를 다시 실행합니다. 기존 ratchet 또는 umbrella production output이
+있으면 덮어쓰지 않고 시작 전에 중단합니다.
 
 `tleap.in`은 20 Å TIP3P buffer를 추가한 뒤 atom center로 계산한 box에
 0.25 Å padding을 둡니다. AmberTools 26에서 초기 density는 약
@@ -98,10 +95,9 @@ one ff19SB/TIP3P topology shared by ratchet MD and every
 umbrella window. Seed frames are not resolvated. The CV, atom indices, target,
 window range, and restraint strength are specific to chignolin.
 
-Ratchet MD and umbrella windows write a completion marker only after the engine
-exits successfully and all required outputs are present. Partial preparation
-stages are restarted after their outputs are removed; partial ratchet or
-umbrella production is preserved and stops the workflow.
+A preparation stage is skipped when both its output and restart exist, and an
+incomplete pair is rerun. Existing ratchet or umbrella production output is
+detected before it can be overwritten.
 
 The tleap build adds a 20 Å TIP3P buffer and defines the periodic box from
 atom centers with 0.25 Å padding. With AmberTools 26 this produced an initial

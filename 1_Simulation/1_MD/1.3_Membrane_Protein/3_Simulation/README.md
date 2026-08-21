@@ -2,8 +2,7 @@
 
 ## 한국어
 
-2단계의 `work/system.parm7`과 `work/system.rst7`을 기본 input으로 사용합니다.
-다른 파일은 `TOPOLOGY`와 `COORDINATES`로 지정합니다.
+2단계의 `work/system.parm7`과 `work/system.rst7`을 input으로 사용합니다.
 
 ### 파일 역할
 
@@ -18,7 +17,6 @@
 
 ~~~bash
 cd 1_Simulation/1_MD/1.3_Membrane_Protein/3_Simulation
-./run.sh --dry-run
 ./run.sh
 ~~~
 
@@ -36,14 +34,12 @@ Protein과 filter ion을 minimization, heating을 진행하고 나서
 | `restraintmask=':1-415 & !@H='` | KcsA 408 residues와 filter K+ 7개 heavy atom을 초기 stage에서 restraint합니다. Topology residue 순서가 바뀌면 수정합니다. |
 | `ntc=2`, `ntf=2`, `dt=0.002` | 수소 bond SHAKE와 2 fs timestep을 사용합니다. |
 | `ntmin=2`, `dx0=0.0001` | 초기 protein side-chain contact를 완화하도록 두 minimization에서 작은 step의 steepest descent만 사용합니다. |
-| `TOPOLOGY`, `COORDINATES`, `WORK_DIR` | 다른 build 또는 independent run의 input/output 경로를 지정합니다. |
 
 1 ns는 어디까지나 튜토리얼을 위한 시간일 뿐, 대부분의 경우 훨씬 긴 계산을 수행해야 합니다.
 
 ## English
 
-The stage-2 topology and restart are the default inputs. Set `TOPOLOGY` and
-`COORDINATES` only to use different files. Protein and filter ions are
+The stage-2 topology and restart are used as inputs. Protein and filter ions are
 restrained during minimization and heating, followed by 100 ps equilibration and
 1 ns production at 310 K with anisotropic pressure coupling.
 

@@ -4,14 +4,12 @@
 from __future__ import annotations
 
 import csv
-import os
 from pathlib import Path
 
 import h5py
 
 
-ROOT = Path(__file__).resolve().parent
-WORK = Path(os.environ.get("WORK_DIR", ROOT / "work"))
+WORK = Path("work")
 TARGET_RMSD_ANGSTROM = 3.0
 BINS = [
     (0.0, 0.5),

@@ -1,0 +1,15 @@
+ABFE heating: @STAGE@, lambda @LAMBDA@
+&cntrl
+  imin=0, irest=0, ntx=1,
+  nstlim=@HEATING_STEPS@, dt=@TIMESTEP_PS@,
+  tempi=0.0, temp0=@TEMPERATURE@,
+  ntt=3, gamma_ln=1.0, ig=@RANDOM_SEED@,
+  ntb=1,
+  ntc=2, ntf=1,
+  cut=10.0,
+  ntpr=@TRAJECTORY_INTERVAL@, ntwx=@TRAJECTORY_INTERVAL@, ntwr=@TRAJECTORY_INTERVAL@,
+  @ALCHEMICAL_OPTIONS@
+  @RESTRAINT_OPTIONS@
+/
+@WT_END@
+@DISANG@

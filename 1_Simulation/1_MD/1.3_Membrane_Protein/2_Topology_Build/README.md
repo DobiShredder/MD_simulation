@@ -15,9 +15,10 @@ Lipid21의 modular residue `PA`·`PC`·`PE`·`OL`과 `CHL`은 `leaprc.lipid21`�
 
 ~~~bash
 cd 1_Simulation/1_MD/1.3_Membrane_Protein/2_Topology_Build
-./run.sh --dry-run ../1_Coordinate_Build/work/system-coordinates.pdb
 ./run.sh ../1_Coordinate_Build/work/system-coordinates.pdb
 ~~~
+
+### 주요 option
 
 `prepare_tleap.py`는 PDB의 `CRYST1`을 그대로 사용합니다.
 그러지 않으면 평형화된 patch의 x·y 주기가 변할 수 있습니다.
@@ -38,11 +39,6 @@ ion 초기 위치와 `system.rst7` checksum은 고정되지 않습니다.
 Chain C-terminus의 `OXT`를 tleap이 추가하는 message는 예상된 결과입니다.
 Initial energy에서 `VDWAALS = *************`가 보이면
 simulation을 진행하지 않고 1단계 coordinate를 다시 확인합니다.
-
-### 주요 option
-
-`TLEAP`은 tleap executable, `PYTHON`은 `prepare_tleap.py`를 실행할 Python,
-`WORK_DIR`은 output directory를 바꿉니다.
 
 ## English
 

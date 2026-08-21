@@ -1,13 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-dry_run=0
-if [[ "${1:-}" == "--dry-run" ]]; then
-    dry_run=1
-    shift
-fi
 if [[ $# -ne 1 ]]; then
-    echo "Usage: $0 [--dry-run] CHIGNOLIN.pdb" >&2
+    echo "Usage: $0 CHIGNOLIN.pdb" >&2
     exit 2
 fi
 
@@ -16,31 +11,18 @@ die() {
     exit 1
 }
 
-refuse_existing_results() {
-    local directory=$1
-    local existing_result=""
-    if [[ -d "$directory" ]]; then
-        existing_result=$(find "$directory" -type f \
-            \( -name 'west.h5' -o -name 'segment.out' \) -print -quit)
-    fi
-    if [[ -n "$existing_result" ]]; then
-        die "Existing WESTPA results were found: $existing_result. Use a new WORK_DIR or run init.sh --reset before rebuilding."
-    fi
-}
-
 source ./env.sh
 input_pdb=$1
 tleap=${TLEAP:-tleap}
 build_dir="$WORK_DIR/common_files"
 basis_dir="$WORK_DIR/bstates"
 
-refuse_existing_results "$WORK_DIR"
-
-if (( dry_run )); then
-    echo "Build: Chignolin ff19SB/TIP3P basis state"
-    printf '%q -f %q\n' "$tleap" "$WEST_SIM_ROOT/inputs/leap.in"
-    printf '%q -O -i %q -p %q -c %q -r %q\n' "$AMBER_ENGINE" "$WEST_SIM_ROOT/inputs/minimize.in" "$build_dir/system.parm7" "$build_dir/system.rst7" "$build_dir/minimize.rst7"
-    exit 0
+if [[ -d "$WORK_DIR" ]]; then
+    existing_result=$(find "$WORK_DIR" -type f \
+        \( -name 'west.h5' -o -name 'segment.out' \) -print -quit)
+    if [[ -n "$existing_result" ]]; then
+        die "Existing WESTPA results were found: $existing_result"
+    fi
 fi
 
 if [[ ! -s "$input_pdb" ]]; then
@@ -53,57 +35,59 @@ for executable in "$tleap" "$AMBER_ENGINE" "$CPPTRAJ"; do
 done
 
 mkdir -p "$build_dir" "$basis_dir"
-cp "$input_pdb" "$build_dir/input.pdb"
-cp "$WEST_SIM_ROOT/inputs/leap.in" "$build_dir/leap.in"
 
-echo "Generating the Chignolin topology and basis state."
-if ! (cd "$build_dir" && "$tleap" -f leap.in > leap.log 2>&1); then
-    die "tleap failed: $build_dir/leap.log"
-fi
-
-if ! "$AMBER_ENGINE" \
-    -O \
-    -i "$WEST_SIM_ROOT/inputs/minimize.in" \
-    -o "$build_dir/minimize.out" \
-    -p "$build_dir/system.parm7" \
-    -c "$build_dir/system.rst7" \
-    -r "$build_dir/minimize.rst7" \
-    -inf "$build_dir/minimize.info"; then
-    die "Basis-state minimization failed: $build_dir/minimize.out"
-fi
-
-cp "$build_dir/minimize.rst7" "$build_dir/reference.rst7"
-
-if ! "$AMBER_ENGINE" \
-    -O \
-    -i "$WEST_SIM_ROOT/inputs/heat.in" \
-    -o "$build_dir/heat.out" \
-    -p "$build_dir/system.parm7" \
-    -c "$build_dir/minimize.rst7" \
-    -r "$build_dir/heat.rst7" \
-    -ref "$build_dir/minimize.rst7" \
-    -inf "$build_dir/heat.info"; then
-    die "Basis-state heating failed: $build_dir/heat.out"
-fi
-
-if ! "$AMBER_ENGINE" \
-    -O \
-    -i "$WEST_SIM_ROOT/inputs/equilibrate.in" \
-    -o "$build_dir/equilibrate.out" \
-    -p "$build_dir/system.parm7" \
-    -c "$build_dir/heat.rst7" \
-    -r "$basis_dir/basis.rst7" \
-    -x "$build_dir/equilibrate.nc" \
-    -inf "$build_dir/equilibrate.info"; then
-    die "Basis-state equilibration failed: $build_dir/equilibrate.out"
-fi
-
-for output in \
-    "$build_dir/system.parm7" \
-    "$build_dir/reference.rst7" \
-    "$basis_dir/basis.rst7"; do
-    if [[ ! -s "$output" ]]; then
-        die "Basis-state Output was not created: $output"
+if [[ -s "$build_dir/system.parm7" && -s "$build_dir/system.rst7" ]]; then
+    echo "Skipping: topology outputs already exist."
+else
+    if [[ -e "$build_dir/system.parm7" || -e "$build_dir/system.rst7" ]]; then
+        echo "Warning: incomplete topology outputs found; rebuilding the system." >&2
     fi
-done
+    cp "$input_pdb" "$build_dir/input.pdb"
+    cp "$WEST_SIM_ROOT/inputs/leap.in" "$build_dir/leap.in"
+
+    echo "Generating the Chignolin topology."
+    if ! (cd "$build_dir" && "$tleap" -f leap.in > leap.log 2>&1); then
+        die "tleap failed: $build_dir/leap.log"
+    fi
+fi
+
+run_basis_stage() {
+    local stage=$1
+    local input_restart=$2
+    local output_restart=$3
+    shift 3
+    local output_file="$build_dir/$stage.out"
+
+    if [[ -s "$output_file" && -s "$output_restart" ]]; then
+        echo "Skipping: $stage outputs already exist."
+        return
+    fi
+    if [[ -e "$output_file" || -e "$output_restart" ]]; then
+        echo "Warning: incomplete $stage outputs found; rerunning the stage." >&2
+    fi
+
+    echo "Running: $stage"
+    if ! "$AMBER_ENGINE" \
+        -O \
+        -i "$WEST_SIM_ROOT/inputs/$stage.in" \
+        -o "$output_file" \
+        -p "$build_dir/system.parm7" \
+        -c "$input_restart" \
+        -r "$output_restart" \
+        -inf "$build_dir/$stage.info" \
+        "$@"; then
+        die "Basis-state $stage failed: $output_file"
+    fi
+    if [[ ! -s "$output_file" || ! -s "$output_restart" ]]; then
+        die "Basis-state $stage outputs were not created."
+    fi
+}
+
+run_basis_stage minimize "$build_dir/system.rst7" "$build_dir/minimize.rst7"
+cp "$build_dir/minimize.rst7" "$build_dir/reference.rst7"
+run_basis_stage heat "$build_dir/minimize.rst7" "$build_dir/heat.rst7" \
+    -ref "$build_dir/minimize.rst7"
+run_basis_stage equilibrate "$build_dir/heat.rst7" "$basis_dir/basis.rst7" \
+    -x "$build_dir/equilibrate.nc"
+
 echo "WESTPA basis state: $basis_dir/basis.rst7"

@@ -1,0 +1,3 @@
+# Replace these atom numbers with the CV definition for the built system.
+phi: TORSION ATOMS=5,7,9,15
+psi: TORSION ATOMS=7,9,15,17

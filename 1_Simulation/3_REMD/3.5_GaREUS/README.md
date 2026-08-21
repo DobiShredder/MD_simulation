@@ -41,7 +41,6 @@ state에 사용합니다. Analysis에서는 먼저 MBAR로 umbrella bias를 제�
 | `prepare.py` | 1UAO의 첫 NMR model을 simulation PDB로 정리합니다. |
 | `make_restraints.py` | Terminal Cα index와 20개 window restraint를 생성합니다. |
 | `build.sh` | 공통 topology, state table, restraint와 replica별 seed를 배치합니다. |
-| `completion_helpers.sh` | `run.sh`가 자동으로 불러와 window별 output와 marker를 검사합니다. |
 | `run.sh` | Window별 pre-production, GaMD parameter preparation과 GaREUS exchange를 실행합니다. |
 | `anal.py` | Exchange/occupancy, restraint sampling과 GaMD boost 범위를 계산합니다. |
 
@@ -49,7 +48,7 @@ state에 사용합니다. Analysis에서는 먼저 MBAR로 umbrella bias를 제�
 15 Å reference window에서 4 ns 동안 GaMD parameter를 한 번 준비한 뒤 같은
 `gamd-restart.dat`을 모든 window에 배치합니다. `igamd=3`,
 `sigma0P=sigma0D=6.0`을 사용하며 이 state를 `irest_gamd=1`로 이어받아
-1 ns NVT GaREUS segment 하나를 실행합니다. 교환은 1 ps마다 시도합니다.
+1 ns NVT GaREUS calculation을 실행합니다. 교환은 1 ps마다 시도합니다.
 
 ### 실행
 
@@ -60,22 +59,20 @@ python3 -m pip install -r requirements.txt
 ./download.sh
 python3 prepare.py structure/1UAO.raw.pdb structure/chignolin.pdb
 ./build.sh structure/chignolin.pdb
-./run.sh --dry-run
 ./run.sh --allow-unverified
 python3 anal.py
 ```
 
 단일-window stage는 `pmemd.cuda`, GaREUS는
 `pmemd.cuda.MPI -rem 3`를 기본으로 사용합니다. Engine, MPI launcher,
-process 수, GPU mapping과 추가 option은 REUS 예제와 같은 environment
-variable로 지정합니다. GPU mapping은 scheduler 또는
-`CUDA_VISIBLE_DEVICES`에서 설정합니다.
+MPI executable과 launcher는 `AMBER_MPI_ENGINE`과 `MPI_LAUNCHER`로 바꿀 수
+있습니다. GPU mapping은 scheduler 또는 `CUDA_VISIBLE_DEVICES`에서 설정합니다.
 
 각 window는 고유한 positive seed를 사용합니다. `gamd.prepare.log`는 15 Å
-reference window에만 생성됩니다. Production segment는
-`gamd.production.NNN.log`를 따로 기록합니다. 일부
-window만 완료된 stage 또는 segment는 자동으로 덮어쓰거나 resume하지
-않습니다.
+reference window에만 생성됩니다. Production은 window별
+`gamd.production.log`를 기록합니다. Preparation output이 일부 window에만
+있으면 해당 stage를 모든 window에서 다시 실행하며 production output은
+덮어쓰지 않습니다.
 
 ### 주요 option
 
@@ -86,8 +83,8 @@ window만 완료된 stage 또는 segment는 자동으로 덮어쓰거나 resume�
 | `irest_gamd=0/1` | Preparation에서 GaMD statistics를 만들고 production에서 해당 state를 이어받습니다. |
 | `ntcmdprep`, `ntcmd`, `ntebprep`, `nteb` | Initial conventional statistics와 GaMD equilibration schedule을 정의합니다. `*prep`과 전체 step 값을 독립 구간처럼 더하지 않습니다. |
 | `ntb=1` | Volume을 고정한 NVT ensemble에서 GaREUS production을 실행합니다. |
-| `-rem 3`, `nstlim=500`, `numexchg=1000` | Umbrella Hamiltonian을 500 steps, 즉 1 ps마다 교환하고 1 ns segment를 만듭니다. |
-| `-gamd` | 현재 GaREUS runner가 window/segment별 boost 기록을 별도 log에 저장할 때 사용합니다. AMBER version별 option 이름을 실제 engine help와 대조합니다. |
+| `-rem 3`, `nstlim=500`, `numexchg=1000` | Umbrella Hamiltonian을 500 steps, 즉 1 ps마다 교환하고 총 1 ns를 계산합니다. |
+| `-gamd` | 현재 GaREUS runner가 window별 boost 기록을 별도 log에 저장할 때 사용합니다. AMBER version별 option 이름을 실제 engine help와 대조합니다. |
 | `--allow-unverified` | Amber 26 multipmemd의 replica별 GaMD state 처리를 검증하기 전 실제 실행을 opt-in합니다. |
 
 `gamd-restart.dat`은 filename이 고정되어 있고 multipmemd는 replica output에
@@ -96,9 +93,8 @@ suffix를 붙입니다. Amber 26 GPU에서 replica별 state read/write가 분리
 
 ### Output
 
-- `work/NNN/production.001.nc` … `production.010.nc`
-- `work/NNN/gamd.production.001.log` …
-  `gamd.production.010.log`
+- `work/NNN/production.nc`
+- `work/NNN/gamd.production.log`
 - `work/exchange_summary.tsv`, `replica_visits.tsv`,
   `window_occupancy.tsv`
 - `work/restraint_sampling.tsv`, `boost_potential.tsv`
@@ -116,7 +112,7 @@ This example combines dual-boost GaMD with 20 terminal-Cα distance windows from
 6 to 25 Å. Each window is minimized, heated for 200 ps, and equilibrated for
 100 ps. A single 4 ns GaMD parameter-preparation run at the 15 Å reference
 window provides the same `gamd-restart.dat` parameters to every replica. One
-1 ns NVT GaREUS segment continues that state with `irest_gamd=1`, with exchanges
+1 ns NVT GaREUS run continues that state with `irest_gamd=1`, with exchanges
 attempted every 1 ps.
 
 GaREUS combines umbrella/replica exchange along the selected CV with GaMD
@@ -140,17 +136,14 @@ MBAR and then reweights the GaMD boost with a second-order cumulant expansion.
 Run the build as `./build.sh structure/chignolin.pdb`. The defaults are
 `igamd=3` and `sigma0P=sigma0D=6.0`. Each window has a
 unique positive seed and separate production GaMD logs. The run uses `pmemd.cuda` for
-individual stages and `pmemd.cuda.MPI -rem 3` for replica exchange, with
-environment overrides for engines and MPI settings.
-`completion_helpers.sh` keeps window-wide output and marker checks separate
-from these simulation commands.
+individual stages and `pmemd.cuda.MPI -rem 3` for replica exchange.
 
 `igamd=3`, `iE=1` select lower-bound dual boost; `sigma0P` and `sigma0D` cap
 the target boost standard deviations. The `ntcmd*` and `nteb*` controls define
 overlapping conventional-statistics and GaMD-equilibration schedules, not four
 durations to sum. Production switches to `irest_gamd=1` and NVT (`ntb=1`),
 and uses `-rem 3`, `nstlim=500`, and `numexchg=1000` for 1 ps exchange attempts
-and a 1 ns segment. Actual execution requires
+and a 1 ns run. Actual execution requires
 `run.sh --allow-unverified` until per-replica handling of the fixed
 `gamd-restart.dat` name is confirmed with Amber 26 multipmemd.
 The current runner uses `-gamd` for per-window logs; confirm the accepted log
@@ -158,8 +151,8 @@ option against the target AMBER build.
 
 Analysis writes exchange, visits, occupancy, restraint sampling, and boost
 potential ranges as TSV files. Window trajectories and boost logs are written
-to `work/NNN/production.001.nc` and
-`work/NNN/gamd.production.001.log`. The boost parser treats the final numeric
+to `work/NNN/production.nc` and
+`work/NNN/gamd.production.log`. The boost parser treats the final numeric
 GaMD log column as the total boost and should be adjusted if an AMBER build
 uses a different log layout.
 

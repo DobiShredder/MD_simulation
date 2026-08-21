@@ -1,53 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-dry_run=0
-positional_arguments=()
-
-show_help() {
-    cat <<'EOF'
-Usage: ./build.sh [--dry-run] INPUT.pdb [temperatures.txt]
-
-Build REST2 replica topologies from an effective-temperature list.
-
-Temperature input:
-  Separate values with commas, semicolons, vertical bars, or whitespace.
-  Text after # is ignored. The first value must be 300 K, and subsequent
-  values must increase strictly.
-
-Generated scaling:
-  lambda_pp = 300 / T
-  lambda_pw = sqrt(lambda_pp)
-  The complete table is written to work/states.tsv by default.
-
-Options:
-  --dry-run    Validate inputs and print the planned build without running it.
-  -h, --help   Show this help message and exit.
-EOF
-}
-
-while [[ $# -gt 0 ]]; do
-    case "$1" in
-        --dry-run)
-            dry_run=1
-            ;;
-        -h|--help)
-            show_help
-            exit 0
-            ;;
-        -*)
-            show_help >&2
-            exit 2
-            ;;
-        *)
-            positional_arguments+=("$1")
-            ;;
-    esac
-    shift
-done
-
-if (( ${#positional_arguments[@]} < 1 || ${#positional_arguments[@]} > 2 )); then
-    show_help >&2
+if [[ $# -ne 1 ]]; then
+    echo "Usage: $0 INPUT.pdb" >&2
     exit 2
 fi
 
@@ -56,33 +11,21 @@ die() {
     exit 1
 }
 
-refuse_existing_results() {
-    local directory=$1
-    local existing_result=""
-    if [[ -d "$directory" ]]; then
-        existing_result=$(find "$directory" -type f \
-            \( -name '.*.complete' -o -name 'min*.out' -o -name 'minimize.gro' \
-               -o -name 'heat*.out' -o -name 'equil*.out' -o -name 'equilibrate.gro' \
-               -o -name 'equilibrate.cpt' -o -name 'gamd_prepare.out' \
-               -o -name 'production*.out' -o -name 'production*.gro' \
-               -o -name 'production*.cpt' \) -print -quit)
-    fi
-    if [[ -n "$existing_result" ]]; then
-        die "Existing simulation results were found: $existing_result. Use a new WORK_DIR or remove the previous calculation results before rebuilding."
-    fi
-}
-
-input_pdb=${positional_arguments[0]}
-temperature_file=${positional_arguments[1]:-"inputs/temperatures.txt"}
-work_dir=${WORK_DIR:-"work"}
+input_pdb=$1
+temperature_file=inputs/temperatures.txt
+work_dir=work
 states_file="$work_dir/states.tsv"
 tleap=${TLEAP:-tleap}
 gmx=${GROMACS:-gmx}
 plumed=${PLUMED:-plumed}
 python_bin=${PYTHON:-python3}
-energy_tolerance=${ENERGY_TOLERANCE_KJ_MOL:-0.1}
+energy_tolerance=0.1
 
-refuse_existing_results "$work_dir"
+if find "$work_dir" -type f \
+    \( -name 'minimize.gro' -o -name 'equilibrate.gro' -o -name 'production.gro' \) \
+    -print -quit 2>/dev/null | grep -q .; then
+    die "Simulation output already exists in $work_dir. Remove it before rebuilding."
+fi
 
 for input_file in "$input_pdb" "$temperature_file"; do
     if [[ ! -s "$input_file" ]]; then
@@ -93,28 +36,13 @@ done
 if ! replica_count=$("$python_bin" generate_states.py --count "$temperature_file"); then
     die "REST2 temperature-list validation failed."
 fi
-last_replica=$(printf '%03d' "$((replica_count - 1))")
-
-if (( ! dry_run )); then
-    for executable in "$tleap" "$gmx" "$plumed" "$python_bin"; do
-        if ! command -v "$executable" >/dev/null 2>&1; then
-            die "Executable not found: $executable"
-        fi
-    done
-
-    if ! "$python_bin" -c "import parmed" >/dev/null 2>&1; then
-        die "ParmEd is required: $python_bin -m pip install -r requirements.txt"
+for executable in "$tleap" "$gmx" "$plumed" "$python_bin"; do
+    if ! command -v "$executable" >/dev/null 2>&1; then
+        die "Executable not found: $executable"
     fi
-fi
-
-if (( dry_run )); then
-    echo "Converting the ff19SB/TIP3P AMBER system to GROMACS topology."
-    echo "Marking only protein atoms and generating $replica_count REST2 topologies."
-    echo "Comparing potential energies of the scale-1.0 and original topologies."
-    echo "Temperature input: $temperature_file"
-    echo "Generated state table: $states_file"
-    echo "Output directories: $work_dir/000 ... $last_replica"
-    exit 0
+done
+if ! "$python_bin" -c "import parmed" >/dev/null 2>&1; then
+    die "ParmEd is required: $python_bin -m pip install -r requirements.txt"
 fi
 
 echo "Generating an ff19SB/TIP3P AMBER system."

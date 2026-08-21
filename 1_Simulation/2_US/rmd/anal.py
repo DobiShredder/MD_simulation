@@ -3,55 +3,11 @@
 
 from __future__ import annotations
 
-import argparse
 import csv
 import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-
-
-def parse_arguments() -> argparse.Namespace:
-    """Read command-line arguments and tutorial default paths."""
-    script_dir = Path(__file__).resolve().parent
-    parser = argparse.ArgumentParser(
-        description="Select frames near increasing US centers and extract AMBER restart files."
-    )
-    parser.add_argument(
-        "--topology",
-        type=Path,
-        default=script_dir.parent / "work" / "system.parm7",
-    )
-    parser.add_argument(
-        "--trajectory",
-        type=Path,
-        default=script_dir / "work" / "ratchet.nc",
-    )
-    parser.add_argument(
-        "--windows",
-        type=Path,
-        default=script_dir.parent / "us" / "windows.tsv",
-    )
-    parser.add_argument(
-        "--output",
-        type=Path,
-        default=script_dir / "work" / "seeds",
-    )
-    parser.add_argument("--cpptraj", default="cpptraj")
-    parser.add_argument(
-        "--max-error",
-        dest="max_error_angstrom",
-        type=float,
-        default=0.75,
-        help="Tolerance for the difference between the target center and frame distance (Å)",
-    )
-    parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument(
-        "--allow-unmarked",
-        action="store_true",
-        help="Allow a trajectory produced outside this tutorial without a completion marker.",
-    )
-    return parser.parse_args()
 
 
 def read_centers(path: Path) -> list[float]:
@@ -210,65 +166,55 @@ def write_metadata(
 
 
 def main() -> int:
-    args = parse_arguments()
+    topology = Path("../work/system.parm7")
+    trajectory = Path("work/ratchet.nc")
+    windows = Path("../us/windows.tsv")
+    output = Path("work/seeds")
+    cpptraj = "cpptraj"
+    max_error_angstrom = 0.75
 
-    if not args.windows.is_file():
-        raise SystemExit(f"window settings not found: {args.windows}")
-
-    if args.max_error_angstrom <= 0:
-        raise SystemExit("--max-error must be greater than zero.")
+    if not windows.is_file():
+        raise SystemExit(f"window settings not found: {windows}")
 
     try:
-        centers_angstrom = read_centers(args.windows)
+        centers_angstrom = read_centers(windows)
     except (OSError, ValueError) as error:
         raise SystemExit(f"window settings Error: {error}") from None
 
-    if args.dry_run:
-        print(f"topology: {args.topology}")
-        print(f"trajectory: {args.trajectory}")
-        print(f"seed output: {args.output} ({len(centers_angstrom)} windows)")
-        return 0
-
-    if shutil.which(args.cpptraj) is None:
-        raise SystemExit(f"cpptraj not found: {args.cpptraj}")
-    for path in (args.topology, args.trajectory, args.windows):
+    if shutil.which(cpptraj) is None:
+        raise SystemExit(f"cpptraj not found: {cpptraj}")
+    for path in (topology, trajectory, windows):
         if not path.is_file():
             raise SystemExit(f"Required input not found: {path}")
-    completion_marker = args.trajectory.parent / ".ratchet.complete"
-    if not args.allow_unmarked and not completion_marker.is_file():
-        raise SystemExit(
-            "Ratchet MD completion marker not found: "
-            f"{completion_marker}. Use --allow-unmarked only for an externally completed trajectory."
-        )
-    if args.output.exists():
-        raise SystemExit(f"Output directory already exists: {args.output}")
+    if output.exists():
+        raise SystemExit(f"Output directory already exists: {output}")
 
-    args.output.mkdir(parents=True)
+    output.mkdir(parents=True)
     try:
         with tempfile.TemporaryDirectory(prefix="us_seed_") as temp_dir:
             distances = Path(temp_dir) / "distance.dat"
             values = calculate_distances(
-                args.cpptraj, args.topology.resolve(), args.trajectory.resolve(), distances
+                cpptraj, topology.resolve(), trajectory.resolve(), distances
             )
         selected = select_crossings(
             values,
             centers_angstrom,
-            args.max_error_angstrom,
+            max_error_angstrom,
         )
         extract_restarts(
-            args.cpptraj,
-            args.topology.resolve(),
-            args.trajectory.resolve(),
-            args.output.resolve(),
+            cpptraj,
+            topology.resolve(),
+            trajectory.resolve(),
+            output.resolve(),
             selected,
         )
-        write_metadata(args.output / "seeds.tsv", centers_angstrom, selected)
+        write_metadata(output / "seeds.tsv", centers_angstrom, selected)
     except (OSError, RuntimeError, ValueError) as error:
-        if args.output.exists() and not any(args.output.iterdir()):
-            args.output.rmdir()
+        if output.exists() and not any(output.iterdir()):
+            output.rmdir()
         raise SystemExit(f"Error: {error}") from None
 
-    print(f"Created {len(centers_angstrom)} US seed restarts: {args.output}")
+    print(f"Created {len(centers_angstrom)} US seed restarts: {output}")
     return 0
 
 

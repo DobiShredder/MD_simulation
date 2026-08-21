@@ -32,7 +32,7 @@ def main() -> None:
     if not topology.is_file():
         raise SystemExit(f"topology not found: {topology}")
 
-    trajectories = [work / "production.001.nc"]
+    trajectories = [work / "production.nc"]
     missing = [path for path in trajectories if not path.is_file()]
     if missing:
         raise SystemExit(f"production trajectory not found: {missing[0]}")

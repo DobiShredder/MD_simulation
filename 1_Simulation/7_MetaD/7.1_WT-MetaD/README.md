@@ -17,14 +17,13 @@ simulation time에 따라 모든 위치에서 일률적으로 작아지는 것�
 ```bash
 cd 1_Simulation/7_MetaD/7.1_WT-MetaD
 ./build.sh structure/alanine-dipeptide.pdb
-./run.sh --dry-run
 ./run.sh
 python3 anal.py
 ```
 
-`WORK_DIR`, `AMBER_ENGINE`, `AMBER_OPTIONS`, `PLUMED`, `TLEAP`과
-`RANDOM_SEED`로 실행 환경을 바꿀 수 있습니다. `RANDOM_SEED`는 positive
-integer이며 simulation stage마다 서로 다른 seed가 생성됩니다.
+`AMBER_ENGINE`과 `PLUMED`로 executable을 지정할 수 있습니다. 고정 seed와
+system별 production 설정을 바꾸려면 `3_Templates/7_MetaD/7.1_WT-MetaD`를
+사용합니다.
 
 ### Script 역할
 
@@ -49,9 +48,10 @@ GPU nonbonded pair-list의 여유 폭을 늘립니다. 따라서 100 ps equilibr
 낮춥니다. 더 큰 system에 이 값을 그대로 사용하지 말고
 `2 × (cut + skinnb)`가 shortest box dimension보다 작은지 확인합니다.
 
-Production은 나누지 않고 `work/`에서 1 ns를 한 번에 실행합니다.
-`production.rst7`, `production.nc`, log, `COLVAR`와 `HILLS` 중 일부만 있으면
-partial production으로 판단하고 중단합니다. `HILLS`는 bias를 복원하는
+Production은 `work/`에서 1 ns를 실행합니다. Minimization, heating과
+equilibration은 `*.out`과 `*.rst7`이 모두 있으면 건너뛰고, 일부만 있으면
+다시 실행합니다. Production output이 있으면 덮어쓰지 않고 중단합니다.
+`HILLS`는 bias를 복원하는
 기록이며 `COLVAR`를 대신하지 않습니다.
 
 1 ns는 workflow 학습용 길이입니다. φ/ψ 공간의 수렴이나 정량 free energy를
@@ -82,7 +82,7 @@ the shortest box dimension before reusing this value.
 `build.sh structure/alanine-dipeptide.pdb` creates and validates the
 ff19SB/TIP3P system from the supplied PDB. `run.sh` performs
 minimization, 200 ps heating, 100 ps NPT equilibration, and one 1 ns production
-run. Production is not segmented; its restart, trajectory, `COLVAR`, and
+run. Its restart, trajectory, `COLVAR`, and
 `HILLS` files are written directly under `work/`. `anal.py` reports
 sampled torsion and bias ranges. The 1 ns run demonstrates the workflow and is
 not evidence of converged free energies.

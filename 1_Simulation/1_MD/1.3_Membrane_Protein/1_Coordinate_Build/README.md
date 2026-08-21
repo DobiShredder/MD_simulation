@@ -42,7 +42,6 @@ python3 prepare.py \
     structure/1K4C-opm.pdb \
     work/kcsa.pdb \
     structure/3EFF-opm.pdb
-./run.sh --dry-run work/kcsa.pdb
 ./run.sh work/kcsa.pdb
 ~~~
 

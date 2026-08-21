@@ -1,0 +1,54 @@
+[build]
+protein_force_field = "ff19SB"
+ligand_force_field = "GAFF2"
+water_model = "OPC"
+box_shape = "rectangular"
+charge_method = "RESP"
+ligand_residue_name = "LIG"
+ligand_net_charge = 0
+ligand_mol2 = "inputs/ligand.mol2"
+ligand_frcmod = "inputs/ligand.frcmod"
+complex_box_distance_angstrom = 14.0
+solvent_box_distance_angstrom = 20.0
+disulfide_bonds = []
+salt_type = "NaCl"
+# Unit: mM
+salt_concentration = 150.0
+
+[run]
+engine = "pmemd.cuda"
+temperature_kelvin = 300.0
+pressure_bar = 1.0
+equilibration_ensemble = "NPT"
+production_ensemble = "NPT"
+timestep_fs = 2.0
+minimization_steps = 5000
+minimization_steepest_steps = 2500
+heating_initial_temperature_kelvin = 0.0
+heating_steps = 250000
+equilibration_steps = 500000
+production_steps_per_window = 10000000
+production_segments = 1
+trajectory_interval_steps = 5000
+energy_interval_steps = 5000
+restart_interval_steps = 5000
+mbar_interval_steps = 5000
+random_seed = "random"
+
+[alchemical]
+ligand_mask = ":LIG"
+restraint_lambdas = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+charge_lambdas = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+vdw_lambdas = [0.0, 0.01, 0.025, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.975, 1.0]
+standard_state_molar = 1.0
+
+[restraints]
+protein_anchor_1 = ":1@CA"
+protein_anchor_2 = ":2@CA"
+protein_anchor_3 = ":3@CA"
+ligand_anchor_1 = ":LIG@C1"
+ligand_anchor_2 = ":LIG@C2"
+ligand_anchor_3 = ":LIG@C3"
+distance_force_kcal_mol_angstrom2 = 5.0
+angle_force_kcal_mol_radian2 = 100.0
+torsion_force_kcal_mol_radian2 = 100.0

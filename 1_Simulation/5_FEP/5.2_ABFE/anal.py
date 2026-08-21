@@ -6,7 +6,6 @@ from __future__ import annotations
 import csv
 import importlib.util
 import math
-import os
 import shutil
 import subprocess
 import sys
@@ -14,8 +13,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from types import ModuleType
 
-ROOT = Path(__file__).resolve().parent
-WORK = Path(os.environ.get("WORK_DIR", ROOT / "work"))
+WORK = Path("work")
 TEMPERATURE_K = 300.0
 BOOTSTRAP_SAMPLES = 20
 GAS_CONSTANT = 0.00198720425864083
@@ -54,37 +52,24 @@ def extract_window(
     window_directory = Path(state["directory"])
     trajectory_lambda = float(state["lambda"])
 
-    production_outputs = sorted(window_directory.glob("production.[0-9][0-9][0-9].out"))
-    if not production_outputs:
-        raise SystemExit(f"production output not found: {window_directory}")
+    mdout = window_directory / "production.out"
+    if not mdout.is_file():
+        raise SystemExit(f"production output not found: {mdout}")
 
-    for mdout in production_outputs:
-        completion_marker = mdout.with_name(f".{mdout.stem}.complete")
-        if not completion_marker.is_file():
-            raise SystemExit(
-                "production completion marker not found: "
-                f"{completion_marker}. Run run.sh to completion before analysis."
-            )
+    window_data = data_directory / f"window_{state['window']}"
+    window_data.mkdir(parents=True)
+    run_command([extractor, "--odir", str(window_data), str(mdout)], log_file)
 
-    for mdout in production_outputs:
-        segment = mdout.stem.rsplit(".", 1)[1]
-        segment_directory = data_directory / f"segment_{state['window']}_{segment}"
-        segment_directory.mkdir(parents=True)
-        run_command(
-            [extractor, "--odir", str(segment_directory), str(mdout)],
-            log_file,
-        )
+    pattern = f"efep_{trajectory_lambda:.8f}_*.dat"
+    extracted_files = sorted(window_data.glob(pattern))
+    if not extracted_files:
+        raise SystemExit(f"MBAR energy could not be extracted: {mdout}")
 
-        pattern = f"efep_{trajectory_lambda:.8f}_*.dat"
-        extracted_files = sorted(segment_directory.glob(pattern))
-        if not extracted_files:
-            raise SystemExit(f"MBAR energy could not be extracted: {mdout}")
-
-        for source in extracted_files:
-            destination = data_directory / source.name
-            with source.open(encoding="utf-8") as input_handle:
-                with destination.open("a", encoding="utf-8") as output_handle:
-                    output_handle.write(input_handle.read())
+    for source in extracted_files:
+        destination = data_directory / source.name
+        with source.open(encoding="utf-8") as input_handle:
+            with destination.open("a", encoding="utf-8") as output_handle:
+                output_handle.write(input_handle.read())
 
 
 def choose_estimator(

@@ -1,13 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-dry_run=0
-if [[ "${1:-}" == "--dry-run" ]]; then
-    dry_run=1
-    shift
-fi
 if [[ $# -ne 2 ]]; then
-    echo "Usage: $0 [--dry-run] COMPLEX.pdb BEN_ideal.sdf" >&2
+    echo "Usage: $0 COMPLEX.pdb BEN_ideal.sdf" >&2
     exit 2
 fi
 
@@ -21,12 +16,12 @@ refuse_existing_results() {
     local existing_result=""
     if [[ -d "$directory" ]]; then
         existing_result=$(find "$directory" -type f \
-            \( -name '.*.complete' -o -name 'minimize.out' -o -name 'heat.out' \
+            \( -name 'minimize.out' -o -name 'heat.out' \
                -o -name 'equilibrate.out' -o -name 'gamd_prepare.out' \
                -o -name 'production*.out' \) -print -quit)
     fi
     if [[ -n "$existing_result" ]]; then
-        die "Existing simulation results were found: $existing_result. Use a new WORK_DIR or remove the previous calculation results before rebuilding."
+        die "Existing simulation results were found: $existing_result. Remove the previous calculation results before rebuilding."
     fi
 }
 
@@ -38,34 +33,10 @@ antechamber=${ANTECHAMBER:-antechamber}
 parmchk2=${PARMCHK2:-parmchk2}
 tleap=${TLEAP:-tleap}
 python=${PYTHON:-python3}
-ligand_charge=${LIGAND_CHARGE:-1}
-work_dir=${WORK_DIR:-"work"}
+ligand_charge=1
+work_dir=work
 
 refuse_existing_results "$work_dir"
-
-if [[ ! "$ligand_charge" =~ ^-?[0-9]+$ ]]; then
-    die "LIGAND_CHARGE must be an integer: $ligand_charge"
-fi
-
-if (( dry_run )); then
-    printf 'mkdir -p %q\n' "$work_dir"
-    parameter_sdf=$ligand_sdf
-    if [[ "$ligand_charge" -eq 1 ]]; then
-        parameter_sdf="$work_dir/ben-protonated.sdf"
-        printf '%q %q %q %q\n' "$python" "protonate_benzamidine.py" "$ligand_sdf" "$parameter_sdf"
-    fi
-    printf '%q -i %q -fi sdf -o %q -fo mol2 -at gaff2 -c bcc -nc %q -rn BEN -s 2\n' "$antechamber" "$parameter_sdf" "$work_dir/ben.mol2" "$ligand_charge"
-    printf '%q -i %q -f mol2 -o %q -s gaff2\n' "$parmchk2" "$work_dir/ben.mol2" "$work_dir/ben.frcmod"
-    printf '%q -f %q\n' "$tleap" "inputs/tleap.in"
-    printf '%q %q %q %q %q %q\n' \
-        "$python" \
-        "render_inputs.py" \
-        "$work_dir/system.parm7" \
-        "$metadata" \
-        "inputs" \
-        "$work_dir/inputs"
-    exit 0
-fi
 
 for input in "$complex_pdb" "$ligand_sdf" "$metadata" "$disulfides"; do
     if [[ ! -s "$input" ]]; then

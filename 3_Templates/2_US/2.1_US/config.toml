@@ -1,0 +1,37 @@
+[build]
+protein_force_field = "ff19SB"
+water_model = "OPC"
+box_shape = "rectangular"
+solute_box_distance_angstrom = 14.0
+disulfide_bonds = []
+salt_type = "NaCl"
+# Unit: mM
+salt_concentration = 150.0
+
+[run]
+engine = "pmemd.cuda"
+temperature_kelvin = 300.0
+pressure_bar = 1.0
+equilibration_ensemble = "NPT"
+production_ensemble = "NPT"
+timestep_fs = 2.0
+constraint_mode = "h-bonds"
+minimization_steps = 10000
+minimization_steepest_steps = 5000
+heating_initial_temperature_kelvin = 20.0
+heating_steps = 250000
+equilibration_steps = 500000
+production_steps = 10000000
+production_segments = 1
+trajectory_interval_steps = 5000
+energy_interval_steps = 5000
+restart_interval_steps = 5000
+random_seed = "random"
+
+[umbrella]
+atom_mask_1 = ":1@CA"
+atom_mask_2 = ":10@CA"
+windows_file = "windows.tsv"
+force_constant_kcal_mol_angstrom2 = 10.0
+seed_max_error_angstrom = 0.75
+distance_output_interval_steps = 500
