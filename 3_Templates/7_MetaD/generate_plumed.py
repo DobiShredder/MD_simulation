@@ -8,6 +8,7 @@ import math
 import sys
 from pathlib import Path
 
+sys.dont_write_bytecode = True
 sys.path.insert(0, "../../common")
 from config_utils import (  # noqa: E402
     load_config,
@@ -129,10 +130,10 @@ def render_wt(args: argparse.Namespace, config: dict[str, object]) -> str:
 metad: METAD ...
   ARG={comma(arguments)}
   SIGMA={comma(sigma)}
-  HEIGHT={positive_float(metad, 'height_kj_mol'):g}
+  HEIGHT={positive_float(metad, 'height'):g}
   PACE={positive_int(metad, 'pace_steps')}
   BIASFACTOR={positive_float(metad, 'bias_factor'):g}
-  TEMP={positive_float(run, 'temperature_kelvin'):g}
+  TEMP={positive_float(run, 'temperature'):g}
   FILE={state_path(args, 'HILLS')}
   GRID_MIN={comma(grid_min)}
   GRID_MAX={comma(grid_max)}
@@ -163,9 +164,9 @@ def render_opes_metad(args: argparse.Namespace, config: dict[str, object]) -> st
 
 opes: OPES_METAD ...
   ARG={comma(arguments)}
-  TEMP={positive_float(run, 'temperature_kelvin'):g}
+  TEMP={positive_float(run, 'temperature'):g}
   PACE={pace}
-  BARRIER={positive_float(opes, 'barrier_kj_mol'):g}
+  BARRIER={positive_float(opes, 'barrier'):g}
   SIGMA={comma(sigma)}
   FILE={state_path(args, 'KERNELS')}
 {state_read}  STATE_WFILE={state_path(args, 'opes.state')}
@@ -179,9 +180,9 @@ PRINT ARG={comma(arguments)},opes.bias,opes.rct,opes.neff,opes.nker STRIDE={posi
 def render_opes_expanded(args: argparse.Namespace, config: dict[str, object]) -> str:
     run = section(config, "run")
     opes = section(config, "opes_expanded")
-    base_temperature = positive_float(run, "temperature_kelvin")
-    minimum = positive_float(opes, "minimum_temperature_kelvin")
-    maximum = positive_float(opes, "maximum_temperature_kelvin")
+    base_temperature = positive_float(run, "temperature")
+    minimum = positive_float(opes, "minimum_temperature")
+    maximum = positive_float(opes, "maximum_temperature")
     if not minimum <= base_temperature <= maximum or minimum >= maximum:
         raise ValueError("temperature range must contain the simulation temperature")
     pace = positive_int(opes, "pace_steps")
@@ -221,16 +222,16 @@ def render_funnel(args: argparse.Namespace, config: dict[str, object]) -> str:
     run = section(config, "run")
     funnel = section(config, "funnel")
     metad = section(config, "metadynamics")
-    zcc = positive_float(funnel, "zcc_nm")
-    minimum = float(funnel.get("minimum_projection_nm"))
-    maximum = positive_float(funnel, "maximum_projection_nm")
-    lower = float(funnel.get("lower_wall_nm"))
-    upper = positive_float(funnel, "upper_wall_nm")
+    zcc = positive_float(funnel, "zcc")
+    minimum = float(funnel.get("minimum_projection"))
+    maximum = positive_float(funnel, "maximum_projection")
+    lower = float(funnel.get("lower_wall"))
+    upper = positive_float(funnel, "upper_wall")
     if not minimum < lower < zcc < upper < maximum:
         raise ValueError("funnel projection limits must satisfy min < lower < zcc < upper < max")
-    alpha = positive_float(funnel, "alpha_radians")
+    alpha = positive_float(funnel, "alpha")
     if alpha >= math.pi / 2.0:
-        raise ValueError("alpha_radians must be smaller than pi/2")
+        raise ValueError("alpha must be smaller than pi/2")
     if positive_float(metad, "bias_factor") <= 1.0:
         raise ValueError("bias_factor must be greater than one")
     reference_file = "funnel-reference.pdb"
@@ -251,25 +252,25 @@ funnel: FUNNEL ...
   ARG=fps.lp,fps.ld
   ZCC={zcc:g}
   ALPHA={alpha:g}
-  RCYL={positive_float(funnel, 'cylinder_radius_nm'):g}
+  RCYL={positive_float(funnel, 'cylinder_radius'):g}
   MINS={minimum:g}
   MAXS={maximum:g}
-  KAPPA={positive_float(funnel, 'wall_force_kj_mol_nm2'):g}
+  KAPPA={positive_float(funnel, 'wall_force'):g}
   NBINS={positive_int(funnel, 'radial_grid_bins')}
   NBINZ={positive_int(funnel, 'axial_grid_bins')}
   FILE={state_path(args, 'FUNNEL_GRID')}
 ...
 
-lower: LOWER_WALLS ARG=fps.lp AT={lower:g} KAPPA={positive_float(funnel, 'wall_force_kj_mol_nm2'):g} EXP=2
-upper: UPPER_WALLS ARG=fps.lp AT={upper:g} KAPPA={positive_float(funnel, 'wall_force_kj_mol_nm2'):g} EXP=2
+lower: LOWER_WALLS ARG=fps.lp AT={lower:g} KAPPA={positive_float(funnel, 'wall_force'):g} EXP=2
+upper: UPPER_WALLS ARG=fps.lp AT={upper:g} KAPPA={positive_float(funnel, 'wall_force'):g} EXP=2
 
 metad: METAD ...
   ARG=fps.lp
-  SIGMA={positive_float(metad, 'sigma_nm'):g}
-  HEIGHT={positive_float(metad, 'height_kj_mol'):g}
+  SIGMA={positive_float(metad, 'sigma'):g}
+  HEIGHT={positive_float(metad, 'height'):g}
   PACE={positive_int(metad, 'pace_steps')}
   BIASFACTOR={positive_float(metad, 'bias_factor'):g}
-  TEMP={positive_float(run, 'temperature_kelvin'):g}
+  TEMP={positive_float(run, 'temperature'):g}
   FILE={state_path(args, 'HILLS')}
   GRID_MIN={minimum:g}
   GRID_MAX={maximum:g}

@@ -9,6 +9,7 @@ import shutil
 import sys
 from pathlib import Path
 
+sys.dont_write_bytecode = True
 sys.path.insert(0, "../../../1_Simulation/3_REMD/3.3_REST3")
 from rest3_parser_adapter import load_parser_module, run_parser  # noqa: E402
 from scale_cmap import install_scaled_cmap  # noqa: E402

@@ -13,7 +13,7 @@ temperature는 300 K이며, bias를 통해 설정 범위의 energy fluctuation�
 python3 anal.py
 ```
 
-`minimum_temperature_kelvin`과 `maximum_temperature_kelvin`은 base temperature를
+`minimum_temperature`와 `maximum_temperature`는 base temperature를
 포함해야 합니다. 기본 `PACE=500`이며 state grid는 `ECV_MULTITHERMAL`이 자동으로
 만듭니다. NPT equilibration 뒤 box를 고정한 NVT production을 실행합니다.
 

@@ -11,6 +11,7 @@ import sys
 import tempfile
 from pathlib import Path
 
+sys.dont_write_bytecode = True
 sys.path.insert(0, "../../common")
 from apply_config import apply_config  # noqa: E402
 from config_utils import load_config, positive_float, positive_int, section, string_value  # noqa: E402
@@ -278,9 +279,9 @@ def create_md_inputs(output: Path, config: dict[str, object]) -> None:
     """Generate the four restrained AMBER stages used by every window."""
     run = section(config, "run")
     umbrella = section(config, "umbrella")
-    temperature = positive_float(run, "temperature_kelvin")
-    pressure = positive_float(run, "pressure_bar")
-    timestep = positive_float(run, "timestep_fs") / 1000.0
+    temperature = positive_float(run, "temperature")
+    pressure = positive_float(run, "pressure")
+    timestep = positive_float(run, "timestep") / 1000.0
     interval = positive_int(run, "trajectory_interval_steps")
     if positive_int(run, "production_segments") != 1:
         raise ValueError("umbrella sampling currently supports production_segments=1")
@@ -321,11 +322,11 @@ def main() -> int:
     umbrella = section(config, "umbrella")
     mask_1 = string_value(umbrella, "atom_mask_1")
     mask_2 = string_value(umbrella, "atom_mask_2")
-    force = positive_float(umbrella, "force_constant_kcal_mol_angstrom2")
+    force = positive_float(umbrella, "force_constant")
     if args.windows is None:
         args.windows = Path(string_value(umbrella, "windows_file"))
     if args.max_error_angstrom is None:
-        args.max_error_angstrom = positive_float(umbrella, "seed_max_error_angstrom")
+        args.max_error_angstrom = positive_float(umbrella, "seed_max_error")
 
     if not args.windows.is_file():
         raise SystemExit(f"window settings not found: {args.windows}")

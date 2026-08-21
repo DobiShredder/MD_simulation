@@ -55,7 +55,7 @@ def resolve(config_path: Path) -> dict[str, object]:
     if string_value(run, "constraint_mode").lower() != "h-bonds":
         raise ValueError("constraint_mode currently supports only h-bonds")
 
-    timestep_fs = positive_float(run, "timestep_fs")
+    timestep = positive_float(run, "timestep")
     heating_steps = positive_int(run, "heating_steps")
     equilibration_steps = positive_int(run, "equilibration_steps")
     total_production_steps = positive_int(run, "production_steps")
@@ -72,13 +72,13 @@ def resolve(config_path: Path) -> dict[str, object]:
     return {
         "force_field": force_field,
         "water_model": water_model,
-        "box_distance": positive_float(build, "solute_box_distance_angstrom"),
+        "box_distance": positive_float(build, "solute_box_distance"),
         "salt_concentration": nonnegative_float(build, "salt_concentration_molar"),
         "engine": string_value(run, "engine"),
-        "temperature": positive_float(run, "temperature_kelvin"),
-        "pressure": positive_float(run, "pressure_bar"),
+        "temperature": positive_float(run, "temperature"),
+        "pressure": positive_float(run, "pressure"),
         "ensemble": "NPT",
-        "timestep_fs": timestep_fs,
+        "timestep": timestep,
         "constraint_mode": "h-bonds",
         "heating_steps": heating_steps,
         "equilibration_steps": equilibration_steps,
@@ -126,7 +126,7 @@ def write_tleap(output: Path, values: dict[str, object], salt_pairs: int | None)
 
 
 def write_md_inputs(output: Path, values: dict[str, object]) -> None:
-    dt_ps = float(values["timestep_fs"]) / 1000.0
+    dt_ps = float(values["timestep"]) / 1000.0
     temperature = values["temperature"]
     pressure = values["pressure"]
     interval = values["trajectory_interval"]
@@ -182,16 +182,16 @@ def write_resolved(output: Path, values: dict[str, object], salt_pairs: int | No
     text = f"""[build]
 protein_force_field = \"{values['force_field']}\"
 water_model = \"{values['water_model']}\"
-solute_box_distance_angstrom = {values['box_distance']:.3f}
+solute_box_distance = {values['box_distance']:.3f}
 salt_concentration_molar = {values['salt_concentration']:.6f}
 salt_pairs = {salt_text}
 
 [run]
 engine = \"{values['engine']}\"
-temperature_kelvin = {values['temperature']:.3f}
-pressure_bar = {values['pressure']:.3f}
+temperature = {values['temperature']:.3f}
+pressure = {values['pressure']:.3f}
 ensemble = "{values['ensemble']}"
-timestep_fs = {values['timestep_fs']:.3f}
+timestep = {values['timestep']:.3f}
 constraint_mode = "{values['constraint_mode']}"
 heating_steps = {values['heating_steps']}
 equilibration_steps = {values['equilibration_steps']}

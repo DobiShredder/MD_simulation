@@ -23,7 +23,7 @@ MAX_ITERATIONS = 100
 
 @dataclass(frozen=True)
 class LadderRow:
-    temperature_kelvin: float
+    temperature: float
     mean_energy_kj_mol: float
     sigma_energy_kj_mol: float
     pair_mean_kj_mol: float | None
@@ -88,8 +88,8 @@ def generate_temperature_ladder(
     *,
     protein_atoms: int,
     water_molecules: int,
-    minimum_kelvin: float,
-    maximum_kelvin: float,
+    minimum_temperature: float,
+    maximum_temperature: float,
     target_probability: float,
     tolerance: float,
     protein_constraint_mode: str = "h-bonds",
@@ -99,7 +99,7 @@ def generate_temperature_ladder(
         raise ValueError("protein_atoms must be positive")
     if water_molecules < 0:
         raise ValueError("water_molecules must be zero or greater")
-    if minimum_kelvin <= 0 or maximum_kelvin <= minimum_kelvin:
+    if minimum_temperature <= 0 or maximum_temperature <= minimum_temperature:
         raise ValueError("temperature range must satisfy 0 < minimum < maximum")
     if not 0.0 < target_probability < 1.0:
         raise ValueError("target_probability must be between zero and one")
@@ -129,13 +129,13 @@ def generate_temperature_ladder(
         protein_constraints + water_constraints_per_molecule * water_molecules
     )
 
-    temperatures = [minimum_kelvin]
+    temperatures = [minimum_temperature]
     pair_values: list[tuple[float, float, float]] = []
-    while temperatures[-1] < maximum_kelvin:
+    while temperatures[-1] < maximum_temperature:
         first = temperatures[-1]
-        second = min(first + 1.0, maximum_kelvin)
+        second = min(first + 1.0, maximum_temperature)
         low = first
-        high = maximum_kelvin
+        high = maximum_temperature
         forward = True
         probability = 0.0
         pair_mean = 0.0
@@ -159,7 +159,7 @@ def generate_temperature_ladder(
                 else:
                     low = second
                     second = low + (high - low) / 2.0
-                second = min(second, maximum_kelvin)
+                second = min(second, maximum_temperature)
             else:
                 if forward:
                     forward = False

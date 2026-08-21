@@ -1,4 +1,5 @@
 [build]
+# Config units: tleap distances and padding Å; salt concentration mM
 protein_force_field = "ff19SB"
 ligand_force_field = "GAFF2"
 water_model = "OPC"
@@ -8,23 +9,23 @@ ligand_residue_name = "LIG"
 ligand_net_charge = 0
 ligand_mol2 = "inputs/ligand.mol2"
 ligand_frcmod = "inputs/ligand.frcmod"
-complex_box_distance_angstrom = 14.0
-solvent_box_distance_angstrom = 20.0
+complex_box_distance = 14.0
+solvent_box_distance = 20.0
 disulfide_bonds = []
 salt_type = "NaCl"
-# Unit: mM
 salt_concentration = 150.0
 
 [run]
+# Config units: temperature K; pressure bar; timestep fs (written as AMBER dt in ps)
 engine = "pmemd.cuda"
-temperature_kelvin = 300.0
-pressure_bar = 1.0
+temperature = 300.0
+pressure = 1.0
 equilibration_ensemble = "NPT"
 production_ensemble = "NPT"
-timestep_fs = 2.0
+timestep = 2.0
 minimization_steps = 5000
 minimization_steepest_steps = 2500
-heating_initial_temperature_kelvin = 0.0
+heating_initial_temperature = 0.0
 heating_steps = 250000
 equilibration_steps = 500000
 production_steps_per_window = 10000000
@@ -36,19 +37,21 @@ mbar_interval_steps = 5000
 random_seed = "random"
 
 [alchemical]
+# Config unit: standard-state concentration mol/L
 ligand_mask = ":LIG"
 restraint_lambdas = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 charge_lambdas = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 vdw_lambdas = [0.0, 0.01, 0.025, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.975, 1.0]
-standard_state_molar = 1.0
+standard_state_concentration = 1.0
 
 [restraints]
+# AMBER units: distance force kcal mol^-1 Å^-2; angle and torsion force kcal mol^-1 rad^-2
 protein_anchor_1 = ":1@CA"
 protein_anchor_2 = ":2@CA"
 protein_anchor_3 = ":3@CA"
 ligand_anchor_1 = ":LIG@C1"
 ligand_anchor_2 = ":LIG@C2"
 ligand_anchor_3 = ":LIG@C3"
-distance_force_kcal_mol_angstrom2 = 5.0
-angle_force_kcal_mol_radian2 = 100.0
-torsion_force_kcal_mol_radian2 = 100.0
+distance_force = 5.0
+angle_force = 100.0
+torsion_force = 100.0

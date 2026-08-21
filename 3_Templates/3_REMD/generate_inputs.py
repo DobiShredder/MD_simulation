@@ -77,12 +77,12 @@ def resolve(config_path: Path, method: str) -> dict[str, object]:
     values = {
         "force_field": force_field,
         "water_model": water_model,
-        "box_distance": positive_float(build, "solute_box_distance_angstrom"),
+        "box_distance": positive_float(build, "solute_box_distance"),
         "salt_concentration": nonnegative_float(build, "salt_concentration_molar"),
-        "base_temperature": positive_float(run, "temperature_kelvin"),
-        "pressure": positive_float(run, "pressure_bar"),
+        "base_temperature": positive_float(run, "temperature"),
+        "pressure": positive_float(run, "pressure"),
         "ensemble": "NPT",
-        "timestep_fs": positive_float(run, "timestep_fs"),
+        "timestep": positive_float(run, "timestep"),
         "constraint_mode": "h-bonds",
         "heating_steps": positive_int(run, "heating_steps"),
         "equilibration_steps": positive_int(run, "equilibration_steps"),
@@ -146,7 +146,7 @@ def read_states(path: Path, method: str) -> list[dict[str, str]]:
 
 
 def render_mdp(values: dict[str, object], *, stage: str, temperature: float, seed: int) -> str:
-    dt_ps = float(values["timestep_fs"]) / 1000.0
+    dt_ps = float(values["timestep"]) / 1000.0
     interval = int(values["trajectory_interval"])
     common = f"""integrator              = md
 dt                      = {dt_ps:.6f}
@@ -196,7 +196,7 @@ def render_amber_input(title: str, values: list[str], extra: str = "") -> str:
 def write_amber_replica_inputs(
     output: Path, states_path: Path, values: dict[str, object]
 ) -> None:
-    dt_ps = float(values["timestep_fs"]) / 1000.0
+    dt_ps = float(values["timestep"]) / 1000.0
     interval = int(values["trajectory_interval"])
     exchange = int(values["exchange_interval"])
     production_steps = int(values["production_steps_per_segment"])
@@ -373,16 +373,16 @@ def write_resolved(output: Path, method: str, values: dict[str, object], replica
 method = \"{method}\"
 protein_force_field = \"{values['force_field']}\"
 water_model = \"{values['water_model']}\"
-solute_box_distance_angstrom = {values['box_distance']:.3f}
+solute_box_distance = {values['box_distance']:.3f}
 salt_concentration_molar = {values['salt_concentration']:.6f}
 salt_pairs = {salt_pairs}
 
 [run]
 {engine_text}
-temperature_kelvin = {values['base_temperature']:.6f}
-pressure_bar = {values['pressure']:.6f}
+temperature = {values['base_temperature']:.6f}
+pressure = {values['pressure']:.6f}
 ensemble = "{values['ensemble']}"
-timestep_fs = {values['timestep_fs']:.6f}
+timestep = {values['timestep']:.6f}
 constraint_mode = "{values['constraint_mode']}"
 heating_steps = {values['heating_steps']}
 equilibration_steps = {values['equilibration_steps']}

@@ -99,7 +99,7 @@ def main() -> None:
         lambdas = float_list(alchemical, "lambda_values")
         mask_a = string_value(alchemical, "ligand_a_mask")
         mask_b = string_value(alchemical, "ligand_b_mask")
-        timestep_ps = positive_float(run, "timestep_fs") / 1000.0
+        timestep_ps = positive_float(run, "timestep") / 1000.0
         heating = positive_int(run, "heating_steps")
         equilibration = positive_int(run, "equilibration_steps")
         production = positive_int(run, "production_steps_per_window")
@@ -108,8 +108,8 @@ def main() -> None:
             raise ValueError("RBFE currently supports production_segments=1")
         interval = positive_int(run, "trajectory_interval_steps")
         mbar_interval = positive_int(run, "mbar_interval_steps")
-        temperature = positive_float(run, "temperature_kelvin")
-        pressure = positive_float(run, "pressure_bar")
+        temperature = positive_float(run, "temperature")
+        pressure = positive_float(run, "pressure")
     except ValueError as error:
         raise SystemExit(f"Config error: {error}") from None
 

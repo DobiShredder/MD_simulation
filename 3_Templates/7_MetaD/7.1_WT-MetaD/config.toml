@@ -1,24 +1,25 @@
 [build]
+# Config units: tleap distances and padding Å; salt concentration mM
 protein_force_field = "ff19SB"
 water_model = "OPC"
 box_shape = "rectangular"
-solute_box_distance_angstrom = 14.0
+solute_box_distance = 14.0
 disulfide_bonds = []
 salt_type = "NaCl"
-# Unit: mM
 salt_concentration = 150.0
 
 [run]
+# Config units: temperature K; pressure bar; timestep fs (written as AMBER dt in ps)
 engine = "pmemd.cuda"
-temperature_kelvin = 300.0
-pressure_bar = 1.0
+temperature = 300.0
+pressure = 1.0
 equilibration_ensemble = "NPT"
 production_ensemble = "NPT"
-timestep_fs = 2.0
+timestep = 2.0
 constraint_mode = "h-bonds"
 minimization_steps = 5000
 minimization_steepest_steps = 2500
-heating_initial_temperature_kelvin = 10.0
+heating_initial_temperature = 10.0
 heating_steps = 250000
 equilibration_steps = 500000
 production_steps = 50000000
@@ -33,8 +34,9 @@ definitions_file = "cv.dat"
 arguments = ["phi", "psi"]
 
 [metadynamics]
+# PLUMED units: angular sigma rad; energy kJ/mol
 sigma = [0.2, 0.2]
-height_kj_mol = 1.2
+height = 1.2
 pace_steps = 500
 bias_factor = 10.0
 grid_min = [-3.141592653589793, -3.141592653589793]

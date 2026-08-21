@@ -67,15 +67,15 @@ def resolve(config_path: Path) -> dict[str, object]:
         "popc": Path(string_value(build, "popc_bilayer_gro")),
         "pope": Path(string_value(build, "pope_bilayer_gro")),
         "cholesterol": Path(string_value(build, "cholesterol_bilayer_gro")),
-        "xy_padding": positive_float(build, "xy_padding_angstrom"),
-        "water_padding": positive_float(build, "water_padding_angstrom"),
-        "protein_lipid_distance": positive_float(build, "protein_lipid_distance_angstrom"),
+        "xy_padding": positive_float(build, "xy_padding"),
+        "water_padding": positive_float(build, "water_padding"),
+        "protein_lipid_distance": positive_float(build, "protein_lipid_distance"),
         "salt_concentration": nonnegative_float(build, "salt_concentration_molar"),
         "restraint_mask": string_value(build, "protein_restraint_mask"),
         "engine": string_value(run, "engine"),
-        "temperature": positive_float(run, "temperature_kelvin"),
-        "pressure": positive_float(run, "pressure_bar"),
-        "timestep_fs": positive_float(run, "timestep_fs"),
+        "temperature": positive_float(run, "temperature"),
+        "pressure": positive_float(run, "pressure"),
+        "timestep": positive_float(run, "timestep"),
         "heating_steps": positive_int(run, "heating_steps"),
         "equilibration_steps": positive_int(run, "equilibration_steps"),
         "production_steps": production_steps,
@@ -92,7 +92,7 @@ def render_cntrl(title: str, values: list[str]) -> str:
 
 
 def write_md_inputs(output: Path, values: dict[str, object]) -> None:
-    dt_ps = float(values["timestep_fs"]) / 1000.0
+    dt_ps = float(values["timestep"]) / 1000.0
     temperature = values["temperature"]
     pressure = values["pressure"]
     interval = values["interval"]
@@ -196,20 +196,20 @@ protein_force_field = "ff19SB"
 lipid_force_field = "Lipid21"
 water_model = "OPC"
 bilayer_composition = "{values['composition']}"
-xy_padding_angstrom = {values['xy_padding']:.3f}
-water_padding_angstrom = {values['water_padding']:.3f}
-protein_lipid_distance_angstrom = {values['protein_lipid_distance']:.3f}
+xy_padding = {values['xy_padding']:.3f}
+water_padding = {values['water_padding']:.3f}
+protein_lipid_distance = {values['protein_lipid_distance']:.3f}
 salt_concentration_molar = {values['salt_concentration']:.6f}
 water_molecules = {water_count}
 salt_pairs = {salt_pairs}
 
 [run]
 engine = "{values['engine']}"
-temperature_kelvin = {values['temperature']:.3f}
-pressure_bar = {values['pressure']:.3f}
+temperature = {values['temperature']:.3f}
+pressure = {values['pressure']:.3f}
 ensemble = "NPT"
 pressure_coupling = "anisotropic"
-timestep_fs = {values['timestep_fs']:.3f}
+timestep = {values['timestep']:.3f}
 constraint_mode = "h-bonds"
 heating_steps = {values['heating_steps']}
 equilibration_steps = {values['equilibration_steps']}

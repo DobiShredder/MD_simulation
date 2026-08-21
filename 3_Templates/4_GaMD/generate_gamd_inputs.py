@@ -7,6 +7,7 @@ import argparse
 import sys
 from pathlib import Path
 
+sys.dont_write_bytecode = True
 sys.path.insert(0, "../../common")
 from apply_config import apply_config  # noqa: E402
 from config_utils import load_config, positive_float, positive_int, section, string_value  # noqa: E402
@@ -58,8 +59,8 @@ def main() -> None:
     gamd = section(config, "gamd")
     settings = METHOD_SETTINGS[args.method]
 
-    timestep_fs = positive_float(run, "timestep_fs")
-    temperature = positive_float(run, "temperature_kelvin")
+    timestep = positive_float(run, "timestep")
+    temperature = positive_float(run, "temperature")
     interval = positive_int(run, "trajectory_interval_steps")
     production_steps = positive_int(run, "production_steps")
     segments = positive_int(run, "production_segments")
@@ -80,7 +81,7 @@ def main() -> None:
         if value % averaging != 0:
             raise SystemExit(f"{name} must be a multiple of averaging_interval_steps")
 
-    sigma = positive_float(gamd, "sigma0_kcal_mol")
+    sigma = positive_float(gamd, "sigma0")
     method_lines: list[str] = []
     resolved_lines: list[str] = []
     selection = settings["selection"]
@@ -120,7 +121,7 @@ def main() -> None:
 
     force_evaluation = 1 if selection is not None else 2
     common = [
-        "imin=0", "irest=1", "ntx=5", f"dt={timestep_fs / 1000.0:.6f}",
+        "imin=0", "irest=1", "ntx=5", f"dt={timestep / 1000.0:.6f}",
         f"temp0={temperature:.3f}", "ntt=3", "gamma_ln=1.0", "ig=-1",
         "ntb=1", "ntp=0", "ntc=2", f"ntf={force_evaluation}", "cut=10.0", "iwrap=0",
         f"ntpr={interval}", f"ntwx={interval}", f"ntwr={interval}", "ioutfm=1",
@@ -165,7 +166,7 @@ def main() -> None:
             f"boost_preparation_steps = {boost_preparation}\n"
             f"boost_statistics_steps = {boost_statistics}\n"
             f"averaging_interval_steps = {averaging}\n"
-            f"sigma0_kcal_mol = {sigma:.3f}\n"
+            f"sigma0 = {sigma:.3f}\n"
             + "\n".join(resolved_lines)
             + ("\n" if resolved_lines else "")
         )

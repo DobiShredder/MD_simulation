@@ -1,4 +1,5 @@
 [build]
+# Config units: tleap distances and padding Å; salt concentration mM
 protein_force_field = "ff19SB"
 ligand_force_field = "GAFF2"
 ligand_residue_name = "LIG"
@@ -8,23 +9,23 @@ ligand_frcmod = "ligand/ligand.frcmod"
 charge_method = "RESP"
 water_model = "OPC"
 box_shape = "rectangular"
-solute_box_distance_angstrom = 20.0
+solute_box_distance = 20.0
 disulfide_bonds = []
 salt_type = "NaCl"
-# Unit: mM
 salt_concentration = 150.0
 
 [run]
+# Config units: temperature K; pressure bar; timestep fs (written as AMBER dt in ps)
 engine = "pmemd.cuda"
-temperature_kelvin = 300.0
-pressure_bar = 1.0
+temperature = 300.0
+pressure = 1.0
 equilibration_ensemble = "NPT"
 production_ensemble = "NPT"
-timestep_fs = 2.0
+timestep = 2.0
 constraint_mode = "h-bonds"
 minimization_steps = 5000
 minimization_steepest_steps = 2500
-heating_initial_temperature_kelvin = 10.0
+heating_initial_temperature = 10.0
 heating_steps = 250000
 equilibration_steps = 500000
 production_steps = 50000000
@@ -44,20 +45,22 @@ axis_point_a_masks = [":185@C", ":225@CA", ":225@N"]
 axis_point_b_masks = [":220@CA", ":224@C", ":226@N"]
 
 [funnel]
-zcc_nm = 1.8
-alpha_radians = 0.55
-cylinder_radius_nm = 0.1
-minimum_projection_nm = -0.5
-maximum_projection_nm = 3.7
-lower_wall_nm = -0.3
-upper_wall_nm = 3.5
-wall_force_kj_mol_nm2 = 35100.0
+# PLUMED units: length nm; angle rad; force constant kJ mol^-1 nm^-2
+zcc = 1.8
+alpha = 0.55
+cylinder_radius = 0.1
+minimum_projection = -0.5
+maximum_projection = 3.7
+lower_wall = -0.3
+upper_wall = 3.5
+wall_force = 35100.0
 radial_grid_bins = 500
 axial_grid_bins = 500
 
 [metadynamics]
-sigma_nm = 0.05
-height_kj_mol = 1.2
+# PLUMED units: length nm; energy kJ/mol
+sigma = 0.05
+height = 1.2
 pace_steps = 500
 bias_factor = 10.0
 grid_bins = 420

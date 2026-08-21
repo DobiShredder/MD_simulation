@@ -13,6 +13,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from types import ModuleType
 
+sys.dont_write_bytecode = True
 sys.path.insert(0, "../../common")
 from config_utils import load_config, positive_float, section  # noqa: E402
 
@@ -281,7 +282,7 @@ def main() -> None:
     global TEMPERATURE_K
     try:
         resolved = load_config(WORK / "resolved_config.toml")
-        TEMPERATURE_K = positive_float(section(resolved, "run"), "temperature_kelvin")
+        TEMPERATURE_K = positive_float(section(resolved, "run"), "temperature")
     except ValueError as error:
         raise SystemExit(f"Config error: {error}") from None
     extractor = require_program("edgembar-amber2dats.py")

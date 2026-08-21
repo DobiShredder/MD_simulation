@@ -14,8 +14,8 @@ bilayer_composition = "POPC=90,POPE=5,CHOL=5"
 popc_bilayer_gro = "inputs/POPC.gro"
 pope_bilayer_gro = "inputs/POPE.gro"
 cholesterol_bilayer_gro = "inputs/CHOL15.gro"
-xy_padding_angstrom = 20.0
-water_padding_angstrom = 25.0
+xy_padding = 20.0
+water_padding = 25.0
 ```
 
 Bilayer patch는 이 repository에서 재배포하지 않습니다. 각 coordinate file의

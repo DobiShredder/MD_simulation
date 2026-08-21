@@ -11,6 +11,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.dont_write_bytecode = True
 sys.path.insert(0, "../../common")
 from config_utils import load_config  # noqa: E402
 

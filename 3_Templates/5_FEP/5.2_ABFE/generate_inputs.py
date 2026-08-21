@@ -114,9 +114,9 @@ def restraint_records(
     anchors = [p1, p2, p3, l1, l2, l3]
     if len({atom.idx for atom in anchors}) != 6:
         raise ValueError("The six ABFE anchor masks must select six distinct atoms")
-    distance_force = positive_float(restraints, "distance_force_kcal_mol_angstrom2")
-    angular_force = positive_float(restraints, "angle_force_kcal_mol_radian2")
-    torsion_force = positive_float(restraints, "torsion_force_kcal_mol_radian2")
+    distance_force = positive_float(restraints, "distance_force")
+    angular_force = positive_float(restraints, "angle_force")
+    torsion_force = positive_float(restraints, "torsion_force")
     xyz = lambda atom: list(topology.coordinates[atom.idx])
     return [
         ("distance", [p1, l1], distance(xyz(p1), xyz(l1)), distance_force),
@@ -305,14 +305,14 @@ def main() -> None:
         charge_schedule = float_list(alchemical, "charge_lambdas")
         vdw_schedule = float_list(alchemical, "vdw_lambdas")
         ligand_mask = string_value(alchemical, "ligand_mask")
-        standard_state = positive_float(alchemical, "standard_state_molar")
+        standard_state = positive_float(alchemical, "standard_state_concentration")
         segments = positive_int(run, "production_segments")
         if segments != 1:
             raise ValueError("ABFE currently supports production_segments=1")
         common_replacements = {
-            "@TIMESTEP_PS@": f"{positive_float(run, 'timestep_fs') / 1000.0:.6f}",
-            "@TEMPERATURE@": f"{positive_float(run, 'temperature_kelvin'):.3f}",
-            "@PRESSURE@": f"{positive_float(run, 'pressure_bar'):.3f}",
+            "@TIMESTEP_PS@": f"{positive_float(run, 'timestep') / 1000.0:.6f}",
+            "@TEMPERATURE@": f"{positive_float(run, 'temperature'):.3f}",
+            "@PRESSURE@": f"{positive_float(run, 'pressure'):.3f}",
             "@HEATING_STEPS@": str(positive_int(run, "heating_steps")),
             "@EQUILIBRATION_STEPS@": str(positive_int(run, "equilibration_steps")),
             "@PRODUCTION_STEPS@": str(positive_int(run, "production_steps_per_window")),
@@ -363,7 +363,7 @@ def main() -> None:
             )
     (args.work_dir / "states.tsv").write_text("\n".join(states) + "\n", encoding="utf-8")
     (args.work_dir / "standard_state.tsv").write_text(
-        f"temperature_K\tstandard_state_molar\n{positive_float(run, 'temperature_kelvin'):.6f}\t{standard_state:.6f}\n",
+        f"temperature_K\tstandard_state_concentration_M\n{positive_float(run, 'temperature'):.6f}\t{standard_state:.6f}\n",
         encoding="utf-8",
     )
     (args.work_dir / "resolved_config.toml").write_text(

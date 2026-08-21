@@ -35,12 +35,18 @@ user-facing script는 `-h`와 `--help`로 argument와 option 설명을 출력합
 | `disulfide_bonds` | PDB chain ID와 residue number를 `[["A:23", "A:88"]]` 형식으로 지정합니다. 두 residue의 `SG` atom을 확인한 뒤 solvation 전에 bond를 만듭니다. |
 
 `minimization_steps`, `minimization_steepest_steps`와
-`heating_initial_temperature_kelvin`은 해당 engine input의 `maxcyc`/`ncyc`와
+`heating_initial_temperature`은 해당 engine input의 `maxcyc`/`ncyc`와
 temperature ramp를 바꿉니다. `energy_interval_steps`는 energy와 log 기록 간격,
 `restart_interval_steps`는 AMBER `ntwr`에 적용됩니다. GROMACS checkpoint의
 `-cpt`는 wall-clock minute 단위이므로 `restart_interval_steps`로 치환하지
 않습니다. `equilibration_ensemble`과 `production_ensemble`은 각 stage의
 `NVT` 또는 `NPT` 설정을 따로 지정합니다.
+
+Config key에는 unit suffix를 붙이지 않습니다. `temperature`, `pressure`,
+`timestep`, distance, force constant의 unit은 관련 section header 바로
+아래에 한 번만 표시합니다. `tleap`/AMBER는 distance Å와 energy
+kcal/mol, GROMACS는 time ps, PLUMED는 length nm와 energy kJ/mol을
+사용하므로 engine 경계를 구분해 적었습니다.
 
 대부분의 `run.sh`는 다음 범위 option을 제공합니다. Option이 없으면 기존과
 같이 전체 workflow를 실행합니다.
@@ -108,6 +114,12 @@ steps, the initial heating temperature, energy and restart intervals, and
 separate equilibration and production ensembles. `restart_interval_steps` maps
 to AMBER `ntwr`; it is not converted to GROMACS `-cpt`, whose unit is wall-clock
 minutes.
+
+Config keys do not carry unit suffixes. Units for `temperature`, `pressure`,
+`timestep`, distances, and force constants are stated once immediately below
+the relevant section header. The comments distinguish tleap/AMBER distances
+in Å and energies in kcal/mol, GROMACS time in ps, and PLUMED lengths in nm
+and energies in kJ/mol.
 
 Most runners support `--preparation-only`, `--production-only`, and inclusive
 1-based `--segments START-END`. FEP adds `--system`, ABFE adds `--stage`, and

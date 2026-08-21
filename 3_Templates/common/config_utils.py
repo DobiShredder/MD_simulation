@@ -230,12 +230,12 @@ def run_settings(values: dict[str, Any]) -> dict[str, object]:
             "minimization_steepest_steps cannot exceed minimization_steps"
         )
     initial_temperature = nonnegative_float(
-        values, "heating_initial_temperature_kelvin"
+        values, "heating_initial_temperature"
     )
-    target_temperature = positive_float(values, "temperature_kelvin")
+    target_temperature = positive_float(values, "temperature")
     if initial_temperature > target_temperature:
         raise ValueError(
-            "heating_initial_temperature_kelvin cannot exceed temperature_kelvin"
+            "heating_initial_temperature cannot exceed temperature"
         )
     return {
         "minimization_steps": minimization_steps,
@@ -254,7 +254,7 @@ def run_settings(values: dict[str, Any]) -> dict[str, object]:
 
 def amber_ensemble_lines(
     ensemble: str,
-    pressure_bar: float,
+    pressure: float,
     *,
     pressure_coupling: str = "isotropic",
     barostat: int = 2,
@@ -266,6 +266,6 @@ def amber_ensemble_lines(
         "ntb=2",
         f"ntp={ntp}",
         f"barostat={barostat}",
-        f"pres0={pressure_bar:.3f}",
+        f"pres0={pressure:.3f}",
         "taup=2.0",
     ]

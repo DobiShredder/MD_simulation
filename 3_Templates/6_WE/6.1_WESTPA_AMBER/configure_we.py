@@ -8,6 +8,7 @@ import shutil
 import sys
 from pathlib import Path
 
+sys.dont_write_bytecode = True
 sys.path.insert(0, "../../common")
 from apply_config import apply_config  # noqa: E402
 from config_utils import load_config, positive_float, positive_int, section, string_value  # noqa: E402
@@ -109,9 +110,9 @@ def main() -> None:
         walkers = positive_int(we, "walkers_per_bin")
         initial = positive_int(we, "initial_walkers")
         boundaries = float_list(we, "bin_boundaries")
-        timestep_ps = positive_float(run, "timestep_fs") / 1000.0
-        temperature = positive_float(run, "temperature_kelvin")
-        pressure = positive_float(run, "pressure_bar")
+        timestep_ps = positive_float(run, "timestep") / 1000.0
+        temperature = positive_float(run, "temperature")
+        pressure = positive_float(run, "pressure")
     except ValueError as error:
         raise SystemExit(f"Config error: {error}") from None
 

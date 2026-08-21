@@ -9,6 +9,7 @@ import shutil
 import sys
 from pathlib import Path
 
+sys.dont_write_bytecode = True
 sys.path.insert(0, "../../common")
 from apply_config import apply_config  # noqa: E402
 from config_utils import load_config, positive_float, positive_int, section, string_value  # noqa: E402
@@ -93,11 +94,11 @@ def main() -> None:
     if atom_1 == atom_2:
         raise SystemExit("The two reaction-coordinate masks select the same atom")
 
-    force = positive_float(umbrella, "force_constant_kcal_mol_angstrom2")
+    force = positive_float(umbrella, "force_constant")
     exchange = positive_int(umbrella, "exchange_interval_steps")
-    temperature = positive_float(run, "temperature_kelvin")
-    pressure = positive_float(run, "pressure_bar")
-    dt = positive_float(run, "timestep_fs") / 1000.0
+    temperature = positive_float(run, "temperature")
+    pressure = positive_float(run, "pressure")
+    dt = positive_float(run, "timestep") / 1000.0
     interval = positive_int(run, "trajectory_interval_steps")
     segments = positive_int(run, "production_segments")
     production = positive_int(run, "production_steps")
@@ -183,10 +184,10 @@ def main() -> None:
         values = ["imin=0", "irest=1", "ntx=5", "ig=-1", f"nstlim={exchange}", f"numexchg={production_per_segment // exchange}", *production_ensemble, *dynamics]
         if args.method == "gareus":
             gamd = section(config, "gamd")
-            values.extend(["igamd=3", "iE=1", "irest_gamd=1", "ntcmdprep=0", "ntcmd=0", "ntebprep=0", "nteb=0", f"ntave={positive_int(gamd, 'averaging_interval_steps')}", f"sigma0P={positive_float(gamd, 'sigma0_kcal_mol'):.3f}", f"sigma0D={positive_float(gamd, 'sigma0_kcal_mol'):.3f}"])
+            values.extend(["igamd=3", "iE=1", "irest_gamd=1", "ntcmdprep=0", "ntcmd=0", "ntebprep=0", "nteb=0", f"ntave={positive_int(gamd, 'averaging_interval_steps')}", f"sigma0P={positive_float(gamd, 'sigma0'):.3f}", f"sigma0D={positive_float(gamd, 'sigma0'):.3f}"])
             conventional = positive_int(gamd, "conventional_statistics_steps")
             boost = positive_int(gamd, "boost_statistics_steps")
-            gamd_prepare = ["imin=0", "irest=1", "ntx=5", "ig=-1", f"nstlim={conventional + boost}", *npt, *dynamics, "igamd=3", "iE=1", "irest_gamd=0", f"ntcmdprep={positive_int(gamd, 'conventional_preparation_steps')}", f"ntcmd={conventional}", f"ntebprep={positive_int(gamd, 'boost_preparation_steps')}", f"nteb={boost}", f"ntave={positive_int(gamd, 'averaging_interval_steps')}", f"sigma0P={positive_float(gamd, 'sigma0_kcal_mol'):.3f}", f"sigma0D={positive_float(gamd, 'sigma0_kcal_mol'):.3f}"]
+            gamd_prepare = ["imin=0", "irest=1", "ntx=5", "ig=-1", f"nstlim={conventional + boost}", *npt, *dynamics, "igamd=3", "iE=1", "irest_gamd=0", f"ntcmdprep={positive_int(gamd, 'conventional_preparation_steps')}", f"ntcmd={conventional}", f"ntebprep={positive_int(gamd, 'boost_preparation_steps')}", f"nteb={boost}", f"ntave={positive_int(gamd, 'averaging_interval_steps')}", f"sigma0P={positive_float(gamd, 'sigma0'):.3f}", f"sigma0D={positive_float(gamd, 'sigma0'):.3f}"]
             (directory / "gamd_prepare.in").write_text(render("Shared GaMD parameter preparation", gamd_prepare, positive_int(umbrella, "distance_output_interval_steps")), encoding="utf-8")
         (directory / "production.template.in").write_text(render("Replica-exchange production", values, positive_int(umbrella, "distance_output_interval_steps")), encoding="utf-8")
 

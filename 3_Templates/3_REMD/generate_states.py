@@ -12,6 +12,7 @@ from pathlib import Path
 
 import parmed
 
+sys.dont_write_bytecode = True
 sys.path.insert(0, "../../common")
 from config_utils import (  # noqa: E402
     load_config,
@@ -112,8 +113,8 @@ def kappa_values(config: dict[str, object], temperatures: list[float]) -> list[f
         return parsed
     if mode != "linear":
         raise ValueError("rest3_kappa.mode must be linear or file")
-    onset = positive_float(values, "onset_kelvin")
-    maximum_temperature = positive_float(values, "maximum_kelvin")
+    onset = positive_float(values, "onset_temperature")
+    maximum_temperature = positive_float(values, "maximum_temperature")
     maximum_kappa = positive_float(values, "maximum_kappa")
     if maximum_temperature <= onset or maximum_kappa < 1.0:
         raise ValueError("invalid linear kappa range")
@@ -137,8 +138,8 @@ def main() -> None:
 
         diagnostic_rows: list[LadderRow] = []
         if mode == "auto":
-            minimum = positive_float(exchange, "minimum_kelvin")
-            maximum = positive_float(exchange, "maximum_kelvin")
+            minimum = positive_float(exchange, "minimum_temperature")
+            maximum = positive_float(exchange, "maximum_temperature")
             target = positive_float(exchange, "target_exchange_probability")
             tolerance = positive_float(exchange, "generator_tolerance")
             if args.method == "remd":
@@ -150,12 +151,12 @@ def main() -> None:
             diagnostic_rows = generate_temperature_ladder(
                 protein_atoms=predictor_atoms,
                 water_molecules=predictor_waters,
-                minimum_kelvin=minimum,
-                maximum_kelvin=maximum,
+                minimum_temperature=minimum,
+                maximum_temperature=maximum,
                 target_probability=target,
                 tolerance=tolerance,
             )
-            temperatures = [row.temperature_kelvin for row in diagnostic_rows]
+            temperatures = [row.temperature for row in diagnostic_rows]
         elif mode == "file":
             temperatures = read_temperatures(
                 Path(string_value(exchange, "temperature_file"))
@@ -169,10 +170,10 @@ def main() -> None:
         else:
             raise ValueError("temperature_mode must be auto or file")
 
-        base_temperature = positive_float(section(config, "run"), "temperature_kelvin")
+        base_temperature = positive_float(section(config, "run"), "temperature")
         if not math.isclose(temperatures[0], base_temperature, abs_tol=1.0e-6):
             raise ValueError(
-                "the first state temperature must equal run.temperature_kelvin"
+                "the first state temperature must equal run.temperature"
             )
 
         seeds = state_seeds(exchange.get("random_seed"), len(temperatures))
@@ -234,7 +235,7 @@ def main() -> None:
             diagnostic.append(
                 "\t".join(
                     [
-                        f"{index:03d}", f"{row.temperature_kelvin:.8f}",
+                        f"{index:03d}", f"{row.temperature:.8f}",
                         f"{row.mean_energy_kj_mol:.8f}",
                         f"{row.sigma_energy_kj_mol:.8f}", *optional,
                     ]

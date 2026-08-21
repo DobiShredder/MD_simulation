@@ -6,8 +6,10 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sys
 from pathlib import Path
 
+sys.dont_write_bytecode = True
 from config_utils import (
     choice_value,
     disulfide_pairs,
@@ -373,7 +375,7 @@ def synchronize_resolved_config(
             "minimization_steepest_steps": runtime[
                 "minimization_steepest_steps"
             ],
-            "heating_initial_temperature_kelvin": runtime[
+            "heating_initial_temperature": runtime[
                 "heating_initial_temperature"
             ],
             "energy_interval_steps": runtime["energy_interval"],
@@ -397,7 +399,7 @@ def _apply_config(config_path: Path, work_dir: Path) -> None:
         raise ValueError("Funnel-MetaD requires box_shape=rectangular")
     if "membrane" in config and box_shape != "rectangular":
         raise ValueError("membrane-protein templates require box_shape=rectangular")
-    pressure = float(run.get("pressure_bar", 1.0))
+    pressure = float(run.get("pressure", 1.0))
     pressure_coupling = str(run.get("pressure_coupling", "isotropic")).lower()
     validate_divalent_neutralization(work_dir, salt)
 

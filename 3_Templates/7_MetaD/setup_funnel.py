@@ -8,6 +8,7 @@ import math
 import sys
 from pathlib import Path
 
+sys.dont_write_bytecode = True
 sys.path.insert(0, "../../common")
 from config_utils import load_config, positive_float, section, string_value  # noqa: E402
 
@@ -155,12 +156,12 @@ def main() -> None:
         projection_nm = projection_angstrom / 10.0
         distance_nm = norm(perpendicular) / 10.0
 
-        zcc = positive_float(funnel, "zcc_nm")
-        radius = positive_float(funnel, "cylinder_radius_nm")
-        alpha = positive_float(funnel, "alpha_radians")
+        zcc = positive_float(funnel, "zcc")
+        radius = positive_float(funnel, "cylinder_radius")
+        alpha = positive_float(funnel, "alpha")
         if alpha >= math.pi / 2.0:
-            raise ValueError("alpha_radians must be smaller than pi/2")
-        minimum = float(funnel.get("minimum_projection_nm"))
+            raise ValueError("alpha must be smaller than pi/2")
+        minimum = float(funnel.get("minimum_projection"))
         if projection_nm <= zcc:
             allowed_radius = radius + math.tan(alpha) * (zcc - projection_nm)
         else:

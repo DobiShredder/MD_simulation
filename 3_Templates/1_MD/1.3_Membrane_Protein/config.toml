@@ -1,4 +1,5 @@
 [build]
+# Config units: tleap distances and padding Å; salt concentration mM
 protein_force_field = "ff19SB"
 lipid_force_field = "Lipid21"
 water_model = "OPC"
@@ -7,27 +8,27 @@ bilayer_composition = "POPC=90,POPE=5,CHOL=5"
 popc_bilayer_gro = "inputs/POPC.gro"
 pope_bilayer_gro = "inputs/POPE.gro"
 cholesterol_bilayer_gro = "inputs/CHOL15.gro"
-xy_padding_angstrom = 20.0
-water_padding_angstrom = 25.0
-protein_lipid_distance_angstrom = 2.0
+xy_padding = 20.0
+water_padding = 25.0
+protein_lipid_distance = 2.0
 disulfide_bonds = []
 salt_type = "KCl"
-# Unit: mM
 salt_concentration = 150.0
 protein_restraint_mask = "!:WAT,K+,Cl-,POPC,POPE,CHL"
 
 [run]
+# Config units: temperature K; pressure bar; timestep fs (written as AMBER dt in ps)
 engine = "pmemd.cuda"
-temperature_kelvin = 300.0
-pressure_bar = 1.0
+temperature = 300.0
+pressure = 1.0
 equilibration_ensemble = "NPT"
 production_ensemble = "NPT"
 pressure_coupling = "anisotropic"
-timestep_fs = 2.0
+timestep = 2.0
 constraint_mode = "h-bonds"
 minimization_steps = 10000
 minimization_steepest_steps = 5000
-heating_initial_temperature_kelvin = 20.0
+heating_initial_temperature = 20.0
 heating_steps = 250000
 equilibration_steps = 500000
 production_steps = 50000000

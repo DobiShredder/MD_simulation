@@ -88,12 +88,12 @@ def resolve(method: str, config_path: Path) -> dict[str, object]:
         "method": method,
         "force_field": force_field,
         "water_model": water_model,
-        "box_distance": positive_float(build, "solute_box_distance_angstrom"),
+        "box_distance": positive_float(build, "solute_box_distance"),
         "salt_concentration": nonnegative_float(build, "salt_concentration_molar"),
         "engine": string_value(run, "engine"),
-        "temperature": positive_float(run, "temperature_kelvin"),
-        "pressure": positive_float(run, "pressure_bar"),
-        "timestep_fs": positive_float(run, "timestep_fs"),
+        "temperature": positive_float(run, "temperature"),
+        "pressure": positive_float(run, "pressure"),
+        "timestep": positive_float(run, "timestep"),
         "heating_steps": positive_int(run, "heating_steps"),
         "equilibration_steps": positive_int(run, "equilibration_steps"),
         "production_steps": production_steps,
@@ -157,7 +157,7 @@ def seed_value(seed: object, offset: int) -> int:
 
 
 def write_md_inputs(output: Path, values: dict[str, object]) -> None:
-    timestep_ps = float(values["timestep_fs"]) / 1000.0
+    timestep_ps = float(values["timestep"]) / 1000.0
     temperature = float(values["temperature"])
     pressure = float(values["pressure"])
     interval = int(values["trajectory_interval"])
@@ -261,7 +261,7 @@ def write_resolved(
         "production_steps_per_segment = "
         f"{values['production_steps_per_segment']}\n"
     )
-    text += f"production_time_ns = {float(values['production_steps']) * float(values['timestep_fs']) / 1_000_000:.6f}\n"
+    text += f"production_time_ns = {float(values['production_steps']) * float(values['timestep']) / 1_000_000:.6f}\n"
     (output / "resolved_config.toml").write_text(text, encoding="utf-8")
 
 

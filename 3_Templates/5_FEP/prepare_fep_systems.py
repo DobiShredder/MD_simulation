@@ -8,6 +8,7 @@ import shutil
 import sys
 from pathlib import Path
 
+sys.dont_write_bytecode = True
 sys.path.insert(0, "../../common")
 from apply_config import apply_config  # noqa: E402
 from config_utils import load_config, nonnegative_float, positive_float, section, string_value  # noqa: E402
@@ -86,9 +87,9 @@ def leap_text(
     salt_pairs: int | None,
 ) -> str:
     if environment == "complex":
-        distance = positive_float(build, "complex_box_distance_angstrom")
+        distance = positive_float(build, "complex_box_distance")
     else:
-        distance = positive_float(build, "solvent_box_distance_angstrom")
+        distance = positive_float(build, "solvent_box_distance")
 
     lines = ["source leaprc.gaff2", f"source {water_source}"]
     if environment == "complex":

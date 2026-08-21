@@ -14,6 +14,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from types import ModuleType
 
+sys.dont_write_bytecode = True
 sys.path.insert(0, "../../common")
 from config_utils import load_config, positive_float, section  # noqa: E402
 
@@ -359,8 +360,8 @@ def main() -> None:
     global TEMPERATURE_K, STANDARD_VOLUME_A3
     try:
         resolved = load_config(WORK / "resolved_config.toml")
-        TEMPERATURE_K = positive_float(section(resolved, "run"), "temperature_kelvin")
-        concentration = positive_float(section(resolved, "alchemical"), "standard_state_molar")
+        TEMPERATURE_K = positive_float(section(resolved, "run"), "temperature")
+        concentration = positive_float(section(resolved, "alchemical"), "standard_state_concentration")
         STANDARD_VOLUME_A3 = 1660.539 / concentration
     except ValueError as error:
         raise SystemExit(f"Config error: {error}") from None
