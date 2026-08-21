@@ -13,7 +13,8 @@
 | [`3.4_REUS`](3.4_REUS/README.md) | Reaction-coordinate umbrella state | AMBER `-rem 3` |
 | [`3.5_GaREUS`](3.5_GaREUS/README.md) | Umbrella state와 공통 GaMD boost | AMBER `-rem 3` |
 
-T-REMD, REST2와 REST3는 offline temperature predictor를 공유합니다. T-REMD는
+T-REMD, REST2와 REST3는 같은 offline temperature predictor 계산식을 사용합니다.
+각 leaf에는 이 계산에 필요한 code가 별도로 들어 있습니다. T-REMD는
 explicit water를 포함한 전체 atom 수를 사용합니다. REST2/REST3는 water와 ion을
 제외한 tempered solute atom 수와 water 0을 사용합니다. `temperature_mode="file"`은
 사용자가 제공한 temperature를 그대로 사용합니다. 두 mode 모두 resolved state와
@@ -39,11 +40,13 @@ exchange ensemble이 아니므로 제공하지 않습니다.
 
 ## English
 
-The five templates exchange different states through a shared config-driven
-interface. T-REMD exchanges physical temperatures; REST2 and REST3 exchange
+The five templates use the same config-driven interface, while each leaf
+contains its own runtime helpers and can be copied independently. T-REMD
+exchanges physical temperatures; REST2 and REST3 exchange
 scaled Hamiltonians; REUS and GaREUS exchange umbrella states through Amber.
 
-T-REMD, REST2, and REST3 share an offline temperature predictor. T-REMD counts
+T-REMD, REST2, and REST3 use the same offline temperature-prediction algorithm,
+implemented inside each leaf. T-REMD counts
 the full solvated system, whereas REST counts the tempered non-water, non-ion
 solute and supplies zero waters. Automatic and file-based modes both record the
 resolved schedule and random seeds in `work/states.tsv`. T-REMD uses AMBER

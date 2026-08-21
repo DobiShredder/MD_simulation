@@ -2,6 +2,9 @@
 
 ## 한국어
 
+이 directory만 별도로 복사해 사용할 수 있습니다. Python dependency는 복사한
+directory의 `requirements.txt`를 사용해 설치합니다.
+
 Water와 ion을 제외한 solute 전체를 tempered region으로 사용합니다. Temperature
 predictor에는 solute atom 수와 water 0을 전달하고, 생성한 effective temperature
 `T_i`에서 `lambda_pp=T_0/T_i`, `lambda_pw=sqrt(lambda_pp)`를 계산합니다.
@@ -24,6 +27,9 @@ scale 1 topology와 원본 topology의 single-frame potential energy 차이가
 0.1 kJ/mol 이하인지도 검사합니다.
 
 ## English
+
+This directory can be copied and used on its own. Install its Python
+dependencies from the local `requirements.txt` after copying it.
 
 The complete non-water, non-ion solute is the tempered region. The offline
 predictor receives the solute atom count and zero waters, then the build derives

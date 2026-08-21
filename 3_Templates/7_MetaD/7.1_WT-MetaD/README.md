@@ -2,6 +2,9 @@
 
 ## 한국어
 
+이 directory만 별도로 복사해 사용할 수 있습니다. Python dependency는 복사한
+directory의 `requirements.txt`를 사용해 설치합니다.
+
 `cv.dat`에 정의한 CV를 방문할 때마다 Gaussian hill을 추가합니다. 이미 bias가
 쌓인 위치에서는 `BIASFACTOR=10`에 따라 새 hill이 작아져 conventional MetaD보다
 완만하게 free-energy surface를 채웁니다.
@@ -29,6 +32,9 @@ python3 anal.py
 PLUMED의 기본 unit인 energy kJ/mol, length nm, time ps를 사용합니다.
 
 ## English
+
+This directory can be copied and used on its own. Install its Python
+dependencies from the local `requirements.txt` after copying it.
 
 WT-MetaD deposits Gaussian hills along the CVs defined in `cv.dat`. The current
 bias reduces subsequent hill heights through `BIASFACTOR=10`. CV labels in

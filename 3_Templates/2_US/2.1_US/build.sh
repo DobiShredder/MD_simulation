@@ -80,7 +80,7 @@ fi
 if (( dry_run )); then
     printf '+ %q generate_inputs.py build %q %q\n' "$python" "$config" "$work_dir"
     printf '+ %q -f %q\n' "$tleap" "$work_dir/inputs/tleap.solvate.in"
-    echo '+ python3 ../../common/count_waters.py work/solvated.pdb'
+    echo '+ python3 count_waters.py work/solvated.pdb'
     echo '+ python3 generate_inputs.py build config.toml work --salt-pairs N'
     printf '+ %q -f %q\n' "$tleap" "$work_dir/inputs/tleap.final.in"
     exit 0
@@ -98,10 +98,10 @@ if ! (
     die "Initial tleap solvation failed. See log: $work_dir/leap.solvate.log"
 fi
 
-water_count=$("$python" ../../common/count_waters.py "$work_dir/solvated.pdb")
+water_count=$("$python" count_waters.py "$work_dir/solvated.pdb")
 salt_concentration=$("$python" -B - "$config" <<'PY'
 import sys
-sys.path.insert(0, "../../common")
+sys.path.insert(0, ".")
 from pathlib import Path
 from config_utils import load_config
 print(load_config(Path(sys.argv[1]))["build"]["salt_concentration_molar"])

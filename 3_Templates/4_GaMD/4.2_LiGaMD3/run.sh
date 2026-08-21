@@ -14,4 +14,4 @@ if [[ "${1:-}" == -h || "${1:-}" == --help ]]; then
     echo "  -h, --help     Show this help message and exit."
     exit 0
 fi
-bash ../run_gamd.sh ligamd3 "$@"
+bash run_gamd.sh ligamd3 "$@"

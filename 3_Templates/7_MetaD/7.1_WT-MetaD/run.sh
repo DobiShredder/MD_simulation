@@ -17,4 +17,4 @@ Options:
 EOF
     exit 0
 fi
-exec ../run_metad.sh wt-metad "$@"
+exec ./run_metad.sh wt-metad "$@"

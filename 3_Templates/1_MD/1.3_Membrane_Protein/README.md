@@ -2,6 +2,9 @@
 
 ## 한국어
 
+이 directory만 별도로 복사해 사용할 수 있습니다. Python dependency는 복사한
+directory의 `requirements.txt`를 사용해 설치합니다.
+
 Membrane-oriented protein PDB와 사용자가 준비한 equilibrated Lipid21 bilayer
 patch를 조합해 membrane system을 만듭니다. Protein orientation과 protonation은
 자동으로 결정하지 않습니다. Input PDB에는 OPM membrane boundary REMARK가 있어야
@@ -36,6 +39,9 @@ protein와 retained pore ion/water 선택에 맞게 검토해야 합니다.
 `build_membrane.py`는 `build.sh`가 자동 호출하는 bilayer 배치 helper입니다.
 
 ## English
+
+This directory can be copied and used on its own. Install its Python
+dependencies from the local `requirements.txt` after copying it.
 
 This template combines a membrane-oriented protein PDB with user-supplied,
 equilibrated Lipid21 bilayer patches. The PDB must be aligned with the membrane

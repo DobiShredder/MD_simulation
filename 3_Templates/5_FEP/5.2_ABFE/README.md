@@ -2,6 +2,9 @@
 
 ## 한국어
 
+이 directory만 별도로 복사해 사용할 수 있습니다. Python dependency는 복사한
+directory의 `requirements.txt`를 사용해 설치합니다.
+
 Ligand restraint coupling, complex/solvent charge decoupling과 vdW decoupling을
 포함하는 double-decoupling ABFE window를 만듭니다. `build.sh`에는 ligand가
 포함된 reviewed complex PDB를 전달하며, 같은 residue name과 atom name을 가진
@@ -28,6 +31,9 @@ double-decoupling system과 65개 window를 만들고, `run.sh`는 stage를 실�
 restraint correction과 각 alchemical contribution을 합산합니다.
 
 ## English
+
+This directory can be copied and used on its own. Install its Python
+dependencies from the local `requirements.txt` after copying it.
 
 This double-decoupling ABFE template includes restraint coupling and charge/vdW
 decoupling in complex and solvent environments. Pass a reviewed complex PDB and

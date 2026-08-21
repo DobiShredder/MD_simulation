@@ -2,6 +2,9 @@
 
 ## 한국어
 
+이 directory만 별도로 복사해 사용할 수 있습니다. Python dependency는 복사한
+directory의 `requirements.txt`를 사용해 설치합니다.
+
 REUS의 umbrella-state 교환에 system 전체의 dual-boost GaMD를 결합합니다.
 한 reference replica에서 만든 `gamd-restart.dat`를 모든 window에 복사하므로
 production 시작 시 같은 boost parameter를 사용합니다.
@@ -26,6 +29,9 @@ interval에서 `nstlim=1000`, `numexchg=100000`으로 생성됩니다.
 기본 20개 window는 6–25 Å이며 replica 009에서 공통 GaMD state를 준비합니다.
 
 ## English
+
+This directory can be copied and used on its own. Install its Python
+dependencies from the local `requirements.txt` after copying it.
 
 GaREUS combines umbrella-state exchange with a common system-wide dual GaMD
 boost. One reference replica prepares `gamd-restart.dat`, which is copied to

@@ -7,7 +7,10 @@
 시작할 수 있는 workflow입니다. 기본 parameter는 universal production protocol이
 아니므로 system에 맞게 수정하고 pilot run으로 확인합니다.
 
-각 leaf directory에서 script를 실행합니다.
+각 leaf directory는 독립적으로 복사할 수 있는 self-contained template입니다.
+실행에 필요한 helper와 `requirements.txt`가 같은 leaf 안에 있으며, family 상위
+directory나 `3_Templates/common`의 code를 호출하지 않습니다. 복사한 leaf
+directory 안에서 script를 실행합니다.
 
 ```bash
 ./download.sh 1UBQ
@@ -91,7 +94,10 @@ config-driven starting workflows for user-prepared structures. The defaults are
 not universal production protocols; adjust them for the system and assess them
 with pilot simulations.
 
-Run every template from its leaf directory. `download.sh` retrieves only a
+Each leaf is a self-contained template that can be copied independently. Its
+runtime helpers and `requirements.txt` are stored inside the leaf; scripts do
+not call code from the family directory or `3_Templates/common`. Run every
+template from its leaf directory. `download.sh` retrieves only a
 source structure and does not decide protonation, missing atoms, alternate
 locations, biological assemblies, ligands, bound ions, or crystallographic
 waters. Pass a reviewed, build-ready PDB to `build.sh`.

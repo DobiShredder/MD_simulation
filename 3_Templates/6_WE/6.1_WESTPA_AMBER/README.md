@@ -2,6 +2,9 @@
 
 ## 한국어
 
+이 directory만 별도로 복사해 사용할 수 있습니다. Python dependency는 복사한
+directory의 `requirements.txt`를 사용해 설치합니다.
+
 AMBER가 각 walker를 unbiased MD로 전파하고 WESTPA가 매 iteration에 walker를
 bin으로 나누어 split 또는 merge합니다. Split과 merge는 statistical weight를
 보존하므로 일반 MD처럼 frame 수를 population으로 세면 안 됩니다.
@@ -81,6 +84,9 @@ GPU 병렬 실행은 GPU별 worker 배치와 scheduler isolation을 외부 환�
 합니다. `target_events.tsv`의 event count와 weight만으로 rate를 계산하지 않습니다.
 
 ## English
+
+This directory can be copied and used on its own. Install its Python
+dependencies from the local `requirements.txt` after copying it.
 
 AMBER propagates each walker with unbiased MD, while WESTPA bins, splits, and
 merges walkers after every iteration. Split and merge operations conserve

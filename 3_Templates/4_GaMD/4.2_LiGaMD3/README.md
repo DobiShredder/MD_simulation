@@ -2,6 +2,9 @@
 
 ## 한국어
 
+이 directory만 별도로 복사해 사용할 수 있습니다. Python dependency는 복사한
+directory의 `requirements.txt`를 사용해 설치합니다.
+
 Amber 26 `igamd=28` triple boost를 사용합니다. `ligand_mask`와
 `receptor_mask`는 residue 이름으로 추정하지 않고 `config.toml`에서 받습니다.
 Build 과정에서 두 mask가 atom을 선택하는지, 겹치지 않는지, receptor가
@@ -21,6 +24,9 @@ workflow는 serial `pmemd.cuda`만 지원합니다. Production segment는 MD res
 순서대로 실행합니다.
 
 ## English
+
+This directory can be copied and used on its own. Install its Python
+dependencies from the local `requirements.txt` after copying it.
 
 This template uses the Amber 26 `igamd=28` triple boost. The ligand and receptor
 masks are explicit config inputs. The build validates non-empty, non-overlapping

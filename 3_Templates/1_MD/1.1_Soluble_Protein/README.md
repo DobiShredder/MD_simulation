@@ -2,6 +2,9 @@
 
 ## 한국어
 
+이 directory만 별도로 복사해 사용할 수 있습니다. Python dependency는 복사한
+directory의 `requirements.txt`를 사용해 설치합니다.
+
 사용자가 준비한 protein PDB를 ff19SB/OPC explicit solvent에서 계산합니다.
 기본 config는 14 Å solute-to-box-edge distance, 0.15 M salt, 500 ps heating,
 1 ns NPT equilibration과 10×10 ns production을 사용합니다.
@@ -30,6 +33,9 @@ Preproduction partial output은 해당 stage를 다시 실행하지만 productio
 output은 자동 삭제하지 않습니다.
 
 ## English
+
+This directory can be copied and used on its own. Install its Python
+dependencies from the local `requirements.txt` after copying it.
 
 This template runs a user-prepared protein PDB with ff19SB and explicit OPC
 water. The default uses a 14 Å solute-to-box-edge distance, approximately

@@ -2,6 +2,9 @@
 
 ## 한국어
 
+이 directory만 별도로 복사해 사용할 수 있습니다. Python dependency는 복사한
+directory의 `requirements.txt`를 사용해 설치합니다.
+
 Ligand COM의 funnel-axis projection `fps.lp`에 WT-MetaD bias를 쌓고 transverse
 distance `fps.ld`를 funnel restraint로 제한합니다. Bulk solvent 전체를 bias하지
 않으면서 binding/unbinding 방향을 sampling하는 구성입니다.
@@ -36,6 +39,9 @@ Partial segment는 자동 삭제하지 않습니다. `anal.py --skip-fes`는 hil
 reconstruction 없이 projection, transverse distance와 bias 범위만 기록합니다.
 
 ## English
+
+This directory can be copied and used on its own. Install its Python
+dependencies from the local `requirements.txt` after copying it.
 
 Funnel-MetaD biases the ligand-COM projection `fps.lp` and confines transverse
 motion `fps.ld` with a funnel restraint. Supply a precharged GAFF2 MOL2/frcmod

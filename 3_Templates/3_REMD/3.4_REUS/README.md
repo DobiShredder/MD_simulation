@@ -2,6 +2,9 @@
 
 ## 한국어
 
+이 directory만 별도로 복사해 사용할 수 있습니다. Python dependency는 복사한
+directory의 `requirements.txt`를 사용해 설치합니다.
+
 Reaction coordinate의 각 umbrella center를 replica state로 두고 AMBER
 multidimensional replica exchange로 인접 state를 교환합니다. `windows.tsv`에는
 center를 Å 단위로 한 줄에 하나씩 적고 `config.toml`에는 두 AMBER atom mask,
@@ -24,6 +27,9 @@ multidimensional replica exchange를 순서대로 실행합니다.
 interval에서 input은 `nstlim=1000`, `numexchg=100000`으로 생성됩니다.
 
 ## English
+
+This directory can be copied and used on its own. Install its Python
+dependencies from the local `requirements.txt` after copying it.
 
 Each umbrella center is a replica state. Amber multidimensional replica
 exchange swaps neighboring states while every replica samples its harmonic

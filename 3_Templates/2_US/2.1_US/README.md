@@ -2,6 +2,9 @@
 
 ## 한국어
 
+이 directory만 별도로 복사해 사용할 수 있습니다. Python dependency는 복사한
+directory의 `requirements.txt`를 사용해 설치합니다.
+
 Ratchet MD(rMD)로 reaction coordinate가 목표 방향으로 증가하는 pathway를
 만들고, ordered first-crossing frame을 umbrella window seed로 사용합니다.
 rMD trajectory는 seed 생성에만 사용하며 PMF는 US production에서 계산합니다.
@@ -33,6 +36,9 @@ equilibration, PLUMED ABMD command 순서로 pathway를 생성합니다.
 harmonic distance force constant와 같은 양이 아닙니다.
 
 ## English
+
+This directory can be copied and used on its own. Install its Python
+dependencies from the local `requirements.txt` after copying it.
 
 Ratchet MD generates a target-directed pathway along the configured distance.
 Ordered first-crossing frames seed the umbrella windows; only the umbrella

@@ -2,6 +2,9 @@
 
 ## 한국어
 
+이 directory만 별도로 복사해 사용할 수 있습니다. Python dependency는 복사한
+directory의 `requirements.txt`를 사용해 설치합니다.
+
 Potential energy `ene`에서 300–500 K multithermal target을 만들고
 OPES_EXPANDED가 temperature state의 free-energy offset을 학습합니다. 물리적인 MD
 temperature는 300 K이며, bias를 통해 설정 범위의 energy fluctuation을 sampling합니다.
@@ -31,6 +34,9 @@ equilibration과 NVT expanded-ensemble input을 만들고, `run.sh`는 state를 
 segment를 실행하며, `anal.py`는 누적 output을 요약합니다.
 
 ## English
+
+This directory can be copied and used on its own. Install its Python
+dependencies from the local `requirements.txt` after copying it.
 
 This template constructs a 300–500 K multithermal target from potential energy.
 The physical MD thermostat remains at 300 K while OPES_EXPANDED learns

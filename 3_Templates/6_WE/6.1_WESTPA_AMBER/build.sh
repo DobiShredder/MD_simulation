@@ -77,7 +77,7 @@ done
 
 configured_engine=$("$python" - "$config" <<'PY'
 import sys
-sys.path.insert(0, "../../common")
+sys.path.insert(0, ".")
 from pathlib import Path
 from config_utils import load_config
 print(load_config(Path(sys.argv[1]))["run"]["engine"])
@@ -113,10 +113,10 @@ else
     if ! (cd "$work_dir"; "$tleap" -f inputs/tleap.solvate.in > leap.solvate.log 2>&1); then
         die "Initial tleap solvation failed: $work_dir/leap.solvate.log"
     fi
-    water_count=$("$python" ../../common/count_waters.py "$work_dir/solvated.pdb")
+    water_count=$("$python" count_waters.py "$work_dir/solvated.pdb")
     salt_concentration=$("$python" - "$config" <<'PY'
 import sys
-sys.path.insert(0, "../../common")
+sys.path.insert(0, ".")
 from pathlib import Path
 from config_utils import load_config
 print(load_config(Path(sys.argv[1]))["build"]["salt_concentration_molar"])

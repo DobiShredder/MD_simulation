@@ -2,6 +2,9 @@
 
 ## 한국어
 
+이 directory만 별도로 복사해 사용할 수 있습니다. Python dependency는 복사한
+directory의 `requirements.txt`를 사용해 설치합니다.
+
 사용자가 준비한 complex PDB와 RESP charge가 포함된 ligand MOL2로 conventional
 MD를 구성합니다. Protein은 ff19SB, ligand는 GAFF2, solvent는 OPC를 사용합니다.
 
@@ -32,6 +35,9 @@ equilibration과 10×5,000,000-step production입니다. Segment가 여러 개�
 `work/001`부터 저장하며 production partial output은 자동 삭제하지 않습니다.
 
 ## English
+
+This directory can be copied and used on its own. Install its Python
+dependencies from the local `requirements.txt` after copying it.
 
 This template builds conventional protein–ligand MD from a reviewed complex
 PDB and a ligand MOL2 containing precomputed RESP charges and GAFF2 atom types.

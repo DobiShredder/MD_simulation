@@ -2,6 +2,9 @@
 
 ## 한국어
 
+이 directory만 별도로 복사해 사용할 수 있습니다. Python dependency는 복사한
+directory의 `requirements.txt`를 사용해 설치합니다.
+
 Ligand A에서 ligand B로 변환하는 dual-topology AMBER RBFE window를 complex와
 solvent environment에 각각 만듭니다. `build.sh`에는 ligand를 제외한 reviewed
 protein PDB를 전달합니다. 서로 같은 coordinate frame에 배치한 precharged MOL2,
@@ -28,6 +31,9 @@ Production 일부만 존재하면 자동으로 덮어쓰지 않습니다. `anal.
 실행하며, `anal.py`는 MBAR free energy와 overlap을 계산합니다.
 
 ## English
+
+This directory can be copied and used on its own. Install its Python
+dependencies from the local `requirements.txt` after copying it.
 
 This dual-topology Amber RBFE template creates complex and solvent windows for
 ligand A to ligand B. Pass a ligand-free reviewed protein PDB to `build.sh` and

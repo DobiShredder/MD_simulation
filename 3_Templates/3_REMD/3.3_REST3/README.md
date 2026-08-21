@@ -2,6 +2,9 @@
 
 ## 한국어
 
+이 directory만 별도로 복사해 사용할 수 있습니다. Python dependency는 복사한
+directory의 `requirements.txt`를 사용해 설치합니다.
+
 REST2 scaling에 κ schedule을 추가합니다. 기본 schedule은 357 K까지 κ=1.0을
 유지하고 450 K에서 1.020이 되도록 선형 보간합니다. 이 값은 universal default가
 아니며 IDP와 force-field/water 조합별 pilot simulation에서 compactness와 exchange를
@@ -22,6 +25,9 @@ Temperature와 κ 목록의 길이는 같아야 합니다. Runtime requirement�
 순서이며 별도 heating stage는 사용하지 않습니다.
 
 ## English
+
+This directory can be copied and used on its own. Install its Python
+dependencies from the local `requirements.txt` after copying it.
 
 REST3 adds a κ schedule to REST2 scaling. The default keeps κ at 1.0 through
 357 K and linearly reaches 1.020 at 450 K. This is not a universal value; assess

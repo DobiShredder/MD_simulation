@@ -99,7 +99,7 @@ echo "Packing the oriented protein into the configured bilayer."
 if ! (cd "$work_dir" && "$tleap" -f inputs/tleap.in > leap.log 2>&1); then
     die "tleap failed. See log: $work_dir/leap.log"
 fi
-"$python" ../../common/apply_config.py "$config" "$work_dir"
+"$python" apply_config.py "$config" "$work_dir"
 for output in system.parm7 system.rst7 system.pdb resolved_config.toml; do
     if [[ ! -s "$work_dir/$output" ]]; then
         die "Build output was not created: $work_dir/$output"

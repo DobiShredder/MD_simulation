@@ -2,6 +2,9 @@
 
 ## 한국어
 
+이 directory만 별도로 복사해 사용할 수 있습니다. Python dependency는 복사한
+directory의 `requirements.txt`를 사용해 설치합니다.
+
 OPES_METAD는 방문한 위치에 hill을 그대로 누적하지 않습니다. CV sample로
 probability distribution을 추정하고 target distribution에 필요한 bias를
 갱신합니다. `KERNELS`는 압축된 distribution estimate이고 `opes.state`는 restart에
@@ -30,6 +33,9 @@ PLUMED input을 만들고 `run.sh`는 `opes.state`를 이어받아 segmented pro
 실행합니다.
 
 ## English
+
+This directory can be copied and used on its own. Install its Python
+dependencies from the local `requirements.txt` after copying it.
 
 OPES_METAD estimates the sampled CV distribution and updates the bias needed
 for a target distribution instead of directly accumulating MetaD hills.

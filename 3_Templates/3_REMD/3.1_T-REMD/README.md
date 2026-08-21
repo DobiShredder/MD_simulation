@@ -2,6 +2,9 @@
 
 ## 한국어
 
+이 directory만 별도로 복사해 사용할 수 있습니다. Python dependency는 복사한
+directory의 `requirements.txt`를 사용해 설치합니다.
+
 사용자가 준비한 protein PDB로 AMBER temperature replica exchange를 구성합니다.
 `build.sh`는 ff19SB/OPC system을 만든 뒤 topology의 solute/ion atom 수와 water
 molecule 수를 읽어 300–450 K ladder를 자동 생성합니다. 기본 목표 neighboring
@@ -24,6 +27,9 @@ Comma, semicolon, vertical bar와 whitespace를 구분자로 받습니다. Gener
 input과 적용값은 `work/resolved_config.toml`에 기록됩니다.
 
 ## English
+
+This directory can be copied and used on its own. Install its Python
+dependencies from the local `requirements.txt` after copying it.
 
 This template builds AMBER temperature replica exchange from a user-prepared
 protein PDB. In automatic mode, the ff19SB/OPC topology supplies solute/ion atom

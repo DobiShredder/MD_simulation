@@ -17,4 +17,4 @@ Options:
 EOF
     exit 0
 fi
-exec ../run_metad.sh opes-expanded "$@"
+exec ./run_metad.sh opes-expanded "$@"

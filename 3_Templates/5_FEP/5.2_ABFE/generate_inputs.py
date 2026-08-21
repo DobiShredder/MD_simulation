@@ -13,7 +13,7 @@ sys.dont_write_bytecode = True
 import parmed
 from parmed.geometry import dihedral as parmed_dihedral
 
-sys.path.insert(0, "../../common")
+sys.path.insert(0, ".")
 from apply_config import apply_config  # noqa: E402
 from config_utils import load_config, positive_float, positive_int, section, string_value  # noqa: E402
 

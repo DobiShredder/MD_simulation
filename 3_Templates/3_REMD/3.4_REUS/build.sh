@@ -81,10 +81,10 @@ fi
 if (( dry_run )); then
     printf '+ %q generate_inputs.py %q %q\n' "$python" "$config" "$work_dir/inputs"
     printf '+ %q -f %q\n' "$tleap" "$work_dir/inputs/tleap.solvate.in"
-    echo '+ python3 ../../common/count_waters.py work/solvated.pdb'
+    echo '+ python3 count_waters.py work/solvated.pdb'
     echo '+ python3 generate_inputs.py config.toml work/inputs --salt-pairs N'
     printf '+ %q -f %q\n' "$tleap" "$work_dir/inputs/tleap.final.in"
-    echo '+ python3 ../make_window_replicas.py reus config.toml work/system.parm7 work/system.rst7 work'
+    echo '+ python3 make_window_replicas.py reus config.toml work/system.parm7 work/system.rst7 work'
     exit 0
 fi
 
@@ -100,10 +100,10 @@ if ! (
     die "Initial tleap solvation failed. See log: $work_dir/leap.solvate.log"
 fi
 
-water_count=$("$python" ../../common/count_waters.py "$work_dir/solvated.pdb")
+water_count=$("$python" count_waters.py "$work_dir/solvated.pdb")
 salt_concentration=$("$python" - "$config" <<'PY'
 import sys
-sys.path.insert(0, "../../common")
+sys.path.insert(0, ".")
 from pathlib import Path
 from config_utils import load_config
 print(load_config(Path(sys.argv[1]))["build"]["salt_concentration_molar"])
@@ -128,6 +128,6 @@ for output in system.parm7 system.rst7 system.pdb resolved_config.toml; do
     fi
 done
 
-"$python" ../make_window_replicas.py reus "$config" "$work_dir/system.parm7" "$work_dir/system.rst7" "$work_dir"
+"$python" make_window_replicas.py reus "$config" "$work_dir/system.parm7" "$work_dir/system.rst7" "$work_dir"
 
 echo "AMBER topology and restart: $work_dir/system.parm7, $work_dir/system.rst7"

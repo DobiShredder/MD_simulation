@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-../build_replicas.sh remd "$@"
+./build_replicas.sh remd "$@"

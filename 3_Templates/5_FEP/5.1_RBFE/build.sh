@@ -13,4 +13,4 @@ if [[ "${1:-}" == -h || "${1:-}" == --help ]]; then
     echo "  -h, --help     Show this help message and exit."
     exit 0
 fi
-bash ../build_fep.sh rbfe "$@"
+bash build_fep.sh rbfe "$@"

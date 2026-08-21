@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-../run_replicas.sh rest2 "$@"
+./run_replicas.sh rest2 "$@"

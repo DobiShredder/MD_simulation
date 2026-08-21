@@ -2,6 +2,9 @@
 
 ## 한국어
 
+이 directory만 별도로 복사해 사용할 수 있습니다. Python dependency는 복사한
+directory의 `requirements.txt`를 사용해 설치합니다.
+
 `igamd=15`로 peptide potential과 나머지 system potential에 dual boost를
 적용합니다. `peptide_mask`는 `config.toml`에서 지정하며 build가 실제 atom
 selection을 확인합니다.
@@ -18,6 +21,9 @@ GaMD state는 각 production segment의 `production.gamd.rst`로 이어집니다
 검증한 뒤 topology와 input을 생성하며, `run.sh`는 segmented GaMD를 실행합니다.
 
 ## English
+
+This directory can be copied and used on its own. Install its Python
+dependencies from the local `requirements.txt` after copying it.
 
 This template uses `igamd=15` to boost peptide potential energy and the
 remaining system potential. Set `peptide_mask` in `config.toml`; the build
