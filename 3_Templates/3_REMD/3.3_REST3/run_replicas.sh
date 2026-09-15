@@ -128,6 +128,7 @@ fi
 replica_count=$(awk 'NR > 1 {count++} END {print count + 0}' "$states")
 default_threads=$(awk -F' = ' '$1=="cpu_threads_per_replica" {print $2}' "$resolved")
 default_gpus=$(awk -F' = ' '$1=="gpu_count" {print $2}' "$resolved")
+maxwarn=$(awk -F' = ' '$1=="maxwarn" {print $2}' "$resolved")
 segments=$(awk -F' = ' '$1=="production_segments" {print $2}' "$resolved")
 exchange_interval=$(awk -F' = ' '$1=="exchange_interval_steps" {print $2}' "$resolved")
 cpu_count=${cpu_count:-$((replica_count * default_threads))}
@@ -193,9 +194,9 @@ if (( dry_run )); then
     echo "$method: $replica_count replicas, $segments production segments"
     echo "Resources: $cpu_count CPUs, $gpu_count GPUs, $threads_per_replica threads per replica"
     if (( ! production_only )); then
-        printf '+ %q grompp -f %q -p %q -c %q -o %q\n' \
+        printf '+ %q grompp -f %q -p %q -c %q -o %q -maxwarn %q\n' \
             "$gmx" "$work_dir/000/minimize.mdp" "$work_dir/000/topol.top" \
-            "$work_dir/000/system.gro" "$work_dir/000/minimize.tpr"
+            "$work_dir/000/system.gro" "$work_dir/000/minimize.tpr" "$maxwarn"
     fi
     if (( ! preparation_only )); then
         for ((segment = segment_start; segment <= segment_end; segment++)); do
@@ -252,7 +253,8 @@ run_preproduction_stage() {
         fi
         replica_dir="$work_dir/$replica"
         grompp_command=("$gmx" grompp -f "$replica_dir/$stage.mdp" -p "$replica_dir/topol.top"
-            -c "$replica_dir/$previous.gro" -o "$replica_dir/$stage.tpr")
+            -c "$replica_dir/$previous.gro" -o "$replica_dir/$stage.tpr"
+            -maxwarn "$maxwarn")
         if [[ "$previous" != system && "$previous" != minimize ]]; then
             grompp_command+=(-t "$replica_dir/$previous.cpt")
         fi
@@ -346,7 +348,8 @@ for ((segment = segment_start; segment <= segment_end; segment++)); do
         replica_dir="$work_dir/$replica"
         if ! "$gmx" grompp -f "$replica_dir/production.mdp" -p "$replica_dir/topol.top" \
             -c "$replica_dir/$previous.gro" -t "$replica_dir/$previous.cpt" \
-            -o "$replica_dir/$segment_name.tpr" > "$replica_dir/$segment_name.grompp.log" 2>&1; then
+            -o "$replica_dir/$segment_name.tpr" -maxwarn "$maxwarn" \
+            > "$replica_dir/$segment_name.grompp.log" 2>&1; then
             die "Production tpr generation failed: $replica_dir/$segment_name.grompp.log"
         fi
     done < "$states"

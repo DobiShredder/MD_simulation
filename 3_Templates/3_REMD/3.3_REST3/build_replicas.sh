@@ -151,6 +151,7 @@ fi
 "$python" generate_states.py "$method" "$config" "$work_dir/system.parm7" "$work_dir"
 "$python" generate_inputs.py "$method" "$config" "$work_dir/inputs" \
     --salt-pairs "$salt_pairs" --states "$work_dir/states.tsv"
+maxwarn=$(awk -F' = ' '$1 == "maxwarn" {print $2}' "$work_dir/resolved_config.toml")
 
 if [[ "$method" == rest2 || "$method" == rest3 ]]; then
     "$python" convert_topology.py "$work_dir/system.parm7" "$work_dir/system.rst7" \
@@ -161,6 +162,7 @@ if [[ "$method" == rest2 || "$method" == rest3 ]]; then
     if ! "$gmx" grompp -f "$helper_dir/inputs/energy_check.mdp" \
         -p "$work_dir/topol.top" -c "$work_dir/system.gro" \
         -pp "$work_dir/processed.top" -o "$work_dir/preprocess.tpr" \
+        -maxwarn "$maxwarn" \
         > "$work_dir/grompp_preprocess.log" 2>&1; then
         die "Processed topology generation failed: $work_dir/grompp_preprocess.log"
     fi
@@ -201,6 +203,7 @@ elif [[ "$method" == rest2 ]]; then
             -p "$topology" \
             -c "$work_dir/system.gro" \
             -o "$energy_dir/$variant.tpr" \
+            -maxwarn "$maxwarn" \
             > "$energy_dir/$variant.grompp.log" 2>&1; then
             die "Energy-check tpr generation failed: $energy_dir/$variant.grompp.log"
         fi
