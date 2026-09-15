@@ -17,10 +17,19 @@ def digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def topology_data(path: Path) -> tuple[dict[str, tuple[float, float]], dict[tuple[str, str], tuple[float, float]], str, set[str]]:
+def topology_data(
+    path: Path,
+) -> tuple[
+    dict[str, tuple[float, float]],
+    dict[tuple[str, str], tuple[float, float]],
+    str,
+    dict[str, tuple[str, float, float]],
+    set[str],
+]:
     atomtypes: dict[str, tuple[float, float]] = {}
     pairs: dict[tuple[str, str], tuple[float, float]] = {}
     water_type = ""
+    water_atoms: dict[str, tuple[str, float, float]] = {}
     ion_types: set[str] = set()
     section = ""
 
@@ -53,15 +62,22 @@ def topology_data(path: Path) -> tuple[dict[str, tuple[float, float]], dict[tupl
             residue_name = fields[3].upper()
             atom_name = fields[4].upper()
 
-            if residue_name in SOLVENT_NAMES and atom_name in {"O", "OW"}:
-                water_type = atom_type
+            if residue_name in SOLVENT_NAMES:
+                if len(fields) < 8:
+                    raise SystemExit(f"Incomplete water atom record: {path}")
+                signature = (atom_type, float(fields[6]), float(fields[7]))
+                if atom_name in water_atoms and water_atoms[atom_name] != signature:
+                    raise SystemExit(f"Inconsistent water atom record: {path}")
+                water_atoms[atom_name] = signature
+                if atom_name in {"O", "OW"}:
+                    water_type = atom_type
             elif residue_name in ION_NAMES:
                 ion_types.add(atom_type)
 
     if not water_type:
-        raise SystemExit(f"TIP3P oxygen type not found: {path}")
+        raise SystemExit(f"Water oxygen type not found: {path}")
 
-    return atomtypes, pairs, water_type, ion_types
+    return atomtypes, pairs, water_type, water_atoms, ion_types
 
 
 def pair_parameters(
@@ -177,9 +193,13 @@ def main() -> None:
     if digest(args.base_topology) != digest(replica_zero):
         raise SystemExit("REST3 replica 000 topology differs from the base topology.")
 
-    base_atomtypes, base_pairs, base_water, base_ions = topology_data(
-        args.base_topology
-    )
+    (
+        base_atomtypes,
+        base_pairs,
+        base_water,
+        base_water_atoms,
+        base_ions,
+    ) = topology_data(args.base_topology)
     reference_pairs = {
         (base_water, base_water): pair_parameters(
             base_atomtypes, base_pairs, base_water, base_water
@@ -200,11 +220,18 @@ def main() -> None:
             topology,
             float(state["lambda_pp"]),
         )
-        atomtypes, pairs, water_type, ion_types = topology_data(topology)
+        atomtypes, pairs, water_type, water_atoms, ion_types = topology_data(
+            topology
+        )
 
         if water_type != base_water:
             raise SystemExit(
-                f"TIP3P oxygen type changed: {state['replica']}"
+                f"Water oxygen type changed: {state['replica']}"
+            )
+
+        if water_atoms != base_water_atoms:
+            raise SystemExit(
+                f"Water atom type, charge, or mass changed: {state['replica']}"
             )
 
         if ion_types != base_ions:
@@ -219,7 +246,10 @@ def main() -> None:
                     f"reference={reference}, observed={observed}"
                 )
 
-    print("Verified REST3 base identity, CMAP scaling, and preservation of solvent interactions.")
+    print(
+        "Verified REST3 base identity, CMAP scaling, water atom records, "
+        "and preservation of solvent interactions."
+    )
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 source leaprc.protein.ff19SB
 source leaprc.gaff2
-source leaprc.water.tip3p
+source leaprc.water.opc
 
 loadamberparams ben.frcmod
 BEN = loadmol2 ben.mol2
@@ -10,7 +10,7 @@ source disulfides.leap
 check system
 
 # Reduce contacts with protein periodic images within MAXS=3.7 nm.
-solvatebox system TIP3PBOX 20.0
+solvatebox system OPCBOX 20.0
 addionsrand system Na+ 0
 addionsrand system Cl- 0
 

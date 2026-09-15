@@ -8,9 +8,9 @@
 ## 한국어
 
 AMBER가 MD를 계산하고 PLUMED가 collective variable(CV)과 bias를 처리합니다.
-7.1, 7.3과 7.4는 ff19SB/TIP3P capped alanine dipeptide를 사용합니다.
-7.2는 ff19SB/GAFF2/TIP3P trypsin–benzamidine를 사용합니다.
-네 system 모두 solute와 box edge 사이에 20 Å TIP3P buffer를 둡니다.
+7.1, 7.3과 7.4는 ff19SB/OPC capped alanine dipeptide를 사용합니다.
+7.2는 ff19SB/GAFF2/OPC trypsin–benzamidine를 사용합니다.
+네 system 모두 solute와 box edge 사이에 20 Å OPC buffer를 둡니다.
 
 | Directory | Method | Bias 대상 | 상태 파일 |
 |---|---|---|---|
@@ -59,9 +59,9 @@ module이 필요합니다. 네 example을 모두 실행할 PLUMED 2.10은 config
 ## English
 
 AMBER propagates the MD while PLUMED evaluates the collective variables and
-bias. Three examples use an ff19SB/TIP3P capped alanine dipeptide, while Funnel
-MetaD uses ff19SB/GAFF2/TIP3P trypsin–benzamidine. All four systems use a 20 Å
-TIP3P buffer between the solute and the box edge. They cover well-tempered MetaD on φ/ψ, Funnel MetaD for 3PTB
+bias. Three examples use an ff19SB/OPC capped alanine dipeptide, while Funnel
+MetaD uses ff19SB/GAFF2/OPC trypsin–benzamidine. All four systems use a 20 Å
+OPC buffer between the solute and the box edge. They cover well-tempered MetaD on φ/ψ, Funnel MetaD for 3PTB
 trypsin–benzamidine, OPES_METAD on φ/ψ, and multithermal OPES_EXPANDED over
 300–500 K. Funnel MetaD requires PLUMED's optional `funnel` module, while both
 OPES examples require the optional `opes` module. Configure both with

@@ -49,7 +49,7 @@ cp "$input_pdb" "$work_dir/input.pdb"
 cp "$metadata" "$work_dir/system_metadata.tsv"
 cp inputs/tleap.in "$work_dir/tleap.in"
 
-echo "Generating the ff19SB/TIP3P SH3-peptide topology."
+echo "Generating the ff19SB/OPC SH3-peptide topology."
 if ! (
     cd "$work_dir"
     "$tleap" -f tleap.in > leap.log 2>&1

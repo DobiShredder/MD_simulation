@@ -32,7 +32,7 @@
 
   <rect x="520" y="130" width="190" height="130" rx="12" fill="#E9F7F1" stroke="#009E73" stroke-width="2"/>
   <text x="615" y="166" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#243447">build.sh / tleap</text>
-  <text x="615" y="194" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#6B7280">ff19SB + TIP3P</text>
+  <text x="615" y="194" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#6B7280">ff19SB + OPC</text>
   <text x="615" y="216" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#6B7280">solvation + ions</text>
   <text x="615" y="238" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#6B7280">topology build</text>
 

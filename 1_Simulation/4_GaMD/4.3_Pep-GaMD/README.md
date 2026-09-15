@@ -8,7 +8,7 @@
 ## 한국어
 
 PDB 1CKB의 C-crk N-terminal SH3 domain과 resolved SOS peptide PPPVPPRR를
-ff19SB/TIP3P로 build합니다. PDB entity에는 peptide 10 residues가 기록되어
+ff19SB/OPC로 build합니다. PDB entity에는 peptide 10 residues가 기록되어
 있지만 coordinate가 존재하는 8 residues만 사용합니다.
 
 Pep-GaMD는 peptide essential potential과 나머지 system potential을 분리해
@@ -39,7 +39,7 @@ essential peptide component를 제외한 receptor와 environment potential입니
 | --- | --- |
 | `download.sh` | 1CKB PDB/mmCIF와 checksum을 저장합니다. |
 | `prepare.py` | Chain A receptor와 resolved chain B PPPVPPRR를 정리하고 residue metadata를 만듭니다. |
-| `build.sh` | ff19SB/TIP3P topology를 만들고 peptide mask renderer를 호출합니다. |
+| `build.sh` | ff19SB/OPC topology를 만들고 peptide mask renderer를 호출합니다. |
 | `render_inputs.py` | Metadata의 residue 58–65를 `timask1`/`scmask1`에 기록합니다. |
 | `run.sh` | Conventional stage, Pep-GaMD preparation과 production을 실행합니다. |
 | `anal.py` | 두 boost component와 total boost의 통계를 저장합니다. |

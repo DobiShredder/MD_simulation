@@ -7,7 +7,7 @@
 
 ## 한국어
 
-PDB 3PTB의 trypsin–benzamidine complex를 ff19SB/GAFF2/TIP3P로 build하고
+PDB 3PTB의 trypsin–benzamidine complex를 ff19SB/GAFF2/OPC로 build하고
 LiGaMD3 triple boost를 적용합니다. BEN에는 AM1-BCC charge를 사용합니다.
 
 LiGaMD3는 ligand essential nonbonded interaction, 나머지 nonbonded interaction과
@@ -96,7 +96,7 @@ Amber 26 manual은 LiGaMD3를 serial GPU `pmemd.cuda` 전용으로 설명합니�
 
 ## English
 
-PDB 3PTB is built with ff19SB, GAFF2/AM1-BCC, and TIP3P for an experimental
+PDB 3PTB is built with ff19SB, GAFF2/AM1-BCC, and OPC for an experimental
 Amber26 LiGaMD3 workflow. `build.sh` resolves the receptor atom range from the
 final topology and writes complete inputs under `work/inputs/`.
 The fixed tutorial preserves the GaMD preparation state used by production.

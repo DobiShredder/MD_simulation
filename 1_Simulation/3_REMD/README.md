@@ -7,7 +7,7 @@
 
 ## 한국어
 
-다섯 예제 모두 Chignolin(PDB 1UAO)을 ff19SB/TIP3P로 만들며 다른 tutorial의
+다섯 예제 모두 Chignolin(PDB 1UAO)을 ff19SB/OPC로 만들며 다른 tutorial의
 output을 사용하지 않습니다.
 
 Replica exchange는 서로 다른 thermodynamic state 또는 Hamiltonian을 병렬로
@@ -17,7 +17,7 @@ Replica exchange는 서로 다른 thermodynamic state 또는 Hamiltonian을 병�
 
 | 순서 | Method | Replica/state | Engine |
 | ---: | --- | ---: | --- |
-| 3.1 | [T-REMD](3.1_REMD/README.md) | 기본 20 temperatures | `pmemd.cuda.MPI -rem 1` |
+| 3.1 | [T-REMD](3.1_REMD/README.md) | OPC 기준 18 temperatures | `pmemd.cuda.MPI -rem 1` |
 | 3.2 | [REST2](3.2_REST2/README.md) | 기본 8 effective temperatures | GROMACS/PLUMED HREX |
 | 3.3 | [REST3](3.3_REST3/README.md) | 기본 8 λ/κ states | GROMACS/PLUMED HREX |
 | 3.4 | [REUS](3.4_REUS/README.md) | 19 distance windows | `pmemd.cuda.MPI -rem 3` |
@@ -93,7 +93,7 @@ REST3는 temperature와 별도로 `inputs/kappa.txt`도 읽습니다. REUS와 Ga
 
 ## English
 
-All five examples independently build ff19SB/TIP3P Chignolin. They cover
+All five examples independently build ff19SB/OPC Chignolin. They cover
 20-temperature T-REMD, eight-state REST2, eight-state REST3, 19-window REUS,
 and 20-window GaREUS with the engines listed in the table above.
 

@@ -4,7 +4,7 @@
 
 PDB 3HTB의 T4 lysozyme L99A/M102Q–JZ4 complex를 사용합니다.
 JZ4는 T4 lysozyme의 hydrophobic cavity에 결합한 중성 2-propylphenol입니다.
-Protein은 ff19SB, ligand는 GAFF2/AM1-BCC, water model은 TIP3P를 사용합니다.
+Protein은 ff19SB, ligand는 GAFF2/AM1-BCC, water model은 OPC를 사용합니다.
 
 System은 Lemkul의 GROMACS protein–ligand tutorial과 같지만 force field는 다릅니다.
 Lemkul tutorial은 CHARMM36/CGenFF를 사용하고, 이 예제는 AMBER ff19SB/GAFF2로 구성합니다.
@@ -75,7 +75,7 @@ system charge를 확인합니다. 기본 engine은 `pmemd.cuda`입니다.
 
 This example uses the T4 lysozyme L99A/M102Q–JZ4 complex from PDB 3HTB.
 JZ4 is neutral 2-propylphenol bound in the hydrophobic cavity. The model uses
-ff19SB for the protein, GAFF2/AM1-BCC for JZ4, and TIP3P water.
+ff19SB for the protein, GAFF2/AM1-BCC for JZ4, and OPC water.
 
 The molecular system follows the Lemkul GROMACS protein–ligand tutorial, but
 the parameterization does not: that tutorial uses CHARMM36/CGenFF, whereas this

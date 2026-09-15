@@ -40,7 +40,7 @@ Complex와 solvent environment는 각각 lambda 0.0–1.0의 11개 window를 사
 다시 실행합니다. 어느 window든 production output이 있으면 덮어쓰지 않고
 계산 전에 중단합니다.
 
-Solvent environment는 `solvatebox system TIP3PBOX 20.0`을 사용합니다. 가장 짧은
+Solvent environment는 `solvatebox system OPCBOX 20.0`을 사용합니다. 가장 짧은
 box dimension도 `cut=10 Å`의 GPU neighbor list에 필요한 공간을 갖도록 ligand와
 box edge 사이에 20 Å buffer를 둡니다. Complex environment는 protein 때문에
 box가 충분히 크므로 12 Å buffer를 유지합니다.

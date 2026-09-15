@@ -49,7 +49,7 @@ if ! awk -F '\t' '
 fi
 
 replica_count=$(awk 'NR > 1 {count++} END {print count + 0}' "$states_file")
-echo "Generating ff19SB/TIP3P systems for $replica_count replicas."
+echo "Generating ff19SB/OPC systems for $replica_count replicas."
 
 mkdir -p work
 cp "$input_pdb" work/input.pdb

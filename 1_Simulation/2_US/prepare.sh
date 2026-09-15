@@ -24,7 +24,7 @@ if compgen -G 'work/*.out' >/dev/null; then
     die "Simulation output already exists in work. Remove it before rebuilding."
 fi
 
-echo "Generating the ff19SB/TIP3P system shared by ratchet MD and US."
+echo "Generating the ff19SB/OPC system shared by ratchet MD and US."
 mkdir -p work
 cp "$input_pdb" work/input.pdb
 cp inputs/tleap.in work/tleap.in

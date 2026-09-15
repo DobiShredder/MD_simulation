@@ -122,12 +122,16 @@ reduction, clustering, statistics, and plotting use Python.
 
 | System                   | Role                                                    | Source and important choices                               |
 | ------------------------ | ------------------------------------------------------- | ---------------------------------------------------------- |
-| Chignolin                | Soluble-protein MD, WE and structural/ensemble analysis | PDB 1UAO; first NMR model; ff19SB/TIP3P                    |
-| T4 lysozyme–JZ4          | Protein–ligand MD, ABFE and MM/GB(PB)SA                 | PDB 3HTB; neutral JZ4; ff19SB/GAFF2/TIP3P                  |
+| Chignolin                | Soluble-protein MD, WE and structural/ensemble analysis | PDB 1UAO; first NMR model; ff19SB/OPC                      |
+| T4 lysozyme–JZ4          | Protein–ligand MD, ABFE and MM/GB(PB)SA                 | PDB 3HTB; neutral JZ4; ff19SB/GAFF2/OPC                    |
 | KcsA                     | Membrane build and membrane-protein MD                  | PDB 1K4C; ff19SB/Lipid21/OPC; POPC:POPE:cholesterol 90:5:5 |
-| C-crk SH3–SOS peptide    | Pep-GaMD selective peptide boost                        | PDB 1CKB; resolved PPPVPPRR peptide; ff19SB/TIP3P          |
-| T4 lysozyme L99A         | Benzene→toluene RBFE                                    | PDB 4W53; ff19SB/GAFF2/TIP3P                               |
-| Capped alanine dipeptide | WT-MetaD and OPES examples                              | Built with tleap; ff19SB/TIP3P                             |
+| C-crk SH3–SOS peptide    | Pep-GaMD selective peptide boost                        | PDB 1CKB; resolved PPPVPPRR peptide; ff19SB/OPC            |
+| T4 lysozyme L99A         | Benzene→toluene RBFE                                    | PDB 4W53; ff19SB/GAFF2/OPC                                 |
+| Capped alanine dipeptide | WT-MetaD and OPES examples                              | Built with tleap; ff19SB/OPC                               |
+
+ff19SB tutorial은 Amber 26에서 권장하는 4-site OPC water와 OPC용 ion
+parameter를 사용합니다. The ff19SB tutorials use the Amber 26 recommended
+four-site OPC water model and its matching ion parameters.
 
 Downloaded source structures are recorded with checksums. Generated systems,
 trajectories, restarts, topologies, and logs are not distributed through Git.

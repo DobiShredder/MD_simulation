@@ -25,7 +25,7 @@ python3 anal.py
 
 | File | 역할 |
 |---|---|
-| `build.sh` | Argument로 받은 capped alanine PDB에서 ff19SB/TIP3P system을 생성합니다. |
+| `build.sh` | Argument로 받은 capped alanine PDB에서 ff19SB/OPC system을 생성합니다. |
 | `check_topology.py` | `build.sh`가 자동 호출하며 capped peptide atom ordering을 검사합니다. |
 | `run.sh` | NPT equilibration 후 fixed-volume multithermal production을 1 ns로 실행합니다. |
 | `anal.py` | potential energy, expanded CV, bias 범위와 `DELTAFS` state 수를 기록합니다. |

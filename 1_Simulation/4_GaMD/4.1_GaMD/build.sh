@@ -42,7 +42,7 @@ mkdir -p "$work_dir"
 cp "$input_pdb" "$work_dir/input.pdb"
 cp inputs/tleap.in "$work_dir/tleap.in"
 
-echo "Generating the ff19SB/TIP3P Chignolin topology."
+echo "Generating the ff19SB/OPC Chignolin topology."
 if ! (
     cd "$work_dir"
     "$tleap" -f tleap.in > leap.log 2>&1

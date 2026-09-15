@@ -1,10 +1,10 @@
 source leaprc.protein.ff19SB
-source leaprc.water.tip3p
+source leaprc.water.opc
 
 system = loadpdb input.pdb
 check system
 
-solvateoct system TIP3PBOX 12.0
+solvateoct system OPCBOX 12.0
 addionsrand system Na+ 0
 addionsrand system Cl- 0
 

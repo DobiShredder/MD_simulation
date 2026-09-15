@@ -33,7 +33,7 @@ if find "$work_dir" -type f \
 fi
 
 # Combine the protein and ligand into one solvated system.
-echo "Generating the T4 lysozyme–JZ4 system with ff19SB/GAFF2/TIP3P."
+echo "Generating the T4 lysozyme–JZ4 system with ff19SB/GAFF2/OPC."
 
 mkdir -p "$work_dir"
 cp "$complex_pdb" "$work_dir/complex.pdb"

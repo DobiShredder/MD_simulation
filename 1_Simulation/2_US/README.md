@@ -30,7 +30,7 @@ Conventional Steered MD는 이 튜토리얼에서는 다루지 않습니다.
 | --- | --- |
 | `download.sh` | 1UAO PDB/mmCIF와 checksum을 저장합니다. |
 | `prepare.py` | 첫 NMR model을 선택해 Chignolin PDB를 만듭니다. |
-| `prepare.sh` | Ratchet MD와 모든 window가 공유할 ff19SB/TIP3P topology를 만듭니다. |
+| `prepare.sh` | Ratchet MD와 모든 window가 공유할 ff19SB/OPC topology를 만듭니다. |
 | `rmd/run.sh` | ABMD pathway를 생성합니다. |
 | `rmd/anal.py` | Ordered first-crossing frame을 umbrella seed로 추출합니다. |
 | `us/build.sh` | Seed, 공통 topology와 restraint로 19개 window를 만듭니다. |
@@ -53,7 +53,7 @@ cd ../us
 
 `download.sh`는 RCSB에서 PDB와 mmCIF를 받고 checksum을 기록합니다.
 `prepare.py`는 1UAO의 첫 NMR model을 선택합니다. `prepare.sh`가 만든
-ff19SB/TIP3P `system.parm7`을 ratchet MD와 모든 umbrella
+ff19SB/OPC `system.parm7`을 ratchet MD와 모든 umbrella
 window가 공유합니다. Window별 solvation은 하지 않습니다. CV, atom index,
 ABMD target, window 범위와 force constant는 chignolin용 설정입니다.
 
@@ -61,7 +61,7 @@ Preparation stage의 output과 restart가 모두 있으면 건너뛰고, 일부�
 해당 stage를 다시 실행합니다. 기존 ratchet 또는 umbrella production output이
 있으면 덮어쓰지 않고 시작 전에 중단합니다.
 
-`tleap.in`은 20 Å TIP3P buffer를 추가한 뒤 atom center로 계산한 box에
+`tleap.in`은 20 Å OPC buffer를 추가한 뒤 atom center로 계산한 box에
 0.25 Å padding을 둡니다. AmberTools 26에서 초기 density는 약
 0.93 g/cm³였고, 0.8 Å 미만의 periodic overlap은 없었습니다. Padding을
 제거하거나 box를 더 줄이면 반대편 water가 겹칠 수 있습니다.
@@ -91,7 +91,7 @@ provide a separate conventional Steered-MD tutorial.
 `download.sh` retrieves the PDB and mmCIF files from RCSB and records their
 checksums. `prepare.py` selects the first NMR model. Run
 `./prepare.sh structure/chignolin.pdb` to create
-one ff19SB/TIP3P topology shared by ratchet MD and every
+one ff19SB/OPC topology shared by ratchet MD and every
 umbrella window. Seed frames are not resolvated. The CV, atom indices, target,
 window range, and restraint strength are specific to chignolin.
 
@@ -99,13 +99,13 @@ A preparation stage is skipped when both its output and restart exist, and an
 incomplete pair is rerun. Existing ratchet or umbrella production output is
 detected before it can be overwritten.
 
-The tleap build adds a 20 Å TIP3P buffer and defines the periodic box from
+The tleap build adds a 20 Å OPC buffer and defines the periodic box from
 atom centers with 0.25 Å padding. With AmberTools 26 this produced an initial
 density of about 0.93 g/cm³ without periodic contacts below 0.8 Å. Removing
 the padding or shrinking the box further can overlap waters across opposite
 box faces.
 
-The root scripts download, prepare, and build one shared ff19SB/TIP3P system.
+The root scripts download, prepare, and build one shared ff19SB/OPC system.
 `rmd/run.sh` generates the pathway, `rmd/anal.py` extracts ordered seeds,
 `us/build.sh` creates 19 windows, and `us/run.sh` propagates them.
 

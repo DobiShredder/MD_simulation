@@ -7,7 +7,7 @@
 
 ## 한국어
 
-Chignolin을 ff19SB/TIP3P로 만들고 8-replica REST2를 실행합니다. Protein
+Chignolin을 ff19SB/OPC로 만들고 8-replica REST2를 실행합니다. Protein
 Hamiltonian만 300–450 K effective temperature에 맞춰 scaling하며 실제 bath
 temperature는 300 K입니다. Equilibration은 100 ps, production은 replica당
 1 ns이고 교환은 2 ps마다 시도합니다.
@@ -72,7 +72,9 @@ type을 `XC0`, `XC1`처럼 분리합니다. GROMACS 2024.3은
 `atomtype-residuetype` CMAP 문법을 지원하지 않으므로 `[ cmaptypes ]`에는
 `C N XC0 C N`처럼 atom type만 기록합니다. 고유한 central C-alpha type이
 residue별 grid를 구분합니다. `scale_cmap.py`는 PLUMED가 처리하지 않는 CMAP
-grid를 각 REST2 state에 맞게 보정합니다. `_` marker는 `[ atoms ]`의
+grid를 각 REST2 state에 맞게 보정합니다. 첫 `grompp` 전에는 ParmEd가 출력한
+긴 CMAP 실수도 GROMACS 2024.x가 읽을 수 있는 정밀도로 정규화합니다. `_`
+marker는 `[ atoms ]`의
 nonbonded type에만 붙이고 CMAP bonded type은 바꾸지 않습니다.
 
 `GROMACS`, `GROMACS_MPI`와 `MPI_LAUNCHER`로 executable을 지정합니다.
@@ -136,7 +138,7 @@ folding sampling을 돕기 위해 사용되어 온 method 특성입니다. 짧�
 
 ## English
 
-This example runs eight-state REST2 for ff19SB/TIP3P Chignolin. Only protein
+This example runs eight-state REST2 for ff19SB/OPC Chignolin. Only protein
 interactions are scaled over effective temperatures of 300–450 K; the physical
 bath remains at 300 K. Equilibration is 100 ps, production is one 1 ns segment,
 and exchanges are attempted every 2 ps.
@@ -164,7 +166,9 @@ marks protein atom types, and `scale_cmap.py` preserves and scales the
 residue-specific ff19SB CMAP grids. GROMACS 2024.3 does not support the newer
 `atomtype-residuetype` CMAP syntax, so headers use atom types such as
 `C N XC0 C N`; the unique central C-alpha type selects each residue-specific
-grid. The `_` marker is limited to nonbonded atom types in `[ atoms ]`; CMAP
+grid. Before the first `grompp`, the same helper also normalizes long
+ParmEd-formatted CMAP numbers to a precision accepted by GROMACS 2024.x. The
+`_` marker is limited to nonbonded atom types in `[ atoms ]`; CMAP
 lookup continues to use the original bonded types. `generate_states.py`
 converts the temperature input into a state table, and `build.sh` generates and
 verifies the corresponding scaled topologies.

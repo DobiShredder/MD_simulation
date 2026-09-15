@@ -4,7 +4,7 @@ Reference syntax: Amber 2026 and WESTPA 2.
 
 ## 한국어
 
-PDB 1UAO Chignolin을 explicit TIP3P water에서 전파하고 residue 2–9의 Cα RMSD를
+PDB 1UAO Chignolin을 explicit OPC water에서 전파하고 residue 2–9의 Cα RMSD를
 progress coordinate로 사용합니다. Conventional MD와 같은 unbiased AMBER
 dynamics를 실행하지만, WESTPA가 1 ps마다 walker를 RMSD bin에 배치하고
 split/merge하여 bin당 walker 수를 조정합니다. Split된 walker의 weight 합과
@@ -20,7 +20,7 @@ event 수나 target weight를 folding/unfolding rate로 해석하지 않습니�
 | --- | --- | --- |
 | `download.sh` | 직접 실행 | PDB 1UAO → `structure/1UAO.raw.pdb`, checksum |
 | `prepare.py` | 직접 실행 | NMR model 1 → `structure/chignolin.pdb` |
-| `build.sh` | 직접 실행 | Chignolin PDB → ff19SB/TIP3P topology, RMSD reference와 basis restart |
+| `build.sh` | 직접 실행 | Chignolin PDB → ff19SB/OPC topology, RMSD reference와 basis restart |
 | `env.sh` | 자동 호출 | WESTPA root, work directory, AMBER/cpptraj executable 설정 |
 | `init.sh` | 직접 실행 | Basis/target state → `work/west.h5` |
 | `run.sh` | 직접 실행 | WESTPA iterations → segment restart, log와 갱신된 `west.h5` |
@@ -38,7 +38,7 @@ python3 anal.py
 
 ### 주요 option
 
-`build.sh`는 ff19SB/TIP3P 12 Å box를 만들고 minimization, 100 ps heating과
+`build.sh`는 ff19SB/OPC 12 Å box를 만들고 minimization, 100 ps heating과
 100 ps NPT equilibration을 거쳐 `work/bstates/basis.rst7`을 생성합니다.
 각 preparation stage의 `*.out`과 restart가 모두 있으면 건너뛰고, 둘 중 일부만
 있으면 해당 stage를 다시 실행합니다. `west.h5`나 segment output이 있으면
@@ -75,14 +75,14 @@ WESTPA 설정은 `3_Templates/6_WE/6.1_WESTPA_AMBER`에서 구성합니다.
 
 ## English
 
-This example propagates PDB 1UAO Chignolin in explicit TIP3P water and uses the
+This example propagates PDB 1UAO Chignolin in explicit OPC water and uses the
 Cα RMSD of residues 2–9 as its progress coordinate. AMBER supplies the same
 unbiased dynamics used in conventional MD. Every 1 ps, WESTPA bins the walkers
 by RMSD and splits or merges them while conserving statistical weight and
 continuing from the parent restart.
 
 Run `download.sh`, `prepare.py`, `build.sh`, `init.sh`, `run.sh`, and `anal.py`
-in order. The build uses ff19SB, a 12 Å TIP3P box, minimization, 100 ps heating,
+in order. The build uses ff19SB, a 12 Å OPC box, minimization, 100 ps heating,
 and 100 ps NPT equilibration. RMSD is least-squares fitted to the minimized
 reference using the Cα atoms of residues 2–9. A preparation stage is skipped
 when both its output and restart exist; an incomplete pair is rerun. Existing

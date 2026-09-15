@@ -57,7 +57,7 @@ python3 anal.py
 ### 주요 option
 
 JZ4는 GAFF2/AM1-BCC net charge 0으로 parameterize합니다. Protein은 ff19SB,
-물은 TIP3P를 사용합니다. `generate_inputs.py`는 GLN102 `CG-CB-CA`와 JZ4
+물은 OPC를 사용합니다. `generate_inputs.py`는 GLN102 `CG-CB-CA`와 JZ4
 `C7-C8-C9`를 anchor로 선택하고 실제 topology atom 번호와 초기 restraint
 geometry를 `restraints.tsv`에 기록합니다. Torsion reference는 Amber와 같은
 ParmEd dihedral convention으로 계산합니다.
@@ -157,7 +157,7 @@ decoupled restrained ligand to the 1 M state, so the reverse traversal enters
 the cycle as `-ΔG°release`.
 
 Run the five public entry points in the order shown above. `build.sh` uses
-ff19SB, GAFF2/AM1-BCC, and TIP3P, writes original and zero-JZ4-charge topologies,
+ff19SB, GAFF2/AM1-BCC, and OPC, writes original and zero-JZ4-charge topologies,
 then creates 65 windows. Restraint and charge
 stages use eleven lambda states; the soft-core LJ stages use sixteen states with
 additional endpoint spacing. Each window contains 200 ps heating, 100 ps

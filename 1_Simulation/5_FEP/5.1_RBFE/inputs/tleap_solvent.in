@@ -1,5 +1,5 @@
 source leaprc.gaff2
-source leaprc.water.tip3p
+source leaprc.water.opc
 
 loadamberparams bnz.frcmod
 loadamberparams mbn.frcmod
@@ -7,7 +7,7 @@ BNZ = loadmol2 bnz.mol2
 MBN = loadmol2 mbn.mol2
 
 system = combine { BNZ MBN }
-solvatebox system TIP3PBOX 20.0
+solvatebox system OPCBOX 20.0
 
 saveamberparm system solvent.parm7 solvent.rst7
 savepdb system solvent.pdb

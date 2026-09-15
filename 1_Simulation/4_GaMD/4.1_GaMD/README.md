@@ -2,7 +2,7 @@
 
 ## 한국어
 
-PDB 1UAO의 첫 NMR model을 ff19SB/TIP3P로 build하고 dual-boost GaMD를
+PDB 1UAO의 첫 NMR model을 ff19SB/OPC로 build하고 dual-boost GaMD를
 실행합니다. 계산은 minimization, 200 ps heating, 100 ps NPT equilibration,
 4 ns GaMD parameter preparation과 1 ns production 순서입니다.
 
@@ -17,7 +17,7 @@ reweighting 가능성을 판단할 수 있습니다.
 | --- | --- |
 | `download.sh` | 1UAO PDB/mmCIF를 받고 checksum을 기록합니다. |
 | `prepare.py` | 첫 NMR model의 138 atoms를 simulation PDB로 정리합니다. |
-| `build.sh` | ff19SB/TIP3P topology와 solvated restart를 만듭니다. |
+| `build.sh` | ff19SB/OPC topology와 solvated restart를 만듭니다. |
 | `run.sh` | Conventional stage, 4 ns parameter preparation과 production을 실행합니다. |
 | `anal.py` | 두 boost component와 total boost의 통계를 TSV로 저장합니다. |
 
@@ -59,13 +59,13 @@ production run은 `3_Templates/4_GaMD/4.1_GaMD`에서 구성합니다.
 
 ## English
 
-The first NMR model of PDB 1UAO is built with ff19SB/TIP3P. The workflow runs
+The first NMR model of PDB 1UAO is built with ff19SB/OPC. The workflow runs
 minimization, 200 ps heating, 100 ps NPT equilibration, 4 ns of GaMD parameter
 preparation, and one 1 ns dual-boost production run.
 
 Standard dual-boost GaMD accelerates both total and dihedral potentials. The
 two boost components and their sum must be inspected before reweighting.
-`download.sh`/`prepare.py` select 1UAO, `build.sh` creates the ff19SB/TIP3P
+`download.sh`/`prepare.py` select 1UAO, `build.sh` creates the ff19SB/OPC
 system, `run.sh` performs preparation and production, and `anal.py`
 writes component-wise diagnostics.
 

@@ -39,7 +39,7 @@ if [[ "$window_count" -ne 19 ]]; then
     die "states.tsv must contain 19 windows: $window_count"
 fi
 
-echo "Generating ff19SB/TIP3P systems for 19 REUS windows."
+echo "Generating ff19SB/OPC systems for 19 REUS windows."
 mkdir -p "$work_dir"
 cp "$input_pdb" "$work_dir/input.pdb"
 cp inputs/tleap.in "$work_dir/tleap.in"

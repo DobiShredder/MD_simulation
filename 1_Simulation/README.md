@@ -6,8 +6,9 @@
 [3_Templates](../3_Templates/README.md), 후처리와 시각화는
 [2_Analysis](../2_Analysis/README.md)에서 다룹니다. 실행 전 atom selection,
 force field, 온도·압력과 production length를 대상 system에 맞게 수정합니다.
-Protein system의 기본 조합은 ff19SB + TIP3P입니다. KcsA membrane
-tutorial만 Lipid21과 OPC를 사용합니다.
+Protein system의 기본 조합은 ff19SB + OPC입니다. KcsA membrane tutorial은
+같은 protein/water 조합에 Lipid21을 추가합니다. OPC의 massless EP를 포함한
+4-site water topology와 OPC용 ion parameter는 `leaprc.water.opc`가 불러옵니다.
 
 대부분의 topology 또는 window `build.sh`는 `work/`에서 기존 계산 output을
 찾으면 중단합니다. Runner는 minimization, heating과 equilibration의 main output과
@@ -35,8 +36,9 @@ restart가 모두 있으면 해당 stage를 건너뜁니다. 둘 중 일부만 �
 Fixed simulation examples and launch tutorials are kept here. Generalized
 configuration lives in [3_Templates](../3_Templates/README.md), and
 post-processing lives in [2_Analysis](../2_Analysis/README.md).
-Protein templates default to ff19SB with TIP3P. Only the KcsA membrane tutorial
-uses Lipid21 and OPC.
+Protein tutorials use ff19SB with OPC. The KcsA membrane tutorial adds Lipid21
+to the same protein/water combination. `leaprc.water.opc` loads the four-site
+OPC water topology, including its massless EP, and the matching ion parameters.
 
 Most topology or window `build.sh` scripts stop when `work/` contains simulation
 results. Runners skip minimization, heating, or equilibration when both its main

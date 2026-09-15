@@ -24,7 +24,8 @@ probability는 실제 HREX acceptance를 보장하지 않으므로 짧은 pilot 
 각 replica는 tutorial과 같이 minimization 뒤 300 K velocity를 생성하는 NPT
 equilibration을 실행합니다. 별도 heating stage는 두지 않습니다. Build는
 scale 1 topology와 원본 topology의 single-frame potential energy 차이가
-0.1 kJ/mol 이하인지도 검사합니다.
+0.1 kJ/mol 이하인지도 검사합니다. 첫 `grompp` 전에는 ParmEd가 출력한 긴
+CMAP 실수를 GROMACS 2024.x가 읽을 수 있는 정밀도로 정규화합니다.
 
 ## English
 
@@ -37,4 +38,6 @@ predictor receives the solute atom count and zero waters, then the build derives
 temperature. Production requires the patched PLUMED 2.10 HREX integration and
 the repository's `HREX_WORKLOAD_FIX_1` correction. Preproduction follows the
 tutorial's minimization-to-NPT-equilibration sequence, and the build checks
-scale-one energy identity with a 0.1 kJ/mol tolerance.
+scale-one energy identity with a 0.1 kJ/mol tolerance. Before the first
+`grompp`, it normalizes long ParmEd-formatted CMAP numbers to a precision
+accepted by GROMACS 2024.x.

@@ -85,7 +85,7 @@ if ! (
     die "parmchk2 failed: $work_dir/parmchk2.log"
 fi
 
-echo "Generating an ff19SB/GAFF2/TIP3P topology."
+echo "Generating an ff19SB/GAFF2/OPC topology."
 if ! (
     cd "$work_dir"
     "$tleap" -f tleap.in > leap.log 2>&1

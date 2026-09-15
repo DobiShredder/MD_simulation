@@ -7,7 +7,7 @@
 
 ## 한국어
 
-Chignolin을 ff19SB/TIP3P로 만들고 8-replica solvent-scaled REST3를
+Chignolin을 ff19SB/OPC로 만들고 8-replica solvent-scaled REST3를
 실행합니다. Effective temperature는 geometric ladder로 300–450 K를
 사용합니다. `build.sh`는 temperature 목록에서
 `λpp=T0/Tm`, `λpw=sqrt(T0/Tm)`을 계산하고 별도 κ 목록과 합쳐
@@ -50,7 +50,7 @@ field에 맞춰 정해야 하는 schedule입니다.
 | `generate_rest3.py` | 생성된 state table의 λ·κ와 외부 parser로 REST3 topology를 만듭니다. |
 | `rest3_parser_adapter.py` | Parser 0.2.2 loading, 출력 정리와 solvent parameter 정밀도 보정을 담당합니다. `generate_rest3.py`가 자동으로 사용합니다. |
 | `scale_cmap.py` | 외부 parser가 생략하는 ff19SB의 residue별 CMAP section을 복원하고 grid를 `lambda_pp`로 scaling합니다. |
-| `verify_rest3.py` | Base identity와 water–water/ion–water Lennard-Jones 보존을 검사합니다. |
+| `verify_rest3.py` | Base identity, OPC atom type·charge·mass와 water–water/ion–water Lennard-Jones 보존을 검사합니다. |
 | `validate_states.py` | State file의 각 row, λ 관계와 기준 κ를 검사합니다. |
 | `build.sh` | Conversion, topology generation, TPR build와 검사를 순서대로 호출합니다. |
 | `run.sh` | 300 K pre-production과 2 ps 간격 HREX를 실행합니다. |
@@ -87,10 +87,12 @@ PyPI의 0.2.2 wheel은 parser module을 포함하지 않습니다. `download.sh`
 별도 `pip install`이나 환경 변수 설정은 필요하지 않습니다.
 
 `generate_rest3.py`는 protein molecule index 0을 hot molecule로 지정하고
-TIP3P oxygen type `OW`에 κ scaling을 적용합니다. 고정 κ를 재현하기 위해
+OPC oxygen type `OW`에 κ scaling을 적용합니다. OPC의 massless extra point
+`EP`는 별도로 scaling하지 않습니다. 고정 κ를 재현하기 위해
 각 target state를 2-state `ssrest3` 변환으로 생성합니다. `build.sh`는
-replica 0 topology가 base topology와 byte 단위로 같은지 확인하고
-water–water 및 ion–water Lennard-Jones parameter가 보존되는지 검사합니다.
+replica 0 topology가 base topology와 byte 단위로 같은지 확인하고 OPC의
+O/H1/H2/EP atom type·charge·mass 및 water–water/ion–water Lennard-Jones
+parameter가 보존되는지 검사합니다.
 
 Parser 0.2.2는 solvent override의 σ와 ε를 소수점 4자리로 출력합니다.
 `rest3_parser_adapter.py`는 같은 mixing rule을 double precision으로 계산해 16자리로
@@ -109,7 +111,9 @@ atom type으로 분리합니다. GROMACS 2024.3의 `[ cmaptypes ]` header에는
 `C N XC0 C N`처럼 atom type만 기록하며, 고유한 central C-alpha type이 각
 residue의 grid를 구분합니다. `repex-topology-parser` 0.2.2는 CMAP section을
 생성하지 않으므로 `scale_cmap.py`가 원래 bonded type의 CMAP을 넣고 energy
-grid를 `lambda_pp`로 scaling합니다. REST3의 scaled nonbonded atom type은
+grid를 `lambda_pp`로 scaling합니다. 첫 `grompp` 전에는 ParmEd가 출력한 긴
+CMAP 실수도 GROMACS 2024.x가 읽을 수 있는 정밀도로 정규화합니다. REST3의
+scaled nonbonded atom type은
 CMAP lookup에 사용하지 않습니다. `verify_rest3.py`는 이 값도 base topology와
 비교합니다.
 
@@ -156,14 +160,14 @@ semicolon, vertical bar, space, tab 또는 newline으로 값을 구분할 수 �
 | `lambda_pp`, `lambda_pw` | Protein–protein과 protein–water scaling factor입니다. Geometric temperature ladder에서 계산합니다. |
 | `kappa` | Protein–water vdW의 `√λ` scaling에 곱하는 REST3 correction입니다. `κ=1`은 REST2이고, 이 예제에서는 높은 state에서 1.005–1.020을 사용합니다. |
 | `build.sh INPUT.pdb` | 첫 argument의 PDB와 bundled temperature/κ 목록으로 `work/states.tsv`를 생성합니다. |
-| `kappa_atom_names=['OW']` | TIP3P oxygen type만 κ scaling 대상으로 지정합니다. Water molecule 전체를 hot molecule로 지정하는 option이 아닙니다. |
+| `kappa_atom_names=['OW']` | OPC oxygen type만 κ scaling 대상으로 지정합니다. Water molecule 전체를 hot molecule로 지정하는 option이 아닙니다. |
 | `-replex 1000` | 2 fs timestep에서 2 ps마다 Hamiltonian 교환을 시도합니다. |
 | `--cpus`, `--gpus` | 할당받은 총 CPU thread와 GPU 수입니다. CPU 수는 replica 수로 나누어져야 하며 GPU 수는 1–replica 수 범위입니다. |
 
 ### 해석 범위
 
 이 κ schedule은 a99SB-disp를 사용한 IDP 계산에서 보정된 published
-schedule을 8개 state에 적용한 것입니다. ff19SB/TIP3P Chignolin에 검증된
+schedule을 8개 state에 적용한 것입니다. ff19SB/OPC Chignolin에 검증된
 parameter가 아닙니다. REST2의 높은 effective temperature에서 나타나는
 compaction은 mini-protein folding을 돕기 위해 의도적으로 사용된 특성이므로,
 이 예제는 Chignolin에서 REST3가 REST2보다 우수하다고 가정하지 않습니다.
@@ -176,10 +180,10 @@ residue의 Cα distance를 TSV로 저장합니다.
 
 ## English
 
-This example runs eight-state solvent-scaled REST3 for ff19SB/TIP3P Chignolin.
+This example runs eight-state solvent-scaled REST3 for ff19SB/OPC Chignolin.
 It uses a geometric 300–450 K effective-temperature ladder and the fixed kappa
-schedule shown above. Protein molecule 0 is hot, and TIP3P oxygen type `OW`
-is the solvent-scaling target.
+schedule shown above. Protein molecule 0 is hot, and OPC oxygen type `OW`
+is the solvent-scaling target. The massless `EP` site is not scaled separately.
 
 REST3 adds a kappa-dependent solute–solvent correction to REST2 scaling to
 adjust excessive high-effective-temperature compaction. At state `m`,
@@ -200,8 +204,9 @@ exchange bottleneck. `kappa=1` recovers REST2. Kappa is a system- and
 force-field-dependent schedule, not a solvent temperature or universal value.
 
 The build uses `repex-topology-parser==0.2.2`, verifies byte identity of the
-base topology, and checks that water–water and ion–water Lennard-Jones
-interactions are preserved. Equilibration is 100 ps; production is one 1 ns
+base topology, and checks that OPC water atom types, charges, and masses as well
+as water–water and ion–water Lennard-Jones interactions are preserved.
+Equilibration is 100 ps; production is one 1 ns
 segment with exchanges every 2 ps.
 
 The PyPI wheel inspected in August 2026 does not contain the parser module.
@@ -220,9 +225,11 @@ lists. `generate_rest3.py` applies that lambda/kappa schedule, and
 the residue-specific ff19SB CMAP section omitted by parser 0.2.2. GROMACS
 2024.3 headers use atom types such as `C N XC0 C N`; each unique central
 C-alpha type selects its residue-specific grid. CMAP bonded types remain
-unchanged while only their grids are scaled. `verify_rest3.py` checks base, CMAP, and
+unchanged while only their grids are scaled. Before the first `grompp`, the
+same helper normalizes long ParmEd-formatted CMAP numbers to a precision
+accepted by GROMACS 2024.x. `verify_rest3.py` checks base, CMAP, and
 solvent invariants, `run.sh` performs HREX with `-replex 1000`, and `anal.py`
-summarizes exchange and structure. `kappa_atom_names=['OW']` targets the TIP3P
+summarizes exchange and structure. `kappa_atom_names=['OW']` targets the OPC
 oxygen type. The physical thermostat remains at 300 K.
 
 Parser 0.2.2 writes solvent nonbonded overrides with only four decimal places.
@@ -248,7 +255,7 @@ different REST3 topologies. The GROMACS 2025 patch and built-in PLUMED
 interface do not provide this path.
 
 The published kappa schedule was calibrated for a99SB-disp IDPs, not validated
-for ff19SB/TIP3P Chignolin. REST2 compaction at high effective temperature was
+for ff19SB/OPC Chignolin. REST2 compaction at high effective temperature was
 designed to aid mini-protein folding, so this example does not claim that REST3
 is superior for Chignolin. Analysis outputs exchange, occupancy, Rg, and
 terminal-distance TSV files.

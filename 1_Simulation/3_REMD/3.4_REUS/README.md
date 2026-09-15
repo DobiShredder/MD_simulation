@@ -49,7 +49,7 @@ python3 prepare.py structure/1UAO.raw.pdb structure/chignolin.pdb
 python3 anal.py
 ```
 
-`make_restraints.py`는 ff19SB/TIP3P topology에서 `:1@CA`와
+`make_restraints.py`는 ff19SB/OPC topology에서 `:1@CA`와
 `:10@CA`의 atom index를 찾습니다. 각 window의 `distance.RST`에 실제
 index와 restraint center를 기록하므로 다른 system에 적용할 때 selection과
 window 범위를 먼저 바꿉니다.
@@ -106,7 +106,7 @@ between neighboring window distributions reduces both exchange acceptance and
 the connectivity of the reconstructed PMF.
 
 Run the build as `./build.sh structure/chignolin.pdb`. It resolves the two Cα
-atom indices from the ff19SB/TIP3P topology and writes one restraint per window.
+atom indices from the ff19SB/OPC topology and writes one restraint per window.
 The run uses `pmemd.cuda` for individual
 stages and `pmemd.cuda.MPI -rem 3` for exchange. Complete preparation stages
 are skipped; incomplete window sets are rerun. Production is not overwritten.

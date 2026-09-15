@@ -27,7 +27,7 @@ if find "$work_dir" -type f \
 fi
 
 # AMBER system build
-echo "Generating a Chignolin system with ff19SB/TIP3P."
+echo "Generating a Chignolin system with ff19SB/OPC."
 
 mkdir -p "$work_dir"
 cp "$input" "$work_dir/input.pdb"

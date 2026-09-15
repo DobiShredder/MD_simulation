@@ -7,7 +7,7 @@
 ## 한국어
 
 PDB 1UAO의 첫 NMR model로 10-residue chignolin system을 만듭니다.
-Force field는 ff19SB, water model은 TIP3P입니다.
+Force field는 ff19SB, water model은 OPC입니다.
 계산은 minimization, 200 ps heating, 100 ps NPT equilibration 및 1 ns production 순으로 진행됩니다.
 
 Conventional MD에서는 모든 원자가 같은 physical Hamiltonian과 bath temperature를 따릅니다.
@@ -21,7 +21,7 @@ AmberTools에는 `tleap`, `sander`, `antechamber`와 `cpptraj`이 포함됩니�
 
 | Program | 역할 |
 | --- | --- |
-| `tleap` | PDB를 읽고 residue template와 force-field parameter를 연결합니다. 이 예제에서는 ff19SB protein에 TIP3P water와 ion을 추가하고 `parm7`/`rst7`을 생성합니다. |
+| `tleap` | PDB를 읽고 residue template와 force-field parameter를 연결합니다. 이 예제에서는 ff19SB protein에 OPC water와 ion을 추가하고 `parm7`/`rst7`을 생성합니다. |
 | `sander` | AmberTools에 포함된 기본 minimization/MD engine입니다. 다양한 기능을 지원하며 CPU에서 짧은 test를 실행할 때 사용할 수 있습니다. |
 | `pmemd`, `pmemd.cuda` | `sander`와 거의 같은 input을 사용하는 성능 최적화 MD engine입니다. `pmemd.cuda`는 GPU를 사용하며 이 예제의 기본 production engine입니다. |
 | `antechamber` | Small organic molecule의 GAFF/GAFF2 atom type과 partial charge를 준비합니다. Protein-only Chignolin에는 사용하지 않습니다. Protein–ligand workflow에서는 `parmchk2`로 누락 parameter를 확인한 뒤 ligand file을 `tleap`에 전달합니다. |
@@ -50,7 +50,7 @@ AmberTools에는 `tleap`, `sander`, `antechamber`와 `cpptraj`이 포함됩니�
 | --- | --- | --- |
 | `download.sh` | 1UAO PDB와 mmCIF download 및 checksum 기록 | `structure/1UAO.raw.pdb`, `1UAO.cif`, `SHA256SUMS` |
 | `prepare.py` | 첫 NMR model과 허용된 alternate location 선택 | raw PDB → `structure/chignolin.pdb` |
-| `build.sh` | ff19SB/TIP3P solvation, neutralization과 topology build | prepared PDB → `work/system.parm7`, `system.rst7`, `system.pdb` |
+| `build.sh` | ff19SB/OPC solvation, neutralization과 topology build | prepared PDB → `work/system.parm7`, `system.rst7`, `system.pdb` |
 | `run.sh` | minimization부터 production까지의 계산 실행 | topology/restart → `work/*.out`, `*.rst7`, `*.nc` |
 
 ~~~bash
@@ -85,7 +85,7 @@ Heating에서 새 velocity를 만들고 이후 단계는 restart의 좌표와 ve
 
 ## English
 
-The first NMR model of PDB 1UAO is built with ff19SB and TIP3P. The workflow runs
+The first NMR model of PDB 1UAO is built with ff19SB and OPC. The workflow runs
 minimization, 200 ps heating, 100 ps NPT equilibration, and 1 ns production.
 
 Conventional MD propagates one physical Hamiltonian at one bath temperature.
@@ -100,7 +100,7 @@ with a separate Amber installation.
 
 | Program | Role |
 | --- | --- |
-| `tleap` | Reads the PDB, assigns residue templates and force-field parameters, adds TIP3P water and ions, and writes `parm7`/`rst7`. |
+| `tleap` | Reads the PDB, assigns residue templates and force-field parameters, adds OPC water and ions, and writes `parm7`/`rst7`. |
 | `sander` | The general minimization and MD engine included with AmberTools. It can be used for short CPU tests when the selected input features are supported. |
 | `pmemd`, `pmemd.cuda` | Performance-optimized engines that use nearly the same inputs as `sander`. The GPU-enabled `pmemd.cuda` is the default production engine here. |
 | `antechamber` | Prepares GAFF/GAFF2 atom types and partial charges for small organic molecules. It is not used for protein-only Chignolin. Protein–ligand workflows check missing parameters with `parmchk2` before passing the ligand files to `tleap`. |
@@ -130,7 +130,7 @@ together with `production.nc`.
 | --- | --- |
 | `download.sh` | Downloads the 1UAO PDB/mmCIF files and records checksums. |
 | `prepare.py` | Selects the first NMR model and supported alternate locations. |
-| `build.sh` | Builds the solvated ff19SB/TIP3P topology and restart. |
+| `build.sh` | Builds the solvated ff19SB/OPC topology and restart. |
 | `run.sh` | Runs minimization, heating, equilibration, and production. |
 
 Key controls are `nstlim`/`dt` for stage length, `ntt=3` and `gamma_ln=1.0`

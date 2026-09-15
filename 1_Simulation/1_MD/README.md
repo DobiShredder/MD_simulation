@@ -26,7 +26,7 @@ bond, angle, dihedral, electrostatic과 Lennard-Jones 항으로 나눠 표시합
 각 `download.sh`가 RCSB 구조와 checksum을 저장합니다.
 Protonation, missing atom, 결정학적 첨가물과 force field는 build 전에 확인합니다.
 기본 engine은 `pmemd.cuda`입니다.
-Chignolin과 T4 lysozyme–JZ4는 TIP3P, KcsA는 OPC를 사용합니다.
+세 system 모두 OPC를 사용하며, KcsA에는 Lipid21을 추가합니다.
 Download와 전처리 구조는 `structure/`, AMBER control file은 `inputs/`,
 생성된 topology·restart·trajectory는 `work/`에 둡니다.
 
@@ -59,7 +59,7 @@ topology.
 
 Each `download.sh` records the RCSB source and checksum. Check protonation,
 missing atoms, crystallographic additives, and force-field choices before the
-build. Chignolin and T4 lysozyme–JZ4 use TIP3P; KcsA uses OPC. The default
+build. All three systems use OPC, and KcsA additionally uses Lipid21. The default
 engine is `pmemd.cuda`. Source and prepared structures use `structure/`, AMBER
 control files use `inputs/`, and generated files use `work/`.
 Minimization, heating, and equilibration are skipped when both their main output

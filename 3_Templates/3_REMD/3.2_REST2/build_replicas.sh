@@ -156,6 +156,8 @@ if [[ "$method" == rest2 || "$method" == rest3 ]]; then
     "$python" convert_topology.py "$work_dir/system.parm7" "$work_dir/system.rst7" \
         "$work_dir/topol.top" "$work_dir/system.gro"
     helper_dir="."
+    # ParmEd can emit CMAP numbers longer than GROMACS 2024.x can safely parse.
+    "$python" "$helper_dir/scale_cmap.py" "$work_dir/topol.top" "$work_dir/topol.top" 1.0
     if ! "$gmx" grompp -f "$helper_dir/inputs/energy_check.mdp" \
         -p "$work_dir/topol.top" -c "$work_dir/system.gro" \
         -pp "$work_dir/processed.top" -o "$work_dir/preprocess.tpr" \

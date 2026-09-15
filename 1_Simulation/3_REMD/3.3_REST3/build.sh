@@ -44,7 +44,7 @@ if ! "$python_bin" -c "import parmed" >/dev/null 2>&1; then
     die "ParmEd is required: $python_bin -m pip install -r requirements.txt"
 fi
 
-echo "Generating an ff19SB/TIP3P AMBER system."
+echo "Generating an ff19SB/OPC AMBER system."
 mkdir -p "$work_dir"
 cp "$input_pdb" "$work_dir/input.pdb"
 cp inputs/tleap.in "$work_dir/tleap.in"
@@ -74,6 +74,14 @@ if ! "$python_bin" "convert_topology.py" \
     "$work_dir/topol.top" \
     "$work_dir/system.gro"; then
     die "ParmEd topology conversion failed."
+fi
+
+# ParmEd can emit CMAP numbers longer than GROMACS 2024.x can safely parse.
+if ! "$python_bin" "scale_cmap.py" \
+    "$work_dir/topol.top" \
+    "$work_dir/topol.top" \
+    1.0; then
+    die "CMAP serialization normalization failed."
 fi
 
 if ! "$gmx" grompp \

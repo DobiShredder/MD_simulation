@@ -24,7 +24,7 @@ python3 anal.py
 
 | File | 역할 |
 |---|---|
-| `build.sh` | Argument로 받은 capped alanine PDB의 ff19SB/TIP3P topology를 만들고 CV atom을 확인합니다. |
+| `build.sh` | Argument로 받은 capped alanine PDB의 ff19SB/OPC topology를 만들고 CV atom을 확인합니다. |
 | `check_topology.py` | `build.sh`가 자동 호출하며 CV atom 번호와 이름을 검사합니다. |
 | `run.sh` | preparation stage와 1 ns OPES_METAD production을 실행합니다. |
 | `anal.py` | φ/ψ, bias, effective sample size와 kernel 수를 production 전체에서 요약합니다. |

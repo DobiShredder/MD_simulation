@@ -2,7 +2,7 @@
 
 ## 한국어
 
-Chignolin(PDB 1UAO)을 ff19SB/TIP3P로 만들고 20-replica T-REMD를 실행합니다.
+Chignolin(PDB 1UAO)을 ff19SB/OPC로 만들고 18-replica T-REMD를 실행합니다.
 Temperature는 300–373 K이며 replica당 production은 1 ns입니다.
 
 T-REMD는 모든 replica에 같은 Hamiltonian을 사용하고 bath temperature만
@@ -16,7 +16,7 @@ temperature ladder를 왕복하는지와 300 K ensemble을 분리해 확인해�
 | --- | --- |
 | `download.sh` | 1UAO PDB/mmCIF를 받고 checksum을 기록합니다. |
 | `prepare.py` | 1UAO의 첫 NMR model을 simulation PDB로 정리합니다. |
-| `build.sh` | ff19SB/TIP3P topology를 만들고 bundled state file의 temperature·seed로 replica input을 생성합니다. |
+| `build.sh` | ff19SB/OPC topology를 만들고 bundled state file의 temperature·seed로 replica input을 생성합니다. |
 | `run.sh` | Replica별 heating/equilibration과 `pmemd.cuda.MPI` exchange calculation을 실행합니다. |
 | `anal.py` | `remlog`에서 acceptance, state 방문, round trip과 temperature occupancy를 계산합니다. |
 
@@ -34,7 +34,7 @@ python3 anal.py
 ```
 
 `AMBER_ENGINE`, `AMBER_MPI_ENGINE`과 `MPI_LAUNCHER`로 executable을
-바꿀 수 있습니다. MPI process 수는 bundled state 수와 같은 20으로 고정됩니다.
+바꿀 수 있습니다. MPI process 수는 bundled state 수와 같은 18로 고정됩니다.
 
 새 system에서는
 [remd-temperature-generator](https://virtualchemistry.org/remd-temperature-generator/)에
@@ -44,9 +44,11 @@ python3 anal.py
 동일한 acceptance를 보장하지 않습니다. 짧은 pilot run의 adjacent acceptance와
 round trip을 보고 replica 수와 temperature 간격을 다시 조정합니다.
 
-기본 `inputs/states.tsv`는 Chignolin의 atom과 water 수로 미리 계산한
-20-replica file입니다. 다른 system과 temperature ladder는
-`3_Templates/3_REMD/3.1_REMD`에서 설정합니다.
+기본 `inputs/states.tsv`는 OPC Chignolin의 140개 solute/ion atom과 1,755개
+water molecule을 사용해 목표 인접 교환확률 0.20으로 계산한 18-replica
+file입니다. 마지막 373 K state는 상한을 정확히 포함하므로 바로 아래 state와의
+예측 acceptance가 목표값보다 높습니다. 다른 system과 temperature ladder는
+`3_Templates/3_REMD/3.1_T-REMD`에서 설정합니다.
 
 ```text
 replica<TAB>temperature_K<TAB>seed
@@ -87,7 +89,7 @@ Preparation stage의 output과 restart가 모든 replica에 있으면 건너뜁�
 
 ## English
 
-This example builds ff19SB/TIP3P Chignolin and runs 20-replica T-REMD from
+This example builds ff19SB/OPC Chignolin and runs 18-replica T-REMD from
 300 to 373 K. Heating is 200 ps, NPT equilibration is 100 ps, and production is
 1 ns per replica. Exchanges are attempted every 1 ps.
 
@@ -99,7 +101,7 @@ and occupancy.
 
 `temp0` and `ig` are replica-specific. In AMBER REMD, `nstlim=500` is the step
 count between attempts and `numexchg=1000` gives a 1 ns run. The runner launches
-one MPI process for each of the 20 bundled states.
+one MPI process for each of the 18 bundled states.
 
 Run `download.sh`, `prepare.py`, `build.sh`, `run.sh`, and `anal.py`
 in that order. A preparation stage is skipped when every replica has its output
@@ -113,8 +115,11 @@ temperature range, and target exchange probability. Its model was calibrated
 with OPLS/AA and GROMACS, so verify adjacent acceptance and round trips in a
 short ff19SB/AMBER pilot before fixing the ladder.
 
-The bundled `inputs/states.tsv` is precomputed from the Chignolin atom and
-water counts. Use `3_Templates/3_REMD/3.1_REMD` for another system or
+The bundled `inputs/states.tsv` is precomputed for OPC Chignolin from 140
+solute/ion atoms and 1,755 water molecules at a target neighboring exchange
+probability of 0.20. The final state is clipped to the exact 373 K upper bound,
+so its predicted acceptance with the preceding state is higher than the target.
+Use `3_Templates/3_REMD/3.1_T-REMD` for another system or
 temperature ladder. Replica IDs are unique three-digit values starting at
 `000`, and temperatures increase by row. The build copies the bundled file to
 `work/states.tsv`.
