@@ -5,6 +5,23 @@
 이 directory만 별도로 복사해 사용할 수 있습니다. Python dependency는 복사한
 directory의 `requirements.txt`를 사용해 설치합니다.
 
+### Config 선택값
+
+| Option | 허용값 | 기본값 | 적용 방식 |
+| --- | --- | --- | --- |
+| `protein_force_field` | `ff19SB`만 지원 | `ff19SB` | Protein parameter를 선택합니다. |
+| `ligand_force_field` | `GAFF2`만 지원 | `GAFF2` | Ligand parameter 형식을 결정합니다. |
+| `charge_method` | precharged `RESP` MOL2만 지원 | `RESP` | `ligand_mol2`의 RESP charge를 그대로 사용합니다. |
+| `water_model` | `OPC`, `TIP3P` | `OPC` | LEaP water와 일치하는 ion parameter를 선택합니다. |
+| `box_shape` | `rectangular`만 지원 | `rectangular` | Funnel geometry에 필요한 rectangular box를 만듭니다. |
+| `salt_type` | `NaCl`, `KCl`, `MgCl2`, `CaCl2` | `NaCl` | Neutralization 뒤 추가할 bulk salt를 선택합니다. |
+| `equilibration_ensemble` | `NPT`만 지원 | `NPT` | Conventional equilibration에 적용합니다. |
+| `production_ensemble` | `NVT`, `NPT` | `NPT` | Funnel-MetaD production의 `ntb`와 `ntp`를 설정합니다. |
+| `constraint_mode` | `h-bonds`만 지원 | `h-bonds` | Hydrogen-containing bond에 SHAKE를 적용합니다. |
+| `random_seed` | `"random"` 또는 양의 정수 | `"random"` | `"random"`은 AMBER `ig=-1`, 정수는 고정 seed를 사용합니다. |
+
+Funnel-MetaD 방식은 이 directory에서 고정되며 별도 config mode가 아닙니다.
+
 Ligand COM의 funnel-axis projection `fps.lp`에 WT-MetaD bias를 쌓고 transverse
 distance `fps.ld`를 funnel restraint로 제한합니다. Bulk solvent 전체를 bias하지
 않으면서 binding/unbinding 방향을 sampling하는 구성입니다.
@@ -42,6 +59,24 @@ reconstruction 없이 projection, transverse distance와 bias 범위만 기록�
 
 This directory can be copied and used on its own. Install its Python
 dependencies from the local `requirements.txt` after copying it.
+
+### Config choices
+
+| Option | Allowed values | Default | Effect |
+| --- | --- | --- | --- |
+| `protein_force_field` | `ff19SB` only | `ff19SB` | Selects the protein parameters. |
+| `ligand_force_field` | `GAFF2` only | `GAFF2` | Sets the ligand parameter format. |
+| `charge_method` | Precharged `RESP` MOL2 only | `RESP` | Uses RESP charges already present in `ligand_mol2`. |
+| `water_model` | `OPC`, `TIP3P` | `OPC` | Selects matching LEaP water and ion parameters. |
+| `box_shape` | `rectangular` only | `rectangular` | Builds the rectangular box required by the funnel geometry. |
+| `salt_type` | `NaCl`, `KCl`, `MgCl2`, `CaCl2` | `NaCl` | Selects bulk salt added after neutralization. |
+| `equilibration_ensemble` | `NPT` only | `NPT` | Applies to conventional equilibration. |
+| `production_ensemble` | `NVT`, `NPT` | `NPT` | Sets Funnel-MetaD production `ntb` and `ntp`. |
+| `constraint_mode` | `h-bonds` only | `h-bonds` | Applies SHAKE to bonds involving hydrogen. |
+| `random_seed` | `"random"` or a positive integer | `"random"` | `"random"` maps to AMBER `ig=-1`; an integer fixes the seed. |
+
+The Funnel-MetaD method is fixed by this directory and is not a separate config
+mode.
 
 Funnel-MetaD biases the ligand-COM projection `fps.lp` and confines transverse
 motion `fps.ld` with a funnel restraint. Supply a precharged GAFF2 MOL2/frcmod

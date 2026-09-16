@@ -2,6 +2,9 @@
 
 ## 한국어
 
+Window center는 `windows_file`의 explicit list를 항상 사용합니다. `auto`/`file`
+mode를 선택하는 option은 아닙니다.
+
 Reaction coordinate의 각 window를 독립적으로 sampling합니다. PLUMED
 ABMD ratchet MD로 target-directed trajectory를 만들고 window center를 처음
 통과하는 frame을 seed로 선택한 뒤, 같은 topology와 서로 다른
@@ -16,6 +19,9 @@ interface입니다.
 나눌 수 있습니다.
 
 ## English
+
+Window centers always come from the explicit list in `windows_file`; there is
+no `auto`/`file` mode switch.
 
 Each window independently samples one region of a reaction coordinate. PLUMED
 ABMD ratchet MD generates the directed pathway, and ordered first-crossing

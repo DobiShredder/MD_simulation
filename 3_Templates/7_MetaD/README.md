@@ -2,6 +2,9 @@
 
 ## 한국어
 
+WT-MetaD, Funnel-MetaD, OPES_METAD와 OPES_EXPANDED의 선택은 leaf directory로
+고정되며 별도 config mode가 아닙니다.
+
 네 template는 AMBER가 coordinate를 적분하고 PLUMED가 bias를 계산하는 같은
 workflow를 사용합니다. WT-MetaD와 Funnel-MetaD는 방문한 CV 위치에 hill을 직접
 누적합니다. OPES는 방문 sample로 분포를 추정한 뒤 target distribution에 필요한
@@ -33,6 +36,9 @@ PLUMED input을 연결합니다.
 state에서 시작합니다.
 
 ## English
+
+WT-MetaD, Funnel-MetaD, OPES_METAD, and OPES_EXPANDED are selected by leaf
+directory and are not separate config modes.
 
 AMBER propagates coordinates and PLUMED evaluates the bias in all four
 templates. WT-MetaD and Funnel-MetaD directly deposit hills at visited CV

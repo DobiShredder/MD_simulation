@@ -27,7 +27,56 @@ scale 1 topology와 원본 topology의 single-frame potential energy 차이가
 0.1 kJ/mol 이하인지도 검사합니다. 첫 `grompp` 전에는 ParmEd가 출력한 긴
 CMAP 실수를 GROMACS 2024.x가 읽을 수 있는 정밀도로 정규화합니다.
 
+### Config 선택값
+
+| Option | 허용값 | 기본값 | 적용 방식 |
+| --- | --- | --- | --- |
+| `protein_force_field` | `ff19SB`만 지원 | `ff19SB` | Protein parameter를 선택합니다. |
+| `water_model` | `OPC`, `TIP3P` | `OPC` | LEaP water와 일치하는 ion parameter를 선택합니다. |
+| `box_shape` | `rectangular`, `octahedral` | `rectangular` | 각각 `solvatebox`, `solvateoct`를 사용합니다. |
+| `salt_type` | `NaCl`, `KCl`, `MgCl2`, `CaCl2` | `NaCl` | Neutralization 뒤 추가할 bulk salt를 선택합니다. |
+| `tempered_region` | `solute`만 지원 | `solute` | Water와 ion을 제외한 전체 solute를 tempering합니다. |
+| `equilibration_ensemble` | `NPT`만 지원 | `NPT` | Replica equilibration에 적용합니다. |
+| `production_ensemble` | `NVT`, `NPT` | `NPT` | GROMACS production pressure coupling을 설정합니다. |
+| `constraint_mode` | `h-bonds`만 지원 | `h-bonds` | Hydrogen-containing bond에 LINCS를 적용합니다. |
+| `random_seed` | `"random"` 또는 양의 정수 | `"random"` | State별 seed를 무작위로 만들거나 정수에서 파생합니다. |
+
+| `temperature_mode` | 사용하는 설정 | 무시하는 설정 | 생성 결과 |
+| --- | --- | --- | --- |
+| `auto` (기본값) | `minimum_temperature`, `maximum_temperature`, `target_exchange_probability`, `generator_tolerance` | `temperature_file` | Tempered solute atom 수와 water 0으로 ladder를 계산합니다. |
+| `file` | `temperature_file` | Auto ladder 설정 | File temperature에서 `lambda_pp=T0/T`, `lambda_pw=sqrt(lambda_pp)`를 계산합니다. |
+
+Temperature file은 사용자가 생성해야 합니다. 구분자는 공백, comma, semicolon,
+`|`이며 `#` 뒤는 comment입니다. 값은 양수이고 중복 없이 오름차순이어야 하며,
+둘 이상이어야 하고 첫 값은 `run.temperature`와 같아야 합니다. 적용된 temperature,
+λ와 seed는 `work/states.tsv`에 기록됩니다.
+
 ## English
+
+### Config choices
+
+| Option | Allowed values | Default | Effect |
+| --- | --- | --- | --- |
+| `protein_force_field` | `ff19SB` only | `ff19SB` | Selects the protein parameters. |
+| `water_model` | `OPC`, `TIP3P` | `OPC` | Selects matching LEaP water and ion parameters. |
+| `box_shape` | `rectangular`, `octahedral` | `rectangular` | Uses `solvatebox` or `solvateoct`, respectively. |
+| `salt_type` | `NaCl`, `KCl`, `MgCl2`, `CaCl2` | `NaCl` | Selects bulk salt added after neutralization. |
+| `tempered_region` | `solute` only | `solute` | Tempers the complete non-water, non-ion solute. |
+| `equilibration_ensemble` | `NPT` only | `NPT` | Applies to replica equilibration. |
+| `production_ensemble` | `NVT`, `NPT` | `NPT` | Selects GROMACS production pressure coupling. |
+| `constraint_mode` | `h-bonds` only | `h-bonds` | Applies LINCS to bonds involving hydrogen. |
+| `random_seed` | `"random"` or a positive integer | `"random"` | Creates random state seeds or derives them from the integer. |
+
+| `temperature_mode` | Settings used | Settings ignored | Result |
+| --- | --- | --- | --- |
+| `auto` (default) | `minimum_temperature`, `maximum_temperature`, `target_exchange_probability`, `generator_tolerance` | `temperature_file` | Predicts the ladder from tempered-solute atoms and zero waters. |
+| `file` | `temperature_file` | Auto-ladder settings | Computes `lambda_pp=T0/T` and `lambda_pw=sqrt(lambda_pp)` from the file temperatures. |
+
+The user must create the temperature file. It accepts whitespace, commas,
+semicolons, and `|` as separators; text after `#` is a comment. It must contain
+at least two unique, increasing positive values, and its first value must equal
+`run.temperature`. Applied temperatures, λ values, and seeds are written to
+`work/states.tsv`.
 
 This directory can be copied and used on its own. Install its Python
 dependencies from the local `requirements.txt` after copying it.

@@ -30,7 +30,45 @@ double-decoupling system과 65개 window를 만들고, `run.sh`는 stage를 실�
 `anal.py`는 FE-ToolKit의 `edgembar-amber2dats.py`와 `edgembar`를 사용해
 restraint correction과 각 alchemical contribution을 합산합니다.
 
+### Config 선택값
+
+| Option | 현재 지원값 | 기본값 | 적용 방식 |
+| --- | --- | --- | --- |
+| `protein_force_field` | `ff19SB`만 지원 | `ff19SB` | Protein parameter를 선택합니다. |
+| `ligand_force_field` | `GAFF2`만 지원 | `GAFF2` | Ligand parameter 형식을 결정합니다. |
+| `charge_method` | precharged `RESP` MOL2만 지원 | `RESP` | MOL2의 RESP charge를 그대로 사용합니다. |
+| `water_model` | `OPC`, `TIP3P` | `OPC` | Complex와 solvent leg의 water model을 선택합니다. |
+| `box_shape` | `rectangular`만 실제 적용 | `rectangular` | FEP builder는 두 leg에 `solvatebox`를 사용합니다. |
+| `salt_type` | `NaCl`만 실제 적용 | `NaCl` | FEP builder는 `Na+`와 `Cl-`를 기록합니다. |
+| `equilibration_ensemble` | `NVT`, `NPT` | `NPT` | Generated equilibration input의 `ntb`와 `ntp`를 설정합니다. |
+| `production_ensemble` | `NVT`, `NPT` | `NPT` | Generated production input의 `ntb`와 `ntp`를 설정합니다. |
+| `random_seed` | 현재 config override 미적용 | `"random"` | Window seed는 global state index에서 결정됩니다. |
+
+`restraint_lambdas`, `charge_lambdas`, `vdw_lambdas`는 0.0과 1.0을 포함하는
+중복 없는 오름차순 list를 직접 지정합니다. Auto/file mode는 없으며 각 값이
+해당 leg의 한 window가 되어 `work/states.tsv`에 기록됩니다.
+`production_segments`는 현재 `1`만 지원합니다.
+
 ## English
+
+### Config choices
+
+| Option | Current support | Default | Effect |
+| --- | --- | --- | --- |
+| `protein_force_field` | `ff19SB` only | `ff19SB` | Selects the protein parameters. |
+| `ligand_force_field` | `GAFF2` only | `GAFF2` | Selects the ligand parameter format. |
+| `charge_method` | Precharged `RESP` MOL2 only | `RESP` | Uses the RESP charges already present in the MOL2 file. |
+| `water_model` | `OPC`, `TIP3P` | `OPC` | Selects the water model for complex and solvent legs. |
+| `box_shape` | Only `rectangular` is applied | `rectangular` | The FEP builder uses `solvatebox` for both legs. |
+| `salt_type` | Only `NaCl` is applied | `NaCl` | The FEP builder writes `Na+` and `Cl-`. |
+| `equilibration_ensemble` | `NVT`, `NPT` | `NPT` | Sets `ntb` and `ntp` in generated equilibration input. |
+| `production_ensemble` | `NVT`, `NPT` | `NPT` | Sets `ntb` and `ntp` in generated production input. |
+| `random_seed` | Config override is not currently applied | `"random"` | Window seeds are derived from the global state index. |
+
+`restraint_lambdas`, `charge_lambdas`, and `vdw_lambdas` are explicit, unique,
+increasing lists spanning 0.0 to 1.0. They have no auto/file mode. Each value
+creates one window in the corresponding leg and is recorded in
+`work/states.tsv`. `production_segments` currently supports only `1`.
 
 This directory can be copied and used on its own. Install its Python
 dependencies from the local `requirements.txt` after copying it.

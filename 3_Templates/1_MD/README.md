@@ -2,6 +2,9 @@
 
 ## 한국어
 
+System 종류는 leaf directory로 선택하며 별도 config mode가 아닙니다. 각
+directory의 README에서 해당 system에 실제로 허용되는 config 선택값을 확인합니다.
+
 Soluble protein, protein–ligand와 membrane protein은 preparation 과정이 달라
 별도 template로 구성합니다.
 
@@ -17,6 +20,9 @@ segment의 completion marker와 restart file이 있어야 합니다. 공통 buil
 설정은 [template 안내](../README.md)에 정리되어 있습니다.
 
 ## English
+
+The system type is selected by the leaf directory, not by a config mode. Each
+leaf README lists the config choices actually supported for that system.
 
 Soluble-protein, protein–ligand, and membrane-protein systems use different
 preparation workflows and are kept as separate templates. The ligand template

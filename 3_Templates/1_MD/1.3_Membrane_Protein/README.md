@@ -38,7 +38,37 @@ coupling을 사용하며 10×10 ns segments입니다. `protein_restraint_mask`�
 protein와 retained pore ion/water 선택에 맞게 검토해야 합니다.
 `build_membrane.py`는 `build.sh`가 자동 호출하는 bilayer 배치 helper입니다.
 
+### Config 선택값
+
+| Option | 허용값 | 기본값 | 적용 방식 |
+| --- | --- | --- | --- |
+| `protein_force_field` | `ff19SB`만 지원 | `ff19SB` | Protein parameter를 선택합니다. |
+| `lipid_force_field` | `Lipid21`만 지원 | `Lipid21` | Bilayer lipid parameter를 선택합니다. |
+| `water_model` | `OPC`만 지원 | `OPC` | Lipid21 system의 water와 ion parameter를 선택합니다. |
+| `box_shape` | `rectangular`만 지원 | `rectangular` | Membrane builder가 rectangular periodic box를 만듭니다. |
+| `salt_type` | `NaCl`, `KCl`, `MgCl2`, `CaCl2` | `KCl` | Neutralization 뒤 추가할 bulk salt를 선택합니다. |
+| `equilibration_ensemble` | `NPT`만 지원 | `NPT` | Membrane equilibration에 pressure coupling을 사용합니다. |
+| `production_ensemble` | `NVT`, `NPT` | `NPT` | Production의 `ntb`와 `ntp`를 설정합니다. |
+| `pressure_coupling` | `anisotropic`만 지원 | `anisotropic` | Membrane box 축의 pressure scaling을 분리합니다. |
+| `constraint_mode` | `h-bonds`만 지원 | `h-bonds` | Hydrogen-containing bond에 SHAKE를 적용합니다. |
+| `random_seed` | `"random"` 또는 양의 정수 | `"random"` | `"random"`은 AMBER `ig=-1`, 정수는 고정 seed를 사용합니다. |
+
 ## English
+
+### Config choices
+
+| Option | Allowed values | Default | Effect |
+| --- | --- | --- | --- |
+| `protein_force_field` | `ff19SB` only | `ff19SB` | Selects the protein parameters. |
+| `lipid_force_field` | `Lipid21` only | `Lipid21` | Selects the bilayer lipid parameters. |
+| `water_model` | `OPC` only | `OPC` | Selects water and ion parameters for the Lipid21 system. |
+| `box_shape` | `rectangular` only | `rectangular` | The membrane builder creates a rectangular periodic box. |
+| `salt_type` | `NaCl`, `KCl`, `MgCl2`, `CaCl2` | `KCl` | Selects bulk salt added after neutralization. |
+| `equilibration_ensemble` | `NPT` only | `NPT` | Uses pressure coupling during membrane equilibration. |
+| `production_ensemble` | `NVT`, `NPT` | `NPT` | Sets production `ntb` and `ntp`. |
+| `pressure_coupling` | `anisotropic` only | `anisotropic` | Separates pressure scaling along the membrane box axes. |
+| `constraint_mode` | `h-bonds` only | `h-bonds` | Applies SHAKE to bonds involving hydrogen. |
+| `random_seed` | `"random"` or a positive integer | `"random"` | `"random"` maps to AMBER `ig=-1`; an integer fixes the seed. |
 
 This directory can be copied and used on its own. Install its Python
 dependencies from the local `requirements.txt` after copying it.

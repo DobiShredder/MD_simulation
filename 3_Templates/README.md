@@ -28,12 +28,19 @@ alternate location, biological assembly, ligand, bound ion과 crystal water는 �
 포함됩니다. Replica/window method는 `work/states.tsv`도 생성합니다. 모든
 user-facing script는 `-h`와 `--help`로 argument와 option 설명을 출력합니다.
 
+각 leaf README의 `Config 선택값` table은 값에 따라 동작이 달라지는 option과
+현재 지원되는 고정값을 설명합니다. `auto`, `file`처럼 다른 parameter를
+활성화하는 mode는 사용되는 설정과 무시되는 설정을 함께 표시합니다. 숫자
+parameter의 의미와 unit은 결과에 직접 영향을 주는 항목만 method 설명 가까이에
+둡니다. Leaf directory만 복사해도 config의 허용값을 확인할 수 있도록 leaf
+README를 기준 문서로 사용합니다.
+
 공통 build 설정은 다음과 같습니다.
 
 | Config key | 적용 방식 |
 | --- | --- |
-| `box_shape` | Soluble system에서 `rectangular`은 `solvatebox`, `octahedral`은 `solvateoct`를 사용합니다. Membrane protein과 Funnel-MetaD는 `rectangular`만 허용합니다. |
-| `salt_type` | `NaCl`, `KCl`, `MgCl2`, `CaCl2` 중 하나를 선택합니다. System을 먼저 neutralize하고 설정된 salt를 추가합니다. |
+| `box_shape` | 지원되는 template에서 `rectangular`은 `solvatebox`, `octahedral`은 `solvateoct`를 사용합니다. 허용값이나 고정 여부는 leaf README를 따릅니다. |
+| `salt_type` | 지원되는 template은 system을 먼저 neutralize한 뒤 설정된 bulk salt를 추가합니다. 허용값이나 고정 여부는 leaf README를 따릅니다. |
 | `salt_concentration` | Config 주석에 표시된 mM 단위 농도입니다. 기본값은 `150.0`입니다. |
 | `disulfide_bonds` | PDB chain ID와 residue number를 `[["A:23", "A:88"]]` 형식으로 지정합니다. 두 residue의 `SG` atom을 확인한 뒤 solvation 전에 bond를 만듭니다. |
 
@@ -42,8 +49,8 @@ user-facing script는 `-h`와 `--help`로 argument와 option 설명을 출력합
 temperature ramp를 바꿉니다. `energy_interval_steps`는 energy와 log 기록 간격,
 `restart_interval_steps`는 AMBER `ntwr`에 적용됩니다. GROMACS checkpoint의
 `-cpt`는 wall-clock minute 단위이므로 `restart_interval_steps`로 치환하지
-않습니다. `equilibration_ensemble`과 `production_ensemble`은 각 stage의
-`NVT` 또는 `NPT` 설정을 따로 지정합니다.
+않습니다. `equilibration_ensemble`과 `production_ensemble`은 각 stage를 따로
+설정하며, 실제 허용되는 `NVT`/`NPT` 조합은 leaf README에 표시합니다.
 Membrane protein을 제외한 template의 기본 minimization은
 `maxcyc=5000`, `ncyc=2500`입니다. Membrane protein은 기존
 `maxcyc=10000`, `ncyc=5000`을 유지합니다.
@@ -89,6 +96,13 @@ README에서 설명합니다.
 
 ## English
 
+The `Config choices` table in each leaf README documents options that select
+behavior and values that are currently fixed by the implementation. Modes such
+as `auto` and `file` identify both the settings they consume and the settings
+they ignore. Numeric parameters are described only when their meaning or unit
+is needed to run or interpret that method. The leaf README is the authoritative
+config reference so that a copied leaf directory remains self-contained.
+
 `1_Simulation/` contains fixed-system tutorials. `3_Templates/` contains
 config-driven starting workflows for user-prepared structures. The defaults are
 not universal production protocols; adjust them for the system and assess them
@@ -115,14 +129,16 @@ rectangular box. Supported salts are NaCl, KCl, MgCl2, and CaCl2. The system is
 neutralized before bulk salt is added, and `salt_concentration` uses the mM unit
 shown next to the value in `config.toml`. Disulfides use PDB chain and residue
 references such as `[["A:23", "A:88"]]` and are created before solvation after
-both SG atoms are checked.
+both SG atoms are checked. The leaf README defines whether shape and salt
+values are configurable or fixed for that builder.
 
 Stage controls replace values in the generated engine inputs without changing
 the execution commands. They include total and steepest-descent minimization
 steps, the initial heating temperature, energy and restart intervals, and
 separate equilibration and production ensembles. `restart_interval_steps` maps
 to AMBER `ntwr`; it is not converted to GROMACS `-cpt`, whose unit is wall-clock
-minutes.
+minutes. The leaf README states which `NVT` and `NPT` choices each stage
+accepts.
 The default minimization is `maxcyc=5000`, `ncyc=2500` for every template
 except membrane protein, which retains `maxcyc=10000`, `ncyc=5000`.
 

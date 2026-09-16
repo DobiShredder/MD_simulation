@@ -20,6 +20,11 @@ explicit water를 포함한 전체 atom 수를 사용합니다. REST2/REST3는 w
 사용자가 제공한 temperature를 그대로 사용합니다. 두 mode 모두 resolved state와
 random seed를 `work/states.tsv`에 기록합니다.
 
+`temperature_mode`의 `auto`/`file` 선택은 T-REMD, REST2와 REST3에만 있습니다.
+REST3는 κ의 `linear`/`file` 선택을 추가합니다. REUS와 GaREUS는
+`windows_file`에 적힌 umbrella state를 항상 사용하며 이를 mode로 선택하지
+않습니다. 허용값과 file validation은 각 leaf README에 정리되어 있습니다.
+
 각 leaf directory에서 다음 순서로 실행합니다.
 
 ```bash
@@ -49,7 +54,11 @@ T-REMD, REST2, and REST3 use the same offline temperature-prediction algorithm,
 implemented inside each leaf. T-REMD counts
 the full solvated system, whereas REST counts the tempered non-water, non-ion
 solute and supplies zero waters. Automatic and file-based modes both record the
-resolved schedule and random seeds in `work/states.tsv`. T-REMD uses AMBER
+resolved schedule and random seeds in `work/states.tsv`. The `auto`/`file`
+`temperature_mode` choice applies only to T-REMD, REST2, and REST3. REST3
+additionally provides `linear`/`file` κ selection. REUS and GaREUS always read
+the umbrella states listed in `windows_file`; this is not a mode switch. Each
+leaf README gives the accepted values and file validation. T-REMD uses AMBER
 `-rem 1`; REST2 and REST3 use PLUMED HREX. Use `--cpus` and `--gpus` to override
 REST2/REST3 replica resources. Predictor probabilities and the
 default REST3 kappa schedule are starting estimates that require pilot-run

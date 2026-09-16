@@ -29,7 +29,63 @@ option도 유지합니다.
 순서이며 별도 heating stage는 사용하지 않습니다. 첫 `grompp` 전에는 ParmEd가
 출력한 긴 CMAP 실수를 GROMACS 2024.x가 읽을 수 있는 정밀도로 정규화합니다.
 
+### Config 선택값
+
+| Option | 허용값 | 기본값 | 적용 방식 |
+| --- | --- | --- | --- |
+| `protein_force_field` | `ff19SB`만 지원 | `ff19SB` | Protein parameter를 선택합니다. |
+| `water_model` | `OPC`, `TIP3P` | `OPC` | LEaP water와 REST3 water atom type을 함께 결정합니다. |
+| `box_shape` | `rectangular`, `octahedral` | `rectangular` | 각각 `solvatebox`, `solvateoct`를 사용합니다. |
+| `salt_type` | `NaCl`, `KCl`, `MgCl2`, `CaCl2` | `NaCl` | Neutralization 뒤 추가할 bulk salt를 선택합니다. |
+| `tempered_region` | `solute`만 지원 | `solute` | Water와 ion을 제외한 전체 solute를 tempering합니다. |
+| `equilibration_ensemble` | `NPT`만 지원 | `NPT` | Replica equilibration에 적용합니다. |
+| `production_ensemble` | `NVT`, `NPT` | `NPT` | GROMACS production pressure coupling을 설정합니다. |
+| `constraint_mode` | `h-bonds`만 지원 | `h-bonds` | Hydrogen-containing bond에 LINCS를 적용합니다. |
+| `random_seed` | `"random"` 또는 양의 정수 | `"random"` | State별 seed를 무작위로 만들거나 정수에서 파생합니다. |
+
+| Mode option | Mode | 사용하는 설정 | 무시하는 설정과 결과 |
+| --- | --- | --- | --- |
+| `temperature_mode` | `auto` (기본값) | `minimum_temperature`, `maximum_temperature`, `target_exchange_probability`, `generator_tolerance` | `temperature_file`을 무시하고 tempered-solute atom 수로 ladder를 계산합니다. |
+| `temperature_mode` | `file` | `temperature_file` | Auto 설정을 무시하고 file temperature에서 `lambda_pp`와 `lambda_pw`를 계산합니다. |
+| `rest3_kappa.mode` | `linear` (기본값) | `onset_temperature`, `maximum_temperature`, `maximum_kappa` | `file`을 무시하고 onset 이하 1.0, 이후 선형 κ를 계산합니다. |
+| `rest3_kappa.mode` | `file` | `file` | Linear 설정을 무시하고 κ 목록을 순서대로 사용합니다. |
+
+Temperature와 κ file은 사용자가 생성해야 합니다. 두 file 모두 공백, comma,
+semicolon, `|`를 구분자로 받고 `#` comment를 허용합니다. Temperature는 둘 이상의
+양수여야 하고 중복 없이 오름차순이며 첫 값은 `run.temperature`와 같아야 합니다.
+κ 개수는 temperature state 수와 같아야 하고 모든 κ는 1.0 이상이어야 합니다.
+두 mode를 조합할 수 있으며 최종 temperature, λ, κ와 seed는
+`work/states.tsv`에서 확인합니다.
+
 ## English
+
+### Config choices
+
+| Option | Allowed values | Default | Effect |
+| --- | --- | --- | --- |
+| `protein_force_field` | `ff19SB` only | `ff19SB` | Selects the protein parameters. |
+| `water_model` | `OPC`, `TIP3P` | `OPC` | Selects both LEaP water and REST3 water atom types. |
+| `box_shape` | `rectangular`, `octahedral` | `rectangular` | Uses `solvatebox` or `solvateoct`, respectively. |
+| `salt_type` | `NaCl`, `KCl`, `MgCl2`, `CaCl2` | `NaCl` | Selects bulk salt added after neutralization. |
+| `tempered_region` | `solute` only | `solute` | Tempers the complete non-water, non-ion solute. |
+| `equilibration_ensemble` | `NPT` only | `NPT` | Applies to replica equilibration. |
+| `production_ensemble` | `NVT`, `NPT` | `NPT` | Selects GROMACS production pressure coupling. |
+| `constraint_mode` | `h-bonds` only | `h-bonds` | Applies LINCS to bonds involving hydrogen. |
+| `random_seed` | `"random"` or a positive integer | `"random"` | Creates random state seeds or derives them from the integer. |
+
+| Mode option | Mode | Settings used | Ignored settings and result |
+| --- | --- | --- | --- |
+| `temperature_mode` | `auto` (default) | `minimum_temperature`, `maximum_temperature`, `target_exchange_probability`, `generator_tolerance` | Ignores `temperature_file` and predicts a ladder from tempered-solute atoms. |
+| `temperature_mode` | `file` | `temperature_file` | Ignores auto settings and computes `lambda_pp` and `lambda_pw` from file temperatures. |
+| `rest3_kappa.mode` | `linear` (default) | `onset_temperature`, `maximum_temperature`, `maximum_kappa` | Ignores `file`; κ is 1.0 through onset and then increases linearly. |
+| `rest3_kappa.mode` | `file` | `file` | Ignores linear settings and uses the κ list in order. |
+
+The user must create the temperature and κ files. Both accept whitespace,
+commas, semicolons, and `|` as separators and allow `#` comments. Temperatures
+must contain at least two unique, increasing positive values, with the first
+equal to `run.temperature`. The κ count must equal the temperature-state count,
+and every κ must be at least 1.0. The two modes can be combined; final
+temperatures, λ values, κ values, and seeds are recorded in `work/states.tsv`.
 
 This directory can be copied and used on its own. Install its Python
 dependencies from the local `requirements.txt` after copying it.

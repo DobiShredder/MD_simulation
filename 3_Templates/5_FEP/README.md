@@ -2,6 +2,10 @@
 
 ## 한국어
 
+Lambda schedule은 config의 explicit list를 항상 사용하며 `auto`/`file` mode가
+아닙니다. 현재 segmented production은 지원하지 않아 `production_segments=1`만
+사용합니다.
+
 RBFE와 ABFE는 AMBER alchemical window를 생성하고 `ifmbar` energy matrix를
 기록합니다. Precharged ligand MOL2와 matching frcmod를 입력으로 사용하며
 charge fitting은 template가 수행하지 않습니다.
@@ -18,6 +22,10 @@ protocol은 charge와 vdW를 하나의 alchemical path에서 함께 바꾸므로
 `--stage`를 허용하지 않습니다.
 
 ## English
+
+Lambda schedules always use the explicit config lists rather than an
+`auto`/`file` mode. Segmented production is not currently supported, so only
+`production_segments=1` is accepted.
 
 The RBFE and ABFE templates generate Amber alchemical windows and record an
 `ifmbar` energy matrix. They require precharged ligand MOL2/frcmod inputs.
