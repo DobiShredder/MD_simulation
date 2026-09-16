@@ -6,7 +6,7 @@
 directory의 `requirements.txt`를 사용해 설치합니다.
 
 사용자가 준비한 protein PDB로 AMBER temperature replica exchange를 구성합니다.
-`build.sh`는 ff19SB/OPC system을 만든 뒤 topology의 solute/ion atom 수와 water
+`build.sh`는 configured protein/water system을 만든 뒤 topology의 solute/ion atom 수와 water
 molecule 수를 읽어 300–450 K ladder를 자동 생성합니다. 기본 목표 neighboring
 exchange probability는 0.20이며 예측값은 initial schedule을 정하는 근사치입니다.
 
@@ -30,8 +30,8 @@ input과 적용값은 `work/resolved_config.toml`에 기록됩니다.
 
 | Option | 허용값 | 기본값 | 적용 방식 |
 | --- | --- | --- | --- |
-| `protein_force_field` | `ff19SB`만 지원 | `ff19SB` | Protein parameter를 선택합니다. |
-| `water_model` | `OPC`, `TIP3P` | `OPC` | LEaP water와 일치하는 ion parameter를 선택합니다. |
+| `protein_force_field` | `ff99SB-ILDN`, `ff14SB`, `ff19SB` | `ff19SB` | Protein parameter를 선택합니다. |
+| `water_model` | `TIP3P` (`ff99SB-ILDN`, `ff14SB`), `OPC` (`ff19SB`) | `OPC` | LEaP water와 일치하는 ion parameter를 선택합니다. |
 | `box_shape` | `rectangular`, `octahedral` | `rectangular` | 각각 `solvatebox`, `solvateoct`를 사용합니다. |
 | `salt_type` | `NaCl`, `KCl`, `MgCl2`, `CaCl2` | `NaCl` | Neutralization 뒤 추가할 bulk salt를 선택합니다. |
 | `equilibration_ensemble` | `NPT`만 지원 | `NPT` | 각 physical-temperature replica의 equilibration에 적용합니다. |
@@ -55,8 +55,8 @@ Temperature file은 사용자가 생성해야 합니다. 공백, comma, semicolo
 
 | Option | Allowed values | Default | Effect |
 | --- | --- | --- | --- |
-| `protein_force_field` | `ff19SB` only | `ff19SB` | Selects the protein parameters. |
-| `water_model` | `OPC`, `TIP3P` | `OPC` | Selects matching LEaP water and ion parameters. |
+| `protein_force_field` | `ff99SB-ILDN`, `ff14SB`, `ff19SB` | `ff19SB` | Selects the protein parameters. |
+| `water_model` | `TIP3P` (`ff99SB-ILDN`, `ff14SB`), `OPC` (`ff19SB`) | `OPC` | Selects matching LEaP water and ion parameters. |
 | `box_shape` | `rectangular`, `octahedral` | `rectangular` | Uses `solvatebox` or `solvateoct`, respectively. |
 | `salt_type` | `NaCl`, `KCl`, `MgCl2`, `CaCl2` | `NaCl` | Selects bulk salt added after neutralization. |
 | `equilibration_ensemble` | `NPT` only | `NPT` | Applies to equilibration at each physical temperature. |
@@ -78,7 +78,7 @@ This directory can be copied and used on its own. Install its Python
 dependencies from the local `requirements.txt` after copying it.
 
 This template builds AMBER temperature replica exchange from a user-prepared
-protein PDB. In automatic mode, the ff19SB/OPC topology supplies solute/ion atom
+protein PDB. In automatic mode, the configured protein/water topology supplies solute/ion atom
 and water-molecule counts to the offline temperature predictor. The default
 range is 300–450 K with a target neighboring exchange probability of 0.20.
 

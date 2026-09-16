@@ -34,10 +34,10 @@ Production 일부만 존재하면 자동으로 덮어쓰지 않습니다. `anal.
 
 | Option | 현재 지원값 | 기본값 | 적용 방식 |
 | --- | --- | --- | --- |
-| `protein_force_field` | `ff19SB`만 지원 | `ff19SB` | Protein parameter를 선택합니다. |
+| `protein_force_field` | `ff99SB-ILDN`, `ff14SB`, `ff19SB` | `ff19SB` | Protein parameter를 선택합니다. |
 | `ligand_force_field` | `GAFF2`만 지원 | `GAFF2` | 두 ligand의 parameter 형식을 결정합니다. |
 | `charge_method` | precharged `RESP` MOL2만 지원 | `RESP` | 두 MOL2의 RESP charge를 그대로 사용합니다. |
-| `water_model` | `OPC`, `TIP3P` | `OPC` | Complex와 solvent leg의 water model을 선택합니다. |
+| `water_model` | `TIP3P` (`ff99SB-ILDN`, `ff14SB`), `OPC` (`ff19SB`) | `OPC` | Complex와 solvent leg의 water model을 선택합니다. |
 | `box_shape` | `rectangular`만 실제 적용 | `rectangular` | FEP builder는 두 leg에 `solvatebox`를 사용합니다. |
 | `salt_type` | `NaCl`만 실제 적용 | `NaCl` | FEP builder는 `Na+`와 `Cl-`를 기록합니다. |
 | `equilibration_ensemble` | `NVT`, `NPT` | `NPT` | Generated equilibration input의 `ntb`와 `ntp`를 설정합니다. |
@@ -55,10 +55,10 @@ Production 일부만 존재하면 자동으로 덮어쓰지 않습니다. `anal.
 
 | Option | Current support | Default | Effect |
 | --- | --- | --- | --- |
-| `protein_force_field` | `ff19SB` only | `ff19SB` | Selects the protein parameters. |
+| `protein_force_field` | `ff99SB-ILDN`, `ff14SB`, `ff19SB` | `ff19SB` | Selects the protein parameters. |
 | `ligand_force_field` | `GAFF2` only | `GAFF2` | Selects the parameter format for both ligands. |
 | `charge_method` | Precharged `RESP` MOL2 only | `RESP` | Uses the RESP charges already present in both MOL2 files. |
-| `water_model` | `OPC`, `TIP3P` | `OPC` | Selects the water model for complex and solvent legs. |
+| `water_model` | `TIP3P` (`ff99SB-ILDN`, `ff14SB`), `OPC` (`ff19SB`) | `OPC` | Selects the water model for complex and solvent legs. |
 | `box_shape` | Only `rectangular` is applied | `rectangular` | The FEP builder uses `solvatebox` for both legs. |
 | `salt_type` | Only `NaCl` is applied | `NaCl` | The FEP builder writes `Na+` and `Cl-`. |
 | `equilibration_ensemble` | `NVT`, `NPT` | `NPT` | Sets `ntb` and `ntp` in generated equilibration input. |

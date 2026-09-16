@@ -8,7 +8,7 @@ show_help() {
     cat <<'EOF'
 Usage: ./build.sh [--config FILE] [--dry-run] INPUT.pdb
 
-Build an ff19SB explicit-solvent system and Pep-GaMD inputs.
+Build an explicit-solvent protein system and Pep-GaMD inputs.
 
 Options:
   --config FILE  Read settings from FILE instead of config.toml.

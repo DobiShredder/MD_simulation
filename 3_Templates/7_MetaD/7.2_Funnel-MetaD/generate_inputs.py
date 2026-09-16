@@ -18,6 +18,7 @@ from config_utils import (  # noqa: E402
     section,
     string_value,
 )
+from force_field_profiles import resolve_force_field_profile  # noqa: E402
 
 
 METHODS = ("wt-metad", "funnel-metad", "opes-metad", "opes-expanded")
@@ -50,10 +51,7 @@ def resolve(method: str, config_path: Path) -> dict[str, object]:
 
     force_field = string_value(build, "protein_force_field")
     water_model = string_value(build, "water_model").upper()
-    if force_field != "ff19SB":
-        raise ValueError("protein_force_field currently supports only ff19SB")
-    if water_model not in {"OPC", "TIP3P"}:
-        raise ValueError("water_model must be OPC or TIP3P")
+    force_field_profile = resolve_force_field_profile(force_field, water_model)
     if string_value(run, "ensemble").upper() != "NPT":
         raise ValueError("equilibration ensemble currently supports only NPT")
     if string_value(run, "constraint_mode").lower() != "h-bonds":
@@ -87,6 +85,7 @@ def resolve(method: str, config_path: Path) -> dict[str, object]:
     return {
         "method": method,
         "force_field": force_field,
+        "force_field_profile": force_field_profile,
         "water_model": water_model,
         "box_distance": positive_float(build, "solute_box_distance"),
         "salt_concentration": nonnegative_float(build, "salt_concentration_molar"),
@@ -108,14 +107,12 @@ def resolve(method: str, config_path: Path) -> dict[str, object]:
 def write_tleap(
     output: Path, values: dict[str, object], salt_pairs: int | None
 ) -> None:
-    if values["water_model"] == "OPC":
-        water_source = "leaprc.water.opc"
-        water_box = "OPCBOX"
-    else:
-        water_source = "leaprc.water.tip3p"
-        water_box = "TIP3PBOX"
+    profile = values["force_field_profile"]
+    protein_source = str(profile["protein_leaprc"])
+    water_source = str(profile["water_leaprc"])
+    water_box = str(profile["water_box"])
 
-    lines = ["source leaprc.protein.ff19SB"]
+    lines = [f"source {protein_source}"]
     if values["method"] == "funnel-metad":
         lines.extend([
             "source leaprc.gaff2",

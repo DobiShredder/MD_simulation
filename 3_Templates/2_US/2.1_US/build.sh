@@ -8,7 +8,7 @@ show_help() {
     cat <<'EOF'
 Usage: ./build.sh [--config FILE] [--dry-run] INPUT.pdb
 
-Build the shared ff19SB/OPC topology used by all umbrella windows.
+Build the shared protein/water topology used by all umbrella windows.
 
 Options:
   --config FILE  Read settings from FILE instead of config.toml.

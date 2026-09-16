@@ -11,7 +11,7 @@ import parmed
 
 
 def preserve_residue_specific_cmaps(structure: parmed.Structure) -> int:
-    """Give each ff19SB residue/CMAP combination a distinct C-alpha type."""
+    """Give each residue/CMAP combination a distinct C-alpha type."""
     cmap_names: dict[tuple[int, str], str] = {}
     atom_names: dict[int, str] = {}
 
@@ -32,7 +32,7 @@ def preserve_residue_specific_cmaps(structure: parmed.Structure) -> int:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Convert an AMBER system to GROMACS while preserving ff19SB CMAP types."
+        description="Convert an AMBER system to GROMACS while preserving CMAP types."
     )
     parser.add_argument("topology", type=Path, help="Input AMBER parm7 topology")
     parser.add_argument("coordinates", type=Path, help="Input AMBER restart coordinates")

@@ -8,7 +8,7 @@ show_help() {
     cat <<'EOF'
 Usage: ./build.sh [--config FILE] [--dry-run] COMPLEX.pdb
 
-Build an ff19SB/GAFF2 system and Amber 26 LiGaMD3 inputs from a reviewed complex.
+Build an protein/GAFF2 system and Amber 26 LiGaMD3 inputs from a reviewed complex.
 Ligand parameters and ligand/receptor masks are read from config.toml.
 
 Options:

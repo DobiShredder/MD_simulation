@@ -8,7 +8,7 @@ show_help() {
     cat <<'EOF'
 Usage: ./build.sh [--config FILE] [--dry-run] COMPLEX.pdb
 
-Build an ff19SB/GAFF2 explicit-solvent AMBER system from a reviewed complex PDB
+Build an protein/GAFF2 explicit-solvent AMBER system from a reviewed complex PDB
 and the ligand MOL2/frcmod paths in config.toml.
 
 Options:

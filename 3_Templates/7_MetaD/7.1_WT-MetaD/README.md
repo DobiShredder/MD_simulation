@@ -9,8 +9,8 @@ directory의 `requirements.txt`를 사용해 설치합니다.
 
 | Option | 허용값 | 기본값 | 적용 방식 |
 | --- | --- | --- | --- |
-| `protein_force_field` | `ff19SB`만 지원 | `ff19SB` | Protein parameter를 선택합니다. |
-| `water_model` | `OPC`, `TIP3P` | `OPC` | LEaP water와 일치하는 ion parameter를 선택합니다. |
+| `protein_force_field` | `ff99SB-ILDN`, `ff14SB`, `ff19SB` | `ff19SB` | Protein parameter를 선택합니다. |
+| `water_model` | `TIP3P` (`ff99SB-ILDN`, `ff14SB`), `OPC` (`ff19SB`) | `OPC` | LEaP water와 일치하는 ion parameter를 선택합니다. |
 | `box_shape` | `rectangular`, `octahedral` | `rectangular` | 각각 `solvatebox`, `solvateoct`를 사용합니다. |
 | `salt_type` | `NaCl`, `KCl`, `MgCl2`, `CaCl2` | `NaCl` | Neutralization 뒤 추가할 bulk salt를 선택합니다. |
 | `equilibration_ensemble` | `NPT`만 지원 | `NPT` | Conventional equilibration에 적용합니다. |
@@ -36,7 +36,7 @@ python3 anal.py
 `sigma`, `grid_min`, `grid_max`와 `grid_bins`는 CV 수와 같은 길이여야 합니다.
 기본 hill은 1.2 kJ/mol, `PACE=500`, `BIASFACTOR=10`입니다.
 
-`build.sh`는 ff19SB/OPC topology와 preproduction input을 만듭니다. `run.sh`는
+`build.sh`는 configured protein/water topology와 preproduction input을 만듭니다. `run.sh`는
 500 ps heating과 1 ns NPT equilibration 뒤 10×10 ns production을 실행합니다.
 첫 segment는 새 `HILLS`를 만들고 이후 segment는 `RESTART`로 같은 file에
 추가합니다. Partial production segment는 자동 삭제하지 않습니다.
@@ -55,8 +55,8 @@ dependencies from the local `requirements.txt` after copying it.
 
 | Option | Allowed values | Default | Effect |
 | --- | --- | --- | --- |
-| `protein_force_field` | `ff19SB` only | `ff19SB` | Selects the protein parameters. |
-| `water_model` | `OPC`, `TIP3P` | `OPC` | Selects matching LEaP water and ion parameters. |
+| `protein_force_field` | `ff99SB-ILDN`, `ff14SB`, `ff19SB` | `ff19SB` | Selects the protein parameters. |
+| `water_model` | `TIP3P` (`ff99SB-ILDN`, `ff14SB`), `OPC` (`ff19SB`) | `OPC` | Selects matching LEaP water and ion parameters. |
 | `box_shape` | `rectangular`, `octahedral` | `rectangular` | Uses `solvatebox` or `solvateoct`, respectively. |
 | `salt_type` | `NaCl`, `KCl`, `MgCl2`, `CaCl2` | `NaCl` | Selects bulk salt added after neutralization. |
 | `equilibration_ensemble` | `NPT` only | `NPT` | Applies to conventional equilibration. |

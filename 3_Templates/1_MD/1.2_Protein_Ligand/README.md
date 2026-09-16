@@ -6,7 +6,8 @@
 directory의 `requirements.txt`를 사용해 설치합니다.
 
 사용자가 준비한 complex PDB와 RESP charge가 포함된 ligand MOL2로 conventional
-MD를 구성합니다. Protein은 ff19SB, ligand는 GAFF2, solvent는 OPC를 사용합니다.
+MD를 구성합니다. Protein과 water는 지원되는 compatibility pair를 사용하고,
+ligand parameter는 GAFF2를 유지합니다.
 
 `config.toml`에서 다음 경로와 chemical identity를 먼저 수정합니다.
 
@@ -38,10 +39,10 @@ equilibration과 10×5,000,000-step production입니다. Segment가 여러 개�
 
 | Option | 허용값 | 기본값 | 적용 방식 |
 | --- | --- | --- | --- |
-| `protein_force_field` | `ff19SB`만 지원 | `ff19SB` | Protein parameter를 선택합니다. |
+| `protein_force_field` | `ff99SB-ILDN`, `ff14SB`, `ff19SB` | `ff19SB` | Protein parameter를 선택합니다. |
 | `ligand_force_field` | `GAFF2`만 지원 | `GAFF2` | Ligand parameter 형식을 결정합니다. |
 | `charge_method` | precharged `RESP` MOL2만 지원 | `RESP` | `ligand_mol2`의 RESP charge를 그대로 사용합니다. |
-| `water_model` | `OPC`, `TIP3P` | `OPC` | LEaP water와 일치하는 ion parameter를 선택합니다. |
+| `water_model` | `TIP3P` (`ff99SB-ILDN`, `ff14SB`), `OPC` (`ff19SB`) | `OPC` | LEaP water와 일치하는 ion parameter를 선택합니다. |
 | `box_shape` | `rectangular`, `octahedral` | `rectangular` | 각각 `solvatebox`, `solvateoct`를 사용합니다. |
 | `salt_type` | `NaCl`, `KCl`, `MgCl2`, `CaCl2` | `NaCl` | Neutralization 뒤 추가할 bulk salt를 선택합니다. |
 | `equilibration_ensemble` | `NPT`만 지원 | `NPT` | Equilibration의 pressure coupling을 활성화합니다. |
@@ -55,10 +56,10 @@ equilibration과 10×5,000,000-step production입니다. Segment가 여러 개�
 
 | Option | Allowed values | Default | Effect |
 | --- | --- | --- | --- |
-| `protein_force_field` | `ff19SB` only | `ff19SB` | Selects the protein parameters. |
+| `protein_force_field` | `ff99SB-ILDN`, `ff14SB`, `ff19SB` | `ff19SB` | Selects the protein parameters. |
 | `ligand_force_field` | `GAFF2` only | `GAFF2` | Selects the ligand parameter format. |
 | `charge_method` | Precharged `RESP` MOL2 only | `RESP` | Uses the RESP charges already present in `ligand_mol2`. |
-| `water_model` | `OPC`, `TIP3P` | `OPC` | Selects matching LEaP water and ion parameters. |
+| `water_model` | `TIP3P` (`ff99SB-ILDN`, `ff14SB`), `OPC` (`ff19SB`) | `OPC` | Selects matching LEaP water and ion parameters. |
 | `box_shape` | `rectangular`, `octahedral` | `rectangular` | Uses `solvatebox` or `solvateoct`, respectively. |
 | `salt_type` | `NaCl`, `KCl`, `MgCl2`, `CaCl2` | `NaCl` | Selects bulk salt added after neutralization. |
 | `equilibration_ensemble` | `NPT` only | `NPT` | Enables pressure coupling during equilibration. |

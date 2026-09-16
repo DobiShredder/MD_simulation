@@ -35,6 +35,13 @@ parameter의 의미와 unit은 결과에 직접 영향을 주는 항목만 metho
 둡니다. Leaf directory만 복사해도 config의 허용값을 확인할 수 있도록 leaf
 README를 기준 문서로 사용합니다.
 
+Protein force field와 water model은 독립적으로 조합하지 않습니다. 각 leaf
+README에 적힌 compatibility pair만 선택하며, 지원하지 않는 조합은 topology
+build 전에 config error로 중단됩니다. 대부분의 soluble template은
+`ff99SB-ILDN + TIP3P`, `ff14SB + TIP3P`, `ff19SB + OPC`를 지원하고 기본값은
+`ff19SB + OPC`입니다. Membrane처럼 downstream 조합을 별도로 검증해야 하는
+leaf는 더 좁은 범위를 사용할 수 있습니다.
+
 공통 build 설정은 다음과 같습니다.
 
 | Config key | 적용 방식 |
@@ -102,6 +109,13 @@ as `auto` and `file` identify both the settings they consume and the settings
 they ignore. Numeric parameters are described only when their meaning or unit
 is needed to run or interpret that method. The leaf README is the authoritative
 config reference so that a copied leaf directory remains self-contained.
+
+Protein force fields and water models are not independent choices. Select only a
+compatibility pair listed in the leaf README; unsupported pairs stop with a config
+error before topology construction. Most soluble templates support
+`ff99SB-ILDN + TIP3P`, `ff14SB + TIP3P`, and `ff19SB + OPC`, with
+`ff19SB + OPC` as the default. Leaves such as membrane workflows may expose a
+narrower range when downstream combinations require separate validation.
 
 `1_Simulation/` contains fixed-system tutorials. `3_Templates/` contains
 config-driven starting workflows for user-prepared structures. The defaults are

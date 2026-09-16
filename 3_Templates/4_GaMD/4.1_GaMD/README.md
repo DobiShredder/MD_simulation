@@ -20,7 +20,7 @@ conventional MD와 boost equilibration에 각각 사용합니다. `sigma0P`와
 | --- | --- |
 | `download.sh` | 선택한 source PDB 다운로드 |
 | `config.toml` | build, MD 길이와 GaMD 통계 parameter |
-| `build.sh` | ff19SB/OPC topology와 GaMD input 생성 |
+| `build.sh` | configured protein/water topology와 GaMD input 생성 |
 | `run.sh` | minimization부터 segmented production까지 실행 |
 | `generate_gamd_inputs.py` | `gamd_prepare.in`과 `production.in` 생성; `build.sh`가 자동 호출 |
 
@@ -32,8 +32,8 @@ Production이 여러 segment이면 `work/001`, `work/002`, ...에 저장합니�
 
 | Option | 허용값 | 기본값 | 적용 방식 |
 | --- | --- | --- | --- |
-| `protein_force_field` | `ff19SB`만 지원 | `ff19SB` | Protein parameter를 선택합니다. |
-| `water_model` | `OPC`, `TIP3P` | `OPC` | LEaP water와 일치하는 ion parameter를 선택합니다. |
+| `protein_force_field` | `ff99SB-ILDN`, `ff14SB`, `ff19SB` | `ff19SB` | Protein parameter를 선택합니다. |
+| `water_model` | `TIP3P` (`ff99SB-ILDN`, `ff14SB`), `OPC` (`ff19SB`) | `OPC` | LEaP water와 일치하는 ion parameter를 선택합니다. |
 | `box_shape` | `rectangular`, `octahedral` | `rectangular` | 각각 `solvatebox`, `solvateoct`를 사용합니다. |
 | `salt_type` | `NaCl`, `KCl`, `MgCl2`, `CaCl2` | `NaCl` | Neutralization 뒤 추가할 bulk salt를 선택합니다. |
 | `equilibration_ensemble` | `NPT`만 지원 | `NPT` | Conventional equilibration에 적용합니다. |
@@ -50,8 +50,8 @@ mode가 아닙니다.
 
 | Option | Allowed values | Default | Effect |
 | --- | --- | --- | --- |
-| `protein_force_field` | `ff19SB` only | `ff19SB` | Selects the protein parameters. |
-| `water_model` | `OPC`, `TIP3P` | `OPC` | Selects matching LEaP water and ion parameters. |
+| `protein_force_field` | `ff99SB-ILDN`, `ff14SB`, `ff19SB` | `ff19SB` | Selects the protein parameters. |
+| `water_model` | `TIP3P` (`ff99SB-ILDN`, `ff14SB`), `OPC` (`ff19SB`) | `OPC` | Selects matching LEaP water and ion parameters. |
 | `box_shape` | `rectangular`, `octahedral` | `rectangular` | Uses `solvatebox` or `solvateoct`, respectively. |
 | `salt_type` | `NaCl`, `KCl`, `MgCl2`, `CaCl2` | `NaCl` | Selects bulk salt added after neutralization. |
 | `equilibration_ensemble` | `NPT` only | `NPT` | Applies to conventional equilibration. |

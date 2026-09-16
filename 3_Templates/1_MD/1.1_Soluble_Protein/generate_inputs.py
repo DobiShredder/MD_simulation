@@ -24,6 +24,7 @@ from config_utils import (  # noqa: E402
     section,
     string_value,
 )
+from force_field_profiles import resolve_force_field_profile  # noqa: E402
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -52,10 +53,7 @@ def resolve(config_path: Path) -> dict[str, object]:
 
     force_field = string_value(build, "protein_force_field")
     water_model = string_value(build, "water_model").upper()
-    if force_field != "ff19SB":
-        raise ValueError("protein_force_field currently supports only ff19SB")
-    if water_model not in {"OPC", "TIP3P"}:
-        raise ValueError("water_model must be OPC or TIP3P")
+    force_field_profile = resolve_force_field_profile(force_field, water_model)
     box_shape = choice_value(build, "box_shape", {"rectangular", "octahedral"})
     if string_value(run, "constraint_mode").lower() != "h-bonds":
         raise ValueError("constraint_mode currently supports only h-bonds")
@@ -76,6 +74,7 @@ def resolve(config_path: Path) -> dict[str, object]:
 
     values = {
         "force_field": force_field,
+        "force_field_profile": force_field_profile,
         "water_model": water_model,
         "box_distance": positive_float(build, "solute_box_distance"),
         "box_shape": box_shape,
@@ -99,16 +98,14 @@ def resolve(config_path: Path) -> dict[str, object]:
 
 
 def write_tleap(output: Path, values: dict[str, object], salt_pairs: int | None) -> None:
-    if values["water_model"] == "OPC":
-        water_source = "leaprc.water.opc"
-        water_box = "OPCBOX"
-    else:
-        water_source = "leaprc.water.tip3p"
-        water_box = "TIP3PBOX"
+    profile = values["force_field_profile"]
+    protein_source = str(profile["protein_leaprc"])
+    water_source = str(profile["water_leaprc"])
+    water_box = str(profile["water_box"])
 
     solvate_command = "solvatebox" if values["box_shape"] == "rectangular" else "solvateoct"
     lines = [
-        "source leaprc.protein.ff19SB",
+        f"source {protein_source}",
         f"source {water_source}",
         "system = loadpdb input.pdb",
         "check system",

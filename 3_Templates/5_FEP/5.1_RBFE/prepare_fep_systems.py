@@ -12,6 +12,7 @@ sys.dont_write_bytecode = True
 sys.path.insert(0, ".")
 from apply_config import apply_config  # noqa: E402
 from config_utils import load_config, nonnegative_float, positive_float, section, string_value  # noqa: E402
+from force_field_profiles import resolve_force_field_profile  # noqa: E402
 
 
 def arguments() -> argparse.Namespace:
@@ -69,21 +70,11 @@ def validate_mol2(path: Path, residue_name: str, expected_charge: int) -> None:
         raise ValueError(f"{path} charge {charge:.6f} does not match expected {expected_charge}")
 
 
-def water_settings(name: str) -> tuple[str, str]:
-    normalized = name.upper()
-    if normalized == "OPC":
-        return "leaprc.water.opc", "OPCBOX"
-    if normalized == "TIP3P":
-        return "leaprc.water.tip3p", "TIP3PBOX"
-    raise ValueError("water_model must be OPC or TIP3P")
-
-
 def leap_text(
     method: str,
     environment: str,
     build: dict[str, object],
-    water_source: str,
-    water_box: str,
+    force_field_profile: dict[str, object],
     salt_pairs: int | None,
 ) -> str:
     if environment == "complex":
@@ -91,9 +82,12 @@ def leap_text(
     else:
         distance = positive_float(build, "solvent_box_distance")
 
+    protein_source = str(force_field_profile["protein_leaprc"])
+    water_source = str(force_field_profile["water_leaprc"])
+    water_box = str(force_field_profile["water_box"])
     lines = ["source leaprc.gaff2", f"source {water_source}"]
     if environment == "complex":
-        lines.insert(0, "source leaprc.protein.ff19SB")
+        lines.insert(0, f"source {protein_source}")
 
     if method == "rbfe":
         name_a = string_value(build, "ligand_a_residue_name")
@@ -147,14 +141,15 @@ def main() -> None:
     try:
         config = load_config(args.config)
         build = section(config, "build")
-        if string_value(build, "protein_force_field") != "ff19SB":
-            raise ValueError("protein_force_field currently supports only ff19SB")
+        force_field_profile = resolve_force_field_profile(
+            string_value(build, "protein_force_field"),
+            string_value(build, "water_model"),
+        )
         if string_value(build, "ligand_force_field").upper() != "GAFF2":
             raise ValueError("ligand_force_field currently supports only GAFF2")
         if string_value(build, "charge_method").upper() != "RESP":
             raise ValueError("charge_method currently supports precharged RESP MOL2 input")
         nonnegative_float(build, "salt_concentration_molar")
-        water_source, water_box = water_settings(string_value(build, "water_model"))
     except ValueError as error:
         raise SystemExit(f"Config error: {error}") from None
 
@@ -191,7 +186,7 @@ def main() -> None:
         phase = "solvate" if salt_pairs is None else "final"
         path = args.output / f"tleap.{environment}.{phase}.in"
         path.write_text(
-            leap_text(args.method, environment, build, water_source, water_box, salt_pairs),
+            leap_text(args.method, environment, build, force_field_profile, salt_pairs),
             encoding="utf-8",
         )
     apply_config(args.config, args.output.parent)

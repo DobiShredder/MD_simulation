@@ -8,7 +8,7 @@ show_help() {
     cat <<'EOF'
 Usage: ./build.sh [--config FILE] [--dry-run] INPUT.pdb
 
-Build an ff19SB/OPC system, equilibrated WESTPA basis state, and block configs.
+Build an protein/water system, equilibrated WESTPA basis state, and block configs.
 
 Options:
   --config FILE  Read settings from FILE instead of config.toml.

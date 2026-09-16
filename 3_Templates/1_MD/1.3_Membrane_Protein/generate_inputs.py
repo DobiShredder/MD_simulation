@@ -18,6 +18,7 @@ from config_utils import (  # noqa: E402
     section,
     string_value,
 )
+from force_field_profiles import resolve_force_field_profile  # noqa: E402
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -38,12 +39,15 @@ def resolve(config_path: Path) -> dict[str, object]:
     config = load_config(config_path)
     build = section(config, "build")
     run = section(config, "run")
-    if string_value(build, "protein_force_field") != "ff19SB":
-        raise ValueError("protein_force_field currently supports only ff19SB")
+    protein_force_field = string_value(build, "protein_force_field")
+    water_model = string_value(build, "water_model").upper()
+    force_field_profile = resolve_force_field_profile(
+        protein_force_field,
+        water_model,
+        supported_pairs={("ff19SB", "OPC")},
+    )
     if string_value(build, "lipid_force_field").lower() != "lipid21":
         raise ValueError("lipid_force_field currently supports only Lipid21")
-    if string_value(build, "water_model").upper() != "OPC":
-        raise ValueError("membrane template currently supports only OPC")
     if string_value(run, "ensemble").upper() != "NPT":
         raise ValueError("ensemble currently supports only NPT")
     if string_value(run, "pressure_coupling").lower() != "anisotropic":
@@ -60,9 +64,10 @@ def resolve(config_path: Path) -> dict[str, object]:
     ):
         raise ValueError("random_seed must be 'random' or a positive integer")
     return {
-        "protein_force_field": "ff19SB",
+        "protein_force_field": protein_force_field,
+        "force_field_profile": force_field_profile,
         "lipid_force_field": "Lipid21",
-        "water_model": "OPC",
+        "water_model": water_model,
         "composition": string_value(build, "bilayer_composition"),
         "popc": Path(string_value(build, "popc_bilayer_gro")),
         "pope": Path(string_value(build, "pope_bilayer_gro")),
@@ -176,9 +181,12 @@ def write_build_parameters(output: Path, values: dict[str, object]) -> None:
 def write_tleap_and_resolved(output: Path, values: dict[str, object], coordinate: Path) -> None:
     box, water_count = read_box_and_waters(coordinate)
     salt_pairs = round(water_count * float(values["salt_concentration"]) / 55.5)
-    tleap = f"""source leaprc.protein.ff19SB
+    profile = values["force_field_profile"]
+    protein_source = str(profile["protein_leaprc"])
+    water_source = str(profile["water_leaprc"])
+    tleap = f"""source {protein_source}
 source leaprc.lipid21
-source leaprc.water.opc
+source {water_source}
 system = loadpdb system-coordinates.pdb
 set system box {{ {box[0]:.3f} {box[1]:.3f} {box[2]:.3f} }}
 addionsrand system K+ 0
@@ -192,9 +200,9 @@ quit
     (output / "tleap.in").write_text(tleap, encoding="utf-8")
     seed = f'"{values["seed"]}"' if isinstance(values["seed"], str) else values["seed"]
     resolved = f"""[build]
-protein_force_field = "ff19SB"
+protein_force_field = "{values['protein_force_field']}"
 lipid_force_field = "Lipid21"
-water_model = "OPC"
+water_model = "{values['water_model']}"
 bilayer_composition = "{values['composition']}"
 xy_padding = {values['xy_padding']:.3f}
 water_padding = {values['water_padding']:.3f}

@@ -155,9 +155,6 @@ def cmap_data(path: Path) -> list[tuple[tuple[str, ...], list[float]]]:
 
     if expected:
         raise SystemExit(f"Insufficient CMAP grid values: {path}")
-    if not maps:
-        raise SystemExit(f"CMAP map not found: {path}")
-
     return maps
 
 
@@ -247,7 +244,7 @@ def main() -> None:
                 )
 
     print(
-        "Verified REST3 base identity, CMAP scaling, water atom records, "
+        "Verified REST3 base identity, available CMAP scaling, water atom records, "
         "and preservation of solvent interactions."
     )
 

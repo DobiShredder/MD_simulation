@@ -53,6 +53,10 @@ protein와 retained pore ion/water 선택에 맞게 검토해야 합니다.
 | `constraint_mode` | `h-bonds`만 지원 | `h-bonds` | Hydrogen-containing bond에 SHAKE를 적용합니다. |
 | `random_seed` | `"random"` 또는 양의 정수 | `"random"` | `"random"`은 AMBER `ig=-1`, 정수는 고정 seed를 사용합니다. |
 
+이 leaf는 Lipid21 membrane build와 함께 검증한 `ff19SB + OPC`만 지원합니다.
+`ff99SB-ILDN + TIP3P`와 `ff14SB + TIP3P`는 membrane/Lipid21 조합을 별도로
+검증하지 않았으므로 config validation에서 거부합니다.
+
 ## English
 
 ### Config choices
@@ -69,6 +73,11 @@ protein와 retained pore ion/water 선택에 맞게 검토해야 합니다.
 | `pressure_coupling` | `anisotropic` only | `anisotropic` | Separates pressure scaling along the membrane box axes. |
 | `constraint_mode` | `h-bonds` only | `h-bonds` | Applies SHAKE to bonds involving hydrogen. |
 | `random_seed` | `"random"` or a positive integer | `"random"` | `"random"` maps to AMBER `ig=-1`; an integer fixes the seed. |
+
+This leaf supports only `ff19SB + OPC`, the pair validated with the Lipid21
+membrane build. Config validation rejects `ff99SB-ILDN + TIP3P` and
+`ff14SB + TIP3P` because those membrane/Lipid21 combinations have not been
+validated here.
 
 This directory can be copied and used on its own. Install its Python
 dependencies from the local `requirements.txt` after copying it.

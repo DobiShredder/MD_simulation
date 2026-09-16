@@ -8,7 +8,7 @@ show_help() {
     cat <<'EOF'
 Usage: ./build.sh [--config FILE] [--dry-run] INPUT.pdb
 
-Build an ff19SB explicit-solvent AMBER system from a reviewed protein PDB.
+Build an explicit-solvent protein AMBER system from a reviewed protein PDB.
 
 Options:
   --config FILE  Read settings from FILE instead of config.toml.

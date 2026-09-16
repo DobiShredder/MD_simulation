@@ -13,7 +13,7 @@ PARSER_PROTEIN_NAME = "Protein_chain_A"
 
 
 def preserve_residue_specific_cmaps(structure: parmed.Structure) -> dict[str, str]:
-    """Give each ff19SB residue/CMAP combination a distinct C-alpha type."""
+    """Give each residue/CMAP combination a distinct C-alpha type."""
     cmap_names: dict[tuple[int, str], str] = {}
     atom_names: dict[int, str] = {}
 
@@ -30,7 +30,7 @@ def preserve_residue_specific_cmaps(structure: parmed.Structure) -> dict[str, st
             cmap.atom3.type = cmap_name
             atom_names[atom_key] = cmap_name
     if structure.cmaps and len(cmap_names) < 2:
-        raise SystemExit("Could not separate ff19SB residue-specific CMAPs.")
+        raise SystemExit("Could not separate residue-specific CMAPs.")
 
     return {name: residue for (_, residue), name in cmap_names.items()}
 
@@ -83,7 +83,7 @@ def rename_primary_molecule(topology: Path) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Convert an AMBER system to GROMACS while preserving ff19SB CMAP types."
+        description="Convert an AMBER system to GROMACS while preserving CMAP types."
     )
     parser.add_argument("topology", type=Path, help="Input AMBER parm7 topology")
     parser.add_argument("coordinates", type=Path, help="Input AMBER restart coordinates")

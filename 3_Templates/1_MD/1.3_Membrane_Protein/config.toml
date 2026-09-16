@@ -1,5 +1,6 @@
 [build]
 # Config units: tleap distances and padding Å; salt concentration mM
+# Supported pair with Lipid21: ff19SB + OPC
 protein_force_field = "ff19SB"
 lipid_force_field = "Lipid21"
 water_model = "OPC"

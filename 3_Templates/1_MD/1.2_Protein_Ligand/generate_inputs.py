@@ -19,6 +19,7 @@ from config_utils import (  # noqa: E402
     section,
     string_value,
 )
+from force_field_profiles import resolve_force_field_profile  # noqa: E402
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -48,10 +49,7 @@ def resolve(config_path: Path) -> dict[str, object]:
     force_field = string_value(build, "protein_force_field")
     ligand_force_field = string_value(build, "ligand_force_field").upper()
     water_model = string_value(build, "water_model").upper()
-    if force_field != "ff19SB":
-        raise ValueError("protein_force_field currently supports only ff19SB")
-    if water_model not in {"OPC", "TIP3P"}:
-        raise ValueError("water_model must be OPC or TIP3P")
+    force_field_profile = resolve_force_field_profile(force_field, water_model)
     if ligand_force_field != "GAFF2":
         raise ValueError("ligand_force_field currently supports only GAFF2")
     ligand_residue = string_value(build, "ligand_residue_name").upper()
@@ -86,6 +84,7 @@ def resolve(config_path: Path) -> dict[str, object]:
 
     return {
         "force_field": force_field,
+        "force_field_profile": force_field_profile,
         "ligand_force_field": ligand_force_field,
         "ligand_residue": ligand_residue,
         "ligand_charge": ligand_charge,
@@ -112,15 +111,13 @@ def resolve(config_path: Path) -> dict[str, object]:
 
 
 def write_tleap(output: Path, values: dict[str, object], salt_pairs: int | None) -> None:
-    if values["water_model"] == "OPC":
-        water_source = "leaprc.water.opc"
-        water_box = "OPCBOX"
-    else:
-        water_source = "leaprc.water.tip3p"
-        water_box = "TIP3PBOX"
+    profile = values["force_field_profile"]
+    protein_source = str(profile["protein_leaprc"])
+    water_source = str(profile["water_leaprc"])
+    water_box = str(profile["water_box"])
 
     lines = [
-        "source leaprc.protein.ff19SB",
+        f"source {protein_source}",
         "source leaprc.gaff2",
         f"source {water_source}",
         "loadamberparams inputs/ligand.frcmod",

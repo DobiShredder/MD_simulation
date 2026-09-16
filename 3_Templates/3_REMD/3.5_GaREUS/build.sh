@@ -8,7 +8,7 @@ show_help() {
     cat <<'EOF'
 Usage: ./build.sh [--config FILE] [--dry-run] INPUT.pdb
 
-Build a shared ff19SB/OPC system and config-driven GaREUS window replicas.
+Build a shared protein/water system and config-driven GaREUS window replicas.
 
 Options:
   --config FILE  Read settings from FILE instead of config.toml.

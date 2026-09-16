@@ -1,5 +1,6 @@
 [build]
 # Config units: tleap distances and padding Å; salt concentration mM
+# Supported pairs: ff99SB-ILDN + TIP3P; ff14SB + TIP3P; ff19SB + OPC
 protein_force_field = "ff19SB"
 water_model = "OPC"
 box_shape = "rectangular"

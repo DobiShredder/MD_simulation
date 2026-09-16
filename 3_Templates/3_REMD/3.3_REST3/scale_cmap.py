@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Scale ff19SB CMAP types and energy grids in a GROMACS topology."""
+"""Scale CMAP types and energy grids when a GROMACS topology contains them."""
 
 from __future__ import annotations
 
@@ -107,9 +107,14 @@ def install_scaled_cmap(
 ) -> int:
     source_lines = source.read_text(encoding="utf-8").splitlines(keepends=True)
     target_lines = target.read_text(encoding="utf-8").splitlines(keepends=True)
-    cmap_lines, map_count = scaled_cmap_section(
-        source_lines, scale, type_prefix, type_suffix
-    )
+    try:
+        cmap_lines, map_count = scaled_cmap_section(
+            source_lines, scale, type_prefix, type_suffix
+        )
+    except ValueError as error:
+        if str(error) == "Section [cmaptypes] not found.":
+            return 0
+        raise
 
     try:
         start, end = section_bounds(target_lines, "cmaptypes")
