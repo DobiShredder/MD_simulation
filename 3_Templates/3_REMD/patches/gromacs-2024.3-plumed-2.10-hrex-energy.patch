@@ -1,0 +1,57 @@
+--- a/src/gromacs/mdrun/md.cpp
++++ b/src/gromacs/mdrun/md.cpp
+@@ -1204,6 +1204,34 @@
+                                   wallCycleCounters_,
+                                   do_verbose && !bPMETunePrinting);
+           }
++
++          // The HREX force evaluation occurs before the regular per-step workload is
++          // prepared below. Build a dedicated workload that requests the swapped-state
++          // potential energy and a fresh neighbor search.
++          auto hrexRunScheduleWork = *runScheduleWork_;
++          if (fr_->listedForcesGpu)
++          {
++              fr_->listedForcesGpu->updateHaveInteractions(top_->idef);
++          }
++          hrexRunScheduleWork.domainWork = setupDomainLifetimeWorkload(
++                  *ir,
++                  *fr_,
++                  pullWork_,
++                  ed ? ed->getLegacyED() : nullptr,
++                  *md,
++                  simulationWork);
++          const int hrexForceFlags =
++                  GMX_FORCE_STATECHANGED
++                  | (inputrecDynamicBox(ir) ? GMX_FORCE_DYNAMICBOX : 0)
++                  | GMX_FORCE_ALLFORCES | GMX_FORCE_VIRIAL | GMX_FORCE_ENERGY
++                  | GMX_FORCE_DHDL | GMX_FORCE_NS;
++          hrexRunScheduleWork.stepWork = setupStepWorkload(
++                  hrexForceFlags,
++                  ir->mtsLevels,
++                  step,
++                  hrexRunScheduleWork.domainWork,
++                  simulationWork);
++
+           do_force(fpLog_,
+                    cr_,
+                    ms_,
+@@ -1227,7 +1255,7 @@
+                    &hrex_enerd,
+                    state_->lambda,
+                    fr_,
+-                   *runScheduleWork_,
++                   hrexRunScheduleWork,
+                    virtualSites_,
+                    mu_tot,
+                    t,
+--- a/src/gromacs/mdrun/legacymdrunoptions.h
++++ b/src/gromacs/mdrun/legacymdrunoptions.h
+@@ -352,7 +352,7 @@
+           { &replExParams.randomSeed },
+           "Seed for replica exchange, -1 is generate a seed" },
+         { "-hrex",  FALSE, etBOOL, {&plumed_hrex}, /* PLUMED HREX */
+-              "Enable hamiltonian replica exchange" },
++              "Enable Hamiltonian replica exchange (HREX_WORKLOAD_FIX_1)" },
+         { "-imdport", FALSE, etINT, { &imdOptions.port }, "HIDDENIMD listening port" },
+         { "-imdwait",
+           FALSE,

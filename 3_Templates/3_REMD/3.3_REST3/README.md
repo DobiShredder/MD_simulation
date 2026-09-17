@@ -2,8 +2,9 @@
 
 ## 한국어
 
-이 directory만 별도로 복사해 사용할 수 있습니다. Python dependency는 복사한
-directory의 `requirements.txt`를 사용해 설치합니다.
+이 directory의 runtime code는 별도로 복사해 사용할 수 있습니다. GROMACS를
+build할 때는 상위 `patches/` directory의 correction도 함께 사용합니다. Python
+dependency는 복사한 directory의 `requirements.txt`를 사용해 설치합니다.
 
 REST2 scaling에 κ schedule을 추가합니다. 기본 schedule은 357 K까지 κ=1.0을
 유지하고 450 K에서 1.020이 되도록 선형 보간합니다. 이 값은 universal default가
@@ -18,8 +19,11 @@ replicas=$(awk 'NR > 1 {count++} END {print count + 0}' work/states.tsv)
 ```
 
 명시적인 κ 목록은 `[rest3_kappa]`의 `mode = "file"`과 `file`로 입력합니다.
-Temperature와 κ 목록의 길이는 같아야 합니다. Runtime requirement는 REST2와
-같은 patched GROMACS/PLUMED HREX build입니다. `download.sh`는 source PDB와 함께
+Temperature와 κ 목록의 길이는 같아야 합니다. Runtime에는 REST2와 같은 patched
+GROMACS/PLUMED HREX build와 상위 directory의
+[`HREX_WORKLOAD_FIX_1` correction](../patches/gromacs-2024.3-plumed-2.10-hrex-energy.patch)이
+필요합니다. 적용 순서와 검증 범위는 [상위 README](../README.md)에 있습니다.
+`download.sh`는 source PDB와 함께
 검증된 `repex-topology-parser` 0.2.2 source를 내려받습니다.
 기본 OPC 설정에서는 `kappa_atom_names=['OW']`가 water oxygen type을 선택합니다.
 `verify_rest3.py`는 O/H1/H2/EP의 type·charge·mass와 solvent interaction이
@@ -87,8 +91,14 @@ equal to `run.temperature`. The κ count must equal the temperature-state count,
 and every κ must be at least 1.0. The two modes can be combined; final
 temperatures, λ values, κ values, and seeds are recorded in `work/states.tsv`.
 
-This directory can be copied and used on its own. Install its Python
+This directory's runtime code can be copied on its own. Keep the parent
+`patches/` correction available when building GROMACS. Install the Python
 dependencies from the local `requirements.txt` after copying it.
+
+Production requires the same patched GROMACS/PLUMED HREX build as REST2 and
+the [`HREX_WORKLOAD_FIX_1` correction](../patches/gromacs-2024.3-plumed-2.10-hrex-energy.patch).
+See the [parent README](../README.md) for application steps and validation
+scope.
 
 REST3 adds a κ schedule to REST2 scaling. The default keeps κ at 1.0 through
 357 K and linearly reaches 1.020 at 450 K. This is not a universal value; assess

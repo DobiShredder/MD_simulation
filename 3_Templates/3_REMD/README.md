@@ -13,6 +13,37 @@
 | [`3.4_REUS`](3.4_REUS/README.md) | Reaction-coordinate umbrella state | AMBER `-rem 3` |
 | [`3.5_GaREUS`](3.5_GaREUS/README.md) | Umbrella state와 공통 GaMD boost | AMBER `-rem 3` |
 
+### REST2/REST3 GROMACS–PLUMED build
+
+REST2와 REST3 production에는 `GROMACS 2024.3` 또는 `2024.6`에 PLUMED
+2.10의 GROMACS 2024.3 patch와 이 directory의 HREX energy correction을
+차례로 적용한 external-MPI build가 필요합니다. PLUMED 2.10 원본 patch는
+swapped coordinate의 energy workload를 준비하지 않아 exchange energy를
+잘못 계산합니다. GROMACS 2025 patch와 built-in PLUMED interface에는 서로
+다른 scaled topology를 교차 평가하는 `-hrex` 경로가 없습니다.
+
+PLUMED patch를 적용한 GROMACS source root에서 먼저 correction 적용 가능 여부를
+확인한 뒤 적용합니다.
+
+```bash
+plumed patch -p
+patch --dry-run -p1 < /path/to/3_Templates/3_REMD/patches/gromacs-2024.3-plumed-2.10-hrex-energy.patch
+patch -p1 < /path/to/3_Templates/3_REMD/patches/gromacs-2024.3-plumed-2.10-hrex-energy.patch
+```
+
+GROMACS를 external-MPI로 build한 뒤 option과 correction marker를 확인합니다.
+
+```bash
+gmx_mpi mdrun -h 2>&1 | grep -E -- '-hrex|-plumed|HREX_WORKLOAD_FIX_1'
+```
+
+REST2/REST3 runner도 production 시작 전에 `-hrex`와
+`HREX_WORKLOAD_FIX_1`을 검사합니다. Patch 적용은 GROMACS 2024.3과 2024.6
+source에서 확인했고, 수정된 GROMACS 2024.6 CPU source compilation까지
+검증했습니다. GPU/external-MPI HREX는 설치 환경에서 짧은 pilot run으로 별도
+검증해야 합니다. `patch --dry-run`이 실패하면 강제로 적용하지 말고 GROMACS와
+PLUMED source version을 확인합니다.
+
 T-REMD, REST2와 REST3는 같은 offline temperature predictor 계산식을 사용합니다.
 각 leaf에는 이 계산에 필요한 code가 별도로 들어 있습니다. T-REMD는
 explicit water를 포함한 전체 atom 수를 사용합니다. REST2/REST3는 water와 ion을
@@ -45,8 +76,41 @@ exchange ensemble이 아니므로 제공하지 않습니다.
 
 ## English
 
+### REST2/REST3 GROMACS–PLUMED build
+
+REST2 and REST3 production require an external-MPI build of GROMACS 2024.3
+or 2024.6. Apply the PLUMED 2.10 patch for GROMACS 2024.3 first, followed by
+the HREX energy correction provided in this directory. The upstream PLUMED
+2.10 patch does not prepare the swapped-coordinate energy workload and can
+therefore compute an invalid exchange energy. The GROMACS 2025 patch and the
+built-in PLUMED interface do not provide the arbitrary-topology `-hrex` path
+required here.
+
+From the GROMACS source root, check and apply the correction after running the
+PLUMED patch:
+
+```bash
+plumed patch -p
+patch --dry-run -p1 < /path/to/3_Templates/3_REMD/patches/gromacs-2024.3-plumed-2.10-hrex-energy.patch
+patch -p1 < /path/to/3_Templates/3_REMD/patches/gromacs-2024.3-plumed-2.10-hrex-energy.patch
+```
+
+After building GROMACS with external MPI, verify the options and marker:
+
+```bash
+gmx_mpi mdrun -h 2>&1 | grep -E -- '-hrex|-plumed|HREX_WORKLOAD_FIX_1'
+```
+
+The REST2 and REST3 runners repeat the `-hrex` and `HREX_WORKLOAD_FIX_1`
+checks before production. Patch application was checked against GROMACS
+2024.3 and 2024.6 source, including CPU compilation of the corrected GROMACS
+2024.6 source. Validate GPU/external-MPI HREX with a short pilot run in the
+target installation. Do not force the patch if `patch --dry-run` fails; check
+the GROMACS and PLUMED source versions instead.
+
 The five templates use the same config-driven interface, while each leaf
-contains its own runtime helpers and can be copied independently. T-REMD
+contains its own runtime helpers. A copied REST2 or REST3 leaf also needs this
+family's `patches/` directory when preparing GROMACS. T-REMD
 exchanges physical temperatures; REST2 and REST3 exchange
 scaled Hamiltonians; REUS and GaREUS exchange umbrella states through Amber.
 
