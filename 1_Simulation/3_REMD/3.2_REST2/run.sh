@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+source ./grompp_utils.bash
+
 dry_run=0
 cpu_count=""
 gpu_count=""
@@ -115,13 +117,12 @@ run_preproduction_stage() {
         fi
         replica_dir="work/$replica"
 
-        if ! "$gmx" grompp \
+        if ! run_grompp "$replica_dir/$stage.grompp.log" \
+            "$gmx" grompp \
             -f "$replica_dir/$stage.mdp" \
             -p "$replica_dir/topol.top" \
             -c "$replica_dir/$input_coordinates.gro" \
-            -o "$replica_dir/$stage.tpr" \
-            -maxwarn 1 \
-            > "$replica_dir/$stage.grompp.log" 2>&1; then
+            -o "$replica_dir/$stage.tpr"; then
             die "$stage tpr generation failed: $replica_dir/$stage.grompp.log"
         fi
 
@@ -211,14 +212,13 @@ while IFS=$'\t' read -r replica _; do
     replica_dir="work/$replica"
     replica_dirs+=("$replica_dir")
 
-    if ! "$gmx" grompp \
-        -f "$replica_dir/production.mdp" \
-        -p "$replica_dir/topol.top" \
-        -c "$replica_dir/equilibrate.gro" \
-        -t "$replica_dir/equilibrate.cpt" \
-        -o "$replica_dir/production.tpr" \
-        -maxwarn 1 \
-        > "$replica_dir/production.grompp.log" 2>&1; then
+        if ! run_grompp "$replica_dir/production.grompp.log" \
+            "$gmx" grompp \
+            -f "$replica_dir/production.mdp" \
+            -p "$replica_dir/topol.top" \
+            -c "$replica_dir/equilibrate.gro" \
+            -t "$replica_dir/equilibrate.cpt" \
+            -o "$replica_dir/production.tpr"; then
         die "Production tpr generation failed: $replica_dir/production.grompp.log"
     fi
 done < work/states.tsv

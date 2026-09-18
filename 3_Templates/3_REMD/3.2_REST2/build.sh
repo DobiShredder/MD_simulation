@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+source ./grompp_utils.bash
+
 method=rest2
 config=config.toml
 dry_run=0
@@ -126,18 +128,15 @@ fi
 "$python" generate_states.py "$method" "$config" "$work_dir/system.parm7" "$work_dir"
 "$python" generate_inputs.py "$method" "$config" "$work_dir/inputs" \
     --salt-pairs "$salt_pairs" --states "$work_dir/states.tsv"
-maxwarn=$(awk -F' = ' '$1 == "maxwarn" {print $2}' "$work_dir/resolved_config.toml")
-
 "$python" convert_topology.py "$work_dir/system.parm7" "$work_dir/system.rst7" \
     "$work_dir/topol.top" "$work_dir/system.gro"
 helper_dir="."
 # ParmEd can emit CMAP numbers longer than GROMACS 2024.x can safely parse.
 "$python" "$helper_dir/scale_cmap.py" "$work_dir/topol.top" "$work_dir/topol.top" 1.0
-if ! "$gmx" grompp -f "$helper_dir/inputs/energy_check.mdp" \
+if ! run_grompp "$work_dir/grompp_preprocess.log" \
+    "$gmx" grompp -f "$helper_dir/inputs/energy_check.mdp" \
     -p "$work_dir/topol.top" -c "$work_dir/system.gro" \
-    -pp "$work_dir/processed.top" -o "$work_dir/preprocess.tpr" \
-    -maxwarn "$maxwarn" \
-    > "$work_dir/grompp_preprocess.log" 2>&1; then
+    -pp "$work_dir/processed.top" -o "$work_dir/preprocess.tpr"; then
     die "Processed topology generation failed: $work_dir/grompp_preprocess.log"
 fi
 "$python" "$helper_dir/scale_cmap.py" "$work_dir/topol.top" "$work_dir/processed.top" 1.0
@@ -162,13 +161,12 @@ for variant in unscaled scale_one; do
     else
         topology="$work_dir/000/topol.top"
     fi
-    if ! "$gmx" grompp \
+    if ! run_grompp "$energy_dir/$variant.grompp.log" \
+        "$gmx" grompp \
         -f "$helper_dir/inputs/energy_check.mdp" \
         -p "$topology" \
         -c "$work_dir/system.gro" \
-        -o "$energy_dir/$variant.tpr" \
-        -maxwarn "$maxwarn" \
-        > "$energy_dir/$variant.grompp.log" 2>&1; then
+        -o "$energy_dir/$variant.tpr"; then
         die "Energy-check tpr generation failed: $energy_dir/$variant.grompp.log"
     fi
     if ! "$gmx" mdrun \

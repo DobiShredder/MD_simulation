@@ -54,7 +54,19 @@ Temperature file은 사용자가 생성해야 합니다. 구분자는 공백, co
 둘 이상이어야 하고 첫 값은 `run.temperature`와 같아야 합니다. 적용된 temperature,
 λ와 seed는 `work/states.tsv`에 기록됩니다.
 
+`maxwarn`은 public config option이 아닙니다. `grompp_utils.bash`는 `grompp`를
+먼저 warning 우회 없이 실행합니다. 변환된 topology의 남은 전하가 ±0.01 e
+이내이고 `System has non-zero total charge` warning 하나만 있을 때만
+내부적으로 `-maxwarn 1`로 다시
+실행합니다. 다른 warning은 해당 `*.grompp.log`를 남기고 계산을 중단합니다.
+
 ## English
+
+`maxwarn` is not a public configuration option. `grompp_utils.bash` first runs
+`grompp` without a warning override and retries it with `-maxwarn 1` only when the
+converted topology has a residual charge within ±0.01 e and the log contains
+exactly one `System has non-zero total charge` warning. Any other warning stops
+the workflow and remains in the corresponding `*.grompp.log`.
 
 ### Config choices
 

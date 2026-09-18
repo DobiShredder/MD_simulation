@@ -99,7 +99,6 @@ def resolve(config_path: Path, method: str) -> dict[str, object]:
     else:
         values["equilibration_engine"] = string_value(run, "equilibration_engine")
         values["production_engine"] = string_value(run, "production_engine")
-        values["maxwarn"] = nonnegative_int(run, "maxwarn")
         values["threads_per_replica"] = positive_int(
             exchange, "cpu_threads_per_replica"
         )
@@ -364,8 +363,7 @@ def write_resolved(output: Path, method: str, values: dict[str, object], replica
     else:
         engine_text = (
             f'equilibration_engine = "{values["equilibration_engine"]}"\n'
-            f'production_engine = "{values["production_engine"]}"\n'
-            f'maxwarn = {values["maxwarn"]}'
+            f'production_engine = "{values["production_engine"]}"'
         )
         resource_text = (
             f"cpu_threads_per_replica = {values['threads_per_replica']}\n"

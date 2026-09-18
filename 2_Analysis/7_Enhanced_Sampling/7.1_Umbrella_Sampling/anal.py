@@ -3,10 +3,10 @@
 
 from __future__ import annotations
 
+import argparse
 import csv
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 
@@ -238,6 +238,8 @@ def plot_results(
     centers: np.ndarray,
     overlap: list[float],
 ) -> None:
+    import matplotlib.pyplot as plt
+
     figure, axes = plt.subplots(1, 2, figsize=(10, 4))
 
     axes[0].plot(bin_centers, pmf)
@@ -254,7 +256,16 @@ def plot_results(
     plt.show()
 
 
+def parse_arguments() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Calculate a 1D WHAM PMF and neighboring-window overlap."
+    )
+    return parser.parse_args()
+
+
 def main() -> None:
+    parse_arguments()
+
     try:
         centers, forces, series, names = read_inputs(OUTPUT_DIR)
         edges = np.linspace(PMF_MIN_ANGSTROM, PMF_MAX_ANGSTROM, PMF_BINS + 1)

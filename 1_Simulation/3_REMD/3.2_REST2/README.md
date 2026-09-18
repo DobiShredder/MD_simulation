@@ -136,7 +136,19 @@ REST2의 높은 effective temperature에서 나타나는 compaction은 mini-prot
 folding sampling을 돕기 위해 사용되어 온 method 특성입니다. 짧은 Chignolin
 계산만으로 force field 성능이나 수렴을 판단하지 않습니다.
 
+`grompp_utils.bash`는 `grompp`를 먼저 `-maxwarn` 없이 실행합니다.
+AMBER→GROMACS topology 변환 뒤
+남은 전하가 ±0.01 e 이내이고 `System has non-zero total charge` warning 하나만
+있을 때만 내부적으로 `-maxwarn 1`로 다시 실행합니다. 다른 warning은 해당
+`*.grompp.log`를 남기고 계산을 중단합니다.
+
 ## English
+
+`grompp_utils.bash` first runs `grompp` without `-maxwarn`. It is retried with
+`-maxwarn 1` only when the AMBER-to-GROMACS topology conversion leaves a charge
+within ±0.01 e and the log contains exactly one `System has non-zero total
+charge` warning. Any other warning stops the workflow and remains in the
+corresponding `*.grompp.log`.
 
 This example runs eight-state REST2 for ff19SB/OPC Chignolin. Only protein
 interactions are scaled over effective temperatures of 300–450 K; the physical

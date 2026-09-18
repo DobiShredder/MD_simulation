@@ -178,7 +178,19 @@ residue의 Cα distance를 TSV로 저장합니다.
 - [REST3 원 논문](https://pmc.ncbi.nlm.nih.gov/articles/PMC10795075/)
 - [repex-topology-parser](https://github.com/koreyr/repex_topology_parser)
 
+`grompp_utils.bash`는 `grompp`를 먼저 `-maxwarn` 없이 실행합니다.
+AMBER→GROMACS topology 변환 뒤
+남은 전하가 ±0.01 e 이내이고 `System has non-zero total charge` warning 하나만
+있을 때만 내부적으로 `-maxwarn 1`로 다시 실행합니다. 다른 warning은 해당
+`*.grompp.log`를 남기고 계산을 중단합니다.
+
 ## English
+
+`grompp_utils.bash` first runs `grompp` without `-maxwarn`. It is retried with
+`-maxwarn 1` only when the AMBER-to-GROMACS topology conversion leaves a charge
+within ±0.01 e and the log contains exactly one `System has non-zero total
+charge` warning. Any other warning stops the workflow and remains in the
+corresponding `*.grompp.log`.
 
 This example runs eight-state solvent-scaled REST3 for ff19SB/OPC Chignolin.
 It uses a geometric 300–450 K effective-temperature ladder and the fixed kappa
