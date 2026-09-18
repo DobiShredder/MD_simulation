@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate config-driven AMBER inputs for MetaD and OPES templates."""
+"""Generate config-driven AMBER inputs for the OPES_METAD template."""
 
 from __future__ import annotations
 
@@ -21,14 +21,12 @@ from config_utils import (  # noqa: E402
 from force_field_profiles import resolve_force_field_profile  # noqa: E402
 
 
-METHODS = ("wt-metad", "funnel-metad", "opes-metad", "opes-expanded")
 
 
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Generate tleap and AMBER stage inputs for a MetaD template."
     )
-    parser.add_argument("method", choices=METHODS, help="MetaD or OPES method")
     parser.add_argument("config", type=Path, help="Template TOML configuration")
     parser.add_argument("output", type=Path, help="Directory for generated inputs")
     parser.add_argument(
@@ -44,7 +42,7 @@ def render_cntrl(title: str, values: list[str]) -> str:
     return f"{title}\n&cntrl\n{body}\n/\n"
 
 
-def resolve(method: str, config_path: Path) -> dict[str, object]:
+def resolve(config_path: Path) -> dict[str, object]:
     config = load_config(config_path)
     build = section(config, "build")
     run = section(config, "run")
@@ -56,16 +54,6 @@ def resolve(method: str, config_path: Path) -> dict[str, object]:
         raise ValueError("equilibration ensemble currently supports only NPT")
     if string_value(run, "constraint_mode").lower() != "h-bonds":
         raise ValueError("constraint_mode currently supports only h-bonds")
-    if method == "funnel-metad":
-        if string_value(build, "ligand_force_field").upper() != "GAFF2":
-            raise ValueError("ligand_force_field currently supports only GAFF2")
-        if string_value(build, "charge_method").upper() != "RESP":
-            raise ValueError("charge_method currently supports only RESP")
-        string_value(build, "ligand_residue_name")
-        net_charge = build.get("ligand_net_charge")
-        if isinstance(net_charge, bool) or not isinstance(net_charge, int):
-            raise ValueError("ligand_net_charge must be an integer")
-
     production_steps = positive_int(run, "production_steps")
     segments = positive_int(run, "production_segments")
     if production_steps % segments != 0:
@@ -78,12 +66,8 @@ def resolve(method: str, config_path: Path) -> dict[str, object]:
         raise ValueError("random_seed must be 'random' or a positive integer")
 
     restraint_mask = "!:WAT,Na+,Cl- & !@H="
-    if method == "funnel-metad":
-        funnel_selection = section(config, "funnel_selection")
-        restraint_mask = f"{string_value(funnel_selection, 'protein_mask')} & !@H="
 
     return {
-        "method": method,
         "force_field": force_field,
         "force_field_profile": force_field_profile,
         "water_model": water_model,
@@ -113,21 +97,11 @@ def write_tleap(
     water_box = str(profile["water_box"])
 
     lines = [f"source {protein_source}"]
-    if values["method"] == "funnel-metad":
-        lines.extend([
-            "source leaprc.gaff2",
-            "loadamberparams ligand.frcmod",
-            "LIG = loadmol2 ligand.mol2",
-        ])
     lines.extend([
         f"source {water_source}",
         "system = loadpdb input.pdb",
         "check system",
-        (
-            f"solvatebox system {water_box} {values['box_distance']:.3f}"
-            if values["method"] == "funnel-metad"
-            else f"solvatebox system {water_box} {values['box_distance']:.3f} 0.75"
-        ),
+        f"solvatebox system {water_box} {values['box_distance']:.3f} 0.75",
     ])
     if salt_pairs is None:
         lines.extend(["savepdb system solvated.pdb", "quit"])
@@ -160,21 +134,7 @@ def write_md_inputs(output: Path, values: dict[str, object]) -> None:
     interval = int(values["trajectory_interval"])
     solute_mask = str(values["restraint_mask"])
 
-    if values["method"] == "funnel-metad":
-        (output / "min-solvent.in").write_text(
-            render_cntrl(
-                "Minimize solvent while restraining the solute",
-                [
-                    "imin=1", "maxcyc=5000", "ncyc=2500", "ntb=1", "cut=10.0",
-                    "ntr=1", "restraint_wt=10.0", f"restraintmask='{solute_mask}'",
-                    f"ntpr={interval}",
-                ],
-            ),
-            encoding="utf-8",
-        )
-        minimization_name = "min-all.in"
-    else:
-        minimization_name = "minimize.in"
+    minimization_name = "minimize.in"
     (output / minimization_name).write_text(
         render_cntrl(
             "Minimize the complete system",
@@ -215,26 +175,18 @@ def write_md_inputs(output: Path, values: dict[str, object]) -> None:
                 "ig=-1",
                 "ntb=2", "ntp=1", "barostat=1", f"pres0={pressure:.3f}",
                 "taup=2.0",
-                *(
-                    ["ntr=1", "restraint_wt=0.5", f"restraintmask='{solute_mask}'"]
-                    if values["method"] == "funnel-metad"
-                    else []
-                ),
+
             ],
         )
-    if values["method"] != "funnel-metad":
-        equilibration_input += "&ewald\n  skinnb=5.0,\n/\n"
+    equilibration_input += "&ewald\n  skinnb=5.0,\n/\n"
     (output / "equilibrate.in").write_text(
         equilibration_input,
         encoding="utf-8",
     )
-    if values["method"] == "opes-expanded":
-        ensemble = ["ntb=1", "ntp=0"]
-    else:
-        ensemble = [
-            "ntb=2", "ntp=1", "barostat=1", f"pres0={pressure:.3f}",
-            "taup=2.0",
-        ]
+    ensemble = [
+        "ntb=2", "ntp=1", "barostat=1", f"pres0={pressure:.3f}",
+        "taup=2.0",
+    ]
     (output / "production.in.template").write_text(
         render_cntrl(
             "Biased production segment",
@@ -267,7 +219,7 @@ def main() -> None:
     if args.salt_pairs is not None and args.salt_pairs < 0:
         raise SystemExit("--salt-pairs must be zero or greater")
     try:
-        values = resolve(args.method, args.config)
+        values = resolve(args.config)
     except ValueError as error:
         raise SystemExit(f"Config error: {error}") from None
     args.output.mkdir(parents=True, exist_ok=True)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prepare tleap files for config-driven RBFE and ABFE systems."""
+"""Prepare tleap files for a config-driven ABFE system."""
 
 from __future__ import annotations
 
@@ -18,11 +18,6 @@ from force_field_profiles import resolve_force_field_profile  # noqa: E402
 def arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Copy reviewed FEP inputs and generate first- or second-pass tleap files."
-    )
-    parser.add_argument(
-        "method",
-        choices=("rbfe", "abfe"),
-        help="Free-energy method that determines the required systems",
     )
     parser.add_argument("config", type=Path, help="TOML configuration file")
     parser.add_argument("structure", type=Path, help="Reviewed input PDB structure")
@@ -71,7 +66,6 @@ def validate_mol2(path: Path, residue_name: str, expected_charge: int) -> None:
 
 
 def leap_text(
-    method: str,
     environment: str,
     build: dict[str, object],
     force_field_profile: dict[str, object],
@@ -89,28 +83,12 @@ def leap_text(
     if environment == "complex":
         lines.insert(0, f"source {protein_source}")
 
-    if method == "rbfe":
-        name_a = string_value(build, "ligand_a_residue_name")
-        name_b = string_value(build, "ligand_b_residue_name")
-        lines.extend(
-            [
-                "loadamberparams ligand_a.frcmod",
-                "loadamberparams ligand_b.frcmod",
-                f"{name_a} = loadmol2 ligand_a.mol2",
-                f"{name_b} = loadmol2 ligand_b.mol2",
-            ]
-        )
-        if environment == "complex":
-            lines.extend(["protein = loadpdb input.pdb", f"system = combine {{ protein {name_a} {name_b} }}"])
-        else:
-            lines.append(f"system = combine {{ {name_a} {name_b} }}")
+    name = string_value(build, "ligand_residue_name")
+    lines.extend(["loadamberparams ligand.frcmod", f"{name} = loadmol2 ligand.mol2"])
+    if environment == "complex":
+        lines.append("system = loadpdb input.pdb")
     else:
-        name = string_value(build, "ligand_residue_name")
-        lines.extend(["loadamberparams ligand.frcmod", f"{name} = loadmol2 ligand.mol2"])
-        if environment == "complex":
-            lines.append("system = loadpdb input.pdb")
-        else:
-            lines.append(f"system = combine {{ {name} }}")
+        lines.append(f"system = combine {{ {name} }}")
 
     lines.append(f"solvatebox system {water_box} {distance:.3f}")
     if salt_pairs is None:
@@ -155,29 +133,13 @@ def main() -> None:
 
     args.output.mkdir(parents=True, exist_ok=True)
     copy_input(args.structure, args.output / "input.pdb")
-    if args.method == "rbfe":
-        copy_input(Path(string_value(build, "ligand_a_mol2")), args.output / "ligand_a.mol2")
-        copy_input(Path(string_value(build, "ligand_a_frcmod")), args.output / "ligand_a.frcmod")
-        copy_input(Path(string_value(build, "ligand_b_mol2")), args.output / "ligand_b.mol2")
-        copy_input(Path(string_value(build, "ligand_b_frcmod")), args.output / "ligand_b.frcmod")
-        validate_mol2(
-            args.output / "ligand_a.mol2",
-            string_value(build, "ligand_a_residue_name"),
-            integer_value(build, "ligand_a_net_charge"),
-        )
-        validate_mol2(
-            args.output / "ligand_b.mol2",
-            string_value(build, "ligand_b_residue_name"),
-            integer_value(build, "ligand_b_net_charge"),
-        )
-    else:
-        copy_input(Path(string_value(build, "ligand_mol2")), args.output / "ligand.mol2")
-        copy_input(Path(string_value(build, "ligand_frcmod")), args.output / "ligand.frcmod")
-        validate_mol2(
-            args.output / "ligand.mol2",
-            string_value(build, "ligand_residue_name"),
-            integer_value(build, "ligand_net_charge"),
-        )
+    copy_input(Path(string_value(build, "ligand_mol2")), args.output / "ligand.mol2")
+    copy_input(Path(string_value(build, "ligand_frcmod")), args.output / "ligand.frcmod")
+    validate_mol2(
+        args.output / "ligand.mol2",
+        string_value(build, "ligand_residue_name"),
+        integer_value(build, "ligand_net_charge"),
+    )
 
     for environment, salt_pairs in (
         ("complex", args.complex_salt_pairs),
@@ -186,7 +148,7 @@ def main() -> None:
         phase = "solvate" if salt_pairs is None else "final"
         path = args.output / f"tleap.{environment}.{phase}.in"
         path.write_text(
-            leap_text(args.method, environment, build, force_field_profile, salt_pairs),
+            leap_text(environment, build, force_field_profile, salt_pairs),
             encoding="utf-8",
         )
     apply_config(args.config, args.output.parent)
