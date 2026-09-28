@@ -68,7 +68,7 @@ if (( ${#window_rows[@]} == 0 )); then
 fi
 
 if (( dry_run )); then
-    echo '+ (cd .. && python3 generate_inputs.py us work/resolved_config.toml us/work --topology work/system.parm7)'
+    echo '+ (cd .. && python3 helpers/generate_inputs.py us work/resolved_config.toml us/work --topology work/system.parm7)'
     echo "Umbrella windows: ${#window_rows[@]}"
     exit 0
 fi
@@ -110,7 +110,7 @@ done
 
 (
     cd ..
-    "$python" -B generate_inputs.py us work/resolved_config.toml us/work \
+    "$python" -B helpers/generate_inputs.py us work/resolved_config.toml us/work \
         --topology work/system.parm7
 )
 

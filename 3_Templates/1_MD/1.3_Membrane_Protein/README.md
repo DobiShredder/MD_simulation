@@ -2,6 +2,10 @@
 
 ## 한국어
 
+사용자가 직접 실행하는 파일은 이 directory의 root에 있습니다. `helpers/`는 `build.sh`, `run.sh` 또는 `anal.py`가 자동 호출하는 leaf-local 내부 code이며 직접 실행하지 않습니다.
+
+중단되거나 marker가 없는 stage output은 자동 삭제하거나 재실행하지 않고 보존한 채 중단합니다.
+
 이 directory만 별도로 복사해 사용할 수 있습니다. Python dependency는 복사한
 directory의 `requirements.txt`를 사용해 설치합니다.
 
@@ -36,7 +40,7 @@ Build는 bilayer를 복제하고 protein overlap을 제거한 뒤 ff19SB/Lipid21
 topology를 생성합니다. 기본 production은 anisotropic Monte Carlo pressure
 coupling을 사용하며 10×10 ns segments입니다. `protein_restraint_mask`는 system의
 protein와 retained pore ion/water 선택에 맞게 검토해야 합니다.
-`build_membrane.py`는 `build.sh`가 자동 호출하는 bilayer 배치 helper입니다.
+`helpers/build_membrane.py`는 `build.sh`가 자동 호출하는 bilayer 배치 helper입니다.
 
 ### Config 선택값
 
@@ -58,6 +62,10 @@ protein와 retained pore ion/water 선택에 맞게 검토해야 합니다.
 검증하지 않았으므로 config validation에서 거부합니다.
 
 ## English
+
+User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh`, `run.sh`, or `anal.py`; it is not a separate entry point.
+
+Interrupted or unmarked stage output is retained and stops the workflow instead of being deleted or rerun automatically.
 
 ### Config choices
 
@@ -92,4 +100,4 @@ Set the POPC, POPE, and cholesterol patch paths, composition, xy padding, and
 water padding in `config.toml`. Bilayer coordinate patches are not redistributed
 by this repository. The default run uses ff19SB/Lipid21/OPC, anisotropic Monte
 Carlo pressure coupling, and ten 10 ns production segments. `build.sh` calls
-`build_membrane.py` to place the bilayer and remove overlaps.
+`helpers/build_membrane.py` to place the bilayer and remove overlaps.

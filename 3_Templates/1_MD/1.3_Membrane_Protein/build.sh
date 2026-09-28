@@ -79,7 +79,7 @@ fi
 
 mkdir -p "$work_dir/inputs"
 cp "$input" "$work_dir/input.pdb"
-"$python" generate_inputs.py "$config" "$work_dir/inputs"
+"$python" helpers/generate_inputs.py "$config" "$work_dir/inputs"
 parameter_file="$work_dir/build_parameters.tsv"
 composition=$(awk -F '\t' '$1=="composition" {print $2}' "$parameter_file")
 popc=$(awk -F '\t' '$1=="popc" {print $2}' "$parameter_file")
@@ -90,16 +90,16 @@ water_padding=$(awk -F '\t' '$1=="water_padding" {print $2}' "$parameter_file")
 protein_lipid_distance=$(awk -F '\t' '$1=="protein_lipid_distance" {print $2}' "$parameter_file")
 
 echo "Packing the oriented protein into the configured bilayer."
-"$python" build_membrane.py "$work_dir/input.pdb" "$popc" "$pope" "$cholesterol" \
+"$python" helpers/build_membrane.py "$work_dir/input.pdb" "$popc" "$pope" "$cholesterol" \
     "$work_dir/system-coordinates.pdb" --composition "$composition" \
     --xy-padding "$xy_padding" --water-padding "$water_padding" \
     --protein-lipid-distance "$protein_lipid_distance"
-"$python" generate_inputs.py "$config" "$work_dir/inputs" --coordinate "$work_dir/system-coordinates.pdb"
+"$python" helpers/generate_inputs.py "$config" "$work_dir/inputs" --coordinate "$work_dir/system-coordinates.pdb"
 
 if ! (cd "$work_dir" && "$tleap" -f inputs/tleap.in > leap.log 2>&1); then
     die "tleap failed. See log: $work_dir/leap.log"
 fi
-"$python" apply_config.py "$config" "$work_dir"
+"$python" helpers/apply_config.py "$config" "$work_dir"
 for output in system.parm7 system.rst7 system.pdb resolved_config.toml; do
     if [[ ! -s "$work_dir/$output" ]]; then
         die "Build output was not created: $work_dir/$output"

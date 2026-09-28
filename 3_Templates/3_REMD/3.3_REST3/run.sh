@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-source ./grompp_utils.bash
+source ./helpers/grompp_utils.bash
 
 method=rest3
 dry_run=0
@@ -170,7 +170,7 @@ if (( dry_run )); then
     if (( ! production_only )); then
         printf '+ %q grompp -f %q -p %q -c %q -o %q\n' \
             "$gmx" "$work_dir/000/minimize.mdp" "$work_dir/000/topol.top" \
-            "$work_dir/000/system.gro" "$work_dir/000/minimize.tpr"
+            "$work_dir/system.gro" "$work_dir/000/minimize.tpr"
     fi
     if (( ! preparation_only )); then
         for ((segment = segment_start; segment <= segment_end; segment++)); do
@@ -212,10 +212,7 @@ run_preproduction_stage() {
         return
     fi
     if [[ -n "$partial_output" ]]; then
-        echo "Warning: removing partial $stage output from all replicas and restarting the stage." >&2
-        for replica_dir in "${replica_dirs[@]}"; do
-            rm -f -- "$replica_dir/$stage."{tpr,log,edr,gro,cpt,trr,xtc} "$replica_dir/$stage.grompp.log" "$replica_dir/$stage.mdrun.log"
-        done
+        die "Partial $stage output detected and retained: $partial_output"
     fi
     local replica replica_dir gpu_id process_id
     local replica_index=0

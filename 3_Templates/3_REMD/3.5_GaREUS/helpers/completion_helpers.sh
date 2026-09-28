@@ -56,14 +56,3 @@ completed_stage_count() {
 
     echo "$completed"
 }
-
-remove_stage_outputs() {
-    local stage=$1
-    local replica
-    rm -f -- "$work_dir/.$stage.complete"
-    while IFS=$'\t' read -r replica _; do
-        [[ "$replica" != replica ]] || continue
-        rm -f -- "$work_dir/$replica/$stage.out" "$work_dir/$replica/$stage.rst7" \
-            "$work_dir/$replica/$stage.nc" "$work_dir/$replica/$stage.info"
-    done < "$states_file"
-}

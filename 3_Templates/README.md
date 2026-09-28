@@ -8,7 +8,8 @@
 아니므로 system에 맞게 수정하고 pilot run으로 확인합니다.
 
 각 leaf directory는 독립적으로 복사할 수 있는 self-contained template입니다.
-실행에 필요한 helper와 `requirements.txt`가 같은 leaf 안에 있으며, family 상위
+사용자가 실행하는 script와 config는 leaf root에, 자동 호출되는 내부 code는
+`helpers/`에 있습니다. `requirements.txt`도 같은 leaf에 있으며 family 상위
 directory나 `3_Templates/common`의 code를 호출하지 않습니다. 복사한 leaf
 directory 안에서 script를 실행합니다.
 
@@ -96,7 +97,9 @@ interface가 이미 분리되어 있어 preparation/production mode option을 �
 | [`7_MetaD`](7_MetaD/README.md) | WT-MetaD, funnel MetaD, OPES_METAD와 OPES_EXPANDED |
 
 Minimization, heating과 equilibration은 process가 정상 종료되면 completion marker를
-기록합니다. Marker가 없는 partial preproduction은 해당 stage부터 다시 실행합니다.
+기록합니다. Marker가 없거나 output 일부만 있는 stage는 기존 파일을 보존하고
+중단합니다. AMBER의 `.out`, `.rst7`, `.nc`, `.mdinfo`/`.info`는 minimization,
+equilibration과 production에서 모두 보존합니다.
 Production, replica-exchange state, GaMD state, WESTPA state와 PLUMED bias state는
 자동으로 삭제하거나 덮어쓰지 않습니다. Method별 continuation 조건은 leaf
 README에서 설명합니다.
@@ -122,10 +125,11 @@ config-driven starting workflows for user-prepared structures. The defaults are
 not universal production protocols; adjust them for the system and assess them
 with pilot simulations.
 
-Each leaf is a self-contained template that can be copied independently. Its
-runtime helpers and `requirements.txt` are stored inside the leaf; scripts do
-not call code from the family directory or `3_Templates/common`. Run every
-template from its leaf directory. `download.sh` retrieves only a
+Each leaf is a self-contained template that can be copied independently.
+User-facing scripts and config remain in the leaf root, while automatically
+called internal code is stored in `helpers/`. `requirements.txt` also remains
+inside the leaf; scripts do not call code from the family directory or
+`3_Templates/common`. Run every template from its leaf directory. `download.sh` retrieves only a
 source structure and does not decide protonation, missing atoms, alternate
 locations, biological assemblies, ligands, bound ions, or crystallographic
 waters. Pass a reviewed, build-ready PDB to `build.sh`.
@@ -171,7 +175,9 @@ WE keeps its already-separated build and propagation interface. Continuation
 from a segment after 1 requires the preceding restart and method state.
 
 The seven families cover conventional MD, umbrella sampling, replica exchange,
-GaMD variants, RBFE/ABFE, WESTPA weighted ensemble, and MetaD/OPES. Incomplete
-preproduction stages can be rerun, while production and method state files are
-preserved rather than overwritten automatically. See each leaf README for its
-continuation contract.
+GaMD variants, RBFE/ABFE, WESTPA weighted ensemble, and MetaD/OPES. If a stage
+lacks its completion marker or has only part of its required output, the
+workflow stops and preserves the existing files. AMBER `.out`, `.rst7`, `.nc`,
+and `.mdinfo`/`.info` files are retained for minimization, equilibration, and
+production. Production and method state files are never overwritten
+automatically. See each leaf README for its continuation contract.

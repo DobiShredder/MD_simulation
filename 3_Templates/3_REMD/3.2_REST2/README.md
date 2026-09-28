@@ -2,6 +2,12 @@
 
 ## 한국어
 
+사용자가 직접 실행하는 파일은 이 directory의 root에 있습니다. `helpers/`는 `build.sh`, `run.sh` 또는 `anal.py`가 자동 호출하는 leaf-local 내부 code이며 직접 실행하지 않습니다.
+
+중단되거나 marker가 없는 stage output은 자동 삭제하거나 재실행하지 않고 보존한 채 중단합니다.
+
+Water count를 위한 first-pass LEaP input과 `solvated.pdb`는 `work/.build_tmp.XXXXXX/`에서 생성합니다. 전체 build가 성공하면 temporary directory를 삭제하고, 실패하면 진단을 위해 경로를 출력하고 보존합니다. Final PDB, topology, restart, resolved config와 LEaP log는 유지합니다. REST build의 preprocessing TPR, processed topology와 energy-check raw file도 같은 temporary directory에 둡니다. 성공 후에는 `work/topol.top`, `work/system.gro`, replica topology, `work/build.log`, `work/build_summary.toml`과 `work/energy_check.tsv`를 남깁니다. `./build.sh --keep-intermediates INPUT.pdb`를 사용하면 성공 후에도 temporary directory를 보존합니다. Replica는 공통 `work/system.gro`를 직접 참조합니다. 실제 minimization, equilibration, production TPR·`*.grompp.log`와 restart는 정리하지 않습니다.
+
 이 directory의 runtime code는 별도로 복사해 사용할 수 있습니다. GROMACS를
 build할 때는 상위 `patches/` directory의 correction도 함께 사용합니다. Python
 dependency는 복사한 directory의 `requirements.txt`를 사용해 설치합니다.
@@ -54,7 +60,7 @@ Temperature file은 사용자가 생성해야 합니다. 구분자는 공백, co
 둘 이상이어야 하고 첫 값은 `run.temperature`와 같아야 합니다. 적용된 temperature,
 λ와 seed는 `work/states.tsv`에 기록됩니다.
 
-`maxwarn`은 public config option이 아닙니다. `grompp_utils.bash`는 `grompp`를
+`maxwarn`은 public config option이 아닙니다. `helpers/grompp_utils.bash`는 `grompp`를
 먼저 warning 우회 없이 실행합니다. 변환된 topology의 남은 전하가 ±0.01 e
 이내이고 `System has non-zero total charge` warning 하나만 있을 때만
 내부적으로 `-maxwarn 1`로 다시
@@ -62,7 +68,13 @@ Temperature file은 사용자가 생성해야 합니다. 구분자는 공백, co
 
 ## English
 
-`maxwarn` is not a public configuration option. `grompp_utils.bash` first runs
+User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh`, `run.sh`, or `anal.py`; it is not a separate entry point.
+
+Interrupted or unmarked stage output is retained and stops the workflow instead of being deleted or rerun automatically.
+
+The first-pass LEaP input and water-count `solvated.pdb` are created under `work/.build_tmp.XXXXXX/`. A successful build removes that temporary directory; a failed build prints and retains it for diagnosis. Final PDB, topology, restart, resolved config, and LEaP logs are retained. REST preprocessing TPRs, processed topologies, and raw energy-check files use the same temporary directory. After success, the build retains `work/topol.top`, `work/system.gro`, replica topologies, `work/build.log`, `work/build_summary.toml`, and `work/energy_check.tsv`. Use `./build.sh --keep-intermediates INPUT.pdb` to retain the temporary directory after success. Replicas reference the shared `work/system.gro` directly. Run-stage minimization, equilibration, production TPRs, `*.grompp.log` files, and restarts are never cleaned.
+
+`maxwarn` is not a public configuration option. `helpers/grompp_utils.bash` first runs
 `grompp` without a warning override and retries it with `-maxwarn 1` only when the
 converted topology has a residual charge within ±0.01 e and the log contains
 exactly one `System has non-zero total charge` warning. Any other warning stops

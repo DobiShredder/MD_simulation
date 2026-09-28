@@ -145,11 +145,7 @@ run_stage() {
         return
     fi
     if [[ "$state" == partial ]]; then
-        if [[ "$stage_type" == production ]]; then
-            die "Partial production or GaMD-state output detected: $directory"
-        fi
-        echo "Warning: removing partial $stage output and restarting the stage." >&2
-        rm -f -- "$marker" "${required[@]}"
+        die "Partial $stage output detected and retained: $directory"
     fi
     if [[ -n "$previous_gamd_state" ]]; then
         cp "$previous_gamd_state" "$directory/gamd-restart.dat"

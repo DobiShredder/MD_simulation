@@ -2,6 +2,12 @@
 
 ## 한국어
 
+사용자가 직접 실행하는 파일은 이 directory의 root에 있습니다. `helpers/`는 `build.sh`, `run.sh` 또는 `anal.py`가 자동 호출하는 leaf-local 내부 code이며 직접 실행하지 않습니다.
+
+중단되거나 marker가 없는 stage output은 자동 삭제하거나 재실행하지 않고 보존한 채 중단합니다.
+
+Water count를 위한 first-pass LEaP input과 `solvated.pdb`는 `work/.build_tmp.XXXXXX/`에서 생성합니다. 전체 build가 성공하면 temporary directory를 삭제하고, 실패하면 진단을 위해 경로를 출력하고 보존합니다. Final PDB, topology, restart, resolved config와 LEaP log는 유지합니다.
+
 이 directory만 별도로 복사해 사용할 수 있습니다. Python dependency는 복사한
 directory의 `requirements.txt`를 사용해 설치합니다.
 
@@ -22,7 +28,7 @@ conventional MD와 boost equilibration에 각각 사용합니다. `sigma0P`와
 | `config.toml` | build, MD 길이와 GaMD 통계 parameter |
 | `build.sh` | configured protein/water topology와 GaMD input 생성 |
 | `run.sh` | minimization부터 segmented production까지 실행 |
-| `generate_gamd_inputs.py` | `gamd_prepare.in`과 `production.in` 생성; `build.sh`가 자동 호출 |
+| `helpers/generate_gamd_inputs.py` | `gamd_prepare.in`과 `production.in` 생성; `build.sh`가 자동 호출 |
 
 Production이 여러 segment이면 `work/001`, `work/002`, ...에 저장합니다.
 완료된 segment는 marker와 output이 모두 있을 때 건너뜁니다. Partial production
@@ -45,6 +51,12 @@ GaMD boost 종류는 이 directory에서 dual boost로 고정되어 있으며 �
 mode가 아닙니다.
 
 ## English
+
+User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh`, `run.sh`, or `anal.py`; it is not a separate entry point.
+
+Interrupted or unmarked stage output is retained and stops the workflow instead of being deleted or rerun automatically.
+
+The first-pass LEaP input and water-count `solvated.pdb` are created under `work/.build_tmp.XXXXXX/`. A successful build removes that temporary directory; a failed build prints and retains it for diagnosis. Final PDB, topology, restart, resolved config, and LEaP logs are retained.
 
 ### Config choices
 

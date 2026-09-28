@@ -82,7 +82,7 @@ fi
 
 config_values=$("$python" - "$config_file" <<'PY'
 import sys
-sys.path.insert(0, ".")
+sys.path.insert(0, "helpers")
 from pathlib import Path
 from config_utils import load_config
 
@@ -177,8 +177,7 @@ run_preproduction_stage() {
             return
         fi
         if [[ "$state" == partial ]]; then
-            echo "Warning: restarting partial $stage stage." >&2
-            rm -f -- "$marker" "${required[@]}"
+            die "Partial $stage output detected and retained: $work_dir"
         fi
     fi
     run_command "$stage" "$work_dir" "${command[@]}"
@@ -203,7 +202,7 @@ check_plumed() {
 
     parse_input="$work_dir/plumed.parse.dat"
     generate=(
-        "$python" generate_plumed.py "$config_file" "$parse_input"
+        "$python" helpers/generate_plumed.py "$config_file" "$parse_input"
         --parse-only
     )
     "${generate[@]}"
@@ -289,7 +288,7 @@ run_production_segment() {
         sed "s/@RANDOM_SEED@/$seed/g" \
             "$work_dir/inputs/production.in.template" > "$segment_dir/production.in"
         generated_plumed=(
-        "$python" generate_plumed.py "$config_file"
+        "$python" helpers/generate_plumed.py "$config_file"
         "$segment_dir/plumed.dat" --file-prefix "$prefix"
     )
     if [[ "$segment_index" -gt 1 ]]; then

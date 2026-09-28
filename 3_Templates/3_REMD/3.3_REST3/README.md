@@ -2,6 +2,12 @@
 
 ## 한국어
 
+사용자가 직접 실행하는 파일은 이 directory의 root에 있습니다. `helpers/`는 `build.sh`, `run.sh` 또는 `anal.py`가 자동 호출하는 leaf-local 내부 code이며 직접 실행하지 않습니다.
+
+중단되거나 marker가 없는 stage output은 자동 삭제하거나 재실행하지 않고 보존한 채 중단합니다.
+
+Water count를 위한 first-pass LEaP input과 `solvated.pdb`는 `work/.build_tmp.XXXXXX/`에서 생성합니다. 전체 build가 성공하면 temporary directory를 삭제하고, 실패하면 진단을 위해 경로를 출력하고 보존합니다. Final PDB, topology, restart, resolved config와 LEaP log는 유지합니다. REST build의 preprocessing TPR, processed topology와 energy-check raw file도 같은 temporary directory에 둡니다. 성공 후에는 `work/topol.top`, `work/system.gro`, replica topology, `work/build.log`, `work/build_summary.toml`과 `work/energy_check.tsv`를 남깁니다. `./build.sh --keep-intermediates INPUT.pdb`를 사용하면 성공 후에도 temporary directory를 보존합니다. Replica는 공통 `work/system.gro`를 직접 참조합니다. 실제 minimization, equilibration, production TPR·`*.grompp.log`와 restart는 정리하지 않습니다.
+
 이 directory의 runtime code는 별도로 복사해 사용할 수 있습니다. GROMACS를
 build할 때는 상위 `patches/` directory의 correction도 함께 사용합니다. Python
 dependency는 복사한 directory의 `requirements.txt`를 사용해 설치합니다.
@@ -26,7 +32,7 @@ GROMACS/PLUMED HREX build와 상위 directory의
 `download.sh`는 source PDB와 함께
 검증된 `repex-topology-parser` 0.2.2 source를 내려받습니다.
 기본 OPC 설정에서는 `kappa_atom_names=['OW']`가 water oxygen type을 선택합니다.
-`verify_rest3.py`는 O/H1/H2/EP의 type·charge·mass와 solvent interaction이
+`helpers/verify_rest3.py`는 O/H1/H2/EP의 type·charge·mass와 solvent interaction이
 replica 사이에서 보존되는지 검사합니다. `water_model = "TIP3P"` compatibility
 option도 유지합니다.
 각 replica의 preproduction은 tutorial과 같은 minimization과 NPT equilibration
@@ -61,7 +67,7 @@ semicolon, `|`를 구분자로 받고 `#` comment를 허용합니다. Temperatur
 두 mode를 조합할 수 있으며 최종 temperature, λ, κ와 seed는
 `work/states.tsv`에서 확인합니다.
 
-`maxwarn`은 public config option이 아닙니다. `grompp_utils.bash`는 `grompp`를
+`maxwarn`은 public config option이 아닙니다. `helpers/grompp_utils.bash`는 `grompp`를
 먼저 warning 우회 없이 실행합니다. 변환된 topology의 남은 전하가 ±0.01 e
 이내이고 `System has non-zero total charge` warning 하나만 있을 때만
 내부적으로 `-maxwarn 1`로 다시
@@ -69,7 +75,13 @@ semicolon, `|`를 구분자로 받고 `#` comment를 허용합니다. Temperatur
 
 ## English
 
-`maxwarn` is not a public configuration option. `grompp_utils.bash` first runs
+User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh`, `run.sh`, or `anal.py`; it is not a separate entry point.
+
+Interrupted or unmarked stage output is retained and stops the workflow instead of being deleted or rerun automatically.
+
+The first-pass LEaP input and water-count `solvated.pdb` are created under `work/.build_tmp.XXXXXX/`. A successful build removes that temporary directory; a failed build prints and retains it for diagnosis. Final PDB, topology, restart, resolved config, and LEaP logs are retained. REST preprocessing TPRs, processed topologies, and raw energy-check files use the same temporary directory. After success, the build retains `work/topol.top`, `work/system.gro`, replica topologies, `work/build.log`, `work/build_summary.toml`, and `work/energy_check.tsv`. Use `./build.sh --keep-intermediates INPUT.pdb` to retain the temporary directory after success. Replicas reference the shared `work/system.gro` directly. Run-stage minimization, equilibration, production TPRs, `*.grompp.log` files, and restarts are never cleaned.
+
+`maxwarn` is not a public configuration option. `helpers/grompp_utils.bash` first runs
 `grompp` without a warning override and retries it with `-maxwarn 1` only when the
 converted topology has a residual charge within ±0.01 e and the log contains
 exactly one `System has non-zero total charge` warning. Any other warning stops
@@ -119,7 +131,7 @@ temperature predictor does not model the κ correction. File mode accepts an
 explicit κ list with one value per state. Replica preproduction uses the same
 minimization-to-NPT-equilibration sequence as the fixed tutorial.
 With the default OPC model, `kappa_atom_names=['OW']` selects the water oxygen
-type. `verify_rest3.py` checks preservation of O/H1/H2/EP atom records and
+type. `helpers/verify_rest3.py` checks preservation of O/H1/H2/EP atom records and
 solvent interactions across replicas. The optional `water_model = "TIP3P"`
 compatibility path remains available. Before the first `grompp`, the build
 normalizes long ParmEd-formatted CMAP numbers to a precision accepted by

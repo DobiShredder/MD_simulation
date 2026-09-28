@@ -128,11 +128,7 @@ run_stage() {
             return
         fi
         if [[ "$state" == partial ]]; then
-            if (( production )); then
-                die "Partial ratchet-MD output detected: $prefix"
-            fi
-            echo "Warning: removing partial $label output and restarting: $prefix" >&2
-            rm -f -- "$marker" "${required[@]}"
+            die "Partial $label output detected and retained: $prefix"
         fi
     fi
 
@@ -165,7 +161,7 @@ coordinates=../work/system.rst7
 config=../work/resolved_config.toml
 
 if (( dry_run )); then
-    echo '+ (cd .. && python3 generate_inputs.py rmd work/resolved_config.toml rmd/work --topology work/system.parm7)'
+    echo '+ (cd .. && python3 helpers/generate_inputs.py rmd work/resolved_config.toml rmd/work --topology work/system.parm7)'
 else
     if ! command -v "$engine" >/dev/null 2>&1; then
         die "AMBER engine not found: $engine"
@@ -183,7 +179,7 @@ else
     fi
     (
         cd ..
-        "$python" -B generate_inputs.py rmd work/resolved_config.toml rmd/work \
+        "$python" -B helpers/generate_inputs.py rmd work/resolved_config.toml rmd/work \
             --topology work/system.parm7
     )
     cp "$topology" work/system.parm7

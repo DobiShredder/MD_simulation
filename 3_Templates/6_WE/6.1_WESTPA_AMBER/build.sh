@@ -46,6 +46,26 @@ input=$1
 work_dir=${WORK_DIR:-work}
 tleap=${TLEAP:-tleap}
 python=${PYTHON:-python3}
+build_tmp=""
+
+report_build_tmp() {
+    status=$?
+    trap - EXIT
+    if (( status != 0 )) && [[ -n "$build_tmp" && -d "$build_tmp" ]]; then
+        echo "Temporary build files retained: $build_tmp" >&2
+    fi
+    exit "$status"
+}
+
+remove_build_tmp() {
+    if [[ "$build_tmp" != "$work_dir"/.build_tmp.* ]]; then
+        die "Refusing to remove unexpected temporary path: $build_tmp"
+    fi
+    rm -rf -- "$build_tmp"
+    build_tmp=""
+}
+
+trap report_build_tmp EXIT
 
 if [[ -d "$work_dir" ]]; then
     existing=$(find "$work_dir" -type f \( -name 'west.h5' -o -name '.block.*.complete' \) -print -quit)
@@ -55,11 +75,11 @@ if [[ -d "$work_dir" ]]; then
 fi
 
 if (( dry_run )); then
-    echo "+ $python generate_inputs.py $config $work_dir/inputs"
-    echo "+ $tleap -f inputs/tleap.solvate.in"
+    echo "+ $python helpers/generate_inputs.py $config $work_dir/inputs"
+    echo "+ first-pass tleap in $work_dir/.build_tmp.XXXXXX"
     echo "+ count waters and calculate salt formula units"
     echo "+ $tleap -f inputs/tleap.final.in"
-    echo "+ $python configure_we.py $config $work_dir"
+    echo "+ $python helpers/configure_we.py $config $work_dir"
     echo "+ AMBER_ENGINE minimization, heating, and equilibration"
     exit 0
 fi
@@ -77,7 +97,7 @@ done
 
 configured_engine=$("$python" - "$config" <<'PY'
 import sys
-sys.path.insert(0, ".")
+sys.path.insert(0, "helpers")
 from pathlib import Path
 from config_utils import load_config
 print(load_config(Path(sys.argv[1]))["run"]["engine"])
@@ -107,23 +127,27 @@ if [[ -f "$work_dir/.system.complete" ]]; then
 else
     mkdir -p "$work_dir/inputs"
     cp "$input" "$work_dir/input.pdb"
-    "$python" generate_inputs.py "$config" "$work_dir/inputs"
+    "$python" helpers/generate_inputs.py "$config" "$work_dir/inputs"
+build_tmp=$(mktemp -d "$work_dir/.build_tmp.XXXXXX")
+cp "$work_dir/input.pdb" "$build_tmp/input.pdb"
+mv "$work_dir/inputs/tleap.solvate.in" "$build_tmp/tleap.solvate.in"
 
     echo "Solvating the basis system to determine the water count."
-    if ! (cd "$work_dir"; "$tleap" -f inputs/tleap.solvate.in > leap.solvate.log 2>&1); then
-        die "Initial tleap solvation failed: $work_dir/leap.solvate.log"
+    if ! (cd "$build_tmp"; "$tleap" -f tleap.solvate.in > leap.solvate.log 2>&1); then
+        die "Initial tleap solvation failed: $build_tmp/leap.solvate.log"
     fi
-    water_count=$("$python" count_waters.py "$work_dir/solvated.pdb")
+cp "$build_tmp/leap.solvate.log" "$work_dir/leap.solvate.log"
+    water_count=$("$python" helpers/count_waters.py "$build_tmp/solvated.pdb")
     salt_concentration=$("$python" - "$config" <<'PY'
 import sys
-sys.path.insert(0, ".")
+sys.path.insert(0, "helpers")
 from pathlib import Path
 from config_utils import load_config
 print(load_config(Path(sys.argv[1]))["build"]["salt_concentration_molar"])
 PY
 )
     salt_pairs=$(awk -v waters="$water_count" -v concentration="$salt_concentration" 'BEGIN {printf "%d", waters * concentration / 55.5 + 0.5}')
-    "$python" generate_inputs.py "$config" "$work_dir/inputs" --salt-pairs "$salt_pairs"
+    "$python" helpers/generate_inputs.py "$config" "$work_dir/inputs" --salt-pairs "$salt_pairs"
 
     echo "Building the final basis system ($water_count waters, $salt_pairs salt formula units)."
     if ! (cd "$work_dir"; "$tleap" -f inputs/tleap.final.in > leap.log 2>&1); then
@@ -134,7 +158,7 @@ PY
             die "Topology build output was not created: $required"
         fi
     done
-    "$python" configure_we.py "$config" "$work_dir"
+    "$python" helpers/configure_we.py "$config" "$work_dir"
 
     mkdir -p "$work_dir/common_files" "$work_dir/bstates"
     cp "$work_dir/system.parm7" "$work_dir/common_files/system.parm7"
@@ -144,7 +168,11 @@ fi
 mkdir -p "$work_dir/common_files" "$work_dir/bstates"
 
 if [[ ! -f "$work_dir/.minimize.complete" ]]; then
-    rm -f -- "$work_dir/minimize.out" "$work_dir/minimize.rst7"
+    for output in "$work_dir/minimize.out" "$work_dir/minimize.rst7"; do
+        if [[ -e "$output" ]]; then
+            die "Unmarked minimization output detected and retained: $output"
+        fi
+    done
     echo "Running: WE basis-state minimization"
     if ! (cd "$work_dir"; "$engine" -O -i inputs/minimize.in -o minimize.out \
         -p system.parm7 -c system.rst7 -r minimize.rst7); then
@@ -160,7 +188,11 @@ fi
 cp "$work_dir/minimize.rst7" "$work_dir/common_files/reference.rst7"
 
 if [[ ! -f "$work_dir/.heat.complete" ]]; then
-    rm -f -- "$work_dir/heat.out" "$work_dir/heat.rst7" "$work_dir/heat.info" "$work_dir/heat.nc"
+    for output in "$work_dir/heat.out" "$work_dir/heat.rst7" "$work_dir/heat.info" "$work_dir/heat.nc"; do
+        if [[ -e "$output" ]]; then
+            die "Unmarked heating output detected and retained: $output"
+        fi
+    done
     echo "Running: WE basis-state heating"
     if ! (cd "$work_dir"; "$engine" -O -i inputs/heat.in -o heat.out \
         -p system.parm7 -c minimize.rst7 -r heat.rst7 -x heat.nc \
@@ -178,7 +210,11 @@ elif [[ ! -s "$work_dir/heat.rst7" || ! -s "$work_dir/heat.nc" ]]; then
 fi
 
 if [[ ! -f "$work_dir/.equilibrate.complete" ]]; then
-    rm -f -- "$work_dir/equilibrate.out" "$work_dir/equilibrate.info" "$work_dir/equilibrate.nc" "$work_dir/bstates/basis.rst7"
+    for output in "$work_dir/equilibrate.out" "$work_dir/equilibrate.info" +        "$work_dir/equilibrate.nc" "$work_dir/bstates/basis.rst7"; do
+        if [[ -e "$output" ]]; then
+            die "Unmarked equilibration output detected and retained: $output"
+        fi
+    done
     echo "Running: WE basis-state equilibration"
     if ! (cd "$work_dir"; "$engine" -O -i inputs/equilibrate.in -o equilibrate.out \
         -p system.parm7 -c heat.rst7 -r bstates/basis.rst7 \
@@ -204,4 +240,6 @@ done
 WORK_DIR="$work_dir" CPPTRAJ="$cpptraj" \
     ./westpa_scripts/calc_pcoord.sh "$work_dir/bstates/basis.rst7" > "$work_dir/basis_pcoord.txt"
 touch "$work_dir/.basis.complete"
+remove_build_tmp
+
 echo "WESTPA basis state and block configs: $work_dir"

@@ -2,6 +2,12 @@
 
 ## 한국어
 
+사용자가 직접 실행하는 파일은 이 directory의 root에 있습니다. `helpers/`는 `build.sh`, `run.sh` 또는 `anal.py`가 자동 호출하는 leaf-local 내부 code이며 직접 실행하지 않습니다.
+
+중단되거나 marker가 없는 stage output은 자동 삭제하거나 재실행하지 않고 보존한 채 중단합니다.
+
+Water count를 위한 first-pass LEaP input과 `solvated.pdb`는 `work/.build_tmp.XXXXXX/`에서 생성합니다. 전체 build가 성공하면 temporary directory를 삭제하고, 실패하면 진단을 위해 경로를 출력하고 보존합니다. Final PDB, topology, restart, resolved config와 LEaP log는 유지합니다.
+
 이 directory만 별도로 복사해 사용할 수 있습니다. Python dependency는 복사한
 directory의 `requirements.txt`를 사용해 설치합니다.
 
@@ -35,7 +41,7 @@ WESTPA 2 command와 Python `h5py`가 같은 execution environment에 있어야 �
 | --- | --- | --- |
 | `config.toml` | 수정 | force field, MD 길이, progress coordinate, bin과 walker 설정 |
 | `build.sh` | 직접 실행 | topology, RMSD reference, equilibrated basis restart와 WESTPA config 생성 |
-| `configure_we.py` | `build.sh`가 호출 | block config와 AMBER segment input 생성 |
+| `helpers/configure_we.py` | `build.sh`가 호출 | block config와 AMBER segment input 생성 |
 | `init.sh` | 직접 실행 | basis/target state에서 `work/west.h5` 초기화 |
 | `run.sh` | 직접 실행 | 선택한 block 또는 남은 block을 이어서 실행 |
 | `westpa_scripts/*.sh` | WESTPA가 호출 | segment 전파와 start/end progress coordinate 계산 |
@@ -55,15 +61,15 @@ WESTPA는 그 값이 속한 bin을 target으로 사용합니다. 따라서 targe
 ### Restart와 resource
 
 `build.sh`는 topology와 각 basis-state MD stage가 정상 종료되면 marker를
-생성합니다. 실패한 minimization, heating 또는 equilibration은 다음 호출에서 그
-stage부터 다시 실행합니다. `west.h5`가 만들어진 뒤에는 build를 덮어쓰지
-않습니다.
+생성합니다. 중단된 minimization, heating 또는 equilibration output은 삭제하지 않고
+build를 중단합니다. 기존 output을 별도로 보관하거나 새 `WORK_DIR`을 지정한
+뒤 다시 시작합니다. `west.h5`가 만들어진 뒤에는 build를 덮어쓰지 않습니다.
 Basis-state MD는 tutorial과 같은 whole-system minimization, 20 K부터 시작하는
 restrained NVT heating과 NPT equilibration 순서입니다.
 
 `run.sh`는 완료된 block을 건너뛰며 `--block N`으로 한 block만 선택할 수
-있습니다. `init.sh --reset`은 기존 `west.h5`, segment와 iteration state를 지우고
-새 run을 시작할 때만 사용합니다.
+있습니다. `init.sh`는 기존 `west.h5`나 segment data를 삭제하지 않습니다.
+새 run은 다른 `WORK_DIR`에서 초기화합니다.
 
 기본값은 한 GPU에서 `pmemd.cuda`를 serial로 실행합니다. CPU engine에서는
 process work manager를 선택할 수 있습니다.
@@ -102,6 +108,12 @@ GPU 병렬 실행은 GPU별 worker 배치와 scheduler isolation을 외부 환�
 읽어 `work/west.h5`를 초기화합니다.
 
 ## English
+
+User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh`, `run.sh`, or `anal.py`; it is not a separate entry point.
+
+Interrupted or unmarked stage output is retained and stops the workflow instead of being deleted or rerun automatically.
+
+The first-pass LEaP input and water-count `solvated.pdb` are created under `work/.build_tmp.XXXXXX/`. A successful build removes that temporary directory; a failed build prints and retains it for diagnosis. Final PDB, topology, restart, resolved config, and LEaP logs are retained.
 
 ### Config choices
 
@@ -146,12 +158,15 @@ restart. A target-state value is a representative point inside its target bin;
 the matching boundary comes from `bin_boundaries`. Design both together.
 
 Successful topology and basis-state stages receive completion markers.
-Interrupted minimization, heating, or equilibration is rerun from that stage.
+Interrupted minimization, heating, or equilibration output is retained and the
+build stops. Archive the existing output or choose a new `WORK_DIR` before
+starting again.
 Basis-state MD follows whole-system minimization, restrained NVT heating from
 20 K, and NPT equilibration.
 Once `west.h5` exists, `build.sh` refuses to overwrite production state.
-Completed WESTPA blocks are skipped; `--block N` selects one block, and
-`init.sh --reset` explicitly discards an initialized run.
+Completed WESTPA blocks are skipped; `--block N` selects one block.
+`init.sh` never deletes an existing `west.h5` or segment data. Initialize a
+new run in a different `WORK_DIR`.
 
 The default is serial `pmemd.cuda` on one GPU. A CPU engine may use the
 `processes` work manager and multiple workers. GPU worker placement remains an

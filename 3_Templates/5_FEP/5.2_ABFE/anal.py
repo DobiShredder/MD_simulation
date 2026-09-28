@@ -15,7 +15,7 @@ from pathlib import Path
 from types import ModuleType
 
 sys.dont_write_bytecode = True
-sys.path.insert(0, ".")
+sys.path.insert(0, "helpers")
 from config_utils import load_config, positive_float, section  # noqa: E402
 
 ROOT = Path.cwd()

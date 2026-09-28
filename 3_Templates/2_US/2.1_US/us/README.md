@@ -12,8 +12,8 @@ constant(kcal mol⁻¹ Å⁻²)를 지정합니다. `build.sh`는 rMD seed,
 ```
 
 `run.sh`는 `--window N`, `--windows START-END`, `--preparation-only`,
-`--production-only`, `--dry-run`을 지원합니다. Incomplete preparation
-stage는 다시 실행하지만 partial production은 덮어쓰지 않습니다.
+`--production-only`, `--dry-run`을 지원합니다. Preparation 또는 production에서
+partial output을 발견하면 기존 파일을 보존하고 중단합니다.
 
 ## English
 

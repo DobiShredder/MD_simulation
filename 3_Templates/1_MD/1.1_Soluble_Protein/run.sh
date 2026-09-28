@@ -85,11 +85,7 @@ run_stage() {
         return
     fi
     if [[ -f "$marker" || "$existing" -ne 0 ]]; then
-        if [[ "$stage_type" == production ]]; then
-            die "Partial production output detected: $directory"
-        fi
-        echo "Warning: removing partial $stage output and restarting the stage." >&2
-        rm -f -- "$marker" "${required[@]}"
+        die "Partial $stage output detected and retained: $directory"
     fi
 
     echo "Running: $label"

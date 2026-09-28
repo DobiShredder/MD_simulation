@@ -96,7 +96,7 @@ run_replica_stage() {
         return
     fi
     if [[ "$status" == partial ]]; then
-        echo "Warning: restarting incomplete stage for all replicas: $stage" >&2
+        die "Incomplete $stage outputs found; existing .out, .rst7, .nc, and .info files were preserved. Use a new WORK_DIR or resolve the partial stage."
     fi
 
     echo "Running: $stage"
@@ -105,13 +105,17 @@ run_replica_stage() {
             continue
         fi
         replica_dir="$work_dir/$replica"
+        input_coordinates="$replica_dir/$input_restart"
+        if [[ "$input_restart" == "system.rst7" ]]; then
+            input_coordinates="$work_dir/system.rst7"
+        fi
         if ! "$amber_engine" \
             "${amber_options[@]}" \
             -O \
             -i "$replica_dir/$stage.in" \
             -o "$replica_dir/$stage.out" \
-            -p "$replica_dir/system.parm7" \
-            -c "$replica_dir/$input_restart" \
+            -p "$work_dir/system.parm7" \
+            -c "$input_coordinates" \
             -r "$replica_dir/$stage.rst7" \
             -x "$replica_dir/$stage.nc" \
             -inf "$replica_dir/$stage.info"; then
@@ -133,7 +137,7 @@ write_group_file() {
             continue
         fi
         replica_dir="$work_dir/$replica"
-        echo "-O -i $replica_dir/production.in -o $replica_dir/$segment_name.out -p $replica_dir/system.parm7 -c $replica_dir/$input_restart -r $replica_dir/$segment_name.rst7 -x $replica_dir/$segment_name.nc -inf $replica_dir/$segment_name.info" \
+        echo "-O -i $replica_dir/production.in -o $replica_dir/$segment_name.out -p $work_dir/system.parm7 -c $replica_dir/$input_restart -r $replica_dir/$segment_name.rst7 -x $replica_dir/$segment_name.nc -inf $replica_dir/$segment_name.info" \
             >> "$group_file"
     done < "$states_file"
 }
@@ -170,7 +174,7 @@ if (( dry_run )); then
     if (( ! production_only )); then
         printf '+ %q -O -i %q -o %q -p %q -c %q -r %q -x %q -inf %q\n' \
             "$amber_engine" "$work_dir/000/minimize.in" "$work_dir/000/minimize.out" \
-            "$work_dir/000/system.parm7" "$work_dir/000/system.rst7" \
+            "$work_dir/system.parm7" "$work_dir/system.rst7" \
             "$work_dir/000/minimize.rst7" "$work_dir/000/minimize.nc" \
             "$work_dir/000/minimize.info"
     fi

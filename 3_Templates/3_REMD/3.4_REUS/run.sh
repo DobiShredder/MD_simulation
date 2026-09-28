@@ -85,7 +85,7 @@ if (( ! dry_run )); then
     done
 fi
 
-source completion_helpers.sh
+source helpers/completion_helpers.sh
 
 run_stage() {
     local stage=$1
@@ -101,6 +101,11 @@ run_stage() {
         fi
         replica_dir="$work_dir/$replica"
 
+        input_coordinates="$input_restart"
+        if [[ "$input_restart" == "system.rst7" ]]; then
+            input_coordinates="../system.rst7"
+        fi
+
         if ! (
             cd "$replica_dir"
             "$amber_engine" \
@@ -108,8 +113,8 @@ run_stage() {
                 -O \
                 -i "$stage.in" \
                 -o "$stage.out" \
-                -p system.parm7 \
-                -c "$input_restart" \
+                -p ../system.parm7 \
+                -c "$input_coordinates" \
                 -r "$stage.rst7" \
                 -x "$stage.nc" \
                 -inf "$stage.info"
@@ -129,8 +134,7 @@ run_stage_if_needed() {
         return
     fi
     if [[ "$state" == partial ]]; then
-        echo "Warning: removing partial $stage output from all windows and restarting the stage." >&2
-        remove_stage_outputs "$stage"
+        die "Partial $stage output detected and retained in replica directories."
     fi
     run_stage "$stage" "$input_restart"
 }
@@ -160,7 +164,7 @@ write_group_file() {
             > "$replica_dir/$segment_name.in"
 
         printf '%s\n' \
-            "-O -i $replica_dir/$segment_name.in -o $replica_dir/$segment_name.out -p $replica_dir/system.parm7 -c $replica_dir/$input_restart -r $replica_dir/$segment_name.rst7 -x $replica_dir/$segment_name.nc -inf $replica_dir/$segment_name.info" \
+            "-O -i $replica_dir/$segment_name.in -o $replica_dir/$segment_name.out -p $work_dir/system.parm7 -c $replica_dir/$input_restart -r $replica_dir/$segment_name.rst7 -x $replica_dir/$segment_name.nc -inf $replica_dir/$segment_name.info" \
             >> "$group_file"
     done < "$states_file"
 }
@@ -172,8 +176,8 @@ if (( dry_run )); then
     if (( ! production_only )); then
         printf '+ %q -O -i %q -o %q -p %q -c %q -r %q\n' \
             "$amber_engine" "$work_dir/000/minimize.in" \
-            "$work_dir/000/minimize.out" "$work_dir/000/system.parm7" \
-            "$work_dir/000/system.rst7" "$work_dir/000/minimize.rst7"
+            "$work_dir/000/minimize.out" "$work_dir/system.parm7" \
+            "$work_dir/system.rst7" "$work_dir/000/minimize.rst7"
     fi
     if (( ! preparation_only )); then
         for ((segment = segment_start; segment <= segment_end; segment++)); do

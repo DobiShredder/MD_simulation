@@ -1,21 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-reset=0
 show_help() {
     cat <<'EOF'
-Usage: ./init.sh [--reset]
+Usage: ./init.sh
 
 Initialize the WESTPA steady-state simulation from the generated basis state.
 
 Options:
-  --reset        Remove the existing WESTPA state before initialization.
   -h, --help     Show this help message and exit.
 EOF
 }
 
 case "${1:-}" in
-    --reset) reset=1; shift ;;
     -h|--help) show_help; exit 0 ;;
 esac
 if [[ $# -ne 0 ]]; then
@@ -42,20 +39,8 @@ if ! command -v w_init >/dev/null 2>&1; then
     die "w_init not found. Activate the WESTPA 2 environment."
 fi
 
-if [[ -e "$WORK_DIR/west.h5" && "$reset" -eq 0 ]]; then
-    die "An existing WESTPA state was found. Use ./init.sh --reset to start over."
-fi
-if (( reset )); then
-    case "$WORK_DIR" in
-        ""|/|"$HOME") die "Refusing to reset an unsafe WORK_DIR: $WORK_DIR" ;;
-    esac
-    for directory in "$WORK_DIR/traj_segs" "$WORK_DIR/seg_logs" "$WORK_DIR/istates" "$WORK_DIR/analysis"; do
-        if [[ -d "$directory" ]]; then
-            find "$directory" -depth -delete
-        fi
-    done
-    find "$WORK_DIR" -maxdepth 1 -type f -name '.block.*.complete' -delete
-    rm -f -- "$WORK_DIR/west.h5" "$WORK_DIR/west.log" "$WORK_DIR/west.init.log" "$WORK_DIR/get_pcoord.log"
+if [[ -e "$WORK_DIR/west.h5" ]]; then
+    die "Existing WESTPA state retained: $WORK_DIR/west.h5. Choose a new WORK_DIR to initialize another run."
 fi
 
 mkdir -p "$WORK_DIR/traj_segs" "$WORK_DIR/seg_logs" "$WORK_DIR/istates"

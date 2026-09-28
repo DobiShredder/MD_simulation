@@ -140,8 +140,6 @@ def main() -> None:
         replica = f"{index:03d}"
         directory = args.output / replica
         directory.mkdir()
-        shutil.copy2(args.topology, directory / "system.parm7")
-        shutil.copy2(args.coordinates, directory / "system.rst7")
         (directory / "distance.RST").write_text(f"&rst\n iat={atom_1},{atom_2},\n r1=0.0, r2={center:.6f}, r3={center:.6f}, r4=999.0,\n rk2={force:.6f}, rk3={force:.6f},\n/\n", encoding="utf-8")
         (directory / "minimize.in").write_text(render("Window minimization", ["imin=1", "maxcyc=5000", "ncyc=2500", "ntb=1", "cut=10.0", "nmropt=1"]), encoding="utf-8")
         heating_steps = positive_int(run, "heating_steps")

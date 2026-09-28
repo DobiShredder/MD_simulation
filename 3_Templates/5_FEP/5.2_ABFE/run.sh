@@ -161,15 +161,7 @@ run_stage() {
         return
     fi
     if [[ "$state" == partial ]]; then
-        case "$stage" in
-            minimize|heat|equilibrate)
-                echo "Warning: removing partial $stage output and restarting the stage: $prefix" >&2
-                rm -f -- "$completion_marker" "${required[@]}"
-                ;;
-            *)
-                die "Partial production output detected: $prefix"
-                ;;
-        esac
+        die "Partial $stage output detected and retained: $prefix"
     fi
     echo "Running: $calculation - $stage"
     if ! (

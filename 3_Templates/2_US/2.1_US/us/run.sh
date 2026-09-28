@@ -169,11 +169,7 @@ run_stage() {
             return
         fi
         if [[ "$state" == partial ]]; then
-            if [[ "$stage_type" == production ]]; then
-                die "Partial production output detected: $prefix"
-            fi
-            echo "Warning: removing partial $stage_label output and restarting the stage: $prefix" >&2
-            rm -f -- "$completion_marker" "${required[@]}"
+            die "Partial $stage_label output detected and retained: $prefix"
         fi
     fi
 
