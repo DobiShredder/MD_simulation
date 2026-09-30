@@ -27,7 +27,7 @@ def parse_log(path: Path) -> list[tuple[int, list[float]]]:
         break
 
     if column_names is None:
-        raise SystemExit(f"{path.name}: GaMD column header was not found.")
+        raise SystemExit(f"{path}: GaMD column header was not found.")
 
     normalized_names = [
         re.sub(r"[^a-z0-9]", "", name.lower()) for name in column_names
@@ -35,7 +35,7 @@ def parse_log(path: Path) -> list[tuple[int, list[float]]]:
     try:
         step_index = normalized_names.index("totalnstep")
     except ValueError as error:
-        raise SystemExit(f"{path.name}: total_nstep column was not found.") from error
+        raise SystemExit(f"{path}: total_nstep column was not found.") from error
 
     boost_indices = [
         index
@@ -44,7 +44,7 @@ def parse_log(path: Path) -> list[tuple[int, list[float]]]:
     ]
     if len(boost_indices) != COMPONENT_COUNT:
         raise SystemExit(
-            f"{path.name}: expected {COMPONENT_COUNT} boost-energy columns, "
+            f"{path}: expected {COMPONENT_COUNT} boost-energy columns, "
             f"found {len(boost_indices)}: {', '.join(column_names)}"
         )
 
@@ -72,12 +72,12 @@ def parse_log(path: Path) -> list[tuple[int, list[float]]]:
     if malformed:
         line_number, line = malformed[0]
         raise SystemExit(
-            f"{path.name}: malformed GaMD record at line {line_number}: {line.strip()}"
+            f"{path}: malformed GaMD record at line {line_number}: {line.strip()}"
         )
     if len(records) != EXPECTED_FRAMES:
-        raise SystemExit(f"{path.name}: {EXPECTED_FRAMES} GaMD records is required: {len(records)}")
+        raise SystemExit(f"{path}: {EXPECTED_FRAMES} GaMD records is required: {len(records)}")
     if any(current[0] <= previous[0] for previous, current in zip(records, records[1:])):
-        raise SystemExit(f"{path.name}: timestep does not increase.")
+        raise SystemExit(f"{path}: timestep does not increase.")
     return records
 
 
@@ -108,6 +108,7 @@ def effective_sample_size(values: list[float]) -> float:
 
 
 def main() -> None:
+    print(f"Calculating boost diagnostics: {WORK / 'production.gamd.log'}", flush=True)
     frame_rows = []
     summary_rows = []
     for segment in (1,):
@@ -127,6 +128,7 @@ def main() -> None:
         for frame, (step, components) in enumerate(records, start=1):
             frame_rows.append([f"{segment:03d}", frame, step, *components, sum(components)])
 
+    print(f"Writing boost diagnostics: {WORK}", flush=True)
     with (WORK / "boost_frames.tsv").open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle, delimiter="\t")
         writer.writerow([

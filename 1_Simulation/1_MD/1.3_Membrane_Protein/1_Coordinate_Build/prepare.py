@@ -266,7 +266,8 @@ def build_output(
 def main() -> None:
     args = parse_arguments()
     if not args.opm_pdb.is_file():
-        raise SystemExit(f"OPM PDB not found: {args.opm_pdb}")
+        raise SystemExit(f"Structure preparation OPM PDB not found: {args.opm_pdb}")
+    print(f"Preparing structure: {args.opm_pdb}")
 
     sidechain_template = args.sidechain_template
     if sidechain_template is None:

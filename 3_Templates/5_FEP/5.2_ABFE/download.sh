@@ -33,19 +33,19 @@ mkdir -p "$structure_dir"
 if ! "$curl_bin" -fsSL \
     https://files.rcsb.org/download/3HTB.pdb \
     -o "$structure_dir/3HTB.raw.pdb"; then
-    die "3HTB PDB Download failed."
+    die "3HTB PDB Download failed: $structure_dir/3HTB.raw.pdb"
 fi
 
 if ! "$curl_bin" -fsSL \
     https://files.rcsb.org/download/3HTB.cif \
     -o "$structure_dir/3HTB.cif"; then
-    die "3HTB mmCIF Download failed."
+    die "3HTB mmCIF Download failed: $structure_dir/3HTB.cif"
 fi
 
 if ! "$curl_bin" -fsSL \
     https://files.rcsb.org/ligands/download/JZ4_ideal.sdf \
     -o "$structure_dir/JZ4_ideal.sdf"; then
-    die "JZ4 ideal SDF Download failed."
+    die "JZ4 ideal SDF Download failed: $structure_dir/JZ4_ideal.sdf"
 fi
 
 if command -v sha256sum >/dev/null 2>&1; then

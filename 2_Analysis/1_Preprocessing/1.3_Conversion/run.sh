@@ -37,7 +37,7 @@ if [[ ! -s "$trajectory" ]]; then
 fi
 
 mkdir -p "$output_dir"
-echo "Converting selected frames to NetCDF, DCD, and PDB."
+echo "Converting selected frames to NetCDF, DCD, and PDB; log: $output_dir/cpptraj.log"
 
 cd "$output_dir"
 topology="../$topology"
@@ -52,5 +52,12 @@ if ! "$cpptraj" \
     echo "Error: cpptraj failed: $output_dir/cpptraj.log" >&2
     exit 1
 fi
+
+for output_file in sampled.nc sampled.dcd first_frame.pdb; do
+    if [[ ! -s "$output_file" ]]; then
+        echo "Error: cpptraj output was not created: $output_dir/$output_file; log: $output_dir/cpptraj.log" >&2
+        exit 1
+    fi
+done
 
 echo "Conversion output: $output_dir"

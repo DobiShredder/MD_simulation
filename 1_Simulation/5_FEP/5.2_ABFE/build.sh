@@ -63,19 +63,38 @@ echo "Parameterizing JZ4 with GAFF2/AM1-BCC."
 cp "$ligand_sdf" "$build_dir/JZ4_ideal.sdf"
 (
     cd "$build_dir"
-    "$antechamber" \
+    if "$antechamber" \
         -i JZ4_ideal.sdf -fi sdf \
         -o jz4.mol2 -fo mol2 \
         -at gaff2 -c bcc -nc 0 -rn JZ4 -s 2 \
-        > antechamber.log 2>&1
+        > antechamber.log 2>&1; then
+        if [[ ! -s jz4.mol2 ]]; then
+            die "antechamber output was not created: $build_dir/jz4.mol2; log: $build_dir/antechamber.log"
+        fi
+    else
+        status=$?
+        echo "Error: ligand antechamber failed: $build_dir/antechamber.log" >&2
+        exit "$status"
+    fi
 )
 (
     cd "$build_dir"
-    "$parmchk2" \
+    if "$parmchk2" \
         -i jz4.mol2 -f mol2 \
         -o jz4.frcmod -s gaff2 \
-        > parmchk2.log 2>&1
+        > parmchk2.log 2>&1; then
+        if [[ ! -s jz4.frcmod ]]; then
+            die "parmchk2 output was not created: $build_dir/jz4.frcmod; log: $build_dir/parmchk2.log"
+        fi
+    else
+        status=$?
+        echo "Error: ligand parmchk2 failed: $build_dir/parmchk2.log" >&2
+        exit "$status"
+    fi
 )
+
+echo "Completed: ligand parameterization ($build_dir)"
+printf '\n'
 
 echo "Generating complex and solvent topologies."
 for environment in complex solvent; do
@@ -90,10 +109,15 @@ for environment in complex solvent; do
     done
 done
 
+echo "Generating FEP window inputs: $build_dir -> $work_dir/states.tsv"
 "$python" \
     "generate_inputs.py" \
     "$work_dir" \
     "inputs" \
     "$anchor_residue"
+
+if [[ ! -s "$work_dir/states.tsv" ]]; then
+    die "FEP window generation did not create: $work_dir/states.tsv"
+fi
 
 echo "Created 65 ABFE windows: $work_dir/restraint, $work_dir/charge, $work_dir/vdw"

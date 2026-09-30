@@ -38,6 +38,7 @@ def representative_index(feature: np.ndarray, labels: np.ndarray, cluster: int) 
 
 def main() -> int:
     output_dir = Path(__file__).resolve().parent / "output"
+    print(f"Running: KMeans analysis; input directory: {output_dir}")
     frames, projection, feature = pca_features(output_dir / "phi_psi.dat")
     if len(frames) < 9:
         raise ValueError("K-means diagnostics require at least 9 frames.")
@@ -100,7 +101,9 @@ def main() -> int:
     axes[1].set_xlabel("Cluster")
     axes[1].set_ylabel("Population")
     figure.tight_layout()
+    print("Displaying KMeans analysis figure.")
     plt.show()
+    print(f"Completed: KMeans analysis; results: {output_dir} (figure displayed interactively)")
     return 0
 
 

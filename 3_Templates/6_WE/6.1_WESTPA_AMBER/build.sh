@@ -58,6 +58,9 @@ report_build_tmp() {
 }
 
 remove_build_tmp() {
+    if [[ -z "$build_tmp" ]]; then
+        return
+    fi
     if [[ "$build_tmp" != "$work_dir"/.build_tmp.* ]]; then
         die "Refusing to remove unexpected temporary path: $build_tmp"
     fi
@@ -74,13 +77,16 @@ if [[ -d "$work_dir" ]]; then
     fi
 fi
 
+engine=$("${PYTHON:-python3}" helpers/config_utils.py "$config" engine AMBER_ENGINE pmemd.cuda pmemd sander)
+
 if (( dry_run )); then
+    echo "Dry run: planned WE build commands; no build execution"
     echo "+ $python helpers/generate_inputs.py $config $work_dir/inputs"
     echo "+ first-pass tleap in $work_dir/.build_tmp.XXXXXX"
     echo "+ count waters and calculate salt formula units"
     echo "+ $tleap -f inputs/tleap.final.in"
     echo "+ $python helpers/configure_we.py $config $work_dir"
-    echo "+ AMBER_ENGINE minimization, heating, and equilibration"
+    echo "+ $engine minimization, heating, equilibration"
     exit 0
 fi
 
@@ -95,15 +101,6 @@ for executable in "$tleap" "$python"; do
     fi
 done
 
-configured_engine=$("$python" - "$config" <<'PY'
-import sys
-sys.path.insert(0, "helpers")
-from pathlib import Path
-from config_utils import load_config
-print(load_config(Path(sys.argv[1]))["run"]["engine"])
-PY
-)
-engine=${AMBER_ENGINE:-$configured_engine}
 cpptraj=${CPPTRAJ:-cpptraj}
 for executable in "$engine" "$cpptraj"; do
     if ! command -v "$executable" >/dev/null 2>&1; then
@@ -182,8 +179,11 @@ if [[ ! -f "$work_dir/.minimize.complete" ]]; then
         die "Basis-state minimization output is incomplete: $work_dir"
     fi
     touch "$work_dir/.minimize.complete"
+    echo "Completed: WE basis-state minimization ($work_dir)"
 elif [[ ! -s "$work_dir/minimize.rst7" ]]; then
     die "Completed minimization is missing its restart: $work_dir/minimize.rst7"
+else
+    echo "Skipping completed WE basis-state minimization: $work_dir"
 fi
 cp "$work_dir/minimize.rst7" "$work_dir/common_files/reference.rst7"
 
@@ -205,8 +205,11 @@ if [[ ! -f "$work_dir/.heat.complete" ]]; then
         fi
     done
     touch "$work_dir/.heat.complete"
+    echo "Completed: WE basis-state heating ($work_dir)"
 elif [[ ! -s "$work_dir/heat.rst7" || ! -s "$work_dir/heat.nc" ]]; then
     die "Completed heating is missing its restart or trajectory: $work_dir"
+else
+    echo "Skipping completed WE basis-state heating: $work_dir"
 fi
 
 if [[ ! -f "$work_dir/.equilibrate.complete" ]]; then
@@ -227,8 +230,11 @@ if [[ ! -f "$work_dir/.equilibrate.complete" ]]; then
         fi
     done
     touch "$work_dir/.equilibrate.complete"
+    echo "Completed: WE basis-state equilibration ($work_dir)"
 elif [[ ! -s "$work_dir/bstates/basis.rst7" || ! -s "$work_dir/equilibrate.nc" ]]; then
     die "Completed equilibration is missing its restart or trajectory: $work_dir"
+else
+    echo "Skipping completed WE basis-state equilibration: $work_dir"
 fi
 
 for output in "$work_dir/common_files/system.parm7" "$work_dir/common_files/reference.rst7" "$work_dir/bstates/basis.rst7" "$work_dir/configs/west.001.cfg"; do
@@ -237,8 +243,12 @@ for output in "$work_dir/common_files/system.parm7" "$work_dir/common_files/refe
     fi
 done
 
+echo "Calculating basis progress coordinate: $work_dir/bstates/basis.rst7 -> $work_dir/basis_pcoord.txt"
 WORK_DIR="$work_dir" CPPTRAJ="$cpptraj" \
     ./westpa_scripts/calc_pcoord.sh "$work_dir/bstates/basis.rst7" > "$work_dir/basis_pcoord.txt"
+if [[ ! -s "$work_dir/basis_pcoord.txt" ]]; then
+    die "Basis progress coordinate was not created: $work_dir/basis_pcoord.txt"
+fi
 touch "$work_dir/.basis.complete"
 remove_build_tmp
 

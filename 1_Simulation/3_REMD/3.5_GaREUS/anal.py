@@ -63,7 +63,7 @@ def parse_exchanges(state_count: int) -> list[tuple[int, int, int]]:
                 )
 
     if not records:
-        raise SystemExit("AMBER replica-exchange record not found.")
+        raise SystemExit(f"Exchange analysis: AMBER replica-exchange record not found in {WORK / 'exchange.log'}.")
 
     return records
 
@@ -166,7 +166,7 @@ def write_restraint_sampling(states: list[dict[str, str]]) -> None:
             values = read_distances(WORK / state["replica"])
             if not values:
                 raise SystemExit(
-                    f"restraint DUMPAVE not found: replica {state['replica']}"
+                    f"Restraint sampling: no DUMPAVE values in {WORK / state['replica'] / 'restraint.production.dat'}"
                 )
 
             writer.writerow(
@@ -211,7 +211,7 @@ def write_boost_range(states: list[dict[str, str]]) -> None:
 
             if not values:
                 raise SystemExit(
-                    f"GaMD boost log could not be read: replica {state['replica']}"
+                    f"Boost analysis: no boost values in {replica_dir / 'gamd.production.log'}"
                 )
 
             writer.writerow(
@@ -226,11 +226,15 @@ def write_boost_range(states: list[dict[str, str]]) -> None:
 
 
 def main() -> None:
+    print(f"Reading exchange-analysis inputs: {WORK / 'states.tsv'} and {WORK / 'exchange.log'}", flush=True)
     require_production_output()
     states = read_states()
     records = parse_exchanges(len(states))
+    print(f"Writing exchange summaries: {WORK}", flush=True)
     write_exchange_outputs(records, states)
+    print(f"Calculating restraint sampling for {len(states)} replicas: {WORK / 'restraint_sampling.tsv'}", flush=True)
     write_restraint_sampling(states)
+    print(f"Calculating replica boost ranges: {WORK / 'boost_potential.tsv'}", flush=True)
     write_boost_range(states)
     print(f"GaREUS Analysis results: {WORK}")
 

@@ -21,6 +21,7 @@ run_stage() {
     shift 3
 
     if (( dry_run )); then
+        echo "Dry run: $label (work/$output)"
         printf '+ '
         printf '%q ' "$@"
         printf '\n'
@@ -28,17 +29,27 @@ run_stage() {
     fi
 
     if [[ -s "$output" && -s "$restart" ]]; then
-        echo "Skipping completed stage: $label"
+        echo "Skipping completed stage: $label (work/$output)"
         return
     fi
     if [[ -e "$output" || -e "$restart" ]]; then
-        echo "Warning: restarting incomplete stage: $label" >&2
+        echo "Warning: restarting incomplete stage: $label (work/$output, work/$restart)" >&2
     fi
 
     echo "Running: $label"
     if ! "$@"; then
-        die "$label failed."
+        die "$label failed; expected engine output: work/$output (may be absent); see engine diagnostics above"
     fi
+    if [[ ! -s "$output" ]]; then
+        die "$label output was not created: work/$output"
+    fi
+    if [[ ! -s "$restart" ]]; then
+        die "$label restart was not created: work/$restart"
+    fi
+    if [[ "$output" == production.out && ! -s production.nc ]]; then
+        die "$label trajectory was not created: work/production.nc"
+    fi
+    echo "Completed: $label (work/$output)"
 }
 
 engine=${AMBER_ENGINE:-pmemd.cuda}
@@ -49,7 +60,7 @@ if (( ! dry_run )) && ! command -v "$engine" >/dev/null 2>&1; then
     die "AMBER engine not found: $engine"
 fi
 if [[ ! -s "$topology" || ! -s "$coordinates" ]]; then
-    die "Run ../2_Topology_Build/run.sh first."
+    die "Run preflight: topology or restart missing: $topology, $coordinates. Run ../2_Topology_Build/run.sh first."
 fi
 if (( ! dry_run )) && [[ -e work/production.out ]]; then
     die "Production output already exists: work/production.out"

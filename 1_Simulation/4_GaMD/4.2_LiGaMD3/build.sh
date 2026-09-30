@@ -75,6 +75,10 @@ if ! (
 ); then
     die "antechamber failed: $work_dir/antechamber.log"
 fi
+if [[ ! -s "$work_dir/ben.mol2" ]]; then
+    die "Ligand parameterization did not create: $work_dir/ben.mol2; log: $work_dir/antechamber.log"
+fi
+
 if ! (
     cd "$work_dir"
     "$parmchk2" \
@@ -84,6 +88,12 @@ if ! (
 ); then
     die "parmchk2 failed: $work_dir/parmchk2.log"
 fi
+
+if [[ ! -s "$work_dir/ben.frcmod" ]]; then
+    die "Ligand parameterization did not create: $work_dir/ben.frcmod; log: $work_dir/parmchk2.log"
+fi
+echo "Completed: ligand parameterization ($work_dir/ben.mol2, $work_dir/ben.frcmod)"
+printf '\n'
 
 echo "Generating an ff19SB/GAFF2/OPC topology."
 if ! (
@@ -98,13 +108,20 @@ for output in system.parm7 system.rst7 system.pdb; do
     fi
 done
 
+echo "Generating LiGaMD3 inputs: $metadata -> $work_dir/inputs"
 if ! "$python" \
     "render_inputs.py" \
     "$work_dir/system.parm7" \
     "$metadata" \
     "inputs" \
     "$work_dir/inputs"; then
-    die "LiGaMD3 input generation failed."
+    die "LiGaMD3 input generation failed: $metadata -> $work_dir/inputs"
 fi
+
+for generated_input in gamd_prepare.in production.in; do
+    if [[ ! -s "$work_dir/inputs/$generated_input" ]]; then
+        die "GaMD input generation did not create: $work_dir/inputs/$generated_input"
+    fi
+done
 
 echo "LiGaMD3 topology, restart, and generated inputs: $work_dir"

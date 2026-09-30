@@ -55,6 +55,10 @@ Hamiltonian state 정의와 engine coupling을 별도로 구성해야 합니다.
 equilibration과 NVT expanded-ensemble input을 만들고, `run.sh`는 state를 이어받아
 segment를 실행하며, `anal.py`는 누적 output을 요약합니다.
 
+### Engine 선택과 실행 상태
+
+`AMBER_ENGINE`이 설정되어 있으면 이를 사용하며, 없으면 build가 기록한 `work/resolved_config.toml`의 `run.engine`을 읽습니다. 허용하는 executable 이름은 `pmemd.cuda`, `pmemd`, `sander`이며 설치 경로를 지정할 수 있습니다. Build 전 dry-run에 한해서 resolved config가 없으면 `config.toml`을 읽습니다. PLUMED 연동이 가능한 AMBER build가 필요합니다. 빈 override, 누락된 engine 설정과 지원하지 않는 executable은 기본값으로 대체하지 않고 error로 중단합니다. Runner가 `helpers/config_utils.py`를 자동 호출해 이 설정을 읽습니다.
+
 ## English
 
 User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh`, `run.sh`, or `anal.py`; it is not a separate entry point.
@@ -95,3 +99,7 @@ energy, expanded-CV and bias ranges plus the generated state count. Hamiltonian
 expansion requires a separate Hamiltonian-state definition and coupling setup.
 `download.sh`, `build.sh`, `run.sh`, and `anal.py` retrieve, generate,
 propagate, and summarize the configured workflow, respectively.
+
+### Engine selection and run state
+
+`AMBER_ENGINE` overrides `run.engine` in the build-generated `work/resolved_config.toml`. Accepted executable names are `pmemd.cuda`, `pmemd`, `sander`; installation paths are accepted. Before build, dry-run alone may read `config.toml` when the resolved file is absent. An AMBER build with the required PLUMED integration is still needed. Empty overrides, missing engine settings and unsupported executables fail instead of falling back to a default. The runner invokes `helpers/config_utils.py` automatically to read this setting.

@@ -28,6 +28,7 @@ BINS = [
 
 def main() -> None:
     west_file = WORK / "west.h5"
+    print(f"Reading WESTPA weight and pcoord data: {west_file}", flush=True)
     if not west_file.is_file():
         raise SystemExit(f"WESTPA HDF5 not found: {west_file}")
 
@@ -38,7 +39,7 @@ def main() -> None:
     with h5py.File(west_file, "r") as handle:
         iterations = handle.get("iterations")
         if iterations is None:
-            raise SystemExit("west.h5 is missing the iterations group.")
+            raise SystemExit(f"WESTPA analysis: {west_file} is missing the iterations group.")
 
         for iteration_name in sorted(iterations):
             group = iterations[iteration_name]
@@ -51,11 +52,11 @@ def main() -> None:
                 continue
             final_coordinates = [float(values[-1][0]) for values in pcoord]
             if len(final_coordinates) != len(weights):
-                raise SystemExit(f"{iteration_name}: segment and pcoord counts differ.")
+                raise SystemExit(f"WESTPA analysis: {west_file}, {iteration_name}: segment and pcoord counts differ.")
             total_weight = sum(weights)
             squared_weight_sum = sum(weight * weight for weight in weights)
             if squared_weight_sum == 0.0:
-                raise SystemExit(f"{iteration_name}: could not calculate the total walker weight.")
+                raise SystemExit(f"WESTPA analysis: {west_file}, {iteration_name}: could not calculate the total walker weight.")
             ess = total_weight * total_weight / squared_weight_sum
             iteration_number = int(iteration_name.split("_")[-1])
             target_count = sum(
@@ -84,8 +85,9 @@ def main() -> None:
                 ])
 
     if not iteration_rows:
-        raise SystemExit("No completed WESTPA iteration was found.")
+        raise SystemExit(f"No completed WESTPA iteration was found in {west_file}.")
 
+    print(f"Writing WESTPA diagnostics: {WORK}", flush=True)
     with (WORK / "iteration_summary.tsv").open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle, delimiter="\t")
         writer.writerow(["iteration", "segments", "total_weight", "effective_walkers", "min_ca_rmsd_A", "max_ca_rmsd_A", "target_segments", "target_weight"])

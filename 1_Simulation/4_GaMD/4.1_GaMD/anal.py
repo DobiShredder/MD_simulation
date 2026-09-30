@@ -29,10 +29,10 @@ def parse_log(path: Path) -> list[tuple[int, list[float]]]:
 
     if len(records) != EXPECTED_FRAMES:
         raise SystemExit(
-            f"{path.name}: {EXPECTED_FRAMES} GaMD records is required: {len(records)}"
+            f"{path}: {EXPECTED_FRAMES} GaMD records is required: {len(records)}"
         )
     if any(current[0] <= previous[0] for previous, current in zip(records, records[1:])):
-        raise SystemExit(f"{path.name}: timestep does not increase.")
+        raise SystemExit(f"{path}: timestep does not increase.")
     return records
 
 
@@ -68,6 +68,7 @@ def effective_sample_size(values: list[float]) -> float:
 
 
 def main() -> None:
+    print(f"Calculating boost diagnostics: {WORK / 'production.gamd.log'}", flush=True)
     all_records: list[tuple[int, int, list[float]]] = []
     summaries: list[list[str]] = []
 
@@ -96,6 +97,7 @@ def main() -> None:
         for frame, (step, components) in enumerate(records, start=1):
             all_records.append((segment, frame, [float(step), *components, sum(components)]))
 
+    print(f"Writing boost diagnostics: {WORK}", flush=True)
     with (WORK / "boost_frames.tsv").open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle, delimiter="\t")
         writer.writerow(["segment", "frame", "step", "boost_1_kcal_mol", "boost_2_kcal_mol", "total_boost_kcal_mol"])

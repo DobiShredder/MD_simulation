@@ -30,8 +30,9 @@ if ! command -v "$curl_bin" >/dev/null 2>&1; then
     exit 1
 fi
 mkdir -p structure
+echo "Downloading PDB $pdb_id to $output"
 if ! "$curl_bin" -fsSL "https://files.rcsb.org/download/$pdb_id.pdb" -o "$output"; then
-    echo "Error: failed to download PDB $pdb_id." >&2
+    echo "Error: failed to download PDB $pdb_id: $output" >&2
     exit 1
 fi
 if [[ ! -s "$output" ]]; then

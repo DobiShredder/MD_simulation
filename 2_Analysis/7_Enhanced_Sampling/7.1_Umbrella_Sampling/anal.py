@@ -265,6 +265,7 @@ def parse_arguments() -> argparse.Namespace:
 
 def main() -> None:
     parse_arguments()
+    print(f"Running: WHAM analysis; input directory: {OUTPUT_DIR}")
 
     try:
         centers, forces, series, names = read_inputs(OUTPUT_DIR)

@@ -49,6 +49,12 @@ else
     if ! (cd "$build_dir" && "$tleap" -f leap.in > leap.log 2>&1); then
         die "tleap failed: $build_dir/leap.log"
     fi
+    for output in system.parm7 system.rst7; do
+        if [[ ! -s "$build_dir/$output" ]]; then
+            die "Topology build output was not created: $build_dir/$output; log: $build_dir/leap.log"
+        fi
+    done
+    echo "Completed: WE topology build ($build_dir)"
 fi
 
 run_basis_stage() {
@@ -78,9 +84,13 @@ run_basis_stage() {
         "$@"; then
         die "Basis-state $stage failed: $output_file"
     fi
-    if [[ ! -s "$output_file" || ! -s "$output_restart" ]]; then
-        die "Basis-state $stage outputs were not created."
-    fi
+    local output
+    for output in "$output_file" "$output_restart"; do
+        if [[ ! -s "$output" ]]; then
+            die "Basis-state $stage output was not created: $output"
+        fi
+    done
+    echo "Completed: WE basis-state $stage ($output_restart)"
 }
 
 run_basis_stage minimize "$build_dir/system.rst7" "$build_dir/minimize.rst7"

@@ -33,7 +33,7 @@ if [[ ! -s "$trajectory" ]]; then
 fi
 
 mkdir -p "$output_dir"
-echo "Analyzing the Chignolin trajectory with cpptraj."
+echo "Analyzing the Chignolin trajectory with cpptraj; log: $output_dir/cpptraj.log"
 
 cd "$output_dir"
 topology="../$topology"
@@ -47,5 +47,12 @@ if ! "$cpptraj" \
     echo "Error: cpptraj failed: $output_dir/cpptraj.log" >&2
     exit 1
 fi
+
+for output_file in geometry.dat phi_psi.dat; do
+    if [[ ! -s "$output_file" ]]; then
+        echo "Error: cpptraj output was not created: $output_dir/$output_file; log: $output_dir/cpptraj.log" >&2
+        exit 1
+    fi
+done
 
 echo "Analysis results: $output_dir"

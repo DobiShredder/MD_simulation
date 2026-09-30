@@ -39,19 +39,19 @@ mkdir -p "$structure_dir"
 echo "Downloading the T4 lysozyme L99A–toluene structure (PDB 4W53)."
 if ! "$curl_bin" --fail --location --silent --show-error https://files.rcsb.org/download/4W53.pdb \
     -o "$structure_dir/4W53.raw.pdb"; then
-    die "4W53 PDB Download failed."
+    die "4W53 PDB Download failed: $structure_dir/4W53.raw.pdb"
 fi
 if ! "$curl_bin" --fail --location --silent --show-error https://files.rcsb.org/download/4W53.cif \
     -o "$structure_dir/4W53.cif"; then
-    die "4W53 mmCIF Download failed."
+    die "4W53 mmCIF Download failed: $structure_dir/4W53.cif"
 fi
 if ! "$curl_bin" --fail --location --silent --show-error https://files.rcsb.org/ligands/download/BNZ_ideal.sdf \
     -o "$structure_dir/BNZ_ideal.sdf"; then
-    die "BNZ ideal SDF Download failed."
+    die "BNZ ideal SDF Download failed: $structure_dir/BNZ_ideal.sdf"
 fi
 if ! "$curl_bin" --fail --location --silent --show-error https://files.rcsb.org/ligands/download/MBN_ideal.sdf \
     -o "$structure_dir/MBN_ideal.sdf"; then
-    die "MBN ideal SDF Download failed."
+    die "MBN ideal SDF Download failed: $structure_dir/MBN_ideal.sdf"
 fi
 
 if command -v sha256sum >/dev/null 2>&1; then

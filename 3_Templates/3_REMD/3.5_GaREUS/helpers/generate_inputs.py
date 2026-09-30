@@ -74,6 +74,7 @@ def resolve(config_path: Path) -> dict[str, object]:
         "box_distance": positive_float(build, "solute_box_distance"),
         "salt_concentration": nonnegative_float(build, "salt_concentration_molar"),
         "engine": string_value(run, "engine"),
+        "mpi_engine": string_value(run, "mpi_engine"),
         "temperature": positive_float(run, "temperature"),
         "pressure": positive_float(run, "pressure"),
         "ensemble": "NPT",
@@ -195,6 +196,7 @@ salt_pairs = {salt_text}
 
 [run]
 engine = \"{values['engine']}\"
+mpi_engine = \"{values['mpi_engine']}\"
 temperature = {values['temperature']:.3f}
 pressure = {values['pressure']:.3f}
 ensemble = "{values['ensemble']}"

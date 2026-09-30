@@ -56,31 +56,68 @@ read_value() {
         "$resolved_config"
 }
 
-stage_status() {
-    local stage=$1
-    local complete=0
-    local existing=0
-    local replica
-
+stage_outputs_complete() {
+    local stage=$1 replica suffix
+    local require_complete=${2:-}
+    local required=(out rst7 info)
+    if [[ "$stage" != minimize ]]; then
+        required+=(nc)
+    fi
     while IFS=$'\t' read -r replica _; do
         if [[ "$replica" == replica ]]; then
             continue
         fi
-        if [[ -s "$work_dir/$replica/$stage.out" && -s "$work_dir/$replica/$stage.rst7" ]]; then
-            complete=$((complete + 1))
-        fi
-        if [[ -e "$work_dir/$replica/$stage.out" || -e "$work_dir/$replica/$stage.rst7" ]]; then
-            existing=$((existing + 1))
-        fi
+        for suffix in "${required[@]}"; do
+            if [[ ! -s "$work_dir/$replica/$stage.$suffix" ]]; then
+                if [[ "$require_complete" == --require-complete ]]; then
+                    die "$stage output is incomplete: $work_dir/$replica/$stage.$suffix; existing files were preserved."
+                fi
+                return 1
+            fi
+        done
     done < "$states_file"
-
-    if (( complete == replica_count )); then
-        echo complete
-    elif (( existing == 0 )); then
-        echo missing
-    else
-        echo partial
+    if [[ "$stage" == production.* && ! -s "$work_dir/exchange.${stage#production.}.log" ]]; then
+        if [[ "$require_complete" == --require-complete ]]; then
+            die "$stage output is incomplete: $work_dir/exchange.${stage#production.}.log; existing files were preserved."
+        fi
+        return 1
     fi
+}
+
+stage_status() {
+    local stage=$1 replica suffix
+    local marker="$work_dir/.$stage.complete"
+    if [[ -f "$marker" ]] && stage_outputs_complete "$stage"; then
+        echo complete
+        return
+    fi
+    if [[ -e "$marker" ]]; then
+        echo partial
+        return
+    fi
+    if [[ "$stage" == production.* && -e "$work_dir/exchange.${stage#production.}.log" ]]; then
+        echo partial
+        return
+    fi
+    while IFS=$'\t' read -r replica _; do
+        if [[ "$replica" == replica ]]; then
+            continue
+        fi
+        for suffix in out rst7 nc info; do
+            if [[ -e "$work_dir/$replica/$stage.$suffix" ]]; then
+                echo partial
+                return
+            fi
+        done
+    done < "$states_file"
+    echo missing
+}
+
+mark_stage_complete() {
+    local stage=$1
+    stage_outputs_complete "$stage" --require-complete
+    touch "$work_dir/.$stage.complete"
+    echo "Completed: $stage ($work_dir)"
 }
 
 run_replica_stage() {
@@ -96,7 +133,7 @@ run_replica_stage() {
         return
     fi
     if [[ "$status" == partial ]]; then
-        die "Incomplete $stage outputs found; existing .out, .rst7, .nc, and .info files were preserved. Use a new WORK_DIR or resolve the partial stage."
+        die "Incomplete $stage outputs found in $work_dir; existing .out, .rst7, .nc, and .info files were preserved. Use a new WORK_DIR or resolve the partial stage."
     fi
 
     echo "Running: $stage"
@@ -122,6 +159,7 @@ run_replica_stage() {
             die "$stage failed: $replica_dir/$stage.out"
         fi
     done < "$states_file"
+    mark_stage_complete "$stage"
 }
 
 write_group_file() {
@@ -146,8 +184,8 @@ if [[ ! -s "$states_file" || ! -s "$resolved_config" ]]; then
     die "Run ./build.sh first."
 fi
 
-amber_engine=${AMBER_ENGINE:-$(read_value engine)}
-amber_mpi_engine=${AMBER_MPI_ENGINE:-$(read_value mpi_engine)}
+amber_engine=$("${PYTHON:-python3}" helpers/config_utils.py "$resolved_config" engine AMBER_ENGINE pmemd.cuda)
+amber_mpi_engine=$("${PYTHON:-python3}" helpers/config_utils.py "$resolved_config" mpi_engine AMBER_MPI_ENGINE pmemd.cuda.MPI)
 mpi_launcher=${MPI_LAUNCHER:-mpirun}
 production_segments=$(read_value production_segments)
 segment_start=1
@@ -171,6 +209,7 @@ if [[ "$mpi_processes" -ne "$replica_count" ]]; then
 fi
 
 if (( dry_run )); then
+    echo "Dry run: planned replica commands; no engine execution"
     if (( ! production_only )); then
         printf '+ %q -O -i %q -o %q -p %q -c %q -r %q -x %q -inf %q\n' \
             "$amber_engine" "$work_dir/000/minimize.in" "$work_dir/000/minimize.out" \
@@ -202,6 +241,7 @@ if (( ! production_only )); then
     run_replica_stage equilibrate heat.rst7
 fi
 if (( preparation_only )); then
+    echo "Preparation output: $work_dir/<replica>/equilibrate.rst7"
     exit 0
 fi
 if [[ "$(stage_status equilibrate)" != complete ]]; then
@@ -218,6 +258,7 @@ for ((segment = segment_start; segment <= segment_end; segment++)); do
     printf -v segment_name 'production.%03d' "$segment"
     status=$(stage_status "$segment_name")
     if [[ "$status" == complete ]]; then
+        echo "Skipping completed stage: $segment_name ($work_dir)"
         continue
     fi
     if [[ "$status" == partial ]]; then
@@ -246,6 +287,7 @@ for ((segment = segment_start; segment <= segment_end; segment++)); do
         -remlog "$exchange_log"; then
         die "T-REMD segment $segment failed: $exchange_log"
     fi
+    mark_stage_complete "$segment_name"
 done
 
 echo "Completed T-REMD production: $work_dir"

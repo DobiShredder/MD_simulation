@@ -75,7 +75,7 @@ fi
 
 work_dir=${WORK_DIR:-work}
 states_file="$work_dir/states.tsv"
-engine=${AMBER_ENGINE:-pmemd.cuda}
+engine=$("${PYTHON:-python3}" helpers/config_utils.py "$work_dir/resolved_config.toml" engine AMBER_ENGINE pmemd.cuda)
 read -r -a amber_options <<< "${AMBER_OPTIONS:-}"
 
 if [[ ! -s "$states_file" ]]; then
@@ -158,12 +158,22 @@ run_stage() {
     local state
     state=$(stage_state "$completion_marker" "${required[@]}")
     if [[ "$state" == complete ]]; then
+        reused_stage_count=$((reused_stage_count + 1))
         return
     fi
     if [[ "$state" == partial ]]; then
         die "Partial $stage output detected and retained: $prefix"
     fi
-    echo "Running: $calculation - $stage"
+    if (( ! workflow_started )); then
+        if (( preparation_only )); then
+            echo "Running: ABFE window preparation (minimization, heating, equilibration): $work_dir"
+        elif (( production_only )); then
+            echo "Running: ABFE window production: $work_dir"
+        else
+            echo "Running: ABFE window preparation and production: $work_dir"
+        fi
+        workflow_started=1
+    fi
     if ! (
         cd "$directory"
         "${command[@]}"
@@ -181,10 +191,12 @@ run_stage() {
 if (( dry_run )); then
     window_count=$(awk 'NR > 1 {count++} END {print count + 0}' "$states_file")
     production_steps=$(awk -F' = ' '$1 == "production_steps_per_window" {print $2}' "$work_dir/resolved_config.toml")
-    echo "ABFE: $window_count alchemical states, $production_steps production steps per window"
+    echo "Dry run: ABFE: $window_count alchemical states, $production_steps production steps per window"
 fi
 
 selected_state_count=0
+reused_stage_count=0
+workflow_started=0
 while IFS=$'\t' read -r method_stage environment window lambda seed directory; do
     if [[ "$method_stage" == stage ]]; then
         continue
@@ -220,5 +232,12 @@ if (( selected_state_count == 0 )); then
 fi
 
 if (( ! dry_run )); then
-    echo "ABFE production completed: $work_dir/restraint, $work_dir/charge, $work_dir/vdw"
+    if (( reused_stage_count > 0 )); then
+        echo "Reused completed stages: $reused_stage_count ($work_dir)"
+    fi
+    if (( preparation_only )); then
+        echo "ABFE preparation completed: $work_dir"
+    else
+        echo "ABFE production completed: $work_dir/restraint, $work_dir/charge, $work_dir/vdw"
+    fi
 fi

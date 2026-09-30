@@ -28,31 +28,79 @@ die() {
     exit 1
 }
 
-stage_status() {
-    local stage=$1
-    local complete=0
-    local existing=0
-    local replica
-
+stage_outputs_complete() {
+    local stage=$1 replica suffix
+    local require_complete=${2:-}
+    local required=(out rst7 info)
+    if [[ "$stage" != minimize ]]; then
+        required+=(nc)
+    fi
     while IFS=$'\t' read -r replica _; do
         if [[ "$replica" == replica ]]; then
             continue
         fi
-        if [[ -s "work/$replica/$stage.out" && -s "work/$replica/$stage.rst7" ]]; then
-            complete=$((complete + 1))
-        fi
-        if [[ -e "work/$replica/$stage.out" || -e "work/$replica/$stage.rst7" ]]; then
-            existing=$((existing + 1))
+        for suffix in "${required[@]}"; do
+            if [[ ! -s "work/$replica/$stage.$suffix" ]]; then
+                if [[ "$require_complete" == --require-complete ]]; then
+                    die "$stage output is incomplete: work/$replica/$stage.$suffix; existing files were preserved."
+                fi
+                return 1
+            fi
+        done
+        if [[ "$stage" == production ]]; then
+            for suffix in gamd.production.log restraint.production.dat; do
+                if [[ ! -s "work/$replica/$suffix" ]]; then
+                    if [[ "$require_complete" == --require-complete ]]; then
+                        die "$stage output is incomplete: work/$replica/$suffix; existing files were preserved."
+                    fi
+                    return 1
+                fi
+            done
         fi
     done < work/states.tsv
-
-    if (( complete == replica_count )); then
-        echo complete
-    elif (( existing == 0 )); then
-        echo missing
-    else
-        echo partial
+    if [[ "$stage" == production && ! -s work/exchange.log ]]; then
+        if [[ "$require_complete" == --require-complete ]]; then
+            die "$stage output is incomplete: work/exchange.log; existing files were preserved."
+        fi
+        return 1
     fi
+}
+
+stage_status() {
+    local stage=$1 replica output
+    local marker="work/.$stage.complete"
+    if [[ -f "$marker" ]] && stage_outputs_complete "$stage"; then
+        echo complete
+        return
+    fi
+    if [[ -e "$marker" ]]; then
+        echo partial
+        return
+    fi
+    if [[ "$stage" == production && -e work/exchange.log ]]; then
+        echo partial
+        return
+    fi
+    while IFS=$'\t' read -r replica _; do
+        if [[ "$replica" == replica ]]; then
+            continue
+        fi
+        for output in "work/$replica/$stage."{out,rst7,nc,info} \
+            "work/$replica/gamd.$stage.log" "work/$replica/restraint.$stage.dat"; do
+            if [[ -e "$output" ]]; then
+                echo partial
+                return
+            fi
+        done
+    done < work/states.tsv
+    echo missing
+}
+
+mark_stage_complete() {
+    local stage=$1
+    stage_outputs_complete "$stage" --require-complete
+    touch "work/.$stage.complete"
+    echo "Completed: $stage (work)"
 }
 
 run_window_stage() {
@@ -67,7 +115,7 @@ run_window_stage() {
         return
     fi
     if [[ "$status" == partial ]]; then
-        echo "Warning: restarting incomplete stage for all windows: $stage" >&2
+        die "Partial $stage output retained in work. Inspect the files before retrying."
     fi
 
     echo "Running: $stage"
@@ -91,43 +139,61 @@ run_window_stage() {
             die "$stage failed: $replica_dir/$stage.out"
         fi
     done < work/states.tsv
+    mark_stage_complete "$stage"
+}
+
+gamd_state_status() {
+    local existing=0 complete=0 output
+    for output in "${gamd_required[@]}"; do
+        if [[ -e "$output" ]]; then
+            existing=$((existing + 1))
+        fi
+        if [[ -s "$output" ]]; then
+            complete=$((complete + 1))
+        fi
+    done
+    if [[ -f work/.gamd_prepare.complete && "$complete" -eq "${#gamd_required[@]}" ]]; then
+        echo complete
+    elif [[ -e work/.gamd_prepare.complete || "$existing" -ne 0 || -e "work/$gamd_reference_replica/restraint.gamd_prepare.dat" ]]; then
+        echo partial
+    else
+        echo missing
+    fi
 }
 
 prepare_gamd_state() {
     local reference_dir="work/$gamd_reference_replica"
-
-    if [[ -s "$reference_dir/gamd_prepare.out" && \
-          -s "$reference_dir/gamd_prepare.rst7" && \
-          -s "$reference_dir/gamd-restart.dat" ]]; then
+    local replica replica_dir output
+    local status
+    status=$(gamd_state_status)
+    if [[ "$status" == complete ]]; then
         echo "Skipping completed stage: GaMD parameter preparation"
-    else
-        if [[ -e "$reference_dir/gamd_prepare.out" || \
-              -e "$reference_dir/gamd_prepare.rst7" || \
-              -e "$reference_dir/gamd-restart.dat" ]]; then
-            echo "Warning: restarting incomplete GaMD parameter preparation." >&2
-        fi
-        echo "Running: GaMD parameter preparation in window $gamd_reference_replica"
-        if ! (
-            cd "$reference_dir"
-            "$amber_engine" \
-                -O \
-                -i gamd_prepare.in \
-                -o gamd_prepare.out \
-                -p system.parm7 \
-                -c equilibrate.rst7 \
-                -r gamd_prepare.rst7 \
-                -x gamd_prepare.nc \
-                -inf gamd_prepare.info \
-                -gamd gamd.prepare.log
-        ); then
-            die "GaMD parameter preparation failed: $reference_dir/gamd_prepare.out"
-        fi
+        return
     fi
-
-    if [[ ! -s "$reference_dir/gamd-restart.dat" ]]; then
-        die "GaMD state was not created: $reference_dir/gamd-restart.dat"
+    if [[ "$status" == partial ]]; then
+        die "Partial GaMD preparation output retained: $reference_dir"
     fi
-
+    echo "Running: GaMD parameter preparation in window $gamd_reference_replica"
+    if ! (
+        cd "$reference_dir"
+        "$amber_engine" \
+            -O \
+            -i gamd_prepare.in \
+            -o gamd_prepare.out \
+            -p system.parm7 \
+            -c equilibrate.rst7 \
+            -r gamd_prepare.rst7 \
+            -x gamd_prepare.nc \
+            -inf gamd_prepare.info \
+            -gamd gamd.prepare.log
+    ); then
+        die "GaMD parameter preparation failed: $reference_dir/gamd_prepare.out"
+    fi
+    for output in gamd_prepare.out gamd_prepare.rst7 gamd_prepare.nc gamd_prepare.info gamd.prepare.log gamd-restart.dat; do
+        if [[ ! -s "$reference_dir/$output" ]]; then
+            die "GaMD preparation output is incomplete: $reference_dir/$output"
+        fi
+    done
     while IFS=$'\t' read -r replica _; do
         if [[ "$replica" == replica ]]; then
             continue
@@ -138,6 +204,13 @@ prepare_gamd_state() {
         fi
         cp "$replica_dir/equilibrate.rst7" "$replica_dir/production_start.rst7"
     done < work/states.tsv
+    for output in "${gamd_required[@]}"; do
+        if [[ ! -s "$output" ]]; then
+            die "GaMD preparation output is incomplete: $output"
+        fi
+    done
+    touch work/.gamd_prepare.complete
+    echo "Completed: shared GaMD parameter preparation (work)"
 }
 
 amber_engine=${AMBER_ENGINE:-pmemd.cuda}
@@ -149,7 +222,22 @@ gamd_reference_replica=009
 if [[ ! -s work/states.tsv ]]; then
     die "Run ./build.sh first."
 fi
+gamd_required=(
+    "work/$gamd_reference_replica/gamd_prepare.out"
+    "work/$gamd_reference_replica/gamd_prepare.rst7"
+    "work/$gamd_reference_replica/gamd_prepare.nc"
+    "work/$gamd_reference_replica/gamd_prepare.info"
+    "work/$gamd_reference_replica/gamd.prepare.log"
+)
+while IFS=$'\t' read -r replica _; do
+    if [[ "$replica" == replica ]]; then
+        continue
+    fi
+    gamd_required+=("work/$replica/gamd-restart.dat" "work/$replica/production_start.rst7")
+done < work/states.tsv
+
 if (( dry_run )); then
+    echo "Dry run: planned replica commands; no engine execution"
     printf '+ %q -O -i %q -o %q -p %q -c %q -r %q -x %q -inf %q\n' \
         "$amber_engine" work/000/minimize.in work/000/minimize.out \
         work/000/system.parm7 work/000/system.rst7 work/000/minimize.rst7 \
@@ -165,10 +253,26 @@ for executable in "$amber_engine" "$amber_mpi_engine" "$mpi_launcher"; do
         die "Executable not found: $executable"
     fi
 done
-if find work/[0-9][0-9][0-9] -maxdepth 1 \
-    \( -name 'production.out' -o -name 'production.rst7' -o -name 'gamd.production.log' \) \
-    -print -quit 2>/dev/null | grep -q .; then
-    die "Production output already exists in work."
+# Reject retained output before running any stage or rewriting generated input.
+missing_stage=""
+for stage in minimize heat equilibrate gamd_prepare production; do
+    if [[ "$stage" == gamd_prepare ]]; then
+        status=$(gamd_state_status)
+    else
+        status=$(stage_status "$stage")
+    fi
+    if [[ "$status" == partial ]]; then
+        die "Partial or unmarked $stage output retained in work; inspect the files before retrying."
+    fi
+    if [[ "$status" == missing ]]; then
+        missing_stage=$stage
+    elif [[ -n "$missing_stage" ]]; then
+        die "Completed $stage has a missing prerequisite: $missing_stage in work."
+    fi
+done
+if [[ "$(stage_status production)" == complete ]]; then
+    echo "Skipping completed production: work"
+    exit 0
 fi
 
 run_window_stage minimize system.rst7
@@ -202,4 +306,5 @@ if ! "$mpi_launcher" \
     die "GaREUS production failed: work/exchange.log"
 fi
 
+mark_stage_complete production
 echo "Completed 1 ns GaREUS: work"

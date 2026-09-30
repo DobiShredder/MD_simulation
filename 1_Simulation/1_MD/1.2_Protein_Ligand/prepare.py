@@ -103,7 +103,8 @@ def write_complex(output_pdb: Path, protein: list[str], ligand: list[str]) -> No
 def main() -> None:
     args = parse_arguments()
     if not args.input_pdb.is_file():
-        raise SystemExit(f"Input PDB not found: {args.input_pdb}")
+        raise SystemExit(f"Structure preparation input PDB not found: {args.input_pdb}")
+    print(f"Preparing structure: {args.input_pdb}")
 
     lines = args.input_pdb.read_text(encoding="ascii").splitlines()
     protein, ligand = prepare_complex(lines)

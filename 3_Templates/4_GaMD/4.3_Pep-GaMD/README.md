@@ -42,6 +42,10 @@ GaMD state는 각 production segment의 `production.gamd.rst`로 이어집니다
 Peptide-selective boost는 이 directory의 고정 method이며 별도 config mode가
 아닙니다. `peptide_mask`가 boost 대상 peptide를 지정합니다.
 
+### Engine 선택과 실행 상태
+
+`AMBER_ENGINE`이 설정되어 있으면 이를 사용하며, 없으면 build가 기록한 `work/resolved_config.toml`의 `run.engine`을 읽습니다. 허용하는 executable 이름은 `pmemd.cuda`이며 설치 경로를 지정할 수 있습니다. 빈 override, 누락된 engine 설정과 지원하지 않는 executable은 기본값으로 대체하지 않고 error로 중단합니다. Runner가 `helpers/config_utils.py`를 자동 호출해 이 설정을 읽습니다.
+
 ## English
 
 User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh`, `run.sh`, or `anal.py`; it is not a separate entry point.
@@ -75,3 +79,7 @@ verifies that it selects atoms. Amber 26 serial `pmemd.cuda` is required, and
 each production segment continues both coordinate and GaMD state. `download.sh`
 retrieves a source complex, `build.sh` validates the selection and writes
 inputs, and `run.sh` executes the segmented workflow.
+
+### Engine selection and run state
+
+`AMBER_ENGINE` overrides `run.engine` in the build-generated `work/resolved_config.toml`. Accepted executable names are `pmemd.cuda`; installation paths are accepted. Empty overrides, missing engine settings and unsupported executables fail instead of falling back to a default. The runner invokes `helpers/config_utils.py` automatically to read this setting.

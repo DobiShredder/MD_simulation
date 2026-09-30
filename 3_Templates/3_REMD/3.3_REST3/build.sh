@@ -66,7 +66,7 @@ input=$1
 work_dir=${WORK_DIR:-work}
 python=${PYTHON:-python3}
 tleap=${TLEAP:-tleap}
-gmx=${GROMACS:-gmx}
+gmx=$("$python" helpers/config_utils.py "$config" equilibration_engine GROMACS gmx)
 plumed=${PLUMED:-plumed}
 build_tmp=""
 build_log=""
@@ -154,6 +154,7 @@ if (( dry_run )); then
     echo "Method: $method"
     echo "Input structure: $input"
     echo "Config: $config"
+    echo "GROMACS: $gmx"
     echo "Planned output: $work_dir/states.tsv and $work_dir/NNN replica directories"
     exit 0
 fi
@@ -161,6 +162,7 @@ fi
 mkdir -p "$work_dir/inputs"
 build_log="$work_dir/build.log"
 : > "$build_log"
+echo "Build diagnostics: $build_log"
 build_tmp=$(mktemp -d "$work_dir/.build_tmp.XXXXXX")
 log_event build 0 "method=$method input=$input config=$config temporary_directory=$build_tmp"
 log_event versions 0 "gromacs=$("$gmx" --version 2>&1 | head -n 1) plumed=$("$plumed" info --version 2>&1 | head -n 1) parmed=$("$python" -c 'import parmed; print(parmed.__version__)')"
@@ -195,11 +197,13 @@ if ! (cd "$work_dir" && "$tleap" -f inputs/tleap.final.in > leap.log 2>&1); then
 fi
 log_event final-tleap 0 "input=$work_dir/inputs/tleap.final.in outputs=$work_dir/system.parm7,$work_dir/system.rst7,$work_dir/system.pdb"
 
+echo "Generating $method replica states: $config -> $work_dir/states.tsv"
 log_command generate-states "$python" helpers/generate_states.py "$method" "$config" "$work_dir/system.parm7" "$work_dir"
 "$python" helpers/generate_states.py "$method" "$config" "$work_dir/system.parm7" "$work_dir"
 "$python" helpers/generate_inputs.py "$method" "$config" "$work_dir/inputs" \
     --salt-pairs "$salt_pairs" --states "$work_dir/states.tsv"
 log_event generate-states 0 "output=$work_dir/states.tsv"
+echo "Converting AMBER topology: $work_dir/system.parm7 -> $work_dir/topol.top, $work_dir/system.gro"
 log_command convert-topology "$python" helpers/convert_topology.py "$work_dir/system.parm7" "$work_dir/system.rst7" "$work_dir/topol.top" "$work_dir/system.gro"
 "$python" helpers/convert_topology.py "$work_dir/system.parm7" "$work_dir/system.rst7" \
     "$work_dir/topol.top" "$work_dir/system.gro"
@@ -226,6 +230,7 @@ done < "$work_dir/states.tsv"
 "$python" helpers/verify_rest3.py \
     "$build_tmp/processed.top" "$work_dir/states.tsv" "$work_dir"
 
+echo "Checking unscaled and scale-one energies: $work_dir/system.gro; logs: $build_tmp/energy_check"
 energy_dir="$build_tmp/energy_check"
 mkdir -p "$energy_dir"
 for variant in unscaled scale_one; do
@@ -281,6 +286,7 @@ for output in "$work_dir/system.gro" "$work_dir/topol.top" "$work_dir/states.tsv
     fi
 done
 
+echo "Completed: REST energy check ($work_dir/energy_check.tsv)"
 log_command build-summary "$python" helpers/build_provenance.py --output "$work_dir/build_summary.toml"
 "$python" helpers/build_provenance.py \
     --output "$work_dir/build_summary.toml" \

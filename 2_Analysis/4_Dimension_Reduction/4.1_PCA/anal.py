@@ -45,6 +45,7 @@ def write_table(path: Path, header: list[str], data: np.ndarray) -> None:
 
 def main() -> int:
     output_dir = Path(__file__).resolve().parent / "output"
+    print(f"Running: PCA analysis; input directory: {output_dir}")
     frames, angle_names, raw_angles = read_dihedrals(output_dir / "phi_psi.dat")
     feature_names, features = periodic_features(angle_names, raw_angles)
     scaled_features = StandardScaler().fit_transform(features)
@@ -91,7 +92,9 @@ def main() -> int:
     figure.colorbar(scatter, ax=axes[1], label="Frame")
     figure.suptitle(f"scikit-learn {sklearn.__version__}")
     figure.tight_layout()
+    print("Displaying PCA analysis figure.")
     plt.show()
+    print(f"Completed: PCA analysis; results: {output_dir} (figure displayed interactively)")
     return 0
 
 

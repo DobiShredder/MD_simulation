@@ -11,6 +11,7 @@ import numpy as np
 
 def main() -> int:
     output_dir = Path(__file__).resolve().parent / "output"
+    print(f"Running: RMSD/RMSF/Rg analysis; input directory: {output_dir}")
     rmsd_first = np.loadtxt(output_dir / "rmsd_first.dat", comments="#", ndmin=2)
     rmsd_average = np.loadtxt(
         output_dir / "rmsd_average.dat", comments="#", ndmin=2
@@ -38,7 +39,9 @@ def main() -> int:
     axes[2].set_ylabel("Radius of gyration (Å)")
 
     figure.tight_layout()
+    print("Displaying RMSD/RMSF/Rg analysis figure.")
     plt.show()
+    print("Completed: RMSD/RMSF/Rg analysis (interactive figure).")
     return 0
 
 

@@ -144,12 +144,13 @@ def prepare_windows(windows_dir: Path, output_dir: Path) -> int:
 
 
 def main() -> None:
+    print(f"Preparing WHAM inputs: {WINDOWS_DIR} -> {OUTPUT_DIR}")
     try:
         window_count = prepare_windows(WINDOWS_DIR, OUTPUT_DIR)
     except (OSError, KeyError, ValueError) as error:
         raise SystemExit(f"WHAM input preparation failed: {error}") from error
 
-    print(f"Organized {window_count} windows.")
+    print(f"Organized {window_count} windows: {OUTPUT_DIR}")
 
 
 if __name__ == "__main__":

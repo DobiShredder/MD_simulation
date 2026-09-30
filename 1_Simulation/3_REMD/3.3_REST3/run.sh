@@ -145,6 +145,18 @@ run_preproduction_stage() {
     if (( ${#batch[@]} > 0 )); then
         wait_for_batch "$stage" "${batch[@]}"
     fi
+    while IFS=$'\t' read -r replica _; do
+        if [[ "$replica" == replica ]]; then
+            continue
+        fi
+        if [[ ! -s "work/$replica/$stage.gro" ]]; then
+            die "$stage output was not created: work/$replica/$stage.gro"
+        fi
+        if [[ "$stage" == equilibrate && ! -s "work/$replica/$stage.cpt" ]]; then
+            die "$stage checkpoint was not created: work/$replica/$stage.cpt"
+        fi
+    done < work/states.tsv
+    echo "Completed: $stage (work)"
 }
 
 gmx=${GROMACS:-gmx}
@@ -170,6 +182,7 @@ for ((gpu_index = 1; gpu_index < gpu_count; gpu_index++)); do
 done
 
 if (( dry_run )); then
+    echo "Dry run: planned REST3 commands; no engine execution"
     printf '+ %q mdrun -deffnm %q -ntmpi 1 -ntomp %q -gpu_id 0\n' \
         "$gmx" work/000/equilibrate "$threads_per_replica"
     printf '+ %q -np %q %q mdrun -ntomp %q -gpu_id %q -multidir %q ... -deffnm production -hrex -replex 1000 -plumed plumed.dat\n' \
@@ -234,7 +247,13 @@ if ! "$mpi_launcher" \
     -hrex \
     -replex 1000 \
     -plumed plumed.dat; then
-    die "REST3 production failed."
+    die "REST3 production failed; expected replica logs: work/<replica>/production.log (may be absent); see engine diagnostics above"
 fi
+
+for replica_dir in "${replica_dirs[@]}"; do
+    if [[ ! -s "$replica_dir/production.gro" ]]; then
+        die "Production output was not created: $replica_dir/production.gro"
+    fi
+done
 
 echo "Completed 1 ns REST3: work"

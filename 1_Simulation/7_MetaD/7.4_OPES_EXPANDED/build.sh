@@ -40,6 +40,7 @@ mkdir -p "$work_dir"
 cp "$input_pdb" "$work_dir/input.pdb"
 cp inputs/tleap.in "$work_dir/tleap.in"
 
+echo "Building AMBER topology: $work_dir/leap.log"
 if ! (
     cd "$work_dir"
     "$tleap" -f tleap.in > leap.log 2>&1
@@ -49,5 +50,6 @@ fi
 for output in system.parm7 system.rst7 system.pdb; do
     [[ -s "$work_dir/$output" ]] || die "build Output not found: $work_dir/$output"
 done
+echo "Checking topology and recording CV atoms: $work_dir/system.parm7"
 python3 "check_topology.py" "$work_dir/system.parm7" "$work_dir/cv_atoms.tsv"
 echo "Topology build Completed: $work_dir"

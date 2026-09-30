@@ -32,6 +32,7 @@ for input in "$work_dir/system.parm7" "$work_dir/system.rst7" \
 done
 
 if (( dry_run )); then
+    echo "Dry run: planned GaMD commands; no engine execution"
     printf '+ (cd %q && %q -O -i inputs/minimize.in -o minimize.out -p system.parm7 -c system.rst7 -r minimize.rst7 -inf minimize.info)\n' "$work_dir" "$engine"
     printf '+ (cd %q && %q -O -i inputs/heat.in -o heat.out -p system.parm7 -c minimize.rst7 -r heat.rst7 -inf heat.info -x heat.nc -ref minimize.rst7)\n' "$work_dir" "$engine"
     printf '+ (cd %q && %q -O -i inputs/equilibrate.in -o equilibrate.out -p system.parm7 -c heat.rst7 -r equilibrate.rst7 -inf equilibrate.info -x equilibrate.nc)\n' "$work_dir" "$engine"
@@ -85,9 +86,13 @@ run_preparation_stage() {
         "$@"; then
         die "$stage calculation failed: $work_dir/$stage.out"
     fi
-    if [[ ! -s "$stage.out" || ! -s "$stage.rst7" ]]; then
-        die "$stage outputs were not created."
-    fi
+    local output
+    for output in "$stage.out" "$stage.rst7"; do
+        if [[ ! -s "$output" ]]; then
+            die "$stage output was not created: $work_dir/$output"
+        fi
+    done
+    echo "Completed: $stage ($work_dir/$stage.out)"
 }
 
 cd "$work_dir"
@@ -122,7 +127,13 @@ else
     if [[ ! -s gamd-restart.dat ]]; then
         die "gamd_prepare state was not created: $work_dir/gamd-restart.dat"
     fi
+    for output in gamd_prepare.out gamd_prepare.rst7 gamd_prepare.gamd.log; do
+        if [[ ! -s "$output" ]]; then
+            die "GaMD preparation output was not created: $work_dir/$output"
+        fi
+    done
     cp gamd-restart.dat gamd_prepare.gamd.rst
+    echo "Completed: gamd_prepare ($work_dir/gamd_prepare.gamd.rst)"
 fi
 
 if compgen -G 'production.*' >/dev/null; then
@@ -143,5 +154,11 @@ if ! "$engine" \
     -gamd production.gamd.log; then
     die "production calculation failed: $work_dir/production.out"
 fi
+
+for output in production.out production.rst7 production.nc production.gamd.log; do
+    if [[ ! -s "$output" ]]; then
+        die "Production output was not created: $work_dir/$output"
+    fi
+done
 
 echo "1 ns Pep-GaMD production completed: $work_dir/production.nc"

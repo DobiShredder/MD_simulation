@@ -34,6 +34,7 @@ def read_table(path: Path) -> tuple[list[str], np.ndarray]:
 
 def main() -> int:
     output_dir = Path(__file__).resolve().parent / "output"
+    print(f"Running: Geometry analysis; input directory: {output_dir}")
     _, geometry = read_table(output_dir / "geometry.dat")
     torsion_header, torsions = read_table(output_dir / "phi_psi.dat")
     if geometry.shape[1] < 4:
@@ -60,7 +61,9 @@ def main() -> int:
     axes[2].set_ylabel("Residue 5 ψ (degree)")
 
     figure.tight_layout()
+    print("Displaying Geometry analysis figure.")
     plt.show()
+    print("Completed: Geometry analysis (interactive figure).")
     return 0
 
 

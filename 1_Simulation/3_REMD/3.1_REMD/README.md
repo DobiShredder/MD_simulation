@@ -61,9 +61,8 @@ Replica ID는 `000`부터 시작하는 세 자리 고유 값이고 temperature�
 `run.sh`는 이 file에서 temperature와 replica 수를 읽습니다.
 
 Heating은 200 ps, NPT equilibration은 100 ps, production은 1 ns입니다.
-Preparation stage의 output과 restart가 모든 replica에 있으면 건너뜁니다.
-일부 replica의 결과만 있으면 state를 맞추기 위해 해당 stage를 전부 다시
-실행합니다. Production output은 덮어쓰지 않습니다.
+완료 marker와 필수 output이 있는 stage만 건너뜁니다. 불완전하거나 marker가
+없는 기존 결과는 보존하고 중단합니다.
 
 ### 주요 option
 
@@ -87,6 +86,19 @@ Preparation stage의 output과 restart가 모든 replica에 있으면 건너뜁�
 교환 acceptance와 round trip은 sampling 확인 지표입니다. 짧은 교육용 계산의
 수치만으로 수렴을 판단하지 않습니다.
 
+### 완료 상태와 재실행
+
+Engine이 성공하고 모든 replica의 필수 output을 확인한 뒤
+`work/.STAGE.complete`를 기록합니다. Minimization은 `.out`, `.rst7`,
+`.info`를 요구하며 heating, equilibration과 production은 `.nc`도 요구합니다.
+Production에는 `work/exchange.log`도 필요합니다.
+
+계산을 시작하기 전에 모든 stage의 상태를 검사합니다. 일부 replica의 결과,
+zero-length 파일, marker만 있는 상태 또는 marker 없는 기존 output이 있으면
+파일을 덮어쓰지 않고 중단합니다. 기존 결과를 검토·보관한 뒤 별도 tutorial
+복사본에서 새 계산을 시작합니다. Marker를 수동으로 만들어 완료 처리하지 않습니다.
+정상 완료 후 재실행은 engine을 호출하거나 결과를 다시 쓰지 않습니다.
+
 ## English
 
 This example builds ff19SB/OPC Chignolin and runs 18-replica T-REMD from
@@ -104,9 +116,8 @@ count between attempts and `numexchg=1000` gives a 1 ns run. The runner launches
 one MPI process for each of the 18 bundled states.
 
 Run `download.sh`, `prepare.py`, `build.sh`, `run.sh`, and `anal.py`
-in that order. A preparation stage is skipped when every replica has its output
-and restart; an incomplete replica set is rerun. Production output is not
-overwritten.
+in that order. A stage is skipped only when its completion marker and required outputs are present.
+Incomplete or unmarked results are preserved, and execution stops.
 
 For a new system, generate `states.tsv` temperatures with the
 [remd-temperature-generator](https://virtualchemistry.org/remd-temperature-generator/)
@@ -128,3 +139,17 @@ The analysis writes adjacent-state acceptance, replica state ranges, round-trip
 counts, and temperature occupancy as TSV files. Replica trajectories are
 written to `work/NNN/production.nc`. These short training runs do not
 establish convergence.
+
+### Completion and reruns
+
+The runner writes `work/.STAGE.complete` only after engine success and verification
+of every replica’s required outputs. Minimization requires `.out`, `.rst7` and
+`.info`; heating, equilibration and production also require `.nc`.
+Production additionally requires `work/exchange.log`.
+
+All stage states are checked before computation begins. Partial replica results,
+zero-length files, markers without required outputs and unmarked outputs cause
+an error without overwriting files. Review and archive retained results, then
+start a new calculation in a separate tutorial copy. Do not create markers
+manually to adopt old results. A rerun after normal completion invokes no engine
+and rewrites no results.

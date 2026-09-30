@@ -26,7 +26,8 @@ def write_pdb(path: Path, records: list[str]) -> None:
 def main() -> None:
     args = parse_arguments()
     if not args.input_pdb.is_file():
-        raise SystemExit(f"Input PDB not found: {args.input_pdb}")
+        raise SystemExit(f"Structure preparation input PDB not found: {args.input_pdb}")
+    print(f"Preparing structure: {args.input_pdb}")
 
     protein: list[str] = []
     toluene: list[str] = []

@@ -68,24 +68,38 @@ run_stage() {
     fi
 
     if [[ -s "$output_file" && -s "$restart_file" ]]; then
-        echo "Skipping: $calculation - $stage outputs already exist."
+        reused_stage_count=$((reused_stage_count + 1))
         return
     fi
     if [[ -e "$output_file" || -e "$restart_file" ]]; then
         echo "Warning: incomplete $stage outputs found; rerunning $calculation." >&2
     fi
 
-    echo "Running: $calculation - $stage"
     if ! (
         cd "$directory"
         "${command[@]}"
     ); then
         die "$stage calculation failed: $output_file"
     fi
-    if [[ ! -s "$output_file" || ! -s "$restart_file" ]]; then
-        die "$stage outputs were not created: $directory"
+    local output
+    for output in "$output_file" "$restart_file"; do
+        if [[ ! -s "$output" ]]; then
+            die "$calculation - $stage output was not created: $output"
+        fi
+    done
+    if [[ "$trajectory" == yes && ! -s "$directory/$stage.nc" ]]; then
+        die "$calculation - $stage trajectory was not created: $directory/$stage.nc"
     fi
 }
+
+if (( dry_run )); then
+    echo "Dry run: planned FEP commands; no engine execution"
+fi
+
+reused_stage_count=0
+if (( ! dry_run )); then
+    echo "Running: ABFE window workflows (minimization, heating, equilibration, production): work"
+fi
 
 while IFS=$'\t' read -r method_stage environment window lambda seed directory; do
     if [[ "$method_stage" == stage ]]; then
@@ -99,4 +113,9 @@ while IFS=$'\t' read -r method_stage environment window lambda seed directory; d
     run_stage "$directory" production equilibrate.rst7 yes "$calculation"
 done < "$states_file"
 
-echo "ABFE production completed: work/restraint, work/charge, work/vdw"
+if (( ! dry_run )); then
+    if (( reused_stage_count > 0 )); then
+        echo "Reused completed stages: $reused_stage_count (work)"
+    fi
+    echo "ABFE production completed: work/restraint, work/charge, work/vdw"
+fi

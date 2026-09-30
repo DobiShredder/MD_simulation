@@ -50,6 +50,10 @@ interval에서 input은 `nstlim=1000`, `numexchg=100000`으로 생성됩니다.
 하나만 적습니다. Center 목록은 비어 있지 않고 중복 없이 오름차순이어야 합니다.
 각 행이 한 exchange state가 되고 최종 mapping은 `work/states.tsv`에 기록됩니다.
 
+### Engine 선택과 실행 상태
+
+`AMBER_ENGINE`이 설정되어 있으면 이를 사용하며, 없으면 build가 기록한 `work/resolved_config.toml`의 `run.engine`을 읽습니다. 허용하는 executable 이름은 `pmemd.cuda`이며 설치 경로를 지정할 수 있습니다. Exchange production에는 `AMBER_MPI_ENGINE` 또는 resolved config의 `run.mpi_engine`을 사용하며 executable 이름은 `pmemd.cuda.MPI`입니다. 기존 resolved config에 `run.mpi_engine`이 없으면 `AMBER_MPI_ENGINE`을 지정하거나 새 `WORK_DIR`에서 build합니다. 빈 override, 누락된 engine 설정과 지원하지 않는 executable은 기본값으로 대체하지 않고 error로 중단합니다. Runner가 `helpers/config_utils.py`를 자동 호출해 이 설정을 읽습니다.
+
 ## English
 
 User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh`, `run.sh`, or `anal.py`; it is not a separate entry point.
@@ -88,3 +92,7 @@ multidimensional replica exchange.
 Amber uses `nstlim` for steps between attempts and `numexchg` for attempts per
 segment; the MPI process count must equal the number of windows. The default is
 200 ns per window, rendered as `nstlim=1000` and `numexchg=100000` at 2 fs.
+
+### Engine selection and run state
+
+`AMBER_ENGINE` overrides `run.engine` in the build-generated `work/resolved_config.toml`. Accepted executable names are `pmemd.cuda`; installation paths are accepted. Exchange production uses `AMBER_MPI_ENGINE` or resolved `run.mpi_engine`, with executable name `pmemd.cuda.MPI`. If an older resolved config lacks `run.mpi_engine`, set `AMBER_MPI_ENGINE` or build in a new `WORK_DIR`. Empty overrides, missing engine settings and unsupported executables fail instead of falling back to a default. The runner invokes `helpers/config_utils.py` automatically to read this setting.

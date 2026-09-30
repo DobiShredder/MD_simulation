@@ -24,12 +24,12 @@ echo "Downloading the C-crk SH3–SOS peptide structure (PDB 1CKB)."
 if ! "$curl_bin" -fsSL \
     https://files.rcsb.org/download/1CKB.pdb \
     -o "$structure_dir/1CKB.raw.pdb"; then
-    die "PDB 1CKB Download failed."
+    die "PDB 1CKB Download failed: $structure_dir/1CKB.raw.pdb"
 fi
 if ! "$curl_bin" -fsSL \
     https://files.rcsb.org/download/1CKB.cif \
     -o "$structure_dir/1CKB.cif"; then
-    die "1CKB mmCIF Download failed."
+    die "1CKB mmCIF Download failed: $structure_dir/1CKB.cif"
 fi
 
 if command -v sha256sum >/dev/null 2>&1; then

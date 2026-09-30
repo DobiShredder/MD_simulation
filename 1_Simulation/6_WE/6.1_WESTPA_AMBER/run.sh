@@ -12,6 +12,7 @@ elif [[ $# -ne 0 ]]; then
 fi
 
 if (( dry_run )); then
+    echo "Dry run: planned WESTPA command; no iteration execution"
     printf '+ w_run --work-manager serial > %q 2>&1\n' "$WORK_DIR/west.log"
     exit 0
 fi

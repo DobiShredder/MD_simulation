@@ -43,6 +43,7 @@ def read_hbond_counts(path: Path, numeric_columns: int) -> np.ndarray:
 
 def main() -> int:
     output_dir = Path(__file__).resolve().parent / "output"
+    print(f"Running: HBond analysis; input directory: {output_dir}")
     protein = np.loadtxt(
         output_dir / "protein_hbond_count.dat", comments="#", ndmin=2
     )
@@ -74,7 +75,9 @@ def main() -> int:
         axes[1].set_axis_off()
 
     figure.tight_layout()
+    print("Displaying HBond analysis figure.")
     plt.show()
+    print("Completed: HBond analysis (interactive figure).")
     return 0
 
 

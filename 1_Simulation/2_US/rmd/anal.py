@@ -141,9 +141,10 @@ def extract_restarts(
         output_dir / f"seed_{window:03d}.rst7"
         for window in range(1, len(selected) + 1)
         if not (output_dir / f"seed_{window:03d}.rst7").is_file()
+        or (output_dir / f"seed_{window:03d}.rst7").stat().st_size == 0
     ]
     if missing:
-        raise RuntimeError(f"cpptraj seed restart was not created: {missing[0]}")
+        raise RuntimeError(f"cpptraj seed restart was not created or is empty: {missing[0]}")
 
 
 def write_metadata(
@@ -190,17 +191,23 @@ def main() -> int:
         raise SystemExit(f"Output directory already exists: {output}")
 
     output.mkdir(parents=True)
+    stage = "distance calculation"
+    print(f"Calculating seed distances: {trajectory} (topology: {topology})", flush=True)
     try:
         with tempfile.TemporaryDirectory(prefix="us_seed_") as temp_dir:
             distances = Path(temp_dir) / "distance.dat"
             values = calculate_distances(
                 cpptraj, topology.resolve(), trajectory.resolve(), distances
             )
+        stage = "ordered seed selection"
+        print(f"Selecting ordered seed frames: {windows}", flush=True)
         selected = select_crossings(
             values,
             centers_angstrom,
             max_error_angstrom,
         )
+        stage = "seed restart extraction"
+        print(f"Extracting seed restarts: {trajectory} -> {output}", flush=True)
         extract_restarts(
             cpptraj,
             topology.resolve(),
@@ -208,11 +215,14 @@ def main() -> int:
             output.resolve(),
             selected,
         )
+        stage = "seed metadata writing"
         write_metadata(output / "seeds.tsv", centers_angstrom, selected)
     except (OSError, RuntimeError, ValueError) as error:
         if output.exists() and not any(output.iterdir()):
             output.rmdir()
-        raise SystemExit(f"Error: {error}") from None
+        raise SystemExit(
+            f"Error during {stage} (trajectory: {trajectory}; output: {output}): {error}"
+        ) from None
 
     print(f"Created {len(centers_angstrom)} US seed restarts: {output}")
     return 0

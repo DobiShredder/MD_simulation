@@ -55,7 +55,7 @@ def run_command(command: list[str], log_file: Path) -> None:
     with log_file.open("a", encoding="utf-8") as log:
         result = subprocess.run(command, stdout=log, stderr=subprocess.STDOUT)
     if result.returncode != 0:
-        raise SystemExit(f"MBAR command failed. Check the log: {log_file}")
+        raise SystemExit(f"MBAR command failed: {' '.join(command)}. Check the log: {log_file}")
 
 
 def extract_window(
@@ -279,6 +279,7 @@ def write_diagnostics(edge: object) -> None:
 
 
 def main() -> None:
+    print(f"Reading free-energy analysis inputs: {WORK / 'states.tsv'}", flush=True)
     global TEMPERATURE_K
     try:
         resolved = load_config(WORK / "resolved_config.toml")
@@ -293,6 +294,7 @@ def main() -> None:
     if mbar_directory.exists():
         shutil.rmtree(mbar_directory)
     mbar_directory.mkdir(parents=True)
+    print(f"Extracting window energies: {WORK}; logs and extracted data: {mbar_directory}", flush=True)
 
     complex_data = prepare_environment_data(extractor, "complex", states, mbar_directory)
     solvent_data = prepare_environment_data(extractor, "solvent", states, mbar_directory)
@@ -300,6 +302,7 @@ def main() -> None:
     report_path = mbar_directory / "rbfe_report.py"
     write_edge_xml(xml_path, complex_data, solvent_data)
 
+    print(f"Estimating free energies: {xml_path}; log: {mbar_directory / 'edgembar.log'}", flush=True)
     run_command(
         [
             edgembar,
@@ -311,9 +314,11 @@ def main() -> None:
         ],
         mbar_directory / "edgembar.log",
     )
+    print(f"Writing free-energy diagnostics: {WORK}; report input: {report_path}", flush=True)
     report = load_report(report_path)
     write_free_energy(report.edge)
     write_diagnostics(report.edge)
+    print(f"Generating HTML report: {report_path}; log: {mbar_directory / 'report.log'}", flush=True)
     run_command([sys.executable, str(report_path), "--html"], mbar_directory / "report.log")
 
     print(f"RBFE free-energy results: {WORK / 'free_energy.tsv'}")

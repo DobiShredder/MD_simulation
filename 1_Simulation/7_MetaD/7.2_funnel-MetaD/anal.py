@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -34,6 +35,7 @@ def main() -> int:
     args = parser.parse_args()
 
     work_dir = Path("work")
+    print(f"Reading bias-analysis inputs: {work_dir}", flush=True)
     for filename in ("COLVAR", "HILLS", "FUNNEL_GRID"):
         path = work_dir / filename
         if not path.is_file():
@@ -49,10 +51,11 @@ def main() -> int:
         "metad.bias",
         "metad.rbias",
     }
+    print(f"Calculating COLVAR diagnostics: {work_dir / 'COLVAR'}", flush=True)
     values = read_colvar(work_dir / "COLVAR")
     if not required_fields.issubset(values):
         missing = sorted(required_fields - values.keys())
-        raise ValueError(f"Required COLVAR fields are missing: {missing}")
+        raise ValueError(f"Required COLVAR fields are missing from {work_dir / 'COLVAR'}: {missing}")
 
     lp = values["fps.lp"]
     ld = values["fps.ld"]
@@ -98,9 +101,10 @@ def main() -> int:
 
         if shutil.which(plumed) is None:
             raise FileNotFoundError(
-                f"plumed not found: {plumed}. --skip-fesuse."
+                f"plumed not found: {plumed}. Use --skip-fes to create only the TSV."
             )
 
+        print(f"Calculating FES: {work_dir / 'HILLS'} -> {output_dir / 'fes.dat'}", flush=True)
         subprocess.run(
             [
                 plumed,
@@ -113,6 +117,13 @@ def main() -> int:
             ],
             check=True,
         )
+
+        fes = output_dir / "fes.dat"
+        if not fes.is_file() or fes.stat().st_size == 0:
+            raise ValueError(f"FES calculation: plumed sum_hills did not create a nonempty output: {fes}")
+        print(f"FES output: {fes}")
+    else:
+        print("Skipping FES calculation (--skip-fes).")
 
     print(f"Funnel MetaD diagnostics results: {output_dir}")
     return 0

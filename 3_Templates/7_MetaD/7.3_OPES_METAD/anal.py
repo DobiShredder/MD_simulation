@@ -79,6 +79,7 @@ def write_metrics(path: Path, rows: list[tuple[str, object, str]]) -> None:
 def main() -> None:
     args = parse_arguments()
     work = args.work_dir
+    print(f"Reading bias-analysis inputs: {work}", flush=True)
     config_file = work / "resolved_config.toml"
     if not config_file.is_file():
         raise SystemExit(f"Resolved config not found: {config_file}")
@@ -94,6 +95,7 @@ def main() -> None:
     colvar = work / "COLVAR"
     if not colvar.is_file():
         raise SystemExit(f"COLVAR output not found: {colvar}")
+    print(f"Calculating COLVAR diagnostics: {colvar}", flush=True)
     values = read_colvar(colvar, numpy)
     require_fields(values, {"time"}, colvar)
     output_dir = work / "analysis"

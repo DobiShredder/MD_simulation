@@ -18,6 +18,7 @@ def vector_coordinates(path: Path) -> tuple[np.ndarray, np.ndarray]:
 
 def main() -> int:
     output_dir = Path(__file__).resolve().parent / "output"
+    print(f"Running: Imaging analysis; input directory: {output_dir}")
     frames, raw_center = vector_coordinates(output_dir / "center_raw.dat")
     imaged_frames, imaged_center = vector_coordinates(
         output_dir / "center_imaged.dat"
@@ -38,7 +39,9 @@ def main() -> int:
     axis.set_ylabel("Protein COM–box center distance (Å)")
     axis.legend()
     figure.tight_layout()
+    print("Displaying Imaging analysis figure.")
     plt.show()
+    print("Completed: Imaging analysis (interactive figure).")
     return 0
 
 

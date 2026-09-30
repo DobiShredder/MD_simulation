@@ -45,6 +45,7 @@ fi
 
 mkdir -p "$WORK_DIR/traj_segs" "$WORK_DIR/seg_logs" "$WORK_DIR/istates"
 initial_walkers=$(<"$WORK_DIR/initial_walkers.txt")
+echo "Initializing WESTPA state; log: $WORK_DIR/west.init.log"
 if ! w_init \
     -r "$WORK_DIR/configs/west.001.cfg" \
     --bstate-file "$WORK_DIR/bstates/bstates.txt" \
@@ -55,6 +56,10 @@ if ! w_init \
 fi
 if grep -q -- '-- ERROR' "$WORK_DIR/west.init.log"; then
     die "WESTPA initialization reported an error: $WORK_DIR/west.init.log"
+fi
+
+if [[ ! -s "$WORK_DIR/west.h5" ]]; then
+    die "WESTPA initialization did not create state: $WORK_DIR/west.h5"
 fi
 
 echo "WESTPA state: $WORK_DIR/west.h5"

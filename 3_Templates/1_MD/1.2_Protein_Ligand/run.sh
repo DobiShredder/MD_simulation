@@ -68,6 +68,7 @@ run_stage() {
     done
 
     if (( dry_run )); then
+        echo "Dry run: $label ($directory)"
         printf '+'
         printf ' %q' "$@"
         printf '\n'
@@ -82,6 +83,7 @@ run_stage() {
         fi
     done
     if [[ -f "$marker" && "$existing" -eq "${#required[@]}" ]]; then
+        echo "Skipping completed stage: $label ($directory)"
         return
     fi
     if [[ -f "$marker" || "$existing" -ne 0 ]]; then
@@ -90,7 +92,7 @@ run_stage() {
 
     echo "Running: $label"
     if ! "$@"; then
-        die "$label failed"
+        die "$label failed in $directory; expected engine output: ${required[0]} (may be absent); see engine diagnostics above"
     fi
     for output in "${required[@]}"; do
         if [[ ! -s "$output" ]]; then
@@ -98,6 +100,7 @@ run_stage() {
         fi
     done
     touch "$marker"
+    echo "Completed: $label ($directory)"
 }
 
 work_dir=${WORK_DIR:-work}
@@ -107,18 +110,18 @@ resolved="$work_dir/resolved_config.toml"
 
 if (( ! dry_run )); then
     if [[ ! -s "$topology" ]]; then
-        die "Topology not found. Run ./build.sh first."
+        die "Run preflight: topology missing or empty: $topology. Run ./build.sh first."
     fi
     if [[ ! -s "$coordinates" ]]; then
-        die "Restart not found. Run ./build.sh first."
+        die "Run preflight: restart missing or empty: $coordinates. Run ./build.sh first."
     fi
     if [[ ! -s "$resolved" ]]; then
-        die "Resolved config not found. Run ./build.sh first."
+        die "Run preflight: resolved config missing or empty: $resolved. Run ./build.sh first."
     fi
 fi
 
-engine=${AMBER_ENGINE:-$(awk -F' = ' '$1=="engine" {gsub(/"/, "", $2); print $2}' "$resolved" 2>/dev/null || true)}
-engine=${engine:-pmemd.cuda}
+engine=$("${PYTHON:-python3}" helpers/config_utils.py "$resolved" engine AMBER_ENGINE pmemd.cuda pmemd sander)
+
 segments=$(awk -F' = ' '$1=="production_segments" {print $2}' "$resolved" 2>/dev/null || true)
 segments=${segments:-10}
 segment_start=1; segment_end=$segments
@@ -162,6 +165,9 @@ run_stage equilibrate preproduction "NPT equilibration" "$work_dir" \
     -inf "$work_dir/equilibrate.info"
 fi
 if (( preparation_only )); then
+    if (( ! dry_run )); then
+        echo "Preparation output: $work_dir/equilibrate.rst7"
+    fi
     exit 0
 fi
 if (( ! dry_run )) && [[ ! -s "$work_dir/equilibrate.rst7" || ! -f "$work_dir/.equilibrate.complete" ]]; then
@@ -199,6 +205,6 @@ if (( ! dry_run )); then
     if (( segments == 1 )); then
         echo "Production output: $work_dir/production.out"
     else
-        echo "Production segments: $work_dir/001 through $work_dir/$(printf '%03d' "$segments")"
+        echo "Production segments: $work_dir/$(printf '%03d' "$segment_start") through $work_dir/$(printf '%03d' "$segment_end")"
     fi
 fi

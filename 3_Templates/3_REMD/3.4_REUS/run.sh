@@ -48,8 +48,8 @@ die() {
 
 work_dir=${WORK_DIR:-work}
 states_file="$work_dir/states.tsv"
-amber_engine=${AMBER_ENGINE:-pmemd.cuda}
-amber_mpi_engine=${AMBER_MPI_ENGINE:-pmemd.cuda.MPI}
+amber_engine=$("${PYTHON:-python3}" helpers/config_utils.py "$work_dir/resolved_config.toml" engine AMBER_ENGINE pmemd.cuda)
+amber_mpi_engine=$("${PYTHON:-python3}" helpers/config_utils.py "$work_dir/resolved_config.toml" mpi_engine AMBER_MPI_ENGINE pmemd.cuda.MPI)
 mpi_launcher=${MPI_LAUNCHER:-mpirun}
 replica_count=$(awk 'NR > 1 {count++} END {print count + 0}' "$states_file")
 mpi_processes=${MPI_PROCESSES:-$replica_count}
@@ -123,6 +123,7 @@ run_stage() {
         fi
     done < "$states_file"
     mark_stage_complete "$stage"
+    echo "Completed: $stage ($work_dir)"
 }
 
 run_stage_if_needed() {
@@ -131,10 +132,11 @@ run_stage_if_needed() {
     local state
     state=$(stage_state "$stage")
     if [[ "$state" == complete ]]; then
+        echo "Skipping completed stage: $stage ($work_dir)"
         return
     fi
     if [[ "$state" == partial ]]; then
-        die "Partial $stage output detected and retained in replica directories."
+        die "Partial $stage output detected and retained in replica directories: $work_dir"
     fi
     run_stage "$stage" "$input_restart"
 }
@@ -170,6 +172,7 @@ write_group_file() {
 }
 
 if (( dry_run )); then
+    echo "Dry run: planned REUS commands; no engine execution"
     echo "Engine: $amber_engine"
     echo "Replica exchange engine: $amber_mpi_engine"
     echo "$replica_count configured windows"
@@ -196,6 +199,7 @@ if (( ! production_only )); then
     run_stage_if_needed equilibrate heat.rst7
 fi
 if (( preparation_only )); then
+    echo "Preparation output: $work_dir/<replica>/equilibrate.rst7"
     exit 0
 fi
 if [[ "$(stage_state equilibrate)" != complete ]]; then
@@ -212,10 +216,11 @@ for segment in $(seq "$segment_start" "$segment_end"); do
     segment_name=$(printf 'production.%03d' "$segment")
     state=$(stage_state "$segment_name")
     if [[ "$state" == complete ]]; then
+        echo "Skipping completed stage: $segment_name ($work_dir)"
         continue
     fi
     if [[ "$state" == partial ]]; then
-        die "Partial production output detected: $segment_name"
+        die "Partial production output detected: $work_dir/$segment_name"
     fi
 
     if [[ "$segment" -eq 1 ]]; then
@@ -242,6 +247,7 @@ for segment in $(seq "$segment_start" "$segment_end"); do
         die "REUS segment $segment Run failed: $exchange_log"
     fi
     mark_stage_complete "$segment_name"
+    echo "Completed: $segment_name ($work_dir)"
 done
 
 echo "Completed REUS production: $work_dir"

@@ -24,6 +24,7 @@ STRUCTURE_LABELS = [
 
 def main() -> int:
     output_dir = Path(__file__).resolve().parent / "output"
+    print(f"Running: Secondary/Structure analysis; input directory: {output_dir}")
     assignments = np.loadtxt(
         output_dir / "secondary_structure.dat", comments="#", ndmin=2
     )
@@ -75,7 +76,9 @@ def main() -> int:
     axes[1].legend(ncol=4, fontsize="small")
 
     figure.tight_layout()
+    print("Displaying Secondary/Structure analysis figure.")
     plt.show()
+    print("Completed: Secondary/Structure analysis (interactive figure).")
     return 0
 
 

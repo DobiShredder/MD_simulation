@@ -23,7 +23,8 @@ def residue_key(line: str) -> tuple[str, str, str]:
 def main() -> None:
     args = arguments()
     if not args.input_pdb.is_file():
-        raise SystemExit(f"Input PDB not found: {args.input_pdb}")
+        raise SystemExit(f"Structure preparation input PDB not found: {args.input_pdb}")
+    print(f"Preparing structure: {args.input_pdb}")
 
     selected: list[tuple[str, tuple[str, str, str]]] = []
     residue_order: list[tuple[str, str, str]] = []

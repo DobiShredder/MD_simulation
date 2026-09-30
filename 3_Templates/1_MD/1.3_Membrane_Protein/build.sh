@@ -89,13 +89,14 @@ xy_padding=$(awk -F '\t' '$1=="xy_padding" {print $2}' "$parameter_file")
 water_padding=$(awk -F '\t' '$1=="water_padding" {print $2}' "$parameter_file")
 protein_lipid_distance=$(awk -F '\t' '$1=="protein_lipid_distance" {print $2}' "$parameter_file")
 
-echo "Packing the oriented protein into the configured bilayer."
+echo "Packing the oriented protein into the configured bilayer: $work_dir/input.pdb -> $work_dir/system-coordinates.pdb"
 "$python" helpers/build_membrane.py "$work_dir/input.pdb" "$popc" "$pope" "$cholesterol" \
     "$work_dir/system-coordinates.pdb" --composition "$composition" \
     --xy-padding "$xy_padding" --water-padding "$water_padding" \
     --protein-lipid-distance "$protein_lipid_distance"
 "$python" helpers/generate_inputs.py "$config" "$work_dir/inputs" --coordinate "$work_dir/system-coordinates.pdb"
 
+echo "Building the membrane AMBER topology; log: $work_dir/leap.log"
 if ! (cd "$work_dir" && "$tleap" -f inputs/tleap.in > leap.log 2>&1); then
     die "tleap failed. See log: $work_dir/leap.log"
 fi

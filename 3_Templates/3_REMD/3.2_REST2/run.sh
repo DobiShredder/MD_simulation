@@ -93,8 +93,8 @@ die() {
 work_dir=${WORK_DIR:-work}
 states="$work_dir/states.tsv"
 resolved="$work_dir/resolved_config.toml"
-gmx=${GROMACS:-gmx}
-gmx_mpi=${GROMACS_MPI:-gmx_mpi}
+gmx=$("${PYTHON:-python3}" helpers/config_utils.py "$resolved" equilibration_engine GROMACS gmx)
+gmx_mpi=$("${PYTHON:-python3}" helpers/config_utils.py "$resolved" production_engine GROMACS_MPI gmx_mpi)
 mpi_launcher=${MPI_LAUNCHER:-mpirun}
 if [[ ! -s "$states" || ! -s "$resolved" ]]; then
     die "Run ./build.sh first."
@@ -165,6 +165,7 @@ while IFS=$'\t' read -r replica _; do
 done < "$states"
 
 if (( dry_run )); then
+    echo "Dry run: planned $method commands; no engine execution"
     echo "$method: $replica_count replicas, $segments production segments"
     echo "Resources: $cpu_count CPUs, $gpu_count GPUs, $threads_per_replica threads per replica"
     if (( ! production_only )); then
@@ -209,6 +210,7 @@ run_preproduction_stage() {
         fi
     done
     if [[ -f "$marker" && -z "$partial_output" ]]; then
+        echo "Skipping completed stage: $method $stage ($work_dir)"
         return
     fi
     if [[ -n "$partial_output" ]]; then
@@ -223,8 +225,12 @@ run_preproduction_stage() {
             continue
         fi
         replica_dir="$work_dir/$replica"
+        local input_coordinates="$replica_dir/$previous.gro"
+        if [[ "$previous" == system ]]; then
+            input_coordinates="$work_dir/system.gro"
+        fi
         grompp_command=("$gmx" grompp -f "$replica_dir/$stage.mdp" -p "$replica_dir/topol.top"
-            -c "$replica_dir/$previous.gro" -o "$replica_dir/$stage.tpr")
+            -c "$input_coordinates" -o "$replica_dir/$stage.tpr")
         if [[ "$previous" != system && "$previous" != minimize ]]; then
             grompp_command+=(-t "$replica_dir/$previous.cpt")
         fi
@@ -263,6 +269,7 @@ run_preproduction_stage() {
         fi
     done
     touch "$marker"
+    echo "Completed: $method $stage ($work_dir)"
 }
 
 if (( ! production_only )); then
@@ -270,6 +277,7 @@ if (( ! production_only )); then
     run_preproduction_stage equilibrate minimize
 fi
 if (( preparation_only )); then
+    echo "Preparation output: $work_dir/<replica>/equilibrate.gro and equilibrate.cpt"
     exit 0
 fi
 if [[ ! -f "$work_dir/.equilibrate.complete" ]]; then
@@ -302,10 +310,11 @@ for ((segment = segment_start; segment <= segment_end; segment++)); do
         fi
     done
     if [[ -f "$marker" && "$production_state" == missing ]]; then
+        echo "Skipping completed stage: $method $segment_name ($work_dir)"
         continue
     fi
     if [[ "$production_state" == partial ]]; then
-        die "Partial production output detected: $segment_name"
+        die "Partial production output detected: $replica_dir/$segment_name"
     fi
     if (( segment == 1 )); then
         previous=equilibrate
@@ -331,7 +340,7 @@ for ((segment = segment_start; segment <= segment_end; segment++)); do
     command+=(-hrex -plumed plumed.dat)
     command+=("${gromacs_options[@]}")
     if ! "${command[@]}"; then
-        die "$method production segment $segment failed."
+        die "$method production segment $segment failed in $work_dir; expected replica logs: $work_dir/<replica>/$segment_name.log (may be absent); see engine diagnostics above"
     fi
     for replica_dir in "${replica_dirs[@]}"; do
         if [[ ! -s "$replica_dir/$segment_name.gro" ]]; then
@@ -342,6 +351,7 @@ for ((segment = segment_start; segment <= segment_end; segment++)); do
         fi
     done
     touch "$marker"
+    echo "Completed: $method $segment_name ($work_dir)"
 done
 
 echo "Completed $method production: $work_dir"

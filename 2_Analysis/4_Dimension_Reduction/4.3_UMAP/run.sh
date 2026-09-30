@@ -33,6 +33,7 @@ if [[ ! -s "$trajectory" ]]; then
 fi
 
 mkdir -p "$output_dir"
+echo "Extracting dihedral features with cpptraj: $output_dir/cpptraj.log"
 cd "$output_dir"
 topology="../$topology"
 trajectory="../$trajectory"
@@ -44,6 +45,11 @@ if ! "$cpptraj" \
     -i "$input_file" \
     > cpptraj.log 2>&1; then
     echo "Error: cpptraj failed: $output_dir/cpptraj.log" >&2
+    exit 1
+fi
+
+if [[ ! -s phi_psi.dat ]]; then
+    echo "Error: feature extraction output missing or empty: $output_dir/phi_psi.dat; see $output_dir/cpptraj.log" >&2
     exit 1
 fi
 

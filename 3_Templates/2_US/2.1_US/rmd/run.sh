@@ -125,6 +125,7 @@ run_stage() {
         local state
         state=$(stage_state "$marker" "${required[@]}")
         if [[ "$state" == complete ]]; then
+            echo "Skipping completed stage: rMD - $label ($prefix)"
             return
         fi
         if [[ "$state" == partial ]]; then
@@ -132,13 +133,14 @@ run_stage() {
         fi
     fi
 
-    echo "Running: rMD - $label"
     if (( dry_run )); then
+        echo "Dry run: rMD - $label ($prefix)"
         printf '+ (cd work &&'
         printf ' %q' "${command[@]}"
         printf ')\n'
         return
     fi
+    echo "Running: rMD - $label"
     if ! (
         cd work
         "${command[@]}"
@@ -152,9 +154,10 @@ run_stage() {
         fi
     done
     touch "$marker"
+    echo "Completed: rMD - $label ($prefix)"
 }
 
-engine=${AMBER_ENGINE:-pmemd.cuda}
+engine=$("${PYTHON:-python3}" ../helpers/config_utils.py "../work/resolved_config.toml" engine AMBER_ENGINE pmemd.cuda)
 python=${PYTHON:-python3}
 topology=../work/system.parm7
 coordinates=../work/system.rst7
@@ -218,7 +221,7 @@ PY
             -v minimum="$density_minimum" \
             -v maximum="$density_maximum" \
             'BEGIN { exit !(density >= minimum && density <= maximum) }'; then
-            die "Equilibration density is outside ${density_minimum}-${density_maximum} g/cm^3: ${final_density:-missing}"
+            die "Equilibration density is outside ${density_minimum}-${density_maximum} g/cm^3: ${final_density:-missing}; check work/equil.out"
         fi
         echo "Equilibration final density: ${final_density} g/cm^3"
     fi

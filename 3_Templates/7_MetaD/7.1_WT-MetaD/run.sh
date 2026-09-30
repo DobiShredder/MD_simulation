@@ -87,11 +87,11 @@ from pathlib import Path
 from config_utils import load_config
 
 run = load_config(Path(sys.argv[1]))["run"]
-print(run["engine"], run["production_segments"], run["random_seed"], sep="\t")
+print(run["production_segments"], run["random_seed"], sep="\t")
 PY
 )
-IFS=$'\t' read -r configured_engine segments seed_setting <<< "$config_values"
-engine=${AMBER_ENGINE:-$configured_engine}
+IFS=$'\t' read -r segments seed_setting <<< "$config_values"
+engine=$("${PYTHON:-python3}" helpers/config_utils.py "$config_file" engine AMBER_ENGINE pmemd.cuda pmemd sander)
 if [[ ! "$segments" =~ ^[1-9][0-9]*$ ]]; then
     die "production_segments must be a positive integer: $segments"
 fi
@@ -136,8 +136,10 @@ stage_state() {
 run_command() {
     local label=$1
     local directory=$2
-    shift 2
+    local engine_output=$3
+    shift 3
     if (( dry_run )); then
+        echo "Dry run: $label ($directory)"
         printf '+ (cd %q &&' "$directory"
         printf ' %q' "$@"
         printf ')\n'
@@ -145,7 +147,7 @@ run_command() {
     fi
     echo "Running: $label"
     if ! (cd "$directory"; "$@"); then
-        die "$label failed: $directory"
+        die "$label failed in $directory; expected engine output: $engine_output (may be absent); see engine diagnostics above"
     fi
 }
 
@@ -174,13 +176,14 @@ run_preproduction_stage() {
     if (( ! dry_run )); then
         state=$(stage_state "$marker" "${required[@]}")
         if [[ "$state" == complete ]]; then
+            echo "Skipping completed stage: $stage ($work_dir)"
             return
         fi
         if [[ "$state" == partial ]]; then
             die "Partial $stage output detected and retained: $work_dir"
         fi
     fi
-    run_command "$stage" "$work_dir" "${command[@]}"
+    run_command "$stage" "$work_dir" "$work_dir/$stage.out" "${command[@]}"
     if (( ! dry_run )); then
         for output in "${required[@]}"; do
             if [[ ! -s "$output" ]]; then
@@ -188,6 +191,7 @@ run_preproduction_stage() {
             fi
         done
         touch "$marker"
+        echo "Completed: $stage ($work_dir)"
     fi
 }
 
@@ -260,6 +264,7 @@ run_production_segment() {
         mkdir -p "$segment_dir"
         state=$(stage_state "$marker" "${required[@]}")
         if [[ "$state" == complete ]]; then
+            echo "Skipping completed stage: production segment $segment_name/$segments ($segment_dir)"
             return
         fi
         if [[ "$state" == partial ]]; then
@@ -299,7 +304,7 @@ run_production_segment() {
         "${generated_plumed[@]}"
     fi
 
-    run_command "production segment $segment_name/$segments" "$segment_dir" \
+    run_command "production segment $segment_name/$segments" "$segment_dir" "$segment_dir/production.out" \
         "$engine" "${amber_options[@]}" -O \
         -i production.in -o production.out \
         -p "$topology_path" -c "$input_restart" \
@@ -317,6 +322,7 @@ run_production_segment() {
             fi
         done
         touch "$marker"
+        echo "Completed: production segment $segment_name/$segments ($segment_dir)"
     fi
 }
 
@@ -341,6 +347,9 @@ if (( ! production_only )); then
 fi
 
 if (( preparation_only )); then
+    if (( ! dry_run )); then
+        echo "Preparation output: $work_dir/equilibrate.rst7"
+    fi
     exit 0
 fi
 if (( ! dry_run )) && [[ ! -s "$work_dir/equilibrate.rst7" || ! -f "$work_dir/.equilibrate.complete" ]]; then

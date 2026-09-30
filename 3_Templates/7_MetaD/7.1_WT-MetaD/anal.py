@@ -81,6 +81,7 @@ def write_metrics(path: Path, rows: list[tuple[str, object, str]]) -> None:
 def main() -> None:
     args = parse_arguments()
     work = args.work_dir
+    print(f"Reading bias-analysis inputs: {work}", flush=True)
     config_file = work / "resolved_config.toml"
     if not config_file.is_file():
         raise SystemExit(f"Resolved config not found: {config_file}")
@@ -96,6 +97,7 @@ def main() -> None:
     colvar = work / "COLVAR"
     if not colvar.is_file():
         raise SystemExit(f"COLVAR output not found: {colvar}")
+    print(f"Calculating COLVAR diagnostics: {colvar}", flush=True)
     values = read_colvar(colvar, numpy)
     require_fields(values, {"time"}, colvar)
     output_dir = work / "analysis"
@@ -121,10 +123,18 @@ def main() -> None:
         plumed = os.environ.get("PLUMED", "plumed")
         if shutil.which(plumed) is None:
             raise SystemExit(f"plumed not found: {plumed}; use --skip-fes")
+        print(f"Calculating FES: {work / 'HILLS'} -> {output_dir / 'fes.dat'}", flush=True)
         subprocess.run([
             plumed, "sum_hills", "--hills", str(hills),
             "--outfile", str(output_dir / "fes.dat"), "--mintozero",
         ], check=True)
+        fes = output_dir / "fes.dat"
+        if not fes.is_file() or fes.stat().st_size == 0:
+            raise SystemExit(f"FES calculation: plumed sum_hills did not create a nonempty output: {fes}")
+        print(f"FES output: {fes}")
+    else:
+        print("Skipping FES calculation (--skip-fes).")
+
     print(f"WT-MetaD diagnostics: {output_dir / 'production_summary.tsv'}")
 
 

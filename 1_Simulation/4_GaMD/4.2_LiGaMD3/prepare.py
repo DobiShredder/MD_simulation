@@ -33,7 +33,8 @@ def disulfides(lines: list[str]) -> list[tuple[ResidueKey, ResidueKey]]:
 def main() -> None:
     args = arguments()
     if not args.input_pdb.is_file():
-        raise SystemExit(f"Input PDB not found: {args.input_pdb}")
+        raise SystemExit(f"Structure preparation input PDB not found: {args.input_pdb}")
+    print(f"Preparing structure: {args.input_pdb}")
 
     lines = args.input_pdb.read_text(encoding="ascii").splitlines()
     pairs = disulfides(lines)

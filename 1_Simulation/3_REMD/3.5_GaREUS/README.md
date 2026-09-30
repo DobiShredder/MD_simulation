@@ -70,9 +70,8 @@ MPI executable과 launcher는 `AMBER_MPI_ENGINE`과 `MPI_LAUNCHER`로 바꿀 수
 
 각 window는 고유한 positive seed를 사용합니다. `gamd.prepare.log`는 15 Å
 reference window에만 생성됩니다. Production은 window별
-`gamd.production.log`를 기록합니다. Preparation output이 일부 window에만
-있으면 해당 stage를 모든 window에서 다시 실행하며 production output은
-덮어쓰지 않습니다.
+`gamd.production.log`를 기록합니다. 완료 marker와 필수 output이 있는 stage만
+건너뜁니다. 불완전하거나 marker가 없는 기존 결과는 보존하고 중단합니다.
 
 ### 주요 option
 
@@ -105,6 +104,25 @@ potential로 읽습니다. AMBER version에서 log column 순서가 다르면
 
 PMF는 [GaREUS reweighting tutorial](../../../2_Analysis/7_Enhanced_Sampling/7.3_GaREUS_Reweighting/README.md)에서
 MBAR와 2차 cumulant expansion으로 계산합니다.
+
+### 완료 상태와 재실행
+
+Engine이 성공하고 모든 replica의 필수 output을 확인한 뒤
+`work/.STAGE.complete`를 기록합니다. Minimization은 `.out`, `.rst7`,
+`.info`를 요구하며 heating, equilibration과 production은 `.nc`도 요구합니다.
+Production에는 `work/exchange.log`도 필요합니다.
+GaREUS production은 `gamd.production.log`와 `restraint.production.dat`도 확인합니다.
+
+`work/.gamd_prepare.complete`는 reference window `009`의 preparation output,
+`gamd.prepare.log`, 모든 window의 `gamd-restart.dat`와
+`production_start.rst7`를 확인한 뒤 생성합니다. 완료한 shared state는
+재실행에서 다시 복사하지 않습니다. `--allow-unverified` 제한은 그대로입니다.
+
+계산을 시작하기 전에 모든 stage의 상태를 검사합니다. 일부 replica의 결과,
+zero-length 파일, marker만 있는 상태 또는 marker 없는 기존 output이 있으면
+파일을 덮어쓰지 않고 중단합니다. 기존 결과를 검토·보관한 뒤 별도 tutorial
+복사본에서 새 계산을 시작합니다. Marker를 수동으로 만들어 완료 처리하지 않습니다.
+정상 완료 후 재실행은 engine을 호출하거나 결과를 다시 쓰지 않습니다.
 
 ## English
 
@@ -158,3 +176,23 @@ uses a different log layout.
 
 The separate [GaREUS reweighting tutorial](../../../2_Analysis/7_Enhanced_Sampling/7.3_GaREUS_Reweighting/README.md)
 uses MBAR followed by second-order cumulant expansion to calculate the PMF.
+
+### Completion and reruns
+
+The runner writes `work/.STAGE.complete` only after engine success and verification
+of every replica’s required outputs. Minimization requires `.out`, `.rst7` and
+`.info`; heating, equilibration and production also require `.nc`.
+Production additionally requires `work/exchange.log`.
+GaREUS production also requires `gamd.production.log` and `restraint.production.dat`.
+
+`work/.gamd_prepare.complete` is written after checking the preparation outputs and
+`gamd.prepare.log` in reference window `009`, plus `gamd-restart.dat` and
+`production_start.rst7` in every window. Completed shared state is not copied
+again on reruns. The `--allow-unverified` requirement remains in effect.
+
+All stage states are checked before computation begins. Partial replica results,
+zero-length files, markers without required outputs and unmarked outputs cause
+an error without overwriting files. Review and archive retained results, then
+start a new calculation in a separate tutorial copy. Do not create markers
+manually to adopt old results. A rerun after normal completion invokes no engine
+and rewrites no results.

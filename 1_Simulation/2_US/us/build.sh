@@ -124,6 +124,7 @@ done
 # Generate topology, seed, restraint, and metadata for each window.
 mkdir -p "$window_root"
 
+echo "Building umbrella windows from seeds: $seed_dir"
 for row_index in "${!window_rows[@]}"; do
     read -r center_angstrom force_kcal_mol_angstrom2 <<< "${window_rows[$row_index]}"
 

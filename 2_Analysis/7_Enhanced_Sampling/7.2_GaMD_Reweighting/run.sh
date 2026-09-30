@@ -42,9 +42,14 @@ if ! "$python" \
     "$profile" \
     "$simulation_work" \
     "$output_dir/cpptraj.in"; then
-    die "cpptraj input generation failed."
+    die "cpptraj input generation failed: $simulation_work -> $output_dir/cpptraj.in"
 fi
 
+if [[ ! -s "$output_dir/cpptraj.in" ]]; then
+    die "cpptraj input was not created: $output_dir/cpptraj.in"
+fi
+
+echo "Calculating $profile CV; log: $output_dir/cpptraj.log"
 if ! "$cpptraj" \
     -i "$output_dir/cpptraj.in" \
     > "$output_dir/cpptraj.log" 2>&1; then
@@ -54,6 +59,9 @@ if [[ ! -s "$output_dir/cv.dat" ]]; then
     die "CV Output was not created: $output_dir/cv.dat"
 fi
 
+echo "Completed: CV calculation ($output_dir/cv.dat)"
+printf '\n'
+echo "Reweighting $profile: $output_dir/cv.dat; GaMD logs: $simulation_work"
 if ! "$python" \
     reweight.py \
     --cv "$output_dir/cv.dat" \
@@ -62,7 +70,11 @@ if ! "$python" \
     --temperature 300 \
     --bin-width 0.25 \
     --output "$output_dir/pmf.tsv"; then
-    die "GaMD reweighting failed."
+    die "GaMD reweighting failed: $output_dir/cv.dat; GaMD logs: $simulation_work"
+fi
+
+if [[ ! -s "$output_dir/pmf.tsv" ]]; then
+    die "GaMD reweighting output was not created: $output_dir/pmf.tsv"
 fi
 
 echo "GaMD reweighting results: $output_dir"

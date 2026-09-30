@@ -139,6 +139,13 @@ if ! (cd "$work_dir" && "$tleap" -f inputs/tleap.final.in > leap.log 2>&1); then
     die "Final tleap build failed. See log: $work_dir/leap.log"
 fi
 
+for output in system.parm7 system.rst7 system.pdb; do
+    if [[ ! -s "$work_dir/$output" ]]; then
+        die "AMBER build output was not created: $work_dir/$output; log: $work_dir/leap.log"
+    fi
+done
+
+echo "Generating $method replica states and inputs: $work_dir"
 "$python" helpers/generate_states.py "$method" "$config" "$work_dir/system.parm7" "$work_dir"
 "$python" helpers/generate_inputs.py "$method" "$config" "$work_dir/inputs" \
     --salt-pairs "$salt_pairs" --states "$work_dir/states.tsv"

@@ -55,6 +55,10 @@ Production 일부만 존재하면 자동으로 덮어쓰지 않습니다. `anal.
 되어 `work/states.tsv`에 기록됩니다. `production_segments`는 현재 `1`만
 지원합니다.
 
+### Engine 선택과 실행 상태
+
+`AMBER_ENGINE`이 설정되어 있으면 이를 사용하며, 없으면 build가 기록한 `work/resolved_config.toml`의 `run.engine`을 읽습니다. 허용하는 executable 이름은 `pmemd.cuda`이며 설치 경로를 지정할 수 있습니다. 빈 override, 누락된 engine 설정과 지원하지 않는 executable은 기본값으로 대체하지 않고 error로 중단합니다. Runner가 `helpers/config_utils.py`를 자동 호출해 이 설정을 읽습니다.
+
 ## English
 
 User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh`, `run.sh`, or `anal.py`; it is not a separate entry point.
@@ -95,3 +99,7 @@ creates both environments and their windows, `run.sh` executes them, and
 `anal.py` estimates MBAR free energy and overlap. Partial production is not
 overwritten automatically. The analysis requires FE-ToolKit
 `edgembar-amber2dats.py` and `edgembar` on `PATH`.
+
+### Engine selection and run state
+
+`AMBER_ENGINE` overrides `run.engine` in the build-generated `work/resolved_config.toml`. Accepted executable names are `pmemd.cuda`; installation paths are accepted. Empty overrides, missing engine settings and unsupported executables fail instead of falling back to a default. The runner invokes `helpers/config_utils.py` automatically to read this setting.

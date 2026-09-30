@@ -2,6 +2,7 @@
 """Summarize the WT-MetaD production run and sampled range."""
 
 import argparse
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -33,6 +34,7 @@ def main() -> int:
     args = parser.parse_args()
 
     work_dir = Path("work")
+    print(f"Reading bias-analysis inputs: {work_dir}", flush=True)
     for filename in ("COLVAR", "HILLS"):
         path = work_dir / filename
         if not path.is_file():
@@ -40,12 +42,13 @@ def main() -> int:
 
     output_dir = work_dir / "analysis"
     output_dir.mkdir(parents=True, exist_ok=True)
+    print(f"Calculating COLVAR diagnostics: {work_dir / 'COLVAR'}", flush=True)
     values = read_colvar(work_dir / "COLVAR")
     required = {"time", "phi", "psi", "metad.bias", "metad.rbias"}
     if not required.issubset(values):
         raise ValueError(f"Required COLVAR fields are missing: {work_dir / 'COLVAR'}")
     if np.any(np.diff(values["time"]) <= 0):
-        raise ValueError("Time does not increase within the production COLVAR file.")
+        raise ValueError(f"Time does not increase within the production COLVAR file: {work_dir / 'COLVAR'}")
 
     phi = values["phi"]
     psi = values["psi"]
@@ -95,7 +98,15 @@ def main() -> int:
             str(output_dir / "fes.dat"),
             "--mintozero",
         ]
+        print(f"Calculating FES: {work_dir / 'HILLS'} -> {output_dir / 'fes.dat'}", flush=True)
         subprocess.run(command, check=True)
+
+        fes = output_dir / "fes.dat"
+        if not fes.is_file() or fes.stat().st_size == 0:
+            raise ValueError(f"FES calculation: plumed sum_hills did not create a nonempty output: {fes}")
+        print(f"FES output: {fes}")
+    else:
+        print("Skipping FES calculation (--skip-fes).")
 
     print(f"WT-MetaD diagnostics results: {output_dir}")
     return 0

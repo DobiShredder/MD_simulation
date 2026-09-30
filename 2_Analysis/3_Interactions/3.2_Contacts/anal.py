@@ -69,6 +69,7 @@ def write_frequency(path: Path, frequency: np.ndarray) -> None:
 
 def main() -> int:
     output_dir = Path(__file__).resolve().parent / "output"
+    print(f"Running: Contacts analysis; input directory: {output_dir}")
     _, counts = read_table(output_dir / "contact_count.dat")
     series_header, series = read_table(output_dir / "contact_residue_series.dat")
     if counts.shape[1] < 3:
@@ -96,7 +97,9 @@ def main() -> int:
     figure.colorbar(image, ax=axes[1], label="Frame fraction")
 
     figure.tight_layout()
+    print("Displaying Contacts analysis figure.")
     plt.show()
+    print(f"Completed: Contacts analysis; results: {output_dir} (figure displayed interactively)")
     return 0
 
 

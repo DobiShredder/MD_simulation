@@ -131,6 +131,10 @@ def extract_restarts(
         )
     commands.append("run")
     run_cpptraj(executable, topology, "\n".join(commands) + "\n")
+    for window_number in range(1, len(selected) + 1):
+        seed = output / f"seed_{window_number:03d}.rst7"
+        if not seed.is_file() or seed.stat().st_size == 0:
+            raise RuntimeError(f"cpptraj seed restart was not created or is empty: {seed}")
 
 
 def write_metadata(
@@ -168,6 +172,7 @@ def main() -> int:
         raise SystemExit(f"Config error: {error}") from None
 
     if args.dry_run:
+        print("Dry run: planned seed extraction; no cpptraj commands will run.")
         print(f"topology: {topology}")
         print(f"trajectory: {trajectory}")
         print(f"seed output: {output} ({len(centers)} windows)")
@@ -181,6 +186,8 @@ def main() -> int:
         raise SystemExit(f"Output directory already exists: {output}")
 
     output.mkdir(parents=True)
+    stage = "distance calculation"
+    print(f"Calculating seed distances: {trajectory} (topology: {topology})", flush=True)
     try:
         with tempfile.TemporaryDirectory(prefix="us_seed_") as temporary:
             distance_output = Path(temporary) / "distance.dat"
@@ -192,7 +199,11 @@ def main() -> int:
                 mask_1,
                 mask_2,
             )
+        stage = "ordered seed selection"
+        print(f"Selecting ordered seed frames: {windows}", flush=True)
         selected = select_crossings(values, centers, maximum_error)
+        stage = "seed restart extraction"
+        print(f"Extracting seed restarts: {trajectory} -> {output}", flush=True)
         extract_restarts(
             args.cpptraj,
             topology.resolve(),
@@ -200,9 +211,12 @@ def main() -> int:
             output.resolve(),
             selected,
         )
+        stage = "seed metadata writing"
         write_metadata(output / "seeds.tsv", centers, selected)
     except (OSError, RuntimeError, ValueError) as error:
-        raise SystemExit(f"Error: {error}") from None
+        raise SystemExit(
+            f"Error during {stage} (trajectory: {trajectory}; output: {output}): {error}"
+        ) from None
 
     print(f"Created {len(centers)} US seed restarts: {output}")
     return 0

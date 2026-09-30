@@ -149,6 +149,7 @@ def write_decomposition(
 
 def main() -> int:
     output_dir = Path(__file__).resolve().parent / "output"
+    print(f"Running: MMGBSA analysis; input directory: {output_dir}")
     energy = read_energy(output_dir / "energy.csv")
     decomposition = read_decomposition(output_dir / "decomposition.csv")
     write_energy_outputs(output_dir, energy)
@@ -163,7 +164,9 @@ def main() -> int:
     axis.set_ylabel("Running mean ΔTOTAL (kcal/mol)")
     axis.legend()
     figure.tight_layout()
+    print("Displaying MMGBSA analysis figure.")
     plt.show()
+    print(f"Completed: MMGBSA analysis; results: {output_dir} (figure displayed interactively)")
     return 0
 
 

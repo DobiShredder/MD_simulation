@@ -76,11 +76,13 @@ die() {
 }
 
 # User settings and input/output paths
-engine=${AMBER_ENGINE:-pmemd.cuda}
+engine=$("${PYTHON:-python3}" ../helpers/config_utils.py "../work/resolved_config.toml" engine AMBER_ENGINE pmemd.cuda)
 work_dir=${WORK_DIR:-work}
 window_root="$work_dir"
 processed_window_count=0
 skipped_window_count=0
+reused_stage_count=0
+workflow_started=0
 
 run_command() {
     if (( dry_run )); then
@@ -166,6 +168,7 @@ run_stage() {
         local state
         state=$(stage_state "$completion_marker" "${required[@]}")
         if [[ "$state" == complete ]]; then
+            reused_stage_count=$((reused_stage_count + 1))
             return
         fi
         if [[ "$state" == partial ]]; then
@@ -173,7 +176,21 @@ run_stage() {
         fi
     fi
 
-    echo "Running: US window ${window_dir##*/} - $stage_label"
+    if (( ! dry_run && ! workflow_started )); then
+        if (( preparation_only )); then
+            echo "Running: umbrella-window preparation (minimization, heating, equilibration): $window_root"
+        elif (( production_only )); then
+            echo "Running: umbrella-window production: $window_root"
+        else
+            echo "Running: umbrella-window preparation and production: $window_root"
+        fi
+        workflow_started=1
+    fi
+    if (( dry_run )); then
+        echo "Dry run: US window ${window_dir##*/} - $stage_label"
+    elif [[ -n "$selected_window" ]]; then
+        echo "Running: US window ${window_dir##*/} - $stage_label"
+    fi
     if ! (
         cd "$window_dir"
         run_command "${command[@]}"
@@ -254,6 +271,7 @@ if [[ ! -d "$work_dir/inputs" ]]; then
 fi
 
 # Run the selected window or all windows
+
 if [[ -n "$selected_window" ]]; then
     if [[ ! "$selected_window" =~ ^[0-9]+$ ]]; then
         die "Window index must be a positive integer: $selected_window"
@@ -306,6 +324,9 @@ else
 fi
 
 if (( ! dry_run )); then
+    if (( reused_stage_count > 0 )); then
+        echo "Reused completed stages: $reused_stage_count ($window_root)"
+    fi
     echo "Completed umbrella-window runs: ${processed_window_count} run," \
         "${skipped_window_count} already completed ($window_root)"
 fi

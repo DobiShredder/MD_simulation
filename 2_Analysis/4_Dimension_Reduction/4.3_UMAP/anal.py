@@ -39,6 +39,7 @@ def read_features(path: Path) -> tuple[np.ndarray, np.ndarray]:
 
 def main() -> int:
     output_dir = Path(__file__).resolve().parent / "output"
+    print(f"Running: UMAP analysis; input directory: {output_dir}")
     frames, features = read_features(output_dir / "phi_psi.dat")
     if len(frames) <= N_NEIGHBORS:
         raise ValueError(
@@ -79,7 +80,9 @@ def main() -> int:
     axis.set_ylabel("UMAP 2")
     figure.colorbar(scatter, ax=axis, label="Frame")
     figure.tight_layout()
+    print("Displaying UMAP analysis figure.")
     plt.show()
+    print(f"Completed: UMAP analysis; results: {output_dir} (figure displayed interactively)")
     return 0
 
 

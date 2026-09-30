@@ -61,6 +61,10 @@ protein와 retained pore ion/water 선택에 맞게 검토해야 합니다.
 `ff99SB-ILDN + TIP3P`와 `ff14SB + TIP3P`는 membrane/Lipid21 조합을 별도로
 검증하지 않았으므로 config validation에서 거부합니다.
 
+### Engine 선택과 실행 상태
+
+`AMBER_ENGINE`이 설정되어 있으면 이를 사용하며, 없으면 build가 기록한 `work/resolved_config.toml`의 `run.engine`을 읽습니다. 허용하는 executable 이름은 `pmemd.cuda`, `pmemd`, `sander`이며 설치 경로를 지정할 수 있습니다. 빈 override, 누락된 engine 설정과 지원하지 않는 executable은 기본값으로 대체하지 않고 error로 중단합니다. Runner가 `helpers/config_utils.py`를 자동 호출해 이 설정을 읽습니다.
+
 ## English
 
 User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh`, `run.sh`, or `anal.py`; it is not a separate entry point.
@@ -101,3 +105,7 @@ water padding in `config.toml`. Bilayer coordinate patches are not redistributed
 by this repository. The default run uses ff19SB/Lipid21/OPC, anisotropic Monte
 Carlo pressure coupling, and ten 10 ns production segments. `build.sh` calls
 `helpers/build_membrane.py` to place the bilayer and remove overlaps.
+
+### Engine selection and run state
+
+`AMBER_ENGINE` overrides `run.engine` in the build-generated `work/resolved_config.toml`. Accepted executable names are `pmemd.cuda`, `pmemd`, `sander`; installation paths are accepted. Empty overrides, missing engine settings and unsupported executables fail instead of falling back to a default. The runner invokes `helpers/config_utils.py` automatically to read this setting.

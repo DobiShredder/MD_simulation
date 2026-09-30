@@ -52,13 +52,14 @@ def main() -> None:
     args = parse_arguments()
 
     if not args.input_pdb.is_file():
-        raise SystemExit(f"Input PDB not found: {args.input_pdb}")
+        raise SystemExit(f"Structure preparation input PDB not found: {args.input_pdb}")
+    print(f"Preparing structure: {args.input_pdb}")
 
     lines = args.input_pdb.read_text(encoding="ascii").splitlines()
     atom_records = select_first_model(lines)
 
     if not atom_records:
-        raise SystemExit("No ATOM records found in the first model.")
+        raise SystemExit(f"Structure preparation found no ATOM records in the first model: {args.input_pdb}")
 
     args.output_pdb.parent.mkdir(parents=True, exist_ok=True)
     output = "\n".join(atom_records + ["TER", "END"]) + "\n"

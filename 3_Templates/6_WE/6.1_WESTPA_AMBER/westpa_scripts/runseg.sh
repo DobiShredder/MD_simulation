@@ -22,6 +22,8 @@ if [[ $# -ne 0 ]]; then
     exit 2
 fi
 
+AMBER_ENGINE=$("${PYTHON:-python3}" "$WEST_SIM_ROOT/helpers/config_utils.py" "$WORK_DIR/resolved_config.toml" engine AMBER_ENGINE pmemd.cuda pmemd sander)
+
 mkdir -p "$WEST_CURRENT_SEG_DATA_REF"
 cd "$WEST_CURRENT_SEG_DATA_REF"
 

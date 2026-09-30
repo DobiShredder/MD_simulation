@@ -29,7 +29,7 @@ if ! command -v parmchk2 >/dev/null 2>&1; then
 fi
 
 # Assign GAFF2 atom types and AM1-BCC charges.
-echo "Parameterizing JZ4 with GAFF2/AM1-BCC (net charge: $ligand_charge)."
+echo "Parameterizing JZ4 with GAFF2/AM1-BCC (net charge: $ligand_charge); log: $work_dir/antechamber.log"
 mkdir -p "$work_dir"
 cp "$ligand_sdf" "$work_dir/JZ4_ideal.sdf"
 
@@ -50,7 +50,15 @@ if ! (
     die "antechamber run failed. See log: $work_dir/antechamber.log"
 fi
 
+if [[ ! -s "$ligand_mol2" ]]; then
+    die "ligand mol2 was not created: $ligand_mol2"
+fi
+
+echo "Completed: antechamber ($ligand_mol2)"
+printf '\n'
+
 # Generate an frcmod file for GAFF2 parameters missing from the Mol2 file.
+echo "Generating missing GAFF2 parameters: $work_dir/parmchk2.log"
 if ! (
     cd "$work_dir"
     parmchk2 \
@@ -61,10 +69,6 @@ if ! (
         > parmchk2.log 2>&1
 ); then
     die "parmchk2 run failed. See log: $work_dir/parmchk2.log"
-fi
-
-if [[ ! -s "$ligand_mol2" ]]; then
-    die "ligand mol2 was not created: $ligand_mol2"
 fi
 
 if [[ ! -s "$ligand_frcmod" ]]; then

@@ -132,15 +132,15 @@ ligand = parmed.load_file(sys.argv[2])
 names = {residue.name for residue in ligand.residues}
 expected_name = build["ligand_residue_name"]
 if names != {expected_name}:
-raise SystemExit(
-    f"Ligand MOL2 residue name mismatch: expected {expected_name}, found {sorted(names)}"
-)
+    raise SystemExit(
+        f"Ligand MOL2 residue name mismatch: expected {expected_name}, found {sorted(names)}"
+    )
 observed_charge = sum(float(atom.charge) for atom in ligand.atoms)
 expected_charge = int(build["ligand_net_charge"])
 if abs(observed_charge - expected_charge) > 1.0e-4:
-raise SystemExit(
-    f"Ligand MOL2 charge mismatch: expected {expected_charge}, found {observed_charge:.6f}"
-)
+    raise SystemExit(
+        f"Ligand MOL2 charge mismatch: expected {expected_charge}, found {observed_charge:.6f}"
+    )
 PY
 
 "$python" helpers/generate_inputs.py "$config" "$work_dir/inputs"
@@ -176,6 +176,7 @@ for output in system.parm7 system.rst7 system.pdb resolved_config.toml; do
     fi
 done
 
+echo "Preparing funnel geometry: $config; topology: $work_dir/system.parm7; output: $work_dir"
 "$python" helpers/setup_funnel.py \
     "$config" "$work_dir/system.parm7" "$work_dir/system.rst7" "$work_dir"
 

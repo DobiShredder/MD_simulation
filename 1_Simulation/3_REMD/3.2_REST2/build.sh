@@ -34,7 +34,7 @@ for input_file in "$input_pdb" "$temperature_file"; do
 done
 
 if ! replica_count=$("$python_bin" generate_states.py --count "$temperature_file"); then
-    die "REST2 temperature-list validation failed."
+    die "REST2 temperature-list validation failed: $temperature_file"
 fi
 for executable in "$tleap" "$gmx" "$plumed" "$python_bin"; do
     if ! command -v "$executable" >/dev/null 2>&1; then
@@ -51,10 +51,10 @@ cp "$input_pdb" "$work_dir/input.pdb"
 cp inputs/tleap.in "$work_dir/tleap.in"
 
 if ! "$python_bin" generate_states.py "$temperature_file" "$states_file"; then
-    die "REST2 state-table generation failed."
+    die "REST2 state-table generation failed: $states_file"
 fi
 if ! "$python_bin" validate_states.py "$states_file"; then
-    die "Generated REST2 state-table validation failed."
+    die "Generated REST2 state-table validation failed: $states_file"
 fi
 
 if ! (
@@ -66,12 +66,13 @@ if ! (
     die "tleap failed. See log: $work_dir/leap.log"
 fi
 
+echo "Converting AMBER topology to GROMACS: $work_dir/system.parm7"
 if ! "$python_bin" "convert_topology.py" \
     "$work_dir/system.parm7" \
     "$work_dir/system.rst7" \
     "$work_dir/topol.top" \
     "$work_dir/system.gro"; then
-    die "ParmEd topology conversion failed."
+    die "ParmEd topology conversion failed: $work_dir/system.parm7, $work_dir/system.rst7 -> $work_dir/topol.top"
 fi
 
 # ParmEd can emit CMAP numbers longer than GROMACS 2024.x can safely parse.
@@ -79,7 +80,7 @@ if ! "$python_bin" "scale_cmap.py" \
     "$work_dir/topol.top" \
     "$work_dir/topol.top" \
     1.0; then
-    die "CMAP serialization normalization failed."
+    die "CMAP serialization normalization failed: $work_dir/topol.top"
 fi
 
 echo "Generating the protein hot region and REST2 topology."
@@ -98,13 +99,13 @@ if ! "$python_bin" "scale_cmap.py" \
     "$work_dir/topol.top" \
     "$work_dir/processed.top" \
     1.0; then
-    die "Failed to restore residue-specific CMAPs in the processed topology."
+    die "Failed to restore residue-specific CMAPs: $work_dir/topol.top -> $work_dir/processed.top"
 fi
 
 if ! "$python_bin" "mark_hot.py" \
     "$work_dir/processed.top" \
     "$work_dir/processed.hot.top"; then
-    die "protein hot-region marker generation failed."
+    die "Protein hot-region marker generation failed: $work_dir/processed.top -> $work_dir/processed.hot.top"
 fi
 
 while IFS=$'\t' read -r replica effective_temperature lambda_pp _ seed; do
@@ -118,14 +119,14 @@ while IFS=$'\t' read -r replica effective_temperature lambda_pp _ seed; do
     if ! "$plumed" partial_tempering "$lambda_pp" \
         < "$work_dir/processed.hot.top" \
         > "$replica_dir/topol.top"; then
-        die "REST2 topology generation failed: replica $replica"
+        die "REST2 topology generation failed: replica $replica, $replica_dir/topol.top"
     fi
 
     if ! "$python_bin" "scale_cmap.py" \
         "$work_dir/processed.top" \
         "$replica_dir/topol.top" \
         "$lambda_pp"; then
-        die "REST2 CMAP scaling failed: replica $replica"
+        die "REST2 CMAP scaling failed: replica $replica, $replica_dir/topol.top"
     fi
 
     cp "$work_dir/system.gro" "$replica_dir/system.gro"
@@ -141,6 +142,7 @@ while IFS=$'\t' read -r replica effective_temperature lambda_pp _ seed; do
 done < "$states_file"
 
 # At scale=1 the Hamiltonian must match the original, so compare the energy of one frame.
+echo "Checking scale-one energy equivalence: $work_dir/energy_check"
 energy_dir="$work_dir/energy_check"
 mkdir -p "$energy_dir"
 

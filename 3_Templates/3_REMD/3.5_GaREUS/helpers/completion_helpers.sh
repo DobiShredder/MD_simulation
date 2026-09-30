@@ -5,6 +5,7 @@ completed_stage_count() {
     shift
     local require_gamd_log=0
     local allow_partial=0
+    local require_complete=0
     local completed=0
     local existing
     local replica
@@ -18,6 +19,9 @@ completed_stage_count() {
                 ;;
             --allow-partial)
                 allow_partial=1
+                ;;
+            --require-complete)
+                require_complete=1
                 ;;
             *)
                 die "Unknown completed_stage_count option: $1"
@@ -35,15 +39,21 @@ completed_stage_count() {
         required=(
             "$replica_dir/$stage.out"
             "$replica_dir/$stage.rst7"
-            "$replica_dir/$stage.nc"
             "$replica_dir/$stage.info"
         )
+        if [[ "$stage" != minimize ]]; then
+            required+=("$replica_dir/$stage.nc")
+        fi
         if (( require_gamd_log )); then
             required+=("$replica_dir/gamd.$stage.log")
+            required+=("$replica_dir/restraint.$stage.dat")
         fi
 
         existing=0
         for output in "${required[@]}"; do
+            if (( require_complete )) && [[ ! -s "$output" ]]; then
+                die "$stage output is incomplete: $output; existing files were preserved."
+            fi
             [[ ! -s "$output" ]] || existing=$((existing + 1))
         done
 
@@ -55,4 +65,41 @@ completed_stage_count() {
     done < "$states_file"
 
     echo "$completed"
+}
+
+# A marker is trusted only together with every required replica output.
+stage_state() {
+    local stage=$1
+    shift
+    local completed replica output
+    completed=$(completed_stage_count "$stage" "$@" --allow-partial)
+    if [[ -f "$work_dir/.$stage.complete" && "$completed" -eq "$replica_count" ]]; then
+        if [[ "$stage" == production.* && ! -s "$work_dir/exchange.${stage#production.}.log" ]]; then
+            echo partial
+            return
+        fi
+        echo complete
+        return
+    fi
+    if [[ -e "$work_dir/.$stage.complete" ]]; then
+        echo partial
+        return
+    fi
+    if [[ "$stage" == production.* && -e "$work_dir/exchange.${stage#production.}.log" ]]; then
+        echo partial
+        return
+    fi
+    while IFS=$'\t' read -r replica _; do
+        if [[ "$replica" == replica ]]; then
+            continue
+        fi
+        for output in "$work_dir/$replica/$stage."{out,rst7,nc,info} \
+            "$work_dir/$replica/gamd.$stage.log" "$work_dir/$replica/restraint.$stage.dat"; do
+            if [[ -e "$output" ]]; then
+                echo partial
+                return
+            fi
+        done
+    done < "$states_file"
+    echo missing
 }

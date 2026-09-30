@@ -241,6 +241,7 @@ def write_visit_outputs(
 
 
 def main() -> None:
+    print(f"Reading exchange analysis inputs: {WORK / 'states.tsv'} and {WORK / 'exchange.log'}", flush=True)
     states = read_states()
     require_production_outputs(states)
     temperatures = [float(state["temperature_K"]) for state in states]
@@ -251,6 +252,7 @@ def main() -> None:
     else:
         visits = direct_visits
 
+    print(f"Writing exchange and temperature-visit summaries: {WORK}", flush=True)
     write_exchange_summary(records, len(states))
     write_visit_outputs(visits, states)
     print(f"Exchange and temperature-visit summary: {WORK}")

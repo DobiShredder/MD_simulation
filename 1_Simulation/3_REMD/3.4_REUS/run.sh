@@ -73,7 +73,13 @@ run_window_stage() {
             -inf "$replica_dir/$stage.info"; then
             die "$stage failed: $replica_dir/$stage.out"
         fi
+        for output in "$replica_dir/$stage.out" "$replica_dir/$stage.rst7"; do
+            if [[ ! -s "$output" ]]; then
+                die "$stage output was not created: $output"
+            fi
+        done
     done < work/states.tsv
+    echo "Completed: $stage (work)"
 }
 
 amber_engine=${AMBER_ENGINE:-pmemd.cuda}
@@ -85,6 +91,7 @@ if [[ ! -s work/states.tsv ]]; then
     die "Run ./build.sh first."
 fi
 if (( dry_run )); then
+    echo "Dry run: planned REUS commands; no engine execution"
     printf '+ %q -O -i %q -o %q -p %q -c %q -r %q -x %q -inf %q\n' \
         "$amber_engine" work/000/minimize.in work/000/minimize.out \
         work/000/system.parm7 work/000/system.rst7 work/000/minimize.rst7 \
@@ -133,7 +140,19 @@ if ! "$mpi_launcher" \
     -groupfile "$group_file" \
     -rem 3 \
     -remlog work/exchange.log; then
-    die "REUS production failed: work/exchange.log"
+    die "REUS production failed. Inspect terminal output; expected diagnostics (if created): work/exchange.log and work/*/production.out"
 fi
+
+while IFS=$'\t' read -r replica _; do
+    if [[ "$replica" == replica ]]; then
+        continue
+    fi
+    for output in "work/$replica/production.out" "work/$replica/production.rst7" \
+        "work/$replica/production.nc" "work/$replica/production.info"; do
+        if [[ ! -s "$output" ]]; then
+            die "Production output was not created: $output"
+        fi
+    done
+done < work/states.tsv
 
 echo "Completed 1 ns REUS: work"

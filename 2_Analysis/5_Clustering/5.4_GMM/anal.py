@@ -40,6 +40,7 @@ def new_model(component_count: int) -> GaussianMixture:
 
 def main() -> int:
     output_dir = Path(__file__).resolve().parent / "output"
+    print(f"Running: GMM analysis; input directory: {output_dir}")
     frames, projection, feature = pca_features(output_dir / "phi_psi.dat")
     if len(frames) < 9:
         raise ValueError("GMM diagnostics require at least 9 frames.")
@@ -100,7 +101,9 @@ def main() -> int:
     axes[1].set_xlabel("Maximum posterior probability")
     axes[1].set_ylabel("Frames")
     figure.tight_layout()
+    print("Displaying GMM analysis figure.")
     plt.show()
+    print(f"Completed: GMM analysis; results: {output_dir} (figure displayed interactively)")
     return 0
 
 

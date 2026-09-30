@@ -59,6 +59,7 @@ for output in system.parm7 system.rst7; do
     fi
 done
 
+echo "Generating window restraints: $work_dir/system.parm7; states: $states_file"
 "$python_bin" "make_restraints.py" \
     "$work_dir/system.parm7" \
     "$work_dir/system.rst7" \
@@ -71,6 +72,9 @@ while IFS=$'\t' read -r replica _ seed; do
     fi
 
     replica_dir="$work_dir/$replica"
+    if [[ ! -s "$replica_dir/distance.RST" ]]; then
+        die "Window restraint generation did not create: $replica_dir/distance.RST"
+    fi
     cp "$work_dir/system.parm7" "$replica_dir/system.parm7"
     cp "$work_dir/system.rst7" "$replica_dir/system.rst7"
 

@@ -37,6 +37,7 @@ for input in system.parm7 system.rst7 funnel-reference.pdb plumed.dat atom_count
 done
 
 if (( dry_run )); then
+    echo "Dry run: planned sampling commands; no engine execution"
     for stage in minimize-solvent minimize-all heat equilibrate; do
         printf '+ (cd %q && %q -O -i inputs/%s.in -o %s.out -p system.parm7 -c PREVIOUS.rst7 -r %s.rst7 -inf %s.info)\n' \
             "$work_dir" "$engine" "$stage" "$stage" "$stage" "$stage"
@@ -52,10 +53,17 @@ sed 's/@RANDOM_SEED@/72001/g' inputs/heat.in.template > "$work_dir/inputs/heat.i
 sed 's/@RANDOM_SEED@/72002/g' inputs/equilibrate.in.template > "$work_dir/inputs/equilibrate.in"
 
 atom_count=$(<"$work_dir/atom_count.txt")
-(
+echo "Checking PLUMED input: $work_dir/plumed.dat"
+if (
     cd "$work_dir"
     "$plumed" driver --plumed plumed.dat --parse-only --natoms "$atom_count"
-)
+); then
+    echo "Completed: PLUMED input check"
+else
+    status=$?
+    echo "Error: PLUMED input check failed: $work_dir/plumed.dat; inspect terminal diagnostics." >&2
+    exit "$status"
+fi
 if [[ ! -s "$work_dir/FUNNEL_GRID" ]]; then
     die "PLUMED setup did not create the funnel grid: $work_dir/FUNNEL_GRID"
 fi
@@ -90,9 +98,13 @@ run_stage() {
     ); then
         die "$stage calculation failed: $output_file"
     fi
-    if [[ ! -s "$output_file" || ! -s "$restart_file" ]]; then
-        die "$stage outputs were not created."
-    fi
+    local output
+    for output in "$output_file" "$restart_file"; do
+        if [[ ! -s "$output" ]]; then
+            die "$stage output was not created: $output"
+        fi
+    done
+    echo "Completed: $stage ($output_file)"
 }
 
 run_stage minimize-solvent system.rst7 -ref system.rst7

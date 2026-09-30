@@ -107,6 +107,14 @@ GPU 병렬 실행은 GPU별 worker 배치와 scheduler isolation을 외부 환�
 `target_state_file`은 `steady_state` mode에서 모두 필요하며, `init.sh`가 이를
 읽어 `work/west.h5`를 초기화합니다.
 
+### Engine 선택과 실행 상태
+
+`AMBER_ENGINE`이 설정되어 있으면 이를 사용하며, 없으면 build가 기록한 `work/resolved_config.toml`의 `run.engine`을 읽습니다. 허용하는 executable 이름은 `pmemd.cuda`, `pmemd`, `sander`이며 설치 경로를 지정할 수 있습니다. Build는 source config의 같은 항목을 사용합니다. WESTPA propagation도 동일한 override 우선순위를 따릅니다. CPU process worker 사용 조건은 그대로 유지합니다. 빈 override, 누락된 engine 설정과 지원하지 않는 executable은 기본값으로 대체하지 않고 error로 중단합니다. Runner가 `helpers/config_utils.py`를 자동 호출해 이 설정을 읽습니다.
+
+같은 input과 config로 완료 topology를 재사용할 때는 새 임시 directory를 만들지
+않으므로 삭제도 하지 않습니다. 새 build가 성공하면 이번 실행에서 만든
+`.build_tmp.*`를 정리하고, 실패하면 진단 파일과 해당 directory를 보존합니다.
+
 ## English
 
 User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh`, `run.sh`, or `anal.py`; it is not a separate entry point.
@@ -173,3 +181,11 @@ The default is serial `pmemd.cuda` on one GPU. A CPU engine may use the
 external scheduler decision. Analysis reads the resolved bins and target file,
 then reports total weight, effective walker count, bin occupancy, and target
 arrivals. Target counts alone are not a rate estimate.
+
+### Engine selection and run state
+
+`AMBER_ENGINE` overrides `run.engine` in the build-generated `work/resolved_config.toml`. Accepted executable names are `pmemd.cuda`, `pmemd`, `sander`; installation paths are accepted. Build reads the same key from the source config. WESTPA propagation follows the same override precedence. Existing CPU process-worker restrictions still apply. Empty overrides, missing engine settings and unsupported executables fail instead of falling back to a default. The runner invokes `helpers/config_utils.py` automatically to read this setting.
+
+When reusing a completed topology with the same input and config, no new temporary
+directory is created or removed. A successful new build removes its own
+`.build_tmp.*` directory; a failed build retains that directory and diagnostic files.

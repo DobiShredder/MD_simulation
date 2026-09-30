@@ -42,7 +42,7 @@ solvated_topology="../$solvated_topology"
 trajectory="../$trajectory"
 input_file="../$input_file"
 
-echo "Generating complex, receptor, and ligand topologies."
+echo "Generating complex, receptor, and ligand topologies; log: $output_dir/topology.log"
 if ! "$ante_mmpbsa" \
     -p "$solvated_topology" \
     -c complex.parm7 \
@@ -55,6 +55,15 @@ if ! "$ante_mmpbsa" \
     echo "Error: MMPBSA topology generation failed: $output_dir/topology.log" >&2
     exit 1
 fi
+
+for topology_file in complex.parm7 receptor.parm7 ligand.parm7; do
+    if [[ ! -s "$topology_file" ]]; then
+        echo "Error: MMPBSA topology was not created: $output_dir/$topology_file; log: $output_dir/topology.log" >&2
+        exit 1
+    fi
+done
+echo "Completed: MMPBSA topology generation ($output_dir)"
+printf '\n'
 
 echo "Calculating MM/GBSA and MM/PBSA for the same 100 frames."
 if ! "$mmpbsa" \
@@ -73,5 +82,12 @@ if ! "$mmpbsa" \
     echo "Error: MM/PBSA Calculation failed: $output_dir/mmpbsa.log" >&2
     exit 1
 fi
+
+for output_file in final_results.dat final_decomposition.dat energy.csv decomposition.csv; do
+    if [[ ! -s "$output_file" ]]; then
+        echo "Error: MMPBSA output was not created: $output_dir/$output_file; log: $output_dir/mmpbsa.log" >&2
+        exit 1
+    fi
+done
 
 echo "MM/PBSA results: $output_dir"

@@ -61,8 +61,15 @@ for output in system.parm7 system.rst7 system.pdb; do
         die "build Output was not created: $work_dir/$output"
     fi
 done
+echo "Generating Pep-GaMD inputs: $metadata -> $work_dir/inputs"
 if ! "$python" "render_inputs.py" "$metadata" "inputs" "$work_dir/inputs"; then
-    die "Pep-GaMD input generation failed."
+    die "Pep-GaMD input generation failed: $metadata -> $work_dir/inputs"
 fi
+
+for generated_input in gamd_prepare.in production.in; do
+    if [[ ! -s "$work_dir/inputs/$generated_input" ]]; then
+        die "GaMD input generation did not create: $work_dir/inputs/$generated_input"
+    fi
+done
 
 echo "Pep-GaMD topology, restart, and generated inputs: $work_dir"

@@ -24,17 +24,17 @@ echo "Downloading the trypsin–benzamidine structure (PDB 3PTB)."
 if ! "$curl_bin" -fsSL \
     https://files.rcsb.org/download/3PTB.pdb \
     -o "$structure_dir/3PTB.raw.pdb"; then
-    die "PDB 3PTB Download failed."
+    die "PDB 3PTB Download failed: $structure_dir/3PTB.raw.pdb"
 fi
 if ! "$curl_bin" -fsSL \
     https://files.rcsb.org/download/3PTB.cif \
     -o "$structure_dir/3PTB.cif"; then
-    die "3PTB mmCIF Download failed."
+    die "3PTB mmCIF Download failed: $structure_dir/3PTB.cif"
 fi
 if ! "$curl_bin" -fsSL \
     https://files.rcsb.org/ligands/download/BEN_ideal.sdf \
     -o "$structure_dir/BEN_ideal.sdf"; then
-    die "BEN ideal SDF Download failed."
+    die "BEN ideal SDF Download failed: $structure_dir/BEN_ideal.sdf"
 fi
 
 if command -v sha256sum >/dev/null 2>&1; then

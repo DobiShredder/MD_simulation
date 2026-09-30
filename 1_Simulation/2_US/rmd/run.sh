@@ -37,9 +37,20 @@ run_stage() {
 
     echo "Running: $label"
     if ! "$@"; then
-        die "$label failed."
+        die "$label failed. Expected output (if created): work/$output"
     fi
+    local required_output
+    for required_output in "$output" "$restart"; do
+        if [[ ! -s "$required_output" ]]; then
+            die "$label output was not created: work/$required_output"
+        fi
+    done
+    echo "Completed: $label (work/$output)"
 }
+
+if (( dry_run )); then
+    echo "Dry run: planned sampling commands; no engine execution"
+fi
 
 engine=${AMBER_ENGINE:-pmemd.cuda}
 topology=../work/system.parm7
@@ -101,4 +112,9 @@ run_stage "1 ns ratchet MD" ratchet.out ratchet.rst7 \
     -p system.parm7 -c equil.rst7 -r ratchet.rst7 \
     -x ratchet.nc -inf ratchet.info
 
-echo "Ratchet MD trajectory: work/ratchet.nc"
+if (( ! dry_run )); then
+    if [[ ! -s ratchet.nc ]]; then
+        die "Ratchet MD trajectory was not created: work/ratchet.nc"
+    fi
+    echo "Ratchet MD trajectory: work/ratchet.nc"
+fi

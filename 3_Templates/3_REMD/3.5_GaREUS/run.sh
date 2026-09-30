@@ -59,8 +59,8 @@ die() {
 
 work_dir=${WORK_DIR:-work}
 states_file="$work_dir/states.tsv"
-amber_engine=${AMBER_ENGINE:-pmemd.cuda}
-amber_mpi_engine=${AMBER_MPI_ENGINE:-pmemd.cuda.MPI}
+amber_engine=$("${PYTHON:-python3}" helpers/config_utils.py "$work_dir/resolved_config.toml" engine AMBER_ENGINE pmemd.cuda)
+amber_mpi_engine=$("${PYTHON:-python3}" helpers/config_utils.py "$work_dir/resolved_config.toml" mpi_engine AMBER_MPI_ENGINE pmemd.cuda.MPI)
 mpi_launcher=${MPI_LAUNCHER:-mpirun}
 
 if [[ ! -s "$states_file" || ! -s "$work_dir/resolved_config.toml" ]]; then
@@ -142,29 +142,28 @@ run_stage_if_needed() {
     local input_restart=$2
     local completed
 
-    completed=$(completed_stage_count "$stage" --allow-partial)
-    if [[ -f "$work_dir/.$stage.complete" && "$completed" -eq "$replica_count" ]]; then
+    local status
+    status=$(stage_state "$stage")
+    if [[ "$status" == complete ]]; then
+        echo "Skipping completed stage: $stage ($work_dir)"
         return
     fi
-    if [[ "$completed" -ne 0 || -f "$work_dir/.$stage.complete" ]]; then
-        die "Partial $stage output detected and retained in replica directories."
+    if [[ "$status" == partial ]]; then
+        die "Partial $stage output detected and retained in $work_dir. Use a new WORK_DIR or resolve the partial stage."
     fi
     run_stage "$stage" "$input_restart"
 
-    completed=$(completed_stage_count "$stage")
+    completed=$(completed_stage_count "$stage" --require-complete)
     if [[ "$completed" -ne "$replica_count" ]]; then
-        die "$stage output is incomplete ($completed/$replica_count)."
+        die "$stage output is incomplete in $work_dir ($completed/$replica_count)."
     fi
     touch "$work_dir/.$stage.complete"
+    echo "Completed: $stage ($work_dir)"
 }
 
 prepare_common_gamd_state() {
     local reference_dir="$work_dir/$gamd_reference_replica"
-    local completed_segments
-    local existing=0
-    local output
-    local replica
-    local replica_dir
+    local output replica replica_dir
     local required=(
         "$reference_dir/gamd_prepare.out"
         "$reference_dir/gamd_prepare.rst7"
@@ -174,62 +173,81 @@ prepare_common_gamd_state() {
         "$reference_dir/gamd-restart.dat"
     )
     local completion_marker="$work_dir/.gamd_prepare.complete"
-
-    completed_segments=$(completed_stage_count production.001 --require-gamd-log)
-    if [[ "$completed_segments" -ne 0 ]]; then
-        return
-    fi
-
+    local existing=0
+    local complete=0
     for output in "${required[@]}"; do
-        if [[ -s "$output" ]]; then
+        if [[ -e "$output" ]]; then
             existing=$((existing + 1))
         fi
-    done
-    if [[ -f "$completion_marker" && "$existing" -eq "${#required[@]}" ]]; then
-        :
-    elif [[ "$existing" -ne 0 ]]; then
-        die "GaMD preparation output is only partially present: $reference_dir"
-    else
-        echo "Prepared shared GaMD parameters from replica $gamd_reference_replica."
-
-        if ! (
-            cd "$reference_dir"
-            "$amber_engine" \
-                "${amber_options[@]}" \
-                -O \
-                -i gamd_prepare.in \
-                -o gamd_prepare.out \
-                -p ../system.parm7 \
-                -c equilibrate.rst7 \
-                -r gamd_prepare.rst7 \
-                -x gamd_prepare.nc \
-                -inf gamd_prepare.info \
-                -gamd gamd.prepare.log
-        ); then
-            die "GaMD parameter preparation failed: $reference_dir/gamd_prepare.out"
+        if [[ -s "$output" ]]; then
+            complete=$((complete + 1))
         fi
+    done
+    if [[ -f "$completion_marker" && "$complete" -eq "${#required[@]}" ]]; then
+        while IFS=$'\t' read -r replica _; do
+            if [[ "$replica" == replica ]]; then
+                continue
+            fi
+            for output in gamd-restart.dat production_start.rst7; do
+                if [[ ! -s "$work_dir/$replica/$output" ]]; then
+                    die "Incomplete shared GaMD preparation: $work_dir/$replica/$output"
+                fi
+            done
+        done < "$states_file"
+        echo "Skipping completed stage: shared GaMD parameter preparation ($work_dir)"
+        return
     fi
-
-    if [[ ! -s "$reference_dir/gamd-restart.dat" ]]; then
-        die "shared GaMD state was not created: $reference_dir/gamd-restart.dat"
+    if [[ -e "$completion_marker" || "$existing" -ne 0 ]]; then
+        die "Partial GaMD preparation output retained: $reference_dir"
     fi
-
     while IFS=$'\t' read -r replica _; do
-        if [[ "$replica" == "replica" ]]; then
+        if [[ "$replica" == replica ]]; then
             continue
         fi
-
+        if [[ -e "$work_dir/$replica/gamd-restart.dat" || -e "$work_dir/$replica/production_start.rst7" ]]; then
+            die "Unmarked GaMD preparation output retained: $work_dir/$replica"
+        fi
+    done < "$states_file"
+    if (( production_only )); then
+        die "Completed shared GaMD preparation required for production: $completion_marker"
+    fi
+    echo "Preparing shared GaMD parameters in replica $gamd_reference_replica."
+    if ! (
+        cd "$reference_dir"
+        "$amber_engine" \
+            "${amber_options[@]}" \
+            -O \
+            -i gamd_prepare.in \
+            -o gamd_prepare.out \
+            -p ../system.parm7 \
+            -c equilibrate.rst7 \
+            -r gamd_prepare.rst7 \
+            -x gamd_prepare.nc \
+            -inf gamd_prepare.info \
+            -gamd gamd.prepare.log
+    ); then
+        die "GaMD parameter preparation failed: $reference_dir/gamd_prepare.out"
+    fi
+    for output in "${required[@]}"; do
+        if [[ ! -s "$output" ]]; then
+            die "GaMD preparation output is incomplete: $output"
+        fi
+    done
+    while IFS=$'\t' read -r replica _; do
+        if [[ "$replica" == replica ]]; then
+            continue
+        fi
         replica_dir="$work_dir/$replica"
         if [[ "$replica" != "$gamd_reference_replica" ]]; then
             cp "$reference_dir/gamd-restart.dat" "$replica_dir/gamd-restart.dat"
         fi
         cp "$replica_dir/equilibrate.rst7" "$replica_dir/production_start.rst7"
-
         if ! cmp -s "$reference_dir/gamd-restart.dat" "$replica_dir/gamd-restart.dat"; then
             die "Could not place the shared GaMD state in replica: $replica_dir"
         fi
     done < "$states_file"
     touch "$completion_marker"
+    echo "Completed: shared GaMD parameter preparation ($work_dir)"
 }
 
 write_group_file() {
@@ -273,6 +291,7 @@ write_group_file() {
 }
 
 if (( dry_run )); then
+    echo "Dry run: planned GaREUS commands; no engine execution"
     echo "Engine: $amber_engine"
     echo "Replica exchange engine: $amber_mpi_engine"
     echo "$replica_count configured windows with one shared GaMD state"
@@ -305,9 +324,10 @@ if (( ! production_only )); then
     run_stage_if_needed minimize system.rst7
     run_stage_if_needed heat minimize.rst7
     run_stage_if_needed equilibrate heat.rst7
-    prepare_common_gamd_state
 fi
+prepare_common_gamd_state
 if (( preparation_only )); then
+    echo "Preparation output: $work_dir/<replica>/production_start.rst7 and gamd-restart.dat"
     exit 0
 fi
 if [[ ! -f "$work_dir/.gamd_prepare.complete" ]]; then
@@ -315,23 +335,21 @@ if [[ ! -f "$work_dir/.gamd_prepare.complete" ]]; then
 fi
 if (( segment_start > 1 )); then
     previous_segment=$(printf 'production.%03d' "$((segment_start - 1))")
-    previous_count=$(completed_stage_count "$previous_segment" --require-gamd-log)
-    if [[ ! -f "$work_dir/.$previous_segment.complete" || "$previous_count" -ne "$replica_count" ]]; then
+    if [[ "$(stage_state "$previous_segment" --require-gamd-log)" != complete ]]; then
         die "Previous production segment is incomplete: $previous_segment"
     fi
 fi
 
 for segment in $(seq "$segment_start" "$segment_end"); do
     segment_name=$(printf 'production.%03d' "$segment")
-    completed=$(completed_stage_count "$segment_name" --require-gamd-log)
-
-    if [[ -f "$work_dir/.$segment_name.complete" && "$completed" -eq "$replica_count" ]]; then
+    status=$(stage_state "$segment_name" --require-gamd-log)
+    if [[ "$status" == complete ]]; then
+        echo "Skipping completed stage: $segment_name ($work_dir)"
         continue
     fi
-    if [[ "$completed" -ne 0 ]]; then
-        die "Partial production output detected: $segment_name"
+    if [[ "$status" == partial ]]; then
+        die "Partial production output detected and retained: $work_dir/$segment_name"
     fi
-
     if [[ "$segment" -eq 1 ]]; then
         input_restart=production_start.rst7
     else
@@ -356,11 +374,15 @@ for segment in $(seq "$segment_start" "$segment_end"); do
         die "GaREUS segment $segment Run failed: $exchange_log"
     fi
 
-    completed=$(completed_stage_count "$segment_name" --require-gamd-log)
+    completed=$(completed_stage_count "$segment_name" --require-gamd-log --require-complete)
     if [[ "$completed" -ne "$replica_count" ]]; then
-        die "$segment_name output is incomplete ($completed/$replica_count)."
+        die "$segment_name output is incomplete in $work_dir ($completed/$replica_count)."
+    fi
+    if [[ ! -s "$exchange_log" ]]; then
+        die "$segment_name exchange log was not created: $exchange_log"
     fi
     touch "$work_dir/.$segment_name.complete"
+    echo "Completed: $segment_name ($work_dir)"
 done
 
 echo "Completed GaREUS production: $work_dir"

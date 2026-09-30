@@ -32,6 +32,7 @@ def count_deltafs_states(path: Path) -> int:
 
 def main() -> int:
     work_dir = Path("work")
+    print(f"Reading bias-analysis inputs: {work_dir}", flush=True)
     for filename in ("COLVAR", "DELTAFS", "opes.state"):
         path = work_dir / filename
         if not path.is_file():
@@ -39,6 +40,7 @@ def main() -> int:
 
     output_dir = work_dir / "analysis"
     output_dir.mkdir(parents=True, exist_ok=True)
+    print(f"Calculating COLVAR diagnostics: {work_dir / 'COLVAR'}", flush=True)
     values = read_colvar(work_dir / "COLVAR")
     required = {"time", "ene", "ecv.ene", "opes.bias"}
     if not required.issubset(values):

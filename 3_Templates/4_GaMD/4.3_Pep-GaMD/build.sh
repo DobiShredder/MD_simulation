@@ -152,6 +152,7 @@ for output in system.parm7 system.rst7 system.pdb resolved_config.toml; do
     fi
 done
 
+echo "Generating GaMD inputs: $config; topology: $work_dir/system.parm7; output: $work_dir/inputs"
 "$python" helpers/generate_gamd_inputs.py pepgamd "$config" "$work_dir/system.parm7" "$work_dir/inputs"
 
 remove_build_tmp

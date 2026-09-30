@@ -79,6 +79,7 @@ def main() -> None:
     args = parse_arguments()
     work = args.work_dir
     west_file = work / "west.h5"
+    print(f"Reading WESTPA weight and pcoord data: {west_file}", flush=True)
     config_file = work / "resolved_config.toml"
     target_file = work / "tstate.file"
     for required in (west_file, config_file, target_file):
@@ -99,7 +100,7 @@ def main() -> None:
     with h5py.File(west_file, "r") as handle:
         iterations = handle.get("iterations")
         if iterations is None:
-            raise SystemExit("west.h5 is missing the iterations group")
+            raise SystemExit(f"WESTPA analysis: {west_file} is missing the iterations group")
         current_iteration = int(handle.attrs.get("west_current_iteration", 0))
 
         for iteration_name in sorted(iterations):
@@ -116,12 +117,12 @@ def main() -> None:
                 continue
             final_coordinates = [float(values[-1][0]) for values in pcoord]
             if len(final_coordinates) != len(weights):
-                raise SystemExit(f"{iteration_name}: segment and pcoord counts differ")
+                raise SystemExit(f"WESTPA analysis: {west_file}, {iteration_name}: segment and pcoord counts differ")
 
             total_weight = sum(weights)
             squared_weight_sum = sum(weight * weight for weight in weights)
             if squared_weight_sum == 0.0:
-                raise SystemExit(f"{iteration_name}: walker weights sum to zero")
+                raise SystemExit(f"WESTPA analysis: {west_file}, {iteration_name}: walker weights sum to zero")
             effective_walkers = total_weight * total_weight / squared_weight_sum
             members_by_bin: list[list[int]] = []
             for lower, upper in bins:
@@ -159,8 +160,9 @@ def main() -> None:
                 ])
 
     if not iteration_rows:
-        raise SystemExit("No completed WESTPA iteration was found")
+        raise SystemExit(f"No completed WESTPA iteration was found in {west_file}")
 
+    print(f"Writing WESTPA diagnostics: {work}", flush=True)
     with (work / "iteration_summary.tsv").open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle, delimiter="\t", lineterminator="\n")
         writer.writerow([

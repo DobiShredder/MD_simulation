@@ -54,26 +54,61 @@ bound_mbn=$(cd "$structure_dir" && pwd -P)/bound_mbn.pdb
 echo "Parameterizing benzene and toluene with GAFF2/AM1-BCC."
 (
     cd "$build_dir"
-    "$antechamber" \
+    if "$antechamber" \
         -i "$bound_bnz" -fi pdb \
         -o bnz.mol2 -fo mol2 \
         -at gaff2 -c bcc -nc 0 -rn BNZ -s 2 \
-        > antechamber-bnz.log 2>&1
-    "$parmchk2" \
+        > antechamber-bnz.log 2>&1; then
+        if [[ ! -s bnz.mol2 ]]; then
+            die "antechamber output was not created: $build_dir/bnz.mol2; log: $build_dir/antechamber-bnz.log"
+        fi
+    else
+        status=$?
+        echo "Error: ligand antechamber failed: $build_dir/antechamber-bnz.log" >&2
+        exit "$status"
+    fi
+    if "$parmchk2" \
         -i bnz.mol2 -f mol2 \
         -o bnz.frcmod -s gaff2 \
-        > parmchk2-bnz.log 2>&1
+        > parmchk2-bnz.log 2>&1; then
+        if [[ ! -s bnz.frcmod ]]; then
+            die "parmchk2 output was not created: $build_dir/bnz.frcmod; log: $build_dir/parmchk2-bnz.log"
+        fi
+    else
+        status=$?
+        echo "Error: ligand parmchk2 failed: $build_dir/parmchk2-bnz.log" >&2
+        exit "$status"
+    fi
 
-    "$antechamber" \
+    if "$antechamber" \
         -i "$bound_mbn" -fi pdb \
         -o mbn.mol2 -fo mol2 \
         -at gaff2 -c bcc -nc 0 -rn MBN -s 2 \
-        > antechamber-mbn.log 2>&1
-    "$parmchk2" \
+        > antechamber-mbn.log 2>&1; then
+        if [[ ! -s mbn.mol2 ]]; then
+            die "antechamber output was not created: $build_dir/mbn.mol2; log: $build_dir/antechamber-mbn.log"
+        fi
+    else
+        status=$?
+        echo "Error: ligand antechamber failed: $build_dir/antechamber-mbn.log" >&2
+        exit "$status"
+    fi
+    if "$parmchk2" \
         -i mbn.mol2 -f mol2 \
         -o mbn.frcmod -s gaff2 \
-        > parmchk2-mbn.log 2>&1
+        > parmchk2-mbn.log 2>&1; then
+        if [[ ! -s mbn.frcmod ]]; then
+            die "parmchk2 output was not created: $build_dir/mbn.frcmod; log: $build_dir/parmchk2-mbn.log"
+        fi
+    else
+        status=$?
+        echo "Error: ligand parmchk2 failed: $build_dir/parmchk2-mbn.log" >&2
+        exit "$status"
+    fi
 )
+
+echo "Completed: ligand parameterization ($build_dir)"
+printf '\n'
 
 echo "Generating complex and solvent topologies."
 for environment in complex solvent; do
@@ -88,5 +123,10 @@ for environment in complex solvent; do
     done
 done
 
+echo "Generating FEP window inputs: $build_dir -> $work_dir/states.tsv"
 python3 "generate_inputs.py" "$work_dir" "inputs"
+if [[ ! -s "$work_dir/states.tsv" ]]; then
+    die "FEP window generation did not create: $work_dir/states.tsv"
+fi
+
 echo "Created 22 RBFE windows: $work_dir/complex, $work_dir/solvent"

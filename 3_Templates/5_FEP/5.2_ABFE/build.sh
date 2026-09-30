@@ -107,6 +107,7 @@ fi
 
 mkdir -p "$build_dir"
 build_tmp=$(mktemp -d "$work_dir/.build_tmp.XXXXXX")
+echo "Preparing FEP systems: $config, $input -> $build_tmp"
 "$python" helpers/prepare_fep_systems.py "$config" "$input" "$build_tmp"
 
 for environment in complex solvent; do
@@ -147,6 +148,7 @@ for environment in complex solvent; do
     done
 done
 
+echo "Generating FEP window inputs: $config -> $work_dir"
 "$python" helpers/generate_inputs.py "$config" "$work_dir" inputs
 remove_build_tmp
 

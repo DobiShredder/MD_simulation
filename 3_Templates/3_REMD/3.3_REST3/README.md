@@ -73,6 +73,10 @@ semicolon, `|`를 구분자로 받고 `#` comment를 허용합니다. Temperatur
 내부적으로 `-maxwarn 1`로 다시
 실행합니다. 다른 warning은 해당 `*.grompp.log`를 남기고 계산을 중단합니다.
 
+### Engine 선택과 실행 상태
+
+`GROMACS`와 `GROMACS_MPI`가 설정되어 있으면 각각 사용하며, 없으면 build가 기록한 `work/resolved_config.toml`의 `run.equilibration_engine`과 `run.production_engine`을 읽습니다. Executable 이름은 각각 `gmx`, `gmx_mpi`이며 설치 경로를 지정할 수 있습니다. Build의 GROMACS command도 source config의 같은 선택과 override를 사용합니다. 최초 minimization은 공통 `work/system.gro`를, 이후 stage는 replica별 `.gro`와 필요한 `.cpt`를 사용합니다. 빈 override, 누락된 engine 설정과 지원하지 않는 executable은 기본값으로 대체하지 않고 error로 중단합니다. Runner가 `helpers/config_utils.py`를 자동 호출해 이 설정을 읽습니다.
+
 ## English
 
 User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh`, `run.sh`, or `anal.py`; it is not a separate entry point.
@@ -136,3 +140,7 @@ solvent interactions across replicas. The optional `water_model = "TIP3P"`
 compatibility path remains available. Before the first `grompp`, the build
 normalizes long ParmEd-formatted CMAP numbers to a precision accepted by
 GROMACS 2024.x.
+
+### Engine selection and run state
+
+`GROMACS` and `GROMACS_MPI` override `run.equilibration_engine` and `run.production_engine` in the build-generated `work/resolved_config.toml`. Executable names must be `gmx` and `gmx_mpi`; installation paths are accepted. GROMACS commands during build use the same selection and override from the source config. Initial minimization reads shared `work/system.gro`; subsequent stages read each replica’s `.gro` and, where required, `.cpt`. Empty overrides, missing engine settings and unsupported executables fail instead of falling back to a default. The runner invokes `helpers/config_utils.py` automatically to read this setting.

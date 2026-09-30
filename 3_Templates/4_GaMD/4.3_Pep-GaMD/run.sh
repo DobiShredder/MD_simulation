@@ -54,7 +54,7 @@ die() {
 
 work_dir=${WORK_DIR:-work}
 resolved="$work_dir/resolved_config.toml"
-engine=${AMBER_ENGINE:-pmemd.cuda}
+engine=$("${PYTHON:-python3}" helpers/config_utils.py "$resolved" engine AMBER_ENGINE pmemd.cuda)
 read -r -a amber_options <<< "${AMBER_OPTIONS:-}"
 
 read_value() {
@@ -64,7 +64,7 @@ read_value() {
 
 if (( ! dry_run )); then
     if [[ ! -s "$work_dir/system.parm7" || ! -s "$work_dir/system.rst7" || ! -s "$resolved" ]]; then
-        die "Build output not found. Run ./build.sh first."
+        die "Run preflight: build input missing or empty in $work_dir (system.parm7, system.rst7, resolved_config.toml). Run ./build.sh first."
     fi
     if ! command -v "$engine" >/dev/null 2>&1; then
         die "AMBER engine not found: $engine"
@@ -117,6 +117,10 @@ run_stage() {
     local reference_restart=${6:-}
     local use_gamd=${7:-no}
     local previous_gamd_state=${8:-}
+    local label=$stage
+    if [[ "$stage" == production ]]; then
+        label="production segment $segment_number/$segments"
+    fi
     local marker="$directory/.$stage.complete"
     local prefix="$directory/$stage"
     local required=("$prefix.out" "$prefix.rst7" "$prefix.info")
@@ -135,6 +139,7 @@ run_stage() {
     fi
 
     if (( dry_run )); then
+        echo "Dry run: $label ($directory)"
         printf '+ (cd %q;' "$directory"
         printf ' %q' "${command[@]}"
         printf ')\n'
@@ -145,32 +150,34 @@ run_stage() {
     local state
     state=$(stage_state "$marker" "${required[@]}")
     if [[ "$state" == complete ]]; then
+        echo "Skipping completed stage: $label ($directory)"
         return
     fi
     if [[ "$state" == partial ]]; then
-        die "Partial $stage output detected and retained: $directory"
+        die "Partial $label output detected and retained: $directory"
     fi
     if [[ -n "$previous_gamd_state" ]]; then
         cp "$previous_gamd_state" "$directory/gamd-restart.dat"
     fi
 
-    echo "Running: $stage"
+    echo "Running: $label ($directory)"
     if ! (cd "$directory"; "${command[@]}"); then
-        die "$stage calculation failed: $directory"
+        die "$label failed in $directory; expected engine output: $prefix.out (may be absent); see engine diagnostics above"
     fi
     if [[ "$use_gamd" == yes ]]; then
         if [[ ! -s "$directory/gamd-restart.dat" ]]; then
-            die "$stage GaMD state was not created: $directory/gamd-restart.dat"
+            die "$label GaMD state was not created: $directory/gamd-restart.dat"
         fi
         cp "$directory/gamd-restart.dat" "$prefix.gamd.rst"
     fi
     local output
     for output in "${required[@]}"; do
         if [[ ! -s "$output" ]]; then
-            die "$stage output was not created: $output"
+            die "$label output was not created: $output"
         fi
     done
     touch "$marker"
+    echo "Completed: $label ($directory)"
 }
 
 topology_path=system.parm7
@@ -183,10 +190,13 @@ run_stage gamd_prepare production "$work_dir" "$input_prefix/gamd_prepare.in" eq
 fi
 
 if (( preparation_only )); then
+    if (( ! dry_run )); then
+        echo "GaMD preparation output: $work_dir/gamd_prepare.rst7 and $work_dir/gamd_prepare.gamd.rst"
+    fi
     exit 0
 fi
 if (( ! dry_run )) && [[ ! -s "$work_dir/gamd_prepare.rst7" || ! -s "$work_dir/gamd_prepare.gamd.rst" || ! -f "$work_dir/.gamd_prepare.complete" ]]; then
-    die "Completed GaMD parameter preparation is required for production."
+    die "Completed GaMD parameter preparation is required for production: $work_dir/gamd_prepare.rst7 and $work_dir/gamd_prepare.gamd.rst"
 fi
 
 previous_restart="$work_dir/gamd_prepare.rst7"

@@ -33,6 +33,7 @@ def read_features(path: Path) -> tuple[np.ndarray, np.ndarray]:
 
 def main() -> int:
     output_dir = Path(__file__).resolve().parent / "output"
+    print(f"Running: tSNE analysis; input directory: {output_dir}")
     frames, features = read_features(output_dir / "phi_psi.dat")
     if len(frames) <= PERPLEXITY:
         raise ValueError(
@@ -74,7 +75,9 @@ def main() -> int:
     axis.set_ylabel("t-SNE 2")
     figure.colorbar(scatter, ax=axis, label="Frame")
     figure.tight_layout()
+    print("Displaying tSNE analysis figure.")
     plt.show()
+    print(f"Completed: tSNE analysis; results: {output_dir} (figure displayed interactively)")
     return 0
 
 

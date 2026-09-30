@@ -17,7 +17,7 @@ Options:
 Environment:
   WESTPA_WORK_MANAGER  serial or processes (default: serial).
   WESTPA_WORKERS       Worker count for processes mode (default: 1).
-  AMBER_ENGINE         Segment propagation engine (default: pmemd.cuda).
+  AMBER_ENGINE         Override the engine recorded in resolved_config.toml.
   CPPTRAJ              Progress-coordinate executable (default: cpptraj).
   PYTHON               Python with h5py for completion checks (default: python3).
   WORK_DIR             Generated simulation directory (default: work).
@@ -47,7 +47,8 @@ die() {
 
 export WEST_SIM_ROOT=${WEST_SIM_ROOT:-$PWD}
 export WORK_DIR=${WORK_DIR:-$WEST_SIM_ROOT/work}
-export AMBER_ENGINE=${AMBER_ENGINE:-pmemd.cuda}
+AMBER_ENGINE=$("${PYTHON:-python3}" helpers/config_utils.py "$WORK_DIR/resolved_config.toml" engine AMBER_ENGINE pmemd.cuda pmemd sander)
+export AMBER_ENGINE
 export CPPTRAJ=${CPPTRAJ:-cpptraj}
 python=${PYTHON:-python3}
 work_manager=${WESTPA_WORK_MANAGER:-serial}
@@ -96,6 +97,7 @@ for config in "$WORK_DIR"/configs/west.[0-9][0-9][0-9].cfg; do
     found=$((found + 1))
     marker="$WORK_DIR/.block.$block_text.complete"
     if [[ -f "$marker" ]]; then
+        echo "Skipping completed WE block $block_text: $WORK_DIR/west.h5"
         continue
     fi
     command=(w_run -r "$config" --work-manager "$work_manager")
@@ -103,6 +105,7 @@ for config in "$WORK_DIR"/configs/west.[0-9][0-9][0-9].cfg; do
         command+=(--n-workers "$workers")
     fi
     if (( dry_run )); then
+        echo "Dry run: WE block $block_text"
         printf '+'
         printf ' %q' "${command[@]}"
         printf '\n'
@@ -131,6 +134,7 @@ PY
         die "WESTPA stopped before block completion: $WORK_DIR/west.$block_text.log"
     fi
     touch "$marker"
+    echo "Completed: WE block $block_text ($WORK_DIR/west.h5)"
 done
 if (( found == 0 )); then
     die "Requested WESTPA block config was not found: ${selected_block:-all}"

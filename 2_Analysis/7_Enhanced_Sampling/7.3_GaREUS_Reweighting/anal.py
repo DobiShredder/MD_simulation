@@ -304,6 +304,7 @@ def plot_pmf(
 
 
 def main() -> None:
+    print(f"Running: GaREUS reweighting analysis; input directory: {OUTPUT_DIR}")
     try:
         centers, forces, sample_counts, distances, boosts = read_inputs(OUTPUT_DIR)
         weights, overlap = umbrella_weights(centers, forces, sample_counts, distances)

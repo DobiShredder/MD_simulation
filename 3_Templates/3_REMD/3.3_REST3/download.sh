@@ -26,8 +26,9 @@ if ! command -v "$curl_bin" >/dev/null 2>&1; then
     exit 1
 fi
 mkdir -p structure
+echo "Downloading PDB $pdb_id to $output"
 if ! "$curl_bin" -fsSL "https://files.rcsb.org/download/$pdb_id.pdb" -o "$output"; then
-    echo "Error: failed to download PDB $pdb_id." >&2
+    echo "Error: failed to download PDB $pdb_id: $output" >&2
     exit 1
 fi
 if [[ ! -s "$output" ]]; then
@@ -47,7 +48,7 @@ mkdir -p "$dependency_dir"
 if [[ ! -s "$dependency_dir/repex_topology_parser-$version/src/repex_topology_parser.py" ]]; then
     echo "Downloading repex-topology-parser $version source."
     if ! curl -fsSL "$url" -o "$dependency_dir/$archive"; then
-        echo "Error: failed to download repex-topology-parser $version." >&2
+        echo "Error: failed to download repex-topology-parser $version: $dependency_dir/$archive" >&2
         exit 1
     fi
     if command -v sha256sum >/dev/null 2>&1; then
@@ -56,13 +57,20 @@ if [[ ! -s "$dependency_dir/repex_topology_parser-$version/src/repex_topology_pa
         actual=$(shasum -a 256 "$dependency_dir/$archive" | awk '{print $1}')
     fi
     if [[ "$actual" != "$expected" ]]; then
-        echo "Error: repex-topology-parser checksum mismatch." >&2
+        echo "Error: repex-topology-parser checksum mismatch: $dependency_dir/$archive" >&2
         exit 1
     fi
     if ! tar -xzf "$dependency_dir/$archive" -C "$dependency_dir"; then
         echo "Error: failed to extract $dependency_dir/$archive." >&2
         exit 1
     fi
+else
+    echo "Reusing parser source: $dependency_dir/repex_topology_parser-$version/src/repex_topology_parser.py"
+fi
+
+if [[ ! -s "$dependency_dir/repex_topology_parser-$version/src/repex_topology_parser.py" ]]; then
+    echo "Error: parser source missing after extraction: $dependency_dir/repex_topology_parser-$version/src/repex_topology_parser.py" >&2
+    exit 1
 fi
 
 echo "REST3 parser source: $dependency_dir/repex_topology_parser-$version/src/repex_topology_parser.py"

@@ -21,8 +21,8 @@ conda activate ambertools26
 conda install -c conda-forge "pymbar>=4,<5"
 ```
 
-`run.sh`는 20개 window의 `restraint.production.NNN.dat`과
-`gamd.production.NNN.log`를 읽습니다. 각 segment에서 distance와 dual-boost
+`run.sh`는 20개 window의 `restraint.production.dat`과
+`gamd.production.log`를 읽습니다. 각 window에서 distance와 dual-boost
 record 수가 같지 않으면 중단합니다. AMBER GaMD log 형식이 달라지면
 `prepare.py`의 `read_boost()`에서 component column을 확인합니다.
 
@@ -54,6 +54,8 @@ GaMD bias는 남아 있습니다. 각 distance bin에서 MBAR weight를 사용�
 Gaussian 성질, bin width와 independent run을 함께 확인합니다. Bootstrap,
 2D PMF와 kinetic reweighting은 포함하지 않습니다.
 
+Tutorial의 단일 production output을 읽으며, 생성 TSV의 `segment` column은 1입니다. Template의 segmented output은 지원하지 않습니다.
+
 ## English
 
 This example calculates a one-dimensional terminal-Cα-distance PMF from the
@@ -78,3 +80,5 @@ included.
 - [Oshima et al., GaREUS](https://doi.org/10.1021/acs.jctc.9b00761)
 - [GENESIS GaREUS tutorial](https://mdgenesis.org/tutorials/genesis_tutorial_12.5_2022/)
 - [PyMBAR documentation](https://pymbar.readthedocs.io/)
+
+This analysis reads the tutorial’s `restraint.production.dat` and `gamd.production.log` in each window. The output TSV retains `segment = 1`. Segmented template outputs are not supported.

@@ -37,6 +37,7 @@ if (( ! dry_run )) && find "$work_dir" -type f \
 fi
 
 if (( dry_run )); then
+    echo "Dry run: planned topology build commands; no build execution"
     printf '+ cp %q %q\n' "$coordinate_pdb" "$amber_named_pdb"
     printf '+ python3 prepare_tleap.py %q %q %q\n' "$amber_named_pdb" tleap.in "$generated_tleap"
     printf '+ (cd %q && tleap -f tleap.in)\n' "$work_dir"
@@ -53,6 +54,7 @@ if [[ ! -s "$amber_named_pdb" ]]; then
     die "Could not prepare the tleap input PDB: $amber_named_pdb"
 fi
 
+echo "Preparing LEaP input: $amber_named_pdb -> $generated_tleap (template: tleap.in)"
 python3 \
     prepare_tleap.py \
     "$amber_named_pdb" \

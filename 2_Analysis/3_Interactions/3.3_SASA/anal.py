@@ -11,6 +11,7 @@ import numpy as np
 
 def main() -> int:
     output_dir = Path(__file__).resolve().parent / "output"
+    print(f"Running: SASA analysis; input directory: {output_dir}")
     total = np.loadtxt(output_dir / "sasa_total.dat", comments="#", ndmin=2)
     residues = np.loadtxt(output_dir / "sasa_byres.dat", comments="#", ndmin=2)
     if total.shape[1] < 2 or residues.shape[1] != 11:
@@ -32,7 +33,9 @@ def main() -> int:
     axes[1].set_ylabel("Mean SASA contribution (Å²)")
 
     figure.tight_layout()
+    print("Displaying SASA analysis figure.")
     plt.show()
+    print("Completed: SASA analysis (interactive figure).")
     return 0
 
 

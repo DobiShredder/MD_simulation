@@ -21,6 +21,7 @@ if ! command -v "$curl_bin" >/dev/null 2>&1; then
     die "curl not found: $curl_bin"
 fi
 mkdir -p "$structure_dir"
+echo "Downloading 3PTB structure and BEN ligand: $structure_dir"
 
 if ! "$curl_bin" -fsSL "$pdb_url" -o "$structure_dir/3PTB.raw.pdb"; then
     die "Failed to download PDB: $pdb_url"

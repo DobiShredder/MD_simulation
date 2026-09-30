@@ -11,6 +11,7 @@ import numpy as np
 
 def main() -> int:
     output_dir = Path(__file__).resolve().parent / "output"
+    print(f"Running: Alignment analysis; input directory: {output_dir}")
     before = np.loadtxt(output_dir / "rmsd_before.dat", comments="#", ndmin=2)
     after = np.loadtxt(output_dir / "rmsd_after.dat", comments="#", ndmin=2)
     if before.shape[1] < 2 or after.shape[1] < 2:
@@ -25,7 +26,9 @@ def main() -> int:
     axis.set_ylabel("Backbone RMSD (Å)")
     axis.legend()
     figure.tight_layout()
+    print("Displaying Alignment analysis figure.")
     plt.show()
+    print("Completed: Alignment analysis (interactive figure).")
     return 0
 
 

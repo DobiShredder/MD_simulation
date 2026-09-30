@@ -269,3 +269,34 @@ def amber_ensemble_lines(
         f"pres0={pressure:.3f}",
         "taup=2.0",
     ]
+
+
+def main() -> None:
+    """Select a configured executable without silently substituting a default."""
+    import argparse
+    import os
+
+    parser = argparse.ArgumentParser(description="Select a template engine.")
+    parser.add_argument("config", type=Path, help="Build-generated config, or source config during build")
+    parser.add_argument("key", help="Engine key in the run section")
+    parser.add_argument("environment", help="Environment variable used as an explicit override")
+    parser.add_argument("allowed", nargs="+", help="Supported executable basenames for this stage")
+    args = parser.parse_args()
+    try:
+        if args.environment in os.environ:
+            engine = os.environ[args.environment]
+        else:
+            with args.config.open("rb") as handle:
+                config = tomllib.load(handle)
+            engine = config.get("run", config)[args.key]
+        if not isinstance(engine, str) or not engine.strip():
+            raise ValueError(f"Empty or invalid engine: {args.key}")
+        if Path(engine).name not in args.allowed:
+            raise ValueError(f"Unsupported engine {engine!r}; expected: {', '.join(args.allowed)}")
+    except (OSError, KeyError, ValueError) as error:
+        parser.exit(2, f"Engine configuration error ({args.config}, {args.key}): {error}\n")
+    print(engine)
+
+
+if __name__ == "__main__":
+    main()

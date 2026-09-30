@@ -68,6 +68,7 @@ if (( ${#window_rows[@]} == 0 )); then
 fi
 
 if (( dry_run )); then
+    echo "Dry run: umbrella-window build from $window_file"
     echo '+ (cd .. && python3 helpers/generate_inputs.py us work/resolved_config.toml us/work --topology work/system.parm7)'
     echo "Umbrella windows: ${#window_rows[@]}"
     exit 0
@@ -108,6 +109,7 @@ for row_index in "${!window_rows[@]}"; do
     fi
 done
 
+echo "Generating umbrella inputs from: $config"
 (
     cd ..
     "$python" -B helpers/generate_inputs.py us work/resolved_config.toml us/work \
@@ -127,5 +129,7 @@ for row_index in "${!window_rows[@]}"; do
     printf 'window\tcenter_A\tforce_kcal_mol_A2\n%s\t%s\t%s\n' \
         "$window_id" "$center" "$force" > "$window_dir/window.tsv"
 done
+
+echo "Created ${#window_rows[@]} umbrella windows: $window_root"
 
 echo "Created ${#window_rows[@]} umbrella windows: $window_root"

@@ -41,6 +41,7 @@ def representative_index(
 
 def main() -> int:
     output_dir = Path(__file__).resolve().parent / "output"
+    print(f"Running: HDBSCAN analysis; input directory: {output_dir}")
     frames, projection, feature = pca_features(output_dir / "phi_psi.dat")
     if len(frames) < MIN_CLUSTER_SIZE:
         raise ValueError(f"HDBSCAN requires at least {MIN_CLUSTER_SIZE} frames.")
@@ -109,7 +110,9 @@ def main() -> int:
     axes[1].set_xlabel("Membership probability")
     axes[1].set_ylabel("Frames")
     figure.tight_layout()
+    print("Displaying HDBSCAN analysis figure.")
     plt.show()
+    print(f"Completed: HDBSCAN analysis; results: {output_dir} (figure displayed interactively)")
     return 0
 
 

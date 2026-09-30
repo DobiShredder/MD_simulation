@@ -28,6 +28,7 @@ def metadata(path: Path) -> dict[str, str]:
 def main() -> None:
     args = arguments()
     work = args.simulation_work.resolve()
+    print(f"Preparing {args.profile} CV input: {work} -> {args.output_input}")
     topology = work / "system.parm7"
     if not topology.is_file():
         raise SystemExit(f"topology not found: {topology}")

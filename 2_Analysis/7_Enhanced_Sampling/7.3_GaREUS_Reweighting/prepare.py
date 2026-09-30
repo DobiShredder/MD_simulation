@@ -11,7 +11,6 @@ TUTORIAL_DIR = Path.cwd()
 SIMULATION_WORK = TUTORIAL_DIR / "../../../1_Simulation/3_REMD/3.5_GaREUS/work"
 OUTPUT_DIR = TUTORIAL_DIR / "output"
 
-PRODUCTION_SEGMENTS = 1
 GAMD_COMPONENTS = 2
 RESTRAINT_FORCE_KCAL_MOL_A2 = 10.0
 
@@ -75,28 +74,27 @@ def read_states(path: Path) -> list[dict[str, str]]:
 def prepare_window(replica: str, replica_dir: Path, output_file: Path) -> int:
     rows = []
     frame = 1
+    segment = 1
 
-    for segment in range(1, PRODUCTION_SEGMENTS + 1):
-        segment_name = f"production.{segment:03d}"
-        distance_file = replica_dir / f"restraint.{segment_name}.dat"
-        boost_file = replica_dir / f"gamd.{segment_name}.log"
+    distance_file = replica_dir / "restraint.production.dat"
+    boost_file = replica_dir / "gamd.production.log"
 
-        if not distance_file.is_file():
-            raise ValueError(f"restraint output not found: {distance_file}")
-        if not boost_file.is_file():
-            raise ValueError(f"GaMD log not found: {boost_file}")
+    if not distance_file.is_file():
+        raise ValueError(f"restraint output not found: {distance_file}")
+    if not boost_file.is_file():
+        raise ValueError(f"GaMD log not found: {boost_file}")
 
-        distances = read_last_column(distance_file)
-        boosts = read_boost(boost_file)
-        if len(distances) != len(boosts):
-            raise ValueError(
-                f"replica {replica}, segment {segment:03d}: distance and boost record "
-                f"counts differ ({len(distances)} != {len(boosts)})."
-            )
+    distances = read_last_column(distance_file)
+    boosts = read_boost(boost_file)
+    if len(distances) != len(boosts):
+        raise ValueError(
+            f"replica {replica}, segment {segment:03d}: distance and boost record "
+            f"counts differ ({len(distances)} != {len(boosts)})."
+        )
 
-        for distance, boost in zip(distances, boosts):
-            rows.append([frame, segment, f"{distance:.8f}", f"{boost:.8f}"])
-            frame += 1
+    for distance, boost in zip(distances, boosts):
+        rows.append([frame, segment, f"{distance:.8f}", f"{boost:.8f}"])
+        frame += 1
 
     with output_file.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle, delimiter="\t")
@@ -137,12 +135,13 @@ def prepare_inputs(simulation_work: Path, output_dir: Path) -> int:
 
 
 def main() -> None:
+    print(f"Preparing GaREUS inputs: {SIMULATION_WORK} -> {OUTPUT_DIR}")
     try:
         state_count = prepare_inputs(SIMULATION_WORK, OUTPUT_DIR)
     except (OSError, KeyError, ValueError) as error:
         raise SystemExit(f"GaREUS input preparation failed: {error}") from error
 
-    print(f"Organized distances and boosts for {state_count} GaREUS states.")
+    print(f"Organized distances and boosts for {state_count} GaREUS states: {OUTPUT_DIR}")
 
 
 if __name__ == "__main__":

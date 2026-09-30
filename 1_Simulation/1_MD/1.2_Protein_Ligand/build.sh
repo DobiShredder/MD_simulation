@@ -21,7 +21,7 @@ if [[ ! -f "$complex_pdb" ]]; then
     die "Complex PDB not found: $complex_pdb"
 fi
 if [[ ! -s "$ligand_mol2" || ! -s "$ligand_frcmod" ]]; then
-    die "Ligand parameters are missing. Run ./prepare.sh first."
+    die "Topology build requires ligand parameters: $ligand_mol2 and $ligand_frcmod. Run ./prepare.sh first."
 fi
 if ! command -v tleap >/dev/null 2>&1; then
     die "tleap not found."

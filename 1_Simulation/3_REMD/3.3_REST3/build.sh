@@ -33,7 +33,7 @@ for input_file in "$input_pdb" "$temperature_file" "$kappa_file"; do
 done
 
 if ! replica_count=$("$python_bin" generate_states.py --count "$temperature_file" "$kappa_file"); then
-    die "REST3 temperature/kappa-list validation failed."
+    die "REST3 temperature/kappa-list validation failed: $temperature_file, $kappa_file"
 fi
 for executable in "$tleap" "$gmx" "$python_bin"; do
     if ! command -v "$executable" >/dev/null 2>&1; then
@@ -53,10 +53,10 @@ if ! "$python_bin" generate_states.py \
     "$temperature_file" \
     "$kappa_file" \
     "$states_file"; then
-    die "REST3 state-table generation failed."
+    die "REST3 state-table generation failed: $states_file"
 fi
 if ! "$python_bin" validate_states.py "$states_file"; then
-    die "Generated REST3 state-table validation failed."
+    die "Generated REST3 state-table validation failed: $states_file"
 fi
 
 if ! (
@@ -68,12 +68,13 @@ if ! (
     die "tleap failed. See log: $work_dir/leap.log"
 fi
 
+echo "Converting AMBER topology to GROMACS: $work_dir/system.parm7"
 if ! "$python_bin" "convert_topology.py" \
     "$work_dir/system.parm7" \
     "$work_dir/system.rst7" \
     "$work_dir/topol.top" \
     "$work_dir/system.gro"; then
-    die "ParmEd topology conversion failed."
+    die "ParmEd topology conversion failed: $work_dir/system.parm7, $work_dir/system.rst7 -> $work_dir/topol.top"
 fi
 
 # ParmEd can emit CMAP numbers longer than GROMACS 2024.x can safely parse.
@@ -81,7 +82,7 @@ if ! "$python_bin" "scale_cmap.py" \
     "$work_dir/topol.top" \
     "$work_dir/topol.top" \
     1.0; then
-    die "CMAP serialization normalization failed."
+    die "CMAP serialization normalization failed: $work_dir/topol.top"
 fi
 
 if ! "$gmx" grompp \
@@ -98,7 +99,7 @@ if ! "$python_bin" "scale_cmap.py" \
     "$work_dir/topol.top" \
     "$work_dir/processed.top" \
     1.0; then
-    die "Failed to restore residue-specific CMAPs in the processed topology."
+    die "Failed to restore residue-specific CMAPs: $work_dir/topol.top -> $work_dir/processed.top"
 fi
 
 echo "Generating REST3 topologies with the published κ schedule."
@@ -107,7 +108,7 @@ if ! "$python_bin" "generate_rest3.py" \
     "$work_dir/processed.top" \
     "$states_file" \
     "$work_dir"; then
-    die "REST3 topology generation failed."
+    die "REST3 topology generation failed: $states_file, $work_dir/processed.top"
 fi
 
 while IFS=$'\t' read -r replica _ _ _ _ seed; do
@@ -132,7 +133,7 @@ if ! "$python_bin" "verify_rest3.py" \
     "$work_dir/processed.top" \
     "$work_dir/states.tsv" \
     "$work_dir"; then
-    die "REST3 topology-preservation check failed."
+    die "REST3 topology-preservation check failed: $states_file, $work_dir/processed.top and replica topologies in $work_dir"
 fi
 
 echo "REST3 topologies and coordinates: $work_dir"

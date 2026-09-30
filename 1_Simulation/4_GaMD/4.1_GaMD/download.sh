@@ -25,14 +25,14 @@ if ! "$curl_bin" \
     -fsSL \
     https://files.rcsb.org/download/1UAO.pdb \
     -o "$structure_dir/1UAO.raw.pdb"; then
-    die "PDB 1UAO Download failed."
+    die "PDB 1UAO Download failed: $structure_dir/1UAO.raw.pdb"
 fi
 
 if ! "$curl_bin" \
     -fsSL \
     https://files.rcsb.org/download/1UAO.cif \
     -o "$structure_dir/1UAO.cif"; then
-    die "1UAO mmCIF Download failed."
+    die "1UAO mmCIF Download failed: $structure_dir/1UAO.cif"
 fi
 
 if command -v sha256sum >/dev/null 2>&1; then

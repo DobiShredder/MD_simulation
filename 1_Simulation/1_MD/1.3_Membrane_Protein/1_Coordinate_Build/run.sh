@@ -41,7 +41,7 @@ fi
 
 for coordinate in POPC.gro POPE.gro CHOL15.gro; do
     if [[ ! -f "$structure_dir/$coordinate" ]]; then
-        die "Bilayer coordinates are missing. Run ./download.sh first."
+        die "Bilayer coordinate input missing: $structure_dir/$coordinate. Run ./download.sh first."
     fi
 done
 
@@ -50,6 +50,7 @@ if (( ! dry_run )) && ! python3 -c "import numpy" >/dev/null 2>&1; then
 fi
 
 if (( dry_run )); then
+    echo "Dry run: membrane coordinate build ($protein_pdb -> $output_pdb)"
     printf '+ python3 build_membrane.py %q %q %q %q %q --composition %q --xy-padding %q --water-padding %q --protein-lipid-distance %q\n' \
         "$protein_pdb" "$structure_dir/POPC.gro" "$structure_dir/POPE.gro" \
         "$structure_dir/CHOL15.gro" "$output_pdb" "$composition" \
@@ -59,6 +60,7 @@ fi
 
 # Replicate the equilibrated Lipid21 patch and insert KcsA.
 mkdir -p "$work_dir"
+echo "Building membrane coordinates: $protein_pdb -> $output_pdb"
 
 python3 \
     build_membrane.py \
@@ -71,5 +73,9 @@ python3 \
     --xy-padding "$xy_padding" \
     --water-padding "$water_padding" \
     --protein-lipid-distance "$protein_lipid_distance"
+
+if [[ ! -s "$output_pdb" ]]; then
+    die "Coordinate build output was not created: $output_pdb"
+fi
 
 echo "Coordinate build output: $output_pdb"

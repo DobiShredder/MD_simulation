@@ -79,7 +79,7 @@ def parse_exchanges(state_count: int) -> list[list[tuple[int, int, int]]]:
             event_index += 1
 
     if not events:
-        raise SystemExit("GROMACS replica-exchange record not found.")
+        raise SystemExit(f"Exchange analysis: GROMACS replica-exchange record not found in {WORK / '000' / 'production.log'}.")
 
     return events
 
@@ -183,7 +183,7 @@ def structure_summary(states: list[dict[str, str]]) -> None:
             ca_atoms = protein.select_atoms("name CA")
 
             if len(ca_atoms) < 2:
-                raise SystemExit("Could not select the terminal protein CA atoms.")
+                raise SystemExit(f"Structure analysis: could not select terminal protein CA atoms in {replica_dir / 'system.gro'}.")
 
             radii: list[float] = []
             distances: list[float] = []
@@ -208,10 +208,13 @@ def structure_summary(states: list[dict[str, str]]) -> None:
 
 
 def main() -> None:
+    print(f"Reading exchange analysis inputs: {WORK / 'states.tsv'} and {WORK / '000' / 'production.log'}", flush=True)
     require_production_output()
     states = read_states()
     events = parse_exchanges(len(states))
+    print(f"Writing exchange and state-visit summaries: {WORK}", flush=True)
     write_exchange_outputs(events, states)
+    print(f"Calculating structure metrics for {len(states)} replicas: {WORK / 'structure_by_temperature.tsv'}", flush=True)
     structure_summary(states)
     print(f"REST3 Analysis results: {WORK}")
 

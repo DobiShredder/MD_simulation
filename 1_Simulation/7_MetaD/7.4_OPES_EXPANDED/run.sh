@@ -38,6 +38,7 @@ if [[ ! -s "$work_dir/atom_count.txt" ]]; then
 fi
 
 if (( dry_run )); then
+    echo "Dry run: planned sampling commands; no engine execution"
     for stage in minimize heat equilibrate; do
         printf '+ (cd %q && %q -O -i inputs/%s.in -o %s.out -p system.parm7 -c PREVIOUS.rst7 -r %s.rst7 -inf %s.info)\n' \
             "$work_dir" "$engine" "$stage" "$stage" "$stage" "$stage"
@@ -71,10 +72,17 @@ parse_state=plumed.parse.state
 parse_colvar=plumed.parse.COLVAR
 render_plumed_input "$work_dir/$parse_input" "$parse_data" "$parse_state" "$parse_colvar"
 atom_count=$(<"$work_dir/atom_count.txt")
-(
+echo "Checking PLUMED input: $work_dir/$parse_input"
+if (
     cd "$work_dir"
     "$plumed" driver --plumed "$parse_input" --parse-only --natoms "$atom_count"
-)
+); then
+    echo "Completed: PLUMED input check"
+else
+    status=$?
+    echo "Error: PLUMED input check failed: $work_dir/$parse_input; inspect terminal diagnostics." >&2
+    exit "$status"
+fi
 for path in "$parse_input" "$parse_data" "$parse_state" "$parse_colvar"; do
     if [[ -e "$work_dir/$path" ]]; then
         unlink "$work_dir/$path"
@@ -111,9 +119,13 @@ run_stage() {
     ); then
         die "$stage calculation failed: $output_file"
     fi
-    if [[ ! -s "$output_file" || ! -s "$restart_file" ]]; then
-        die "$stage outputs were not created."
-    fi
+    local output
+    for output in "$output_file" "$restart_file"; do
+        if [[ ! -s "$output" ]]; then
+            die "$stage output was not created: $output"
+        fi
+    done
+    echo "Completed: $stage ($output_file)"
 }
 
 run_stage minimize system.rst7

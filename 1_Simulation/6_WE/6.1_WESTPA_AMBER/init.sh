@@ -26,7 +26,7 @@ if ! command -v w_init >/dev/null 2>&1; then
 fi
 
 if [[ -e "$WORK_DIR/west.h5" && "$reset" -eq 0 ]]; then
-    die "An existing WESTPA state was found. Use ./init.sh --reset to start over."
+    die "An existing WESTPA state was found: $WORK_DIR/west.h5. Use ./init.sh --reset to start over."
 fi
 
 if (( reset )); then
@@ -43,10 +43,21 @@ fi
 
 mkdir -p "$WORK_DIR/traj_segs" "$WORK_DIR/seg_logs" "$WORK_DIR/istates"
 cd "$WEST_SIM_ROOT"
-w_init \
+echo "Initializing WESTPA state: $WORK_DIR/west.h5"
+if w_init \
     --bstate-file "$WEST_SIM_ROOT/bstates/bstates.txt" \
     --tstate-file "$WEST_SIM_ROOT/tstate.file" \
     --segs-per-state 4 \
-    --work-manager serial
+    --work-manager serial; then
+    :
+else
+    status=$?
+    echo "Error: WESTPA initialization failed: $WORK_DIR/west.h5; inspect terminal diagnostics." >&2
+    exit "$status"
+fi
+
+if [[ ! -s "$WORK_DIR/west.h5" ]]; then
+    die "WESTPA initialization did not create state: $WORK_DIR/west.h5"
+fi
 
 echo "WESTPA state: $WORK_DIR/west.h5"

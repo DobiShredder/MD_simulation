@@ -152,6 +152,7 @@ for output in system.parm7 system.rst7 system.pdb resolved_config.toml; do
     fi
 done
 
+echo "Generating window replicas: $config; topology: $work_dir/system.parm7; output: $work_dir"
 "$python" helpers/make_window_replicas.py reus "$config" "$work_dir/system.parm7" "$work_dir/system.rst7" "$work_dir"
 
 remove_build_tmp

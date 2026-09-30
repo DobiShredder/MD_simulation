@@ -37,6 +37,7 @@ def representative_index(feature: np.ndarray, labels: np.ndarray, cluster: int) 
 
 def main() -> int:
     output_dir = Path(__file__).resolve().parent / "output"
+    print(f"Running: DBSCAN analysis; input directory: {output_dir}")
     frames, projection, feature = pca_features(output_dir / "phi_psi.dat")
     if len(frames) < MIN_SAMPLES:
         raise ValueError(f"DBSCAN requires at least {MIN_SAMPLES} frames.")
@@ -95,7 +96,9 @@ def main() -> int:
     axes[1].set_ylabel(f"{MIN_SAMPLES}-neighbor distance")
     axes[1].legend()
     figure.tight_layout()
+    print("Displaying DBSCAN analysis figure.")
     plt.show()
+    print(f"Completed: DBSCAN analysis; results: {output_dir} (figure displayed interactively)")
     return 0
 
 

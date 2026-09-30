@@ -14,31 +14,68 @@ die() {
     exit 1
 }
 
-stage_status() {
-    local stage=$1
-    local complete=0
-    local existing=0
-    local replica
-
+stage_outputs_complete() {
+    local stage=$1 replica suffix
+    local require_complete=${2:-}
+    local required=(out rst7 info)
+    if [[ "$stage" != minimize ]]; then
+        required+=(nc)
+    fi
     while IFS=$'\t' read -r replica _; do
         if [[ "$replica" == replica ]]; then
             continue
         fi
-        if [[ -s "work/$replica/$stage.out" && -s "work/$replica/$stage.rst7" ]]; then
-            complete=$((complete + 1))
-        fi
-        if [[ -e "work/$replica/$stage.out" || -e "work/$replica/$stage.rst7" ]]; then
-            existing=$((existing + 1))
-        fi
+        for suffix in "${required[@]}"; do
+            if [[ ! -s "work/$replica/$stage.$suffix" ]]; then
+                if [[ "$require_complete" == --require-complete ]]; then
+                    die "$stage output is incomplete: work/$replica/$stage.$suffix; existing files were preserved."
+                fi
+                return 1
+            fi
+        done
     done < work/states.tsv
-
-    if (( complete == replica_count )); then
-        echo complete
-    elif (( existing == 0 )); then
-        echo missing
-    else
-        echo partial
+    if [[ "$stage" == production && ! -s work/exchange.log ]]; then
+        if [[ "$require_complete" == --require-complete ]]; then
+            die "$stage output is incomplete: work/exchange.log; existing files were preserved."
+        fi
+        return 1
     fi
+}
+
+stage_status() {
+    local stage=$1 replica output
+    local marker="work/.$stage.complete"
+    if [[ -f "$marker" ]] && stage_outputs_complete "$stage"; then
+        echo complete
+        return
+    fi
+    if [[ -e "$marker" ]]; then
+        echo partial
+        return
+    fi
+    if [[ "$stage" == production && -e work/exchange.log ]]; then
+        echo partial
+        return
+    fi
+    while IFS=$'\t' read -r replica _; do
+        if [[ "$replica" == replica ]]; then
+            continue
+        fi
+        for output in "work/$replica/$stage."{out,rst7,nc,info}; do
+            if [[ -e "$output" ]]; then
+                echo partial
+                return
+            fi
+        done
+    done < work/states.tsv
+    echo missing
+}
+
+mark_stage_complete() {
+    local stage=$1
+    stage_outputs_complete "$stage" --require-complete
+    touch "work/.$stage.complete"
+    echo "Completed: $stage (work)"
 }
 
 run_replica_stage() {
@@ -53,7 +90,7 @@ run_replica_stage() {
         return
     fi
     if [[ "$status" == partial ]]; then
-        echo "Warning: restarting incomplete stage for all replicas: $stage" >&2
+        die "Partial $stage output retained in work. Inspect the files before retrying."
     fi
 
     echo "Running: $stage"
@@ -74,6 +111,7 @@ run_replica_stage() {
             die "$stage failed: $replica_dir/$stage.out"
         fi
     done < work/states.tsv
+    mark_stage_complete "$stage"
 }
 
 amber_engine=${AMBER_ENGINE:-pmemd.cuda}
@@ -86,6 +124,7 @@ fi
 replica_count=$(awk 'NR > 1 {count++} END {print count + 0}' work/states.tsv)
 
 if (( dry_run )); then
+    echo "Dry run: planned replica commands; no engine execution"
     printf '+ %q -O -i %q -o %q -p %q -c %q -r %q -x %q -inf %q\n' \
         "$amber_engine" work/000/minimize.in work/000/minimize.out \
         work/000/system.parm7 work/000/system.rst7 work/000/minimize.rst7 \
@@ -102,10 +141,22 @@ for executable in "$amber_engine" "$amber_mpi_engine" "$mpi_launcher"; do
     fi
 done
 
-if find work/[0-9][0-9][0-9] -maxdepth 1 \
-    \( -name 'production.out' -o -name 'production.rst7' \) \
-    -print -quit 2>/dev/null | grep -q .; then
-    die "Production output already exists in work."
+# Reject retained output before running any stage or rewriting generated input.
+missing_stage=""
+for stage in minimize heat equilibrate production; do
+    status=$(stage_status "$stage")
+    if [[ "$status" == partial ]]; then
+        die "Partial or unmarked $stage output retained in work; inspect the files before retrying."
+    fi
+    if [[ "$status" == missing ]]; then
+        missing_stage=$stage
+    elif [[ -n "$missing_stage" ]]; then
+        die "Completed $stage has a missing prerequisite: $missing_stage in work."
+    fi
+done
+if [[ "$(stage_status production)" == complete ]]; then
+    echo "Skipping completed production: work"
+    exit 0
 fi
 
 run_replica_stage minimize system.rst7
@@ -134,4 +185,5 @@ if ! "$mpi_launcher" \
     die "T-REMD production failed: work/exchange.log"
 fi
 
+mark_stage_complete production
 echo "Completed 1 ns T-REMD: work"
