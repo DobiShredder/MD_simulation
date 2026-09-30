@@ -29,6 +29,16 @@ complex_pdb=$1
 ligand_sdf=$2
 structure_dir=$(dirname "$complex_pdb")
 work_dir=work
+
+# A rebuild must not mix new inputs with topology/restart files from an older build.
+if [[ -d "$work_dir" ]]; then
+    existing_build=$(find "$work_dir" -type f \
+        \( -name '*.parm7' -o -name '*.rst7' \) -print -quit)
+    if [[ -n "$existing_build" ]]; then
+        die "Build output already exists and was retained: $existing_build. Use a new work directory for a new build."
+    fi
+fi
+
 build_dir="$work_dir/build"
 antechamber=${ANTECHAMBER:-antechamber}
 parmchk2=${PARMCHK2:-parmchk2}

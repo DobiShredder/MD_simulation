@@ -73,7 +73,11 @@ if (( ! dry_run )); then
     cp inputs/*.in work/inputs/
     cp inputs/plumed.dat work/plumed.dat
 fi
-cd work
+if (( dry_run )); then
+    echo "Planned working directory: work"
+else
+    cd work
+fi
 
 run_stage "solvent minimization" min-solvent.out min-solvent.rst7 \
     "$engine" -O -i inputs/min-solvent.in -o min-solvent.out \

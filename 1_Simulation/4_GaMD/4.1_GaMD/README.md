@@ -57,6 +57,8 @@ production run은 `3_Templates/4_GaMD/4.1_GaMD`에서 구성합니다.
 1 ns trajectory와 reweighted PMF는 folding equilibrium 또는 수렴 결과가
 아닙니다.
 
+Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 중단하고 파일을 보존합니다. 새 build 전에는 기존 `work/`를 다른 위치에 보관하거나 별도 tutorial 사본을 사용합니다.
+
 ## English
 
 The first NMR model of PDB 1UAO is built with ff19SB/OPC. The workflow runs
@@ -89,3 +91,5 @@ The 1 ns example does not establish folding equilibrium or convergence.
 
 - [RCSB PDB 1UAO](https://www.rcsb.org/structure/1UAO)
 - [GaMD AMBER manual](https://www.med.unc.edu/pharm/miaolab/wp-content/uploads/sites/1385/2023/09/GaMD_Amber-manual.pdf)
+
+Build stops before changing inputs when topology/restart files already exist, preserving those files. Preserve the existing `work/` elsewhere or use a separate tutorial copy before a new build.

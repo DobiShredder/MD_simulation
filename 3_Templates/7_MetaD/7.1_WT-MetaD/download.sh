@@ -40,11 +40,15 @@ fi
 mkdir -p structure
 output="structure/${pdb_id}.pdb"
 url="https://files.rcsb.org/download/${pdb_id}.pdb"
+download_tmp=$(mktemp "structure/.${pdb_id}.download.XXXXXX")
+trap 'rm -f -- "$download_tmp"' EXIT
+
 echo "Downloading PDB $pdb_id from RCSB."
-if ! "$curl_bin" -fsSL "$url" -o "$output"; then
+if ! "$curl_bin" -fsSL "$url" -o "$download_tmp"; then
     die "PDB download failed: $url"
 fi
-if [[ ! -s "$output" ]] || ! grep -qE '^(ATOM  |HETATM)' "$output"; then
+if [[ ! -s "$download_tmp" ]] || ! grep -qE '^(ATOM  |HETATM)' "$download_tmp"; then
     die "Downloaded file does not contain PDB atom records: $output"
 fi
+mv -- "$download_tmp" "$output"
 echo "Downloaded structure: $output"

@@ -142,6 +142,10 @@ AMBER→GROMACS topology 변환 뒤
 있을 때만 내부적으로 `-maxwarn 1`로 다시 실행합니다. 다른 warning은 해당
 `*.grompp.log`를 남기고 계산을 중단합니다.
 
+Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 중단하고 파일을 보존합니다. 새 build 전에는 기존 `work/`를 다른 위치에 보관하거나 별도 tutorial 사본을 사용합니다.
+
+Replica 실행이나 batch 도중 `grompp`가 실패하면 이미 시작한 replica가 모두 종료될 때까지 기다린 뒤 실패로 종료합니다. 후속 stage는 시작하지 않습니다.
+
 ## English
 
 `grompp_utils.bash` first runs `grompp` without `-maxwarn`. It is retried with
@@ -220,3 +224,7 @@ gyration, and the distance between the first and last protein Cα atoms as TSV
 files. High-temperature compaction
 in REST2 has been used intentionally to assist mini-protein folding sampling;
 this short example does not establish convergence or force-field quality.
+
+Build stops before changing inputs when topology/restart files already exist, preserving those files. Preserve the existing `work/` elsewhere or use a separate tutorial copy before a new build.
+
+If a replica or a mid-batch `grompp` command fails, the runner waits for all already-started replicas before returning failure. Subsequent stages do not start.

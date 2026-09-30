@@ -115,6 +115,10 @@ GPU 병렬 실행은 GPU별 worker 배치와 scheduler isolation을 외부 환�
 않으므로 삭제도 하지 않습니다. 새 build가 성공하면 이번 실행에서 만든
 `.build_tmp.*`를 정리하고, 실패하면 진단 파일과 해당 directory를 보존합니다.
 
+다운로드는 임시 파일의 PDB atom record를 확인한 뒤 최종 파일로 교체합니다. 실패하면 기존 PDB를 보존하고 임시 파일을 정리합니다.
+
+상대 `WORK_DIR`은 `init.sh`와 `run.sh`에서 `WEST_SIM_ROOT` 기준으로 확정합니다. Callback이 segment directory로 이동해도 같은 input과 state를 사용합니다.
+
 ## English
 
 User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh`, `run.sh`, or `anal.py`; it is not a separate entry point.
@@ -189,3 +193,7 @@ arrivals. Target counts alone are not a rate estimate.
 When reusing a completed topology with the same input and config, no new temporary
 directory is created or removed. A successful new build removes its own
 `.build_tmp.*` directory; a failed build retains that directory and diagnostic files.
+
+Downloads replace the final PDB only after validating atom records in a temporary file. Failure preserves the existing PDB and removes the temporary file.
+
+The `init.sh` and `run.sh` entries resolve a relative `WORK_DIR` against `WEST_SIM_ROOT`, so callbacks use the same inputs and state after entering a segment directory.

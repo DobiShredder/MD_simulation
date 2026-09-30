@@ -36,6 +36,16 @@ python=${PYTHON:-python3}
 ligand_charge=1
 work_dir=work
 
+# A rebuild must not mix new inputs with topology/restart files from an older build.
+if [[ -d "$work_dir" ]]; then
+    existing_build=$(find "$work_dir" -type f \
+        \( -name '*.parm7' -o -name '*.rst7' \) -print -quit)
+    if [[ -n "$existing_build" ]]; then
+        die "Build output already exists and was retained: $existing_build. Use a new work directory for a new build."
+    fi
+fi
+
+
 refuse_existing_results "$work_dir"
 
 for input in "$complex_pdb" "$ligand_sdf" "$metadata" "$disulfides"; do

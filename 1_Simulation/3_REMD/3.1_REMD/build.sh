@@ -51,6 +51,14 @@ fi
 replica_count=$(awk 'NR > 1 {count++} END {print count + 0}' "$states_file")
 echo "Generating ff19SB/OPC systems for $replica_count replicas."
 
+# A rebuild must not mix new inputs with topology/restart files from an older build.
+if [[ -d "work" ]]; then
+    existing_build=$(find "work" -type f         \( -name '*.parm7' -o -name '*.rst7' \) -print -quit)
+    if [[ -n "$existing_build" ]]; then
+        die "Build output already exists and was retained: $existing_build. Use a new work directory for a new build."
+    fi
+fi
+
 mkdir -p work
 cp "$input_pdb" work/input.pdb
 cp inputs/tleap.in work/tleap.in

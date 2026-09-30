@@ -186,6 +186,22 @@ if (( dry_run )); then
     exit 0
 fi
 
+wait_for_batch() {
+    local stage=$1
+    shift
+    local job
+    local failed=0
+    for job in "$@"; do
+        if ! wait "${job%%:*}"; then
+            echo "Error: $stage failed: $work_dir/${job#*:}/$stage.mdrun.log" >&2
+            failed=1
+        fi
+    done
+    if (( failed )); then
+        exit 1
+    fi
+}
+
 run_preproduction_stage() {
     local stage=$1
     local previous=$2
@@ -216,7 +232,7 @@ run_preproduction_stage() {
     if [[ -n "$partial_output" ]]; then
         die "Partial $stage output detected and retained: $partial_output"
     fi
-    local replica replica_dir gpu_id process_id
+    local replica replica_dir gpu_id
     local replica_index=0
     local -a jobs=()
     echo "Running: $method $stage"
@@ -236,7 +252,9 @@ run_preproduction_stage() {
         fi
         if ! run_grompp "$replica_dir/$stage.grompp.log" \
             "${grompp_command[@]}"; then
-            die "$stage tpr generation failed: $replica_dir/$stage.grompp.log"
+            echo "Error: $stage tpr generation failed: $replica_dir/$stage.grompp.log" >&2
+            wait_for_batch "$stage" "${jobs[@]}"
+            exit 1
         fi
         gpu_id=$((replica_index % gpu_count))
         "$gmx" mdrun -deffnm "$replica_dir/$stage" -ntmpi 1 \
@@ -245,19 +263,11 @@ run_preproduction_stage() {
         jobs+=("$!:$replica")
         replica_index=$((replica_index + 1))
         if (( ${#jobs[@]} == gpu_count )); then
-            for process_id in "${jobs[@]}"; do
-                if ! wait "${process_id%%:*}"; then
-                    die "$stage failed: $work_dir/${process_id#*:}/$stage.mdrun.log"
-                fi
-            done
+            wait_for_batch "$stage" "${jobs[@]}"
             jobs=()
         fi
     done < "$states"
-    for process_id in "${jobs[@]}"; do
-        if ! wait "${process_id%%:*}"; then
-            die "$stage failed: $work_dir/${process_id#*:}/$stage.mdrun.log"
-        fi
-    done
+    wait_for_batch "$stage" "${jobs[@]}"
     for replica_dir in "${replica_dirs[@]}"; do
         if [[ ! -s "$replica_dir/$stage.gro" ]]; then
             die "$stage output was not created: $replica_dir/$stage.gro"

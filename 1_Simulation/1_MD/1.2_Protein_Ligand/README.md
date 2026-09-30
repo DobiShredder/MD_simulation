@@ -71,6 +71,8 @@ Production trajectory는 interaction analysis와 MM/GBSA·MM/PBSA input으로
 않습니다. `leap.log`에서 JZ4 atom mapping, net charge, 추가된 parameter와
 system charge를 확인합니다. 기본 engine은 `pmemd.cuda`입니다.
 
+Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 중단하고 파일을 보존합니다. 새 build 전에는 기존 `work/`를 다른 위치에 보관하거나 별도 tutorial 사본을 사용합니다.
+
 ## English
 
 This example uses the T4 lysozyme L99A/M102Q–JZ4 complex from PDB 3HTB.
@@ -126,3 +128,5 @@ net charge, missing parameters, and total system charge in `leap.log`.
 
 - [Lemkul protein–ligand tutorial](https://www.mdtutorials.com/gmx/complex/index.html)
 - [RCSB PDB 3HTB](https://www.rcsb.org/structure/3HTB)
+
+Build stops before changing inputs when topology/restart files already exist, preserving those files. Preserve the existing `work/` elsewhere or use a separate tutorial copy before a new build.

@@ -77,13 +77,17 @@ run_stage() {
     fi
 
     local existing=0
+    local complete=0
     local output
     for output in "${required[@]}"; do
-        if [[ -s "$output" ]]; then
+        if [[ -e "$output" ]]; then
             existing=$((existing + 1))
         fi
+        if [[ -s "$output" ]]; then
+            complete=$((complete + 1))
+        fi
     done
-    if [[ -f "$marker" && "$existing" -eq "${#required[@]}" ]]; then
+    if [[ -f "$marker" && "$complete" -eq "${#required[@]}" ]]; then
         echo "Skipping completed stage: $label ($directory)"
         return
     fi

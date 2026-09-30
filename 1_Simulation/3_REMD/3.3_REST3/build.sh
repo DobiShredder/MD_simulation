@@ -15,6 +15,16 @@ input_pdb=$1
 temperature_file=inputs/temperatures.txt
 kappa_file=inputs/kappa.txt
 work_dir=work
+
+# A rebuild must not mix new inputs with topology/restart files from an older build.
+if [[ -d "$work_dir" ]]; then
+    existing_build=$(find "$work_dir" -type f \
+        \( -name '*.parm7' -o -name '*.rst7' \) -print -quit)
+    if [[ -n "$existing_build" ]]; then
+        die "Build output already exists and was retained: $existing_build. Use a new work directory for a new build."
+    fi
+fi
+
 states_file="$work_dir/states.tsv"
 tleap=${TLEAP:-tleap}
 gmx=${GROMACS:-gmx}

@@ -26,16 +26,20 @@ if ! command -v "$curl_bin" >/dev/null 2>&1; then
     exit 1
 fi
 mkdir -p structure
+download_tmp=$(mktemp "structure/.${pdb_id}.download.XXXXXX")
+trap 'rm -f -- "$download_tmp"' EXIT
+
 echo "Downloading PDB $pdb_id to $output"
-if ! "$curl_bin" -fsSL "https://files.rcsb.org/download/$pdb_id.pdb" -o "$output"; then
+if ! "$curl_bin" -fsSL "https://files.rcsb.org/download/$pdb_id.pdb" -o "$download_tmp"; then
     echo "Error: failed to download PDB $pdb_id: $output" >&2
     exit 1
 fi
-if [[ ! -s "$output" ]]; then
-    echo "Error: downloaded PDB is empty: $output" >&2
+if [[ ! -s "$download_tmp" ]] || ! grep -qE '^(ATOM  |HETATM)' "$download_tmp"; then
+    echo "Error: downloaded file lacks PDB atom records: $output" >&2
     exit 1
 fi
 
+mv -- "$download_tmp" "$output"
 echo "Downloaded source structure: $output"
 
 dependency_dir=dependencies

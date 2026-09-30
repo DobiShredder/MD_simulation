@@ -94,6 +94,8 @@ Amber 26 manual은 LiGaMD3를 serial GPU `pmemd.cuda` 전용으로 설명합니�
 `AMBER_ENGINE`을 `pmemd`, `sander` 또는 MPI executable로 바꾸면 `run.sh`가
 계산 전에 중단합니다.
 
+Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 중단하고 파일을 보존합니다. 새 build 전에는 기존 `work/`를 다른 위치에 보관하거나 별도 tutorial 사본을 사용합니다.
+
 ## English
 
 PDB 3PTB is built with ff19SB, GAFF2/AM1-BCC, and OPC for an experimental
@@ -152,3 +154,5 @@ thermodynamics or kinetics calculation.
 
 - [RCSB PDB 3PTB](https://www.rcsb.org/structure/3PTB)
 - [LiGaMD3](https://doi.org/10.1021/acs.jctc.4c00502)
+
+Build stops before changing inputs when topology/restart files already exist, preserving those files. Preserve the existing `work/` elsewhere or use a separate tutorial copy before a new build.

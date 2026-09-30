@@ -5,6 +5,7 @@ stage_state() {
     local stage=$1
     local marker="$work_dir/.$stage.complete"
     local existing=0
+    local complete=0
     local expected=$((replica_count * 4))
     local replica
     local suffix
@@ -12,11 +13,16 @@ stage_state() {
     while IFS=$'\t' read -r replica _; do
         [[ "$replica" != replica ]] || continue
         for suffix in out rst7 info nc; do
-            [[ ! -s "$work_dir/$replica/$stage.$suffix" ]] || existing=$((existing + 1))
+            if [[ -e "$work_dir/$replica/$stage.$suffix" ]]; then
+                existing=$((existing + 1))
+            fi
+            if [[ -s "$work_dir/$replica/$stage.$suffix" ]]; then
+                complete=$((complete + 1))
+            fi
         done
     done < "$states_file"
 
-    if [[ -f "$marker" && "$existing" -eq "$expected" ]]; then
+    if [[ -f "$marker" && "$complete" -eq "$expected" ]]; then
         echo complete
     elif [[ ! -f "$marker" && "$existing" -eq 0 ]]; then
         echo missing

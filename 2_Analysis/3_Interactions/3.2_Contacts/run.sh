@@ -39,11 +39,16 @@ cd "$output_dir"
 topology="../$topology"
 trajectory="../$trajectory"
 input_file="../$input_file"
+# cpptraj may omit series files when no contacts exist in the new trajectory.
+rm -f contact_count.dat contact_frequency.tsv contact_pairs.dat \
+    contact_residue_pairs.dat contact_residue_series.dat contact_series.dat \
+    nonnative_series.dat native.contact_map.dat nonnative.contact_map.dat
 if ! "$cpptraj" \
     -p "$topology" \
     -y "$trajectory" \
     -i "$input_file" \
     > cpptraj.log 2>&1; then
+    rm -f contact_count.dat
     echo "Error: cpptraj failed: $output_dir/cpptraj.log" >&2
     exit 1
 fi

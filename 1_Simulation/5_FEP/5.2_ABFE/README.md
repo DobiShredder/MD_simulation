@@ -127,6 +127,8 @@ automatic equilibration, correlated-sample stride와 20회 bootstrap을 사용�
 `pmemd.cuda` desktop short run으로 아직 검증하지 않았습니다. 실행 전 mdout에
 각 lambda의 `MBAR Energy analysis` block이 모두 기록되는지 확인합니다.
 
+Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 중단하고 파일을 보존합니다. 새 build 전에는 기존 `work/`를 다른 위치에 보관하거나 별도 tutorial 사본을 사용합니다.
+
 ## English
 
 This restrained double-decoupling example removes JZ4 interactions in the
@@ -207,3 +209,5 @@ while the negative analytical standard-state release term is subtracted. AMBER u
 `U=rk(x-x0)^2`; the analytical Boresch expression therefore uses `K=2*rk`.
 The `gti_nmropt=1` restraint-MBAR combination still requires an Amber 26
 `pmemd.cuda` desktop smoke test.
+
+Build stops before changing inputs when topology/restart files already exist, preserving those files. Preserve the existing `work/` elsewhere or use a separate tutorial copy before a new build.

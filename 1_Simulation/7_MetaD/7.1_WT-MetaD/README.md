@@ -63,6 +63,8 @@ PLUMED가 없는 분석 환경에서는 `python3 anal.py --skip-fes`로 diagnost
 생성할 수 있습니다. FES 비교는 sampling 진행 상황을 보는 용도이며 수렴 판정은
 별도의 반복 계산과 오차 분석이 필요합니다.
 
+Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 중단하고 파일을 보존합니다. 새 build 전에는 기존 `work/`를 다른 위치에 보관하거나 별도 tutorial 사본을 사용합니다.
+
 ## English
 
 This example biases the φ and ψ torsions of alanine dipeptide with
@@ -86,3 +88,5 @@ run. Its restart, trajectory, `COLVAR`, and
 `HILLS` files are written directly under `work/`. `anal.py` reports
 sampled torsion and bias ranges. The 1 ns run demonstrates the workflow and is
 not evidence of converged free energies.
+
+Build stops before changing inputs when topology/restart files already exist, preserving those files. Preserve the existing `work/` elsewhere or use a separate tutorial copy before a new build.

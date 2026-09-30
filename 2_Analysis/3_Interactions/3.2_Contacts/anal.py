@@ -71,13 +71,17 @@ def main() -> int:
     output_dir = Path(__file__).resolve().parent / "output"
     print(f"Running: Contacts analysis; input directory: {output_dir}")
     _, counts = read_table(output_dir / "contact_count.dat")
-    series_header, series = read_table(output_dir / "contact_residue_series.dat")
-    if counts.shape[1] < 3:
-        raise ValueError("Contact-count output has too few columns.")
-    if not np.array_equal(counts[:, 0], series[:, 0]):
-        raise ValueError("Frame indices in the contact outputs do not match.")
-
-    frequency = contact_frequency(series_header, series)
+    if counts.shape[0] == 0 or counts.shape[1] < 3:
+        raise ValueError("Contact-count output is empty or has too few columns.")
+    if not np.all(np.isfinite(counts)) or np.any(counts[:, 1:3] < 0):
+        raise ValueError("Contact-count output contains invalid values.")
+    if np.all(counts[:, 1:3] == 0):
+        frequency = np.zeros((RESIDUE_COUNT, RESIDUE_COUNT), dtype=float)
+    else:
+        series_header, series = read_table(output_dir / "contact_residue_series.dat")
+        if not np.array_equal(counts[:, 0], series[:, 0]):
+            raise ValueError("Frame indices in the contact outputs do not match.")
+        frequency = contact_frequency(series_header, series)
     write_frequency(output_dir / "contact_frequency.tsv", frequency)
 
     figure, axes = plt.subplots(1, 2, figsize=(12, 5))

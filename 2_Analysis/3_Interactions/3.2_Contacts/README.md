@@ -26,6 +26,11 @@ figure에는 binary `resseries present`의 평균을 사용합니다. Protein–
 contact로 확장할 때는
 두 atom mask를 지정하고 residue 수와 plotting label을 system에 맞게 바꿉니다.
 
+`run.sh`를 다시 실행하면 이전 contact 파생 파일을 정리한 뒤 새로 계산합니다.
+Native/non-native count가 모든 frame에서 0이면 `anal.py`는 0으로 채운
+contact map을 만듭니다. Count가 양수이면 해당 frame의 residue series가
+필요합니다. 실패한 cpptraj 실행의 count는 후속 분석에 사용하지 않습니다.
+
 ## English
 
 Heavy-atom contacts within 4.5 Å are tracked for Chignolin, using the first
@@ -36,3 +41,8 @@ writes a 0–1 `contact_frequency.tsv`, and displays both contact counts and a
 contact map. Raw cpptraj `byresidue map` values may exceed one because they sum
 atom-pair frequencies; those files are retained but are not used as the plotted
 frequency matrix. Edit the two paths and contact masks for another system.
+
+Rerunning `run.sh` removes previous contact-derived files before calculation.
+If native and non-native counts are zero in every frame, `anal.py` writes a
+zero contact map. Positive counts require matching residue series. Counts from
+a failed cpptraj run are removed so they cannot be used by subsequent analysis.

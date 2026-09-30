@@ -80,6 +80,8 @@ state의 overlap과 report의 equilibration warning을 확인합니다.
 
 참고: [RCSB PDB 4W53](https://www.rcsb.org/structure/4W53)
 
+Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 중단하고 파일을 보존합니다. 새 build 전에는 기존 `work/`를 다른 위치에 보관하거나 별도 tutorial 사본을 사용합니다.
+
 ## English
 
 This example transforms benzene into toluene in the T4 lysozyme L99A cavity and
@@ -118,3 +120,5 @@ an overlap matrix, and an HTML convergence report from each window's
 `production.out`. Use `3_Templates/5_FEP/5.1_RBFE` for longer or segmented
 calculations. Inspect neighboring-state overlap and equilibration warnings
 before interpreting the final value.
+
+Build stops before changing inputs when topology/restart files already exist, preserving those files. Preserve the existing `work/` elsewhere or use a separate tutorial copy before a new build.

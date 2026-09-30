@@ -83,6 +83,8 @@ run으로 확인합니다. 1 ns output은 workflow
 학습용입니다. 충분한 bound–unbound recrossing, reweighting, uncertainty와
 funnel-volume standard-state correction 없이 binding free energy로 보고하지 않습니다.
 
+Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 중단하고 파일을 보존합니다. 새 build 전에는 기존 `work/`를 다른 위치에 보관하거나 별도 tutorial 사본을 사용합니다.
+
 ## English
 
 This example applies Funnel MetaD to trypsin–benzamidine (PDB 3PTB). A
@@ -118,3 +120,5 @@ uncertainty analysis, and the funnel-volume standard-state correction.
 - [PLUMED 2.10 FUNNEL_PS](https://www.plumed.org/doc-v2.10/user-doc/html/_f_u_n_n_e_l__p_s.html)
 - [PLUMED 2.10 FUNNEL](https://www.plumed.org/doc-v2.10/user-doc/html/_f_u_n_n_e_l.html)
 - [PLUMED Funnel MetaD masterclass](https://www.plumed.org/doc-v2.9/user-doc/html/masterclass-22-1.html)
+
+Build stops before changing inputs when topology/restart files already exist, preserving those files. Preserve the existing `work/` elsewhere or use a separate tutorial copy before a new build.

@@ -117,16 +117,20 @@ fi
 stage_state() {
     local marker=$1
     shift
-    local present=0
+    local existing=0
+    local complete=0
     local path
     for path in "$@"; do
+        if [[ -e "$path" ]]; then
+            existing=$((existing + 1))
+        fi
         if [[ -s "$path" ]]; then
-            present=$((present + 1))
+            complete=$((complete + 1))
         fi
     done
-    if [[ -f "$marker" && "$present" -eq "$#" ]]; then
+    if [[ -f "$marker" && "$complete" -eq "$#" ]]; then
         echo complete
-    elif [[ ! -f "$marker" && "$present" -eq 0 ]]; then
+    elif [[ ! -f "$marker" && "$existing" -eq 0 ]]; then
         echo missing
     else
         echo partial

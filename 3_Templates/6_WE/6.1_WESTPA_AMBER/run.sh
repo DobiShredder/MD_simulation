@@ -46,7 +46,16 @@ die() {
 }
 
 export WEST_SIM_ROOT=${WEST_SIM_ROOT:-$PWD}
+case "$WEST_SIM_ROOT" in
+    /*) ;;
+    *) WEST_SIM_ROOT="$PWD/$WEST_SIM_ROOT" ;;
+esac
 export WORK_DIR=${WORK_DIR:-$WEST_SIM_ROOT/work}
+# WESTPA callbacks change directory; resolve their shared root at this boundary.
+case "$WORK_DIR" in
+    /*) ;;
+    *) WORK_DIR="$WEST_SIM_ROOT/$WORK_DIR" ;;
+esac
 AMBER_ENGINE=$("${PYTHON:-python3}" helpers/config_utils.py "$WORK_DIR/resolved_config.toml" engine AMBER_ENGINE pmemd.cuda pmemd sander)
 export AMBER_ENGINE
 export CPPTRAJ=${CPPTRAJ:-cpptraj}

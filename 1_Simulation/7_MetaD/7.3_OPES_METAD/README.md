@@ -63,6 +63,8 @@ partial production으로 판정하지 않습니다.
 [`OPES_METAD`](https://www.plumed.org/doc-v2.10/user-doc/html/_o_p_e_s__m_e_t_a_d.html)를
 기준으로 작성했습니다.
 
+Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 중단하고 파일을 보존합니다. 새 build 전에는 기존 `work/`를 다른 위치에 보관하거나 별도 tutorial 사본을 사용합니다.
+
 ## English
 
 `build.sh structure/alanine-dipeptide.pdb` builds the solvated system from the
@@ -82,3 +84,5 @@ PLUMED 2.10 must be configured with `--enable-modules=opes`; verify the action
 with `plumed manual --action OPES_METAD`. The parse-only check uses separate
 temporary filenames and cannot be mistaken for partial production. The 1 ns
 example is not a converged free-energy calculation.
+
+Build stops before changing inputs when topology/restart files already exist, preserving those files. Preserve the existing `work/` elsewhere or use a separate tutorial copy before a new build.

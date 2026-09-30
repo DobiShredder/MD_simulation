@@ -60,6 +60,8 @@ center의 first-crossing frame을 선택합니다. 허용 오차는 0.75 Å입�
 ABMD trajectory는 seed 생성에만 사용합니다. Equilibrium PMF와 kinetics는
 이 trajectory에서 계산하지 않습니다.
 
+`--dry-run`은 shared input이 있으면 local `work/`가 없어도 실행할 command와 working directory를 표시합니다. Engine을 실행하거나 파일을 만들지 않습니다.
+
 ## English
 
 Ratchet MD increases the terminal Cα distance of the first 1UAO model. The
@@ -90,3 +92,5 @@ The PLUMED input is copied into `work/`. `anal.py` selects ordered
 first-crossing frames within 0.75 Å and writes AMBER restart seeds. It exits
 when a requested window was not sampled. The biased pathway is used for seed
 generation, not for an equilibrium PMF or kinetics.
+
+With shared inputs available, `--dry-run` prints the commands and intended working directory even when local `work/` does not exist. It neither runs the engine nor creates files.

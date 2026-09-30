@@ -79,6 +79,8 @@ Amber 26 manual은 Pep-GaMD를 serial GPU `pmemd.cuda` 전용으로 설명합니
 수렴할 것으로 기대하지 않습니다. System별 설정과 independent run은
 `3_Templates/4_GaMD/4.3_Pep-GaMD`에서 구성합니다.
 
+Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 중단하고 파일을 보존합니다. 새 build 전에는 기존 `work/`를 다른 위치에 보관하거나 별도 tutorial 사본을 사용합니다.
+
 ## English
 
 PDB 1CKB supplies the C-crk N-terminal SH3 domain and the eight resolved
@@ -123,3 +125,5 @@ incomplete pairs are rerun, and existing production output is protected. Use
 
 - [RCSB PDB 1CKB](https://www.rcsb.org/structure/1CKB)
 - [Pep-GaMD](https://pmc.ncbi.nlm.nih.gov/articles/PMC7575327/)
+
+Build stops before changing inputs when topology/restart files already exist, preserving those files. Preserve the existing `work/` elsewhere or use a separate tutorial copy before a new build.

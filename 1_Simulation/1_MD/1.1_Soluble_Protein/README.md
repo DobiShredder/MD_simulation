@@ -83,6 +83,8 @@ Heating에서 새 velocity를 만들고 이후 단계는 restart의 좌표와 ve
 
 
 
+Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 중단하고 파일을 보존합니다. 새 build 전에는 기존 `work/`를 다른 위치에 보관하거나 별도 tutorial 사본을 사용합니다.
+
 ## English
 
 The first NMR model of PDB 1UAO is built with ff19SB and OPC. The workflow runs
@@ -149,3 +151,5 @@ convergence.
 ## References / 참고 자료
 
 - [RCSB PDB 1UAO](https://www.rcsb.org/structure/1UAO)
+
+Build stops before changing inputs when topology/restart files already exist, preserving those files. Preserve the existing `work/` elsewhere or use a separate tutorial copy before a new build.

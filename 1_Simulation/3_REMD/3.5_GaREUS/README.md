@@ -124,6 +124,8 @@ zero-length 파일, marker만 있는 상태 또는 marker 없는 기존 output�
 복사본에서 새 계산을 시작합니다. Marker를 수동으로 만들어 완료 처리하지 않습니다.
 정상 완료 후 재실행은 engine을 호출하거나 결과를 다시 쓰지 않습니다.
 
+Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 중단하고 파일을 보존합니다. 새 build 전에는 기존 `work/`를 다른 위치에 보관하거나 별도 tutorial 사본을 사용합니다.
+
 ## English
 
 This example combines dual-boost GaMD with 20 terminal-Cα distance windows from
@@ -196,3 +198,5 @@ an error without overwriting files. Review and archive retained results, then
 start a new calculation in a separate tutorial copy. Do not create markers
 manually to adopt old results. A rerun after normal completion invokes no engine
 and rewrites no results.
+
+Build stops before changing inputs when topology/restart files already exist, preserving those files. Preserve the existing `work/` elsewhere or use a separate tutorial copy before a new build.

@@ -65,6 +65,8 @@ Keyword는 PLUMED 2.10
 [`ECV_MULTITHERMAL`](https://www.plumed.org/doc-v2.10/user-doc/html/_e_c_v__m_u_l_t_i_t_h_e_r_m_a_l.html)을
 기준으로 작성했습니다.
 
+Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 중단하고 파일을 보존합니다. 새 build 전에는 기존 `work/`를 다른 위치에 보관하거나 별도 tutorial 사본을 사용합니다.
+
 ## English
 
 `build.sh structure/alanine-dipeptide.pdb` builds the solvated system from the
@@ -84,3 +86,5 @@ separate reweighting. PLUMED 2.10 must be configured with
 `plumed manual --action ACTION`. The parse-only check uses separate temporary
 filenames and cannot be mistaken for partial production. The 1 ns run is a
 workflow example.
+
+Build stops before changing inputs when topology/restart files already exist, preserving those files. Preserve the existing `work/` elsewhere or use a separate tutorial copy before a new build.

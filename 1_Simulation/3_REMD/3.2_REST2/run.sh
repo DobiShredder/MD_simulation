@@ -123,7 +123,9 @@ run_preproduction_stage() {
             -p "$replica_dir/topol.top" \
             -c "$replica_dir/$input_coordinates.gro" \
             -o "$replica_dir/$stage.tpr"; then
-            die "$stage tpr generation failed: $replica_dir/$stage.grompp.log"
+            echo "Error: $stage tpr generation failed: $replica_dir/$stage.grompp.log" >&2
+            wait_for_batch "$stage" "${batch[@]}"
+            exit 1
         fi
 
         gpu_id=$((replica_index % gpu_count))

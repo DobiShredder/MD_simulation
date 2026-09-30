@@ -84,6 +84,8 @@ Window overlap과 PMF는
 [umbrella-sampling analysis](../../../2_Analysis/7_Enhanced_Sampling/README.md)에서
 계산합니다.
 
+Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 중단하고 파일을 보존합니다. 새 build 전에는 기존 `work/`를 다른 위치에 보관하거나 별도 tutorial 사본을 사용합니다.
+
 ## English
 
 This REUS example exchanges 19 windows along the Chignolin residue 1–10 Cα
@@ -120,3 +122,5 @@ Analysis writes acceptance, state visits, window occupancy, and sampled
 restraint-distance ranges as TSV files. Window trajectories are written to
 `work/NNN/production.nc`. Use the linked analysis tutorial for overlap and
 PMF calculation.
+
+Build stops before changing inputs when topology/restart files already exist, preserving those files. Preserve the existing `work/` elsewhere or use a separate tutorial copy before a new build.
