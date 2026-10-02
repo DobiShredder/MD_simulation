@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+original_args=("$@")
+
 source ./grompp_utils.bash
 
 dry_run=0
@@ -34,6 +36,13 @@ done
 if [[ -z "$cpu_count" || -z "$gpu_count" ]]; then
     echo "Usage: $0 --cpus N --gpus N [--dry-run]" >&2
     exit 2
+fi
+
+if (( ! ${dry_run:-0} )) &&
+        [[ ${original_args[0]:-} != -h && ${original_args[0]:-} != --help && ${original_args[0]:-} != --dry-run ]] &&
+        [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
+    exec "${PYTHON:-python3}" helpers/writer_guard.py \
+        --registry "work" --read "inputs" --write "work" -- "$0" "${original_args[@]}"
 fi
 
 die() {
@@ -93,6 +102,33 @@ wait_for_batch() {
     fi
 }
 
+check_stage_identity() {
+    local stage=$1
+    local input_coordinates=$2
+    local replica
+    local replica_dir
+    while IFS=$'\t' read -r replica _; do
+        if [[ "$replica" == replica ]]; then
+            continue
+        fi
+        replica_dir="work/$replica"
+        local identity_options=(
+            --input work/states.tsv --input "$replica_dir/$stage.mdp"
+            --input "$replica_dir/topol.top" --input "$replica_dir/$input_coordinates.gro"
+        )
+        if [[ "$stage" == production ]]; then
+            identity_options+=(--input "$replica_dir/equilibrate.cpt" --input "$replica_dir/plumed.dat")
+        fi
+        local suffix
+        for suffix in gro log tpr edr cpt grompp.log mdrun.log; do
+            identity_options+=(--output "$replica_dir/$stage.$suffix")
+        done
+        "${PYTHON:-python3}" helpers/input_identity.py \
+            --record "$replica_dir/.$stage.identity.json" --stage "replica $replica - $stage" \
+            "${identity_options[@]}" --value="$gmx" --value="$gmx_mpi" --value="replex=1000"
+    done < work/states.tsv
+}
+
 run_preproduction_stage() {
     local stage=$1
     local input_coordinates=$2
@@ -101,6 +137,7 @@ run_preproduction_stage() {
     local replica_index=0
     local -a batch=()
 
+    check_stage_identity "$stage" "$input_coordinates"
     status=$(stage_status "$stage")
     if [[ "$status" == complete ]]; then
         echo "Skipping completed stage: $stage"
@@ -193,6 +230,16 @@ if (( dry_run )); then
     exit 0
 fi
 
+"${PYTHON:-python3}" helpers/input_identity.py --verify work
+source_options=(--input work/states.tsv)
+for source_input in work/[0-9][0-9][0-9]/{system.gro,*.mdp,*.top,*.itp,plumed.dat}; do
+    if [[ -f "$source_input" ]]; then
+        source_options+=(--input "$source_input")
+    fi
+done
+"${PYTHON:-python3}" helpers/input_identity.py \
+    --record work/.source.identity.json --stage "REST build inputs" "${source_options[@]}"
+
 for executable in "$gmx" "$gmx_mpi" "$mpi_launcher"; do
     if ! command -v "$executable" >/dev/null 2>&1; then
         die "Executable not found: $executable"
@@ -218,6 +265,8 @@ fi
 
 run_preproduction_stage minimize system
 run_preproduction_stage equilibrate minimize
+
+check_stage_identity production equilibrate
 
 replica_dirs=()
 while IFS=$'\t' read -r replica _; do

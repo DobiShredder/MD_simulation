@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+original_args=("$@")
+
 dry_run=0
 preparation_only=0
 production_only=0
@@ -79,8 +81,8 @@ if [[ ! -s "$states_file" ]]; then
     die "Run build.sh first: $states_file"
 fi
 if [[ -n "$window_range" ]]; then
-    maximum_window=$(awk -F '\t' -v system="$selected_system" '
-        NR > 1 && (system == "" || $1 == system) {
+    maximum_window=$(awk -F '\t' -v environment="$selected_system" '
+        NR > 1 && (environment == "" || $1 == environment) {
             window = $2 + 0
             if (!found || window > maximum) maximum = window
             found = 1
@@ -153,6 +155,15 @@ run_stage() {
         return
     fi
 
+    local identity_options=()
+    if [[ -s "$directory/disang.rest" ]]; then
+        identity_options+=(--input "$directory/disang.rest")
+    fi
+    "${PYTHON:-python3}" helpers/input_identity.py \
+        --record "$completion_marker.identity.json" --stage "$calculation $stage" \
+        --marker "$completion_marker" --directory "$directory" \
+        "${identity_options[@]}" -- "${command[@]}"
+
     local state
     state=$(stage_state "$completion_marker" "${required[@]}")
     if [[ "$state" == complete ]]; then
@@ -192,6 +203,26 @@ if (( dry_run )); then
     echo "Dry run: RBFE: $window_count environment/window states, $production_steps production steps per window"
 fi
 
+scope_options=(--read "$states_file" --read "$work_dir/resolved_config.toml")
+while IFS=$'\t' read -r environment window lambda seed directory; do
+    if [[ "$environment" == environment ]]; then
+        continue
+    fi
+    calculation="RBFE $environment window $window (lambda=$lambda)"
+    if [[ -n "$selected_system" && "$environment" != "$selected_system" ]]; then
+        continue
+    fi
+    window_index=$((10#$window))
+    if [[ -n "$window_start" ]] && (( window_index < window_start || window_index > window_end )); then
+        continue
+    fi
+    scope_options+=(--write "$directory")
+done < "$states_file"
+if (( ! dry_run && ${#scope_options[@]} > 4 )) && [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
+    exec "${PYTHON:-python3}" helpers/writer_guard.py \
+        --registry "$work_dir" "${scope_options[@]}" -- "$0" "${original_args[@]}"
+fi
+
 selected_state_count=0
 reused_stage_count=0
 workflow_started=0
@@ -208,6 +239,9 @@ while IFS=$'\t' read -r environment window lambda seed directory; do
         continue
     fi
     selected_state_count=$((selected_state_count + 1))
+    if (( ! dry_run )); then
+        "${PYTHON:-python3}" helpers/input_identity.py --verify "$directory"
+    fi
     if (( ! production_only )); then
         run_stage "$directory" minimize system.rst7 no "$calculation"
         run_stage "$directory" heat minimize.rst7 yes "$calculation"

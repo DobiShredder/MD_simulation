@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+original_args=("$@")
+
 dry_run=0
 if [[ "${1:-}" == "--dry-run" && $# -eq 1 ]]; then
     dry_run=1
@@ -27,6 +29,13 @@ run_stage() {
         return
     fi
 
+    local identity_options=()
+    if [[ "$output" == ratchet.out ]]; then
+        identity_options+=(--input plumed.dat)
+    fi
+    "${PYTHON:-python3}" ../helpers/input_identity.py \
+        --record ".$output.identity.json" --stage "$label" "${identity_options[@]}" -- "$@"
+
     if [[ -s "$output" && -s "$restart" ]]; then
         echo "Skipping completed stage: $label"
         return
@@ -52,6 +61,13 @@ if (( dry_run )); then
     echo "Dry run: planned sampling commands; no engine execution"
 fi
 
+if (( ! ${dry_run:-0} )) &&
+        [[ ${original_args[0]:-} != -h && ${original_args[0]:-} != --help && ${original_args[0]:-} != --dry-run ]] &&
+        [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
+    exec "${PYTHON:-python3}" helpers/writer_guard.py \
+        --registry "../work" --read "inputs" --read "../work" --write "work" -- "$0" "${original_args[@]}"
+fi
+
 engine=${AMBER_ENGINE:-pmemd.cuda}
 topology=../work/system.parm7
 coordinates=../work/system.rst7
@@ -67,6 +83,15 @@ if (( ! dry_run )) && [[ -e work/ratchet.out ]]; then
 fi
 
 if (( ! dry_run )); then
+    "${PYTHON:-python3}" helpers/input_identity.py --verify work
+    source_options=()
+    for source_input in inputs/*.in; do
+        source_options+=(--input "$source_input")
+    done
+    source_options+=(--input inputs/plumed.dat --input "$topology" --input "$coordinates")
+    "${PYTHON:-python3}" helpers/input_identity.py \
+        --record work/.source.identity.json --stage "run source inputs" \
+        "${source_options[@]}" --value="$engine"
     mkdir -p work/inputs
     cp "$topology" work/system.parm7
     cp "$coordinates" work/system.rst7

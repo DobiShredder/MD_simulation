@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+original_args=("$@")
+
 if [[ $# -ne 1 ]]; then
     echo "Usage: $0 CHIGNOLIN.pdb" >&2
     exit 2
@@ -16,6 +18,11 @@ input_pdb=$1
 tleap=${TLEAP:-tleap}
 build_dir="$WORK_DIR/common_files"
 basis_dir="$WORK_DIR/bstates"
+
+if [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
+    exec "${PYTHON:-python3}" helpers/writer_guard.py \
+        --registry "$WORK_DIR" --read "$input_pdb" --read "inputs" --read "bstates" --read "tstate.file" --read "west.cfg" --write "$WORK_DIR" -- "$0" "${original_args[@]}"
+fi
 
 if [[ -d "$WORK_DIR" ]]; then
     existing_result=$(find "$WORK_DIR" -type f \
@@ -33,6 +40,17 @@ for executable in "$tleap" "$AMBER_ENGINE" "$CPPTRAJ"; do
         die "Executable not found: $executable"
     fi
 done
+
+"${PYTHON:-python3}" helpers/input_identity.py --verify "$build_dir"
+"${PYTHON:-python3}" helpers/input_identity.py \
+    --record "$WORK_DIR/.basis-source.identity.json" --stage "WE basis source inputs" \
+    --input "$input_pdb" --input inputs/leap.in --input inputs/minimize.in \
+    --input inputs/heat.in --input inputs/equilibrate.in --value="$AMBER_ENGINE" --value="$tleap"
+"${PYTHON:-python3}" helpers/input_identity.py \
+    --record "$WORK_DIR/.topology.identity.json" --stage "WE topology build" \
+    --input "$input_pdb" --input inputs/leap.in \
+    --output "$build_dir/system.parm7" --output "$build_dir/system.rst7" \
+    --output "$build_dir/input.pdb" --output "$build_dir/leap.in" --output "$build_dir/leap.log"
 
 mkdir -p "$build_dir" "$basis_dir"
 
@@ -64,6 +82,11 @@ run_basis_stage() {
     shift 3
     local output_file="$build_dir/$stage.out"
 
+    "${PYTHON:-python3}" helpers/input_identity.py \
+        --record "$build_dir/.$stage.identity.json" --stage "WE basis $stage" -- "$AMBER_ENGINE" \
+        -O -i "$WEST_SIM_ROOT/inputs/$stage.in" -o "$output_file" \
+        -p "$build_dir/system.parm7" -c "$input_restart" -r "$output_restart" \
+        -inf "$build_dir/$stage.info" "$@"
     if [[ -s "$output_file" && -s "$output_restart" ]]; then
         echo "Skipping: $stage outputs already exist."
         return

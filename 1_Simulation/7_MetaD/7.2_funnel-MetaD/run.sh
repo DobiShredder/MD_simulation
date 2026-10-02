@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+original_args=("$@")
+
 dry_run=0
 if [[ "${1:-}" == "--dry-run" && $# -eq 1 ]]; then
     dry_run=1
@@ -15,6 +17,14 @@ die() {
 }
 
 work_dir=work
+
+if (( ! ${dry_run:-0} )) &&
+        [[ ${original_args[0]:-} != -h && ${original_args[0]:-} != --help && ${original_args[0]:-} != --dry-run ]] &&
+        [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
+    exec "${PYTHON:-python3}" helpers/writer_guard.py \
+        --registry "work" --read "inputs" --write "work" -- "$0" "${original_args[@]}"
+fi
+
 engine=${AMBER_ENGINE:-pmemd.cuda}
 plumed=${PLUMED:-plumed}
 
@@ -46,6 +56,17 @@ if (( dry_run )); then
     exit 0
 fi
 
+"${PYTHON:-python3}" helpers/input_identity.py --verify "$work_dir"
+source_options=(--input "$work_dir/system.parm7" --input "$work_dir/system.rst7")
+for source_input in inputs/*; do
+    if [[ -f "$source_input" ]]; then
+        source_options+=(--input "$source_input")
+    fi
+done
+"${PYTHON:-python3}" helpers/input_identity.py \
+    --record "$work_dir/.source.identity.json" --stage "run source inputs" \
+    "${source_options[@]}" --value="$engine" --output "$work_dir/COLVAR" --output "$work_dir/HILLS" --output "$work_dir/KERNELS"
+
 mkdir -p "$work_dir/inputs"
 cp inputs/minimize-solvent.in "$work_dir/inputs/minimize-solvent.in"
 cp inputs/minimize-all.in "$work_dir/inputs/minimize-all.in"
@@ -74,6 +95,12 @@ run_stage() {
     shift 2
     local output_file="$work_dir/$stage.out"
     local restart_file="$work_dir/$stage.rst7"
+
+    "${PYTHON:-python3}" helpers/input_identity.py \
+        --record "$work_dir/.$stage.identity.json" --stage "$stage" \
+        --directory "$work_dir" -- "$engine" -O -i "inputs/$stage.in" \
+        -o "$stage.out" -p system.parm7 -c "$input_restart" \
+        -r "$stage.rst7" -inf "$stage.info" "$@"
 
     if [[ -s "$output_file" && -s "$restart_file" ]]; then
         echo "Skipping: $stage outputs already exist."
@@ -119,6 +146,16 @@ for output in production.out production.rst7 production.info production.nc; do
 done
 
 sed 's/@RANDOM_SEED@/72101/g' inputs/production.in.template > "$work_dir/production.in"
+
+production_identity_options=(--input "$work_dir/plumed.dat")
+if [[ -s "$work_dir/funnel-reference.pdb" ]]; then
+    production_identity_options+=(--input "$work_dir/funnel-reference.pdb")
+fi
+"${PYTHON:-python3}" helpers/input_identity.py \
+    --record "$work_dir/.production.identity.json" --stage production \
+    --directory "$work_dir" "${production_identity_options[@]}" -- \
+    "$engine" -O -i production.in -o production.out -p system.parm7 \
+    -c equilibrate.rst7 -r production.rst7 -x production.nc -inf production.info
 
 echo "Running: production"
 if ! (

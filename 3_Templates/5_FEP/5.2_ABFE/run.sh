@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+original_args=("$@")
+
 dry_run=0
 preparation_only=0
 production_only=0
@@ -82,11 +84,11 @@ if [[ ! -s "$states_file" ]]; then
     die "Run build.sh first: $states_file"
 fi
 if [[ -n "$window_range" ]]; then
-    maximum_window=$(awk -F '\t' -v system="$selected_system" -v interaction="$selected_stage" '
+    maximum_window=$(awk -F '\t' -v environment="$selected_system" -v interaction="$selected_stage" '
         NR > 1 {
             split($1, parts, "_")
             state_interaction = parts[length(parts)]
-            if ((system == "" || $2 == system) &&
+            if ((environment == "" || $2 == environment) &&
                 (interaction == "" || state_interaction == interaction)) {
                 window = $3 + 0
                 if (!found || window > maximum) maximum = window
@@ -159,6 +161,15 @@ run_stage() {
         printf ')\n'
         return
     fi
+    local identity_options=()
+    if [[ -s "$directory/disang.rest" ]]; then
+        identity_options+=(--input "$directory/disang.rest")
+    fi
+    "${PYTHON:-python3}" helpers/input_identity.py \
+        --record "$completion_marker.identity.json" --stage "$calculation $stage" \
+        --marker "$completion_marker" --directory "$directory" \
+        "${identity_options[@]}" -- "${command[@]}"
+
     local state
     state=$(stage_state "$completion_marker" "${required[@]}")
     if [[ "$state" == complete ]]; then
@@ -198,6 +209,29 @@ if (( dry_run )); then
     echo "Dry run: ABFE: $window_count alchemical states, $production_steps production steps per window"
 fi
 
+scope_options=(--read "$states_file" --read "$work_dir/resolved_config.toml")
+while IFS=$'\t' read -r method_stage environment window lambda seed directory; do
+    if [[ "$method_stage" == stage ]]; then
+        continue
+    fi
+    interaction=${method_stage##*_}
+    if [[ -n "$selected_system" && "$environment" != "$selected_system" ]]; then
+        continue
+    fi
+    if [[ -n "$selected_stage" && "$interaction" != "$selected_stage" ]]; then
+        continue
+    fi
+    window_index=$((10#$window))
+    if [[ -n "$window_start" ]] && (( window_index < window_start || window_index > window_end )); then
+        continue
+    fi
+    scope_options+=(--write "$directory")
+done < "$states_file"
+if (( ! dry_run && ${#scope_options[@]} > 4 )) && [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
+    exec "${PYTHON:-python3}" helpers/writer_guard.py \
+        --registry "$work_dir" "${scope_options[@]}" -- "$0" "${original_args[@]}"
+fi
+
 selected_state_count=0
 reused_stage_count=0
 workflow_started=0
@@ -217,6 +251,9 @@ while IFS=$'\t' read -r method_stage environment window lambda seed directory; d
         continue
     fi
     selected_state_count=$((selected_state_count + 1))
+    if (( ! dry_run )); then
+        "${PYTHON:-python3}" helpers/input_identity.py --verify "$directory"
+    fi
     calculation="ABFE $interaction/$environment window $window (lambda=$lambda)"
     if (( ! production_only )); then
         run_stage "$directory" minimize system.rst7 no "$calculation"

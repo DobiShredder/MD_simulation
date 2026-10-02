@@ -2,6 +2,7 @@
 **/.DS_Store
 
 # Molecular dynamics outputs and generated system files
+*.writers/
 **/work/
 **/*.out
 **/*.info

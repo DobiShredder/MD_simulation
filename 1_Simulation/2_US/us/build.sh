@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+original_args=("$@")
+
 if [[ $# -ne 0 ]]; then
     echo "Usage: $0" >&2
     exit 2
@@ -16,6 +18,14 @@ seed_dir=../rmd/work/seeds
 seed_metadata="$seed_dir/seeds.tsv"
 topology=../work/system.parm7
 window_root=work
+
+if (( ! ${dry_run:-0} )) &&
+        [[ ${original_args[0]:-} != -h && ${original_args[0]:-} != --help && ${original_args[0]:-} != --dry-run ]] &&
+        [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
+    exec "${PYTHON:-python3}" helpers/writer_guard.py \
+        --registry "../work" --read "../work" --read "$seed_dir" --read "$window_file" --write "work" -- "$0" "${original_args[@]}"
+fi
+
 
 # Read window settings
 if [[ ! -s "$window_file" ]]; then

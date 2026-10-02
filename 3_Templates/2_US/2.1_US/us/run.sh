@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+original_args=("$@")
+
 dry_run=0
 selected_window=""
 window_range=""
@@ -169,6 +171,10 @@ run_stage() {
     fi
 
     if (( ! dry_run )); then
+        "${PYTHON:-python3}" ../helpers/input_identity.py \
+            --record "$completion_marker.identity.json" --stage "window ${window_dir##*/} $stage_label" \
+            --marker "$completion_marker" --directory "$window_dir" \
+            --input "$window_dir/restraint.RST" -- "${command[@]}"
         local state
         state=$(stage_state "$completion_marker" "${required[@]}")
         if [[ "$state" == complete ]]; then
@@ -218,6 +224,9 @@ run_window() {
     local window_id=${window_dir##*/}
     local required_file
     local production_state=missing
+    if (( ! dry_run )); then
+        "${PYTHON:-python3}" ../helpers/input_identity.py --verify "$window_dir"
+    fi
 
     for required_file in system.parm7 seed.rst7 restraint.RST; do
         if [[ ! -s "$window_dir/$required_file" ]]; then
@@ -275,6 +284,7 @@ if [[ ! -d "$work_dir/inputs" ]]; then
 fi
 
 # Run the selected window or all windows
+window_dirs=()
 
 if [[ -n "$selected_window" ]]; then
     if [[ ! "$selected_window" =~ ^[0-9]+$ ]]; then
@@ -292,7 +302,7 @@ if [[ -n "$selected_window" ]]; then
         die "window not found: $selected_window_id"
     fi
 
-    run_window "$selected_window_dir"
+    window_dirs+=("$selected_window_dir")
 elif [[ -n "$window_range" ]]; then
     if [[ ! "$window_range" =~ ^([1-9][0-9]*)-([1-9][0-9]*)$ ]]; then
         die "--windows must use START-END with 1-based indices: $window_range"
@@ -308,7 +318,7 @@ elif [[ -n "$window_range" ]]; then
         if [[ ! -d "$window_dir" ]]; then
             die "Window not found: $window_id"
         fi
-        run_window "$window_dir"
+        window_dirs+=("$window_dir")
     done
 else
     found_window_count=0
@@ -319,13 +329,25 @@ else
         fi
 
         found_window_count=$((found_window_count + 1))
-        run_window "$window_dir"
+        window_dirs+=("$window_dir")
     done
 
     if (( found_window_count == 0 )); then
         die "No runnable windows were found in ${window_root}."
     fi
 fi
+
+scope_options=(--read "../work" --read "$window_root/inputs")
+for window_dir in "${window_dirs[@]}"; do
+    scope_options+=(--write "$window_dir")
+done
+if (( ! dry_run )) && [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
+    exec "${PYTHON:-python3}" ../helpers/writer_guard.py \
+        --registry ../work "${scope_options[@]}" -- "$0" "${original_args[@]}"
+fi
+for window_dir in "${window_dirs[@]}"; do
+    run_window "$window_dir"
+done
 
 if (( ! dry_run )); then
     if (( reused_stage_count > 0 )); then

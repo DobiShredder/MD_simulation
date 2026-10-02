@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+original_args=("$@")
+
 dry_run=0
 if [[ "${1:-}" == "--dry-run" && $# -eq 1 ]]; then
     dry_run=1
@@ -15,6 +17,14 @@ die() {
 }
 
 work_dir=work
+
+if (( ! ${dry_run:-0} )) &&
+        [[ ${original_args[0]:-} != -h && ${original_args[0]:-} != --help && ${original_args[0]:-} != --dry-run ]] &&
+        [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
+    exec "${PYTHON:-python3}" helpers/writer_guard.py \
+        --registry "work" --read "inputs" --write "work" -- "$0" "${original_args[@]}"
+fi
+
 states_file="$work_dir/states.tsv"
 engine=${AMBER_ENGINE:-pmemd.cuda}
 
@@ -29,6 +39,7 @@ if (( ! dry_run )) && [[ "$(basename "$engine")" != "pmemd.cuda" ]]; then
 fi
 
 if (( ! dry_run )); then
+    "${PYTHON:-python3}" helpers/input_identity.py --verify "$work_dir"
     production_output=$(find "$work_dir" -type f \
         \( -name 'production.out' -o -name 'production.rst7' \
            -o -name 'production.info' -o -name 'production.nc' \) \
@@ -66,6 +77,14 @@ run_stage() {
         printf ')\n'
         return
     fi
+
+    local identity_options=()
+    if [[ -s "$directory/disang.rest" ]]; then
+        identity_options+=(--input "$directory/disang.rest")
+    fi
+    "${PYTHON:-python3}" helpers/input_identity.py \
+        --record "$directory/.$stage.identity.json" --stage "$calculation - $stage" \
+        --directory "$directory" "${identity_options[@]}" -- "${command[@]}"
 
     if [[ -s "$output_file" && -s "$restart_file" ]]; then
         reused_stage_count=$((reused_stage_count + 1))

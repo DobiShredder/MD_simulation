@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+original_args=("$@")
+
 if [[ $# -ne 1 ]]; then
     echo "Usage: $0 INPUT.pdb" >&2
     exit 2
@@ -12,6 +14,18 @@ die() {
 }
 
 input_pdb=$1
+
+if (( ! ${dry_run:-0} )) &&
+        [[ ${original_args[0]:-} != -h && ${original_args[0]:-} != --help && ${original_args[0]:-} != --dry-run ]] &&
+        [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
+    exec "${PYTHON:-python3}" helpers/writer_guard.py \
+        --registry "work" --read "$input_pdb" --read "inputs" --write "work" -- "$0" "${original_args[@]}"
+fi
+
+if [[ -e work/system.parm7 || -e work/system.rst7 ]]; then
+    die "Build output already exists and was retained: work. Start from a separate tutorial directory."
+fi
+
 tleap=${TLEAP:-tleap}
 
 if [[ ! -s "$input_pdb" ]]; then

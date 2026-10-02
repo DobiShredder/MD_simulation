@@ -36,7 +36,10 @@ def parse_arguments() -> argparse.Namespace:
 
 def check_segments(work: Path, segments: int) -> None:
     for index in range(1, segments + 1):
-        directory = work if segments == 1 else work / f"{index:03d}"
+        if segments == 1 or (index == 1 and (work / ".production.complete").is_file()):
+            directory = work
+        else:
+            directory = work / f"{index:03d}"
         marker = directory / ".production.complete"
         if not marker.is_file():
             raise SystemExit(f"Production segment is incomplete: {marker}")

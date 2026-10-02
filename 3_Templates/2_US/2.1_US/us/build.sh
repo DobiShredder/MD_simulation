@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+original_args=("$@")
+
 dry_run=0
 if [[ "${1:-}" == --dry-run && $# -eq 1 ]]; then
     dry_run=1
@@ -32,6 +34,10 @@ seed_metadata="$seed_dir/seeds.tsv"
 topology=../work/system.parm7
 config=../work/resolved_config.toml
 window_root=work
+if (( ! ${dry_run:-0} )) && [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
+    exec "${PYTHON:-python3}" ../helpers/writer_guard.py \
+        --registry "../work" --read "../work" --read "$seed_dir" --write "$window_root" -- "$0" "${original_args[@]}"
+fi
 
 if [[ ! -s "$window_file" ]]; then
     die "Window settings not found: $window_file"

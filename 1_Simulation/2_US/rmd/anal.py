@@ -4,8 +4,10 @@
 from __future__ import annotations
 
 import csv
+import os
 import shutil
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -187,6 +189,14 @@ def main() -> int:
     for path in (topology, trajectory, windows):
         if not path.is_file():
             raise SystemExit(f"Required input not found: {path}")
+    if (os.environ.get("MD_WRITER_PARENT") != str(os.getppid())
+            or os.environ.get("MD_WRITER_ENTRY") != sys.argv[0]):
+        command = [sys.executable, "helpers/writer_guard.py", "--python-entry",
+                   "--registry", "../work", "--read", str(topology),
+                   "--read", str(trajectory), "--read", str(windows),
+                   "--write", str(output), "--", *sys.argv]
+        os.execv(sys.executable, command)
+
     if output.exists():
         raise SystemExit(f"Output directory already exists: {output}")
 

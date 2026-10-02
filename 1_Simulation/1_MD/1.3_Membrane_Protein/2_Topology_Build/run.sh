@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+original_args=("$@")
+
 dry_run=0
 if [[ "${1:-}" == "--dry-run" ]]; then
     dry_run=1
@@ -18,6 +20,14 @@ die() {
 
 coordinate_pdb=$1
 work_dir=work
+
+if (( ! ${dry_run:-0} )) &&
+        [[ ${original_args[0]:-} != -h && ${original_args[0]:-} != --help && ${original_args[0]:-} != --dry-run ]] &&
+        [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
+    exec "${PYTHON:-python3}" helpers/writer_guard.py \
+        --registry ".." --read "../1_Coordinate_Build/work" --write "work" -- "$0" "${original_args[@]}"
+fi
+
 amber_named_pdb="$work_dir/amber-named.pdb"
 generated_tleap="$work_dir/tleap.in"
 

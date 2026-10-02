@@ -134,3 +134,23 @@ and equilibrated Lipid21 patches are used.
 - [Lipid21](https://doi.org/10.1021/acs.jctc.1c01217)
 - [PACKMOL-Memgen](https://doi.org/10.1021/acs.jcim.9b00269)
 - [PACKMOL user guide](https://m3g.github.io/packmol/userguide.shtml)
+
+### 동시 실행과 input 변경
+
+Coordinate build, topology build와 simulation은 membrane tutorial root 옆의 `.writers/` registry를 공유합니다. 앞 단계의 work를 읽는 동안 그 directory를 다시 생성하는 작업은 거부합니다.
+
+Build는 기존 생성 output을 재작성하지 않습니다. 새 structure나 설정으로 계산하려면 새 directory에 tutorial을 복사해 시작합니다. Simulation 단계의 run이 topology, initial coordinate file과 stage input을 SHA256으로 확인합니다.
+
+정상 종료, command 실패와 INT/TERM에서는 자식 process의 종료를 확인한 뒤 자기 lock만 해제합니다. SIGKILL이나 node 장애로 남은 lock은 자동 삭제하지 않습니다. Error에 표시된 lock과 `owner.json`의 host, PID, command, scope를 확인하고 scheduler와 해당 host에서 모든 writer와 자식 process가 종료됐는지 확인한 뒤 그 lock directory만 수동 제거합니다. PID가 로컬에서 보이지 않는다는 이유만으로 제거하지 않습니다. `.gate/`도 같은 확인이 필요합니다.
+
+지원하는 `--dry-run`과 `--help`는 보호나 identity 파일을 생성하지 않습니다. 진행 중인 work를 이동하거나 identity를 수정해 재사용하지 않습니다. 보호는 로컬 filesystem과 로컬 자식 process로 검증했으며 network filesystem, remote MPI와 다른 node의 writer 종료는 미검증입니다.
+
+### Concurrent runs and input changes
+
+Coordinate build, topology build and simulation share the `.writers/` registry beside the membrane tutorial root. A downstream reader prevents a builder from rewriting its input directory.
+
+Build preserves existing generated outputs. Start a new tutorial copy for changed structures or settings. The simulation runner checks topology, initial coordinates and stage inputs with SHA256.
+
+Normal exit, command failure and INT/TERM release only the owned lock after child termination is verified. Locks left by SIGKILL or node failure are retained. Inspect the reported lock and its `owner.json` host, PID, command and scopes; confirm through the scheduler and owning host that all writers and children stopped before manually removing only that lock directory. A PID missing locally is not sufficient. Apply the same checks to `.gate/`.
+
+Supported `--dry-run` and `--help` do not create writer or identity files. Do not move active work trees or edit identities to reuse results. Protection was tested on a local filesystem with local child processes; network filesystems, remote MPI and termination of writers on other nodes remain unverified.

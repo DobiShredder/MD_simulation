@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+original_args=("$@")
+
 dry_run=0
 preparation_only=0
 production_only=0
@@ -47,6 +49,13 @@ die() {
 }
 
 work_dir=${WORK_DIR:-work}
+if (( ! ${dry_run:-0} )) && [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
+    exec "${PYTHON:-python3}" helpers/writer_guard.py \
+        --registry "$work_dir" --write "$work_dir" -- "$0" "${original_args[@]}"
+fi
+if (( ! dry_run )); then
+    "${PYTHON:-python3}" helpers/input_identity.py --verify "$work_dir"
+fi
 states_file="$work_dir/states.tsv"
 resolved_config="$work_dir/resolved_config.toml"
 
@@ -120,6 +129,41 @@ mark_stage_complete() {
     echo "Completed: $stage ($work_dir)"
 }
 
+check_stage_identity() {
+    local stage=$1
+    local input_restart=$2
+    local input_name=$3
+    local record_suffix=${4:-complete}
+    local marker="$work_dir/.$stage.complete"
+    local identity_options=(--input "$states_file" --input "$work_dir/system.parm7"
+        --value="$amber_engine" --value="$amber_mpi_engine" --value "${AMBER_OPTIONS:-}")
+    local replica replica_dir input_coordinates suffix
+    while IFS=$'\t' read -r replica _; do
+        if [[ "$replica" == replica ]]; then
+            continue
+        fi
+        replica_dir="$work_dir/$replica"
+        input_coordinates="$replica_dir/$input_restart"
+        if [[ "$input_restart" == system.rst7 ]]; then
+            input_coordinates="$work_dir/system.rst7"
+        fi
+        identity_options+=(--input "$replica_dir/$input_name" --input "$input_coordinates")
+        if [[ -s "$replica_dir/distance.RST" ]]; then
+            identity_options+=(--input "$replica_dir/distance.RST")
+        fi
+        for suffix in out rst7 nc info; do
+            identity_options+=(--output "$replica_dir/$stage.$suffix")
+        done
+        identity_options+=(--output "$replica_dir/restraint.$stage.dat" --output "$replica_dir/gamd.$stage.log")
+    done < "$states_file"
+    if [[ "$stage" == production.* ]]; then
+        identity_options+=(--output "$work_dir/exchange.${stage#production.}.log")
+    fi
+    "${PYTHON:-python3}" helpers/input_identity.py \
+        --record "$work_dir/.$stage.$record_suffix.identity.json" --stage "$stage" \
+        --marker "$marker" "${identity_options[@]}"
+}
+
 run_replica_stage() {
     local stage=$1
     local input_restart=$2
@@ -127,6 +171,7 @@ run_replica_stage() {
     local replica
     local replica_dir
 
+    check_stage_identity "$stage" "$input_restart" "$stage.in"
     status=$(stage_status "$stage")
     if [[ "$status" == complete ]]; then
         echo "Skipping completed stage: $stage"
@@ -256,6 +301,12 @@ fi
 
 for ((segment = segment_start; segment <= segment_end; segment++)); do
     printf -v segment_name 'production.%03d' "$segment"
+    if (( segment == 1 )); then
+        input_restart=equilibrate.rst7
+    else
+        printf -v input_restart 'production.%03d.rst7' "$((segment - 1))"
+    fi
+    check_stage_identity "$segment_name" "$input_restart" "production.in"
     status=$(stage_status "$segment_name")
     if [[ "$status" == complete ]]; then
         echo "Skipping completed stage: $segment_name ($work_dir)"
@@ -265,11 +316,6 @@ for ((segment = segment_start; segment <= segment_end; segment++)); do
         die "Partial production output detected: $segment_name"
     fi
 
-    if (( segment == 1 )); then
-        input_restart=equilibrate.rst7
-    else
-        printf -v input_restart 'production.%03d.rst7' "$((segment - 1))"
-    fi
 
     group_file="$work_dir/$segment_name.group"
     exchange_log="$work_dir/exchange.$(printf '%03d' "$segment").log"

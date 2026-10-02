@@ -1,12 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+original_args=("$@")
+
 dry_run=0
 if [[ "${1:-}" == "--dry-run" && $# -eq 1 ]]; then
     dry_run=1
 elif [[ $# -ne 0 ]]; then
     echo "Usage: $0 [--dry-run]" >&2
     exit 2
+fi
+
+if (( ! ${dry_run:-0} )) &&
+        [[ ${original_args[0]:-} != -h && ${original_args[0]:-} != --help && ${original_args[0]:-} != --dry-run ]] &&
+        [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
+    exec "${PYTHON:-python3}" helpers/writer_guard.py \
+        --registry "work" --read "inputs" --write "work" -- "$0" "${original_args[@]}"
 fi
 
 die() {
@@ -44,6 +53,7 @@ stage_status() {
 run_window_stage() {
     local stage=$1
     local input_restart=$2
+    check_replica_inputs "$stage" "$input_restart"
     local status
     local replica
 
@@ -82,6 +92,24 @@ run_window_stage() {
     echo "Completed: $stage (work)"
 }
 
+check_replica_inputs() {
+    local stage=$1 input_restart=$2 replica replica_dir
+    while IFS=$'\t' read -r replica _; do
+        if [[ "$replica" == replica ]]; then
+            continue
+        fi
+        replica_dir="work/$replica"
+        identity=(--record "$replica_dir/.$stage.identity.json" --stage "$stage replica $replica"
+            --directory "$replica_dir")
+        if [[ -s "$replica_dir/distance.RST" ]]; then
+            identity+=(--input "$replica_dir/distance.RST" --output "$replica_dir/restraint.$stage.dat")
+        fi
+        "${PYTHON:-python3}" helpers/input_identity.py "${identity[@]}" -- "$amber_engine" \
+            -O -i "$stage.in" -o "$stage.out" -p system.parm7 -c "$input_restart" \
+            -r "$stage.rst7" -x "$stage.nc" -inf "$stage.info"
+    done < work/states.tsv
+}
+
 amber_engine=${AMBER_ENGINE:-pmemd.cuda}
 amber_mpi_engine=${AMBER_MPI_ENGINE:-pmemd.cuda.MPI}
 mpi_launcher=${MPI_LAUNCHER:-mpirun}
@@ -102,6 +130,20 @@ if (( dry_run )); then
     exit 0
 fi
 
+"${PYTHON:-python3}" helpers/input_identity.py --verify work
+source_identity=(--record work/.source.identity.json --stage "replica source inputs"
+    --input work/states.tsv --value="$amber_engine" --value="$amber_mpi_engine")
+for input in inputs/*.in work/[0-9][0-9][0-9]/system.parm7 work/[0-9][0-9][0-9]/system.rst7 \
+        work/[0-9][0-9][0-9]/*.in work/[0-9][0-9][0-9]/distance.RST; do
+    if [[ "$input" == */production.in && -f "${input%.in}.template.in" ]]; then
+        continue
+    fi
+    if [[ -f "$input" ]]; then
+        source_identity+=(--input "$input")
+    fi
+done
+"${PYTHON:-python3}" helpers/input_identity.py "${source_identity[@]}"
+
 for executable in "$amber_engine" "$amber_mpi_engine" "$mpi_launcher"; do
     if ! command -v "$executable" >/dev/null 2>&1; then
         die "Executable not found: $executable"
@@ -117,6 +159,23 @@ run_window_stage minimize system.rst7
 run_window_stage heat minimize.rst7
 run_window_stage equilibrate heat.rst7
 
+production_identity=(--record work/.production-input.identity.json --stage "replica production inputs"
+    --input work/states.tsv --value="$amber_mpi_engine" --output work/production.group --output work/exchange.log)
+while IFS=$'\t' read -r replica _; do
+    if [[ "$replica" == replica ]]; then
+        continue
+    fi
+    replica_dir="work/$replica"
+    production_identity+=(--input "$replica_dir/system.parm7"
+        --input "$replica_dir/equilibrate.rst7" --input "$replica_dir/production.template.in"
+        --output "$replica_dir/production.out" --output "$replica_dir/production.rst7"
+        --output "$replica_dir/production.nc" --output "$replica_dir/production.info")
+    if [[ -s "$replica_dir/distance.RST" ]]; then
+        production_identity+=(--input "$replica_dir/distance.RST" --output "$replica_dir/restraint.production.dat")
+    fi
+done < work/states.tsv
+"${PYTHON:-python3}" helpers/input_identity.py "${production_identity[@]}"
+
 group_file=work/production.group
 : > "$group_file"
 while IFS=$'\t' read -r replica _; do
@@ -128,6 +187,10 @@ while IFS=$'\t' read -r replica _; do
         -e "s|@DUMPAVE@|$replica_dir/restraint.production.dat|g" \
         "$replica_dir/production.template.in" \
         > "$replica_dir/production.in"
+    "${PYTHON:-python3}" helpers/input_identity.py \
+        --record "$replica_dir/.production.engine.identity.json" --stage "production engine input" \
+        --input "$replica_dir/production.in" --input "$replica_dir/distance.RST" \
+        --input "$replica_dir/system.parm7"
     echo "-O -i $replica_dir/production.in -o $replica_dir/production.out -p $replica_dir/system.parm7 -c $replica_dir/equilibrate.rst7 -r $replica_dir/production.rst7 -x $replica_dir/production.nc -inf $replica_dir/production.info" \
         >> "$group_file"
 done < work/states.tsv

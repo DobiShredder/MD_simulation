@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import argparse
+import os
+import sys
 from pathlib import Path
 
 
@@ -69,6 +71,11 @@ def write_prepared_pdb(output_pdb: Path, atom_records: list[str]) -> None:
 
 def main() -> None:
     args = parse_arguments()
+    if (os.environ.get("MD_WRITER_PARENT") != str(os.getppid())
+            or os.environ.get("MD_WRITER_ENTRY") != sys.argv[0]):
+        os.execv(sys.executable, [sys.executable, "helpers/writer_guard.py", "--python-entry",
+                   "--registry", "work", "--read", str(args.input_pdb),
+                   "--write", str(args.output_pdb), "--", *sys.argv])
 
     if not args.input_pdb.is_file():
         raise SystemExit(f"Structure preparation input PDB not found: {args.input_pdb}")

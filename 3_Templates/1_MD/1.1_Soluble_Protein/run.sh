@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+original_args=("$@")
+
 dry_run=0
 preparation_only=0
 production_only=0
@@ -75,6 +77,13 @@ run_stage() {
         return
     fi
 
+    local identity_label=$label
+    if [[ "$stage" == production ]]; then
+        identity_label="production segment $segment_number"
+    fi
+    "${PYTHON:-python3}" helpers/input_identity.py \
+        --record "$marker.identity.json" --stage "$identity_label" --marker "$marker" -- "$@"
+
     local existing=0
     local complete=0
     local output
@@ -108,6 +117,10 @@ run_stage() {
 }
 
 work_dir=${WORK_DIR:-work}
+if (( ! dry_run )) && [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
+    exec "${PYTHON:-python3}" helpers/writer_guard.py \
+        --registry "$work_dir" --write "$work_dir" -- "$0" "${original_args[@]}"
+fi
 topology="$work_dir/system.parm7"
 coordinates="$work_dir/system.rst7"
 resolved="$work_dir/resolved_config.toml"
@@ -147,16 +160,20 @@ if (( ! dry_run )); then
     fi
 fi
 
+if (( ! dry_run )); then
+    "${PYTHON:-python3}" helpers/input_identity.py --verify "$work_dir"
+fi
+
 if (( ! production_only )); then
 run_stage min-solvent preproduction "solvent minimization" "$work_dir" \
     "$engine" -O -i "$work_dir/inputs/min-solvent.in" \
     -o "$work_dir/min-solvent.out" -p "$topology" -c "$coordinates" \
-    -r "$work_dir/min-solvent.rst7" -ref "$coordinates"
+    -r "$work_dir/min-solvent.rst7" -inf "$work_dir/min-solvent.info" -ref "$coordinates"
 
 run_stage min-all preproduction "whole-system minimization" "$work_dir" \
     "$engine" -O -i "$work_dir/inputs/min-all.in" \
     -o "$work_dir/min-all.out" -p "$topology" -c "$work_dir/min-solvent.rst7" \
-    -r "$work_dir/min-all.rst7"
+    -r "$work_dir/min-all.rst7" -inf "$work_dir/min-all.info"
 
 run_stage heat preproduction "NVT heating" "$work_dir" \
     "$engine" -O -i "$work_dir/inputs/heat.in" \
@@ -185,12 +202,23 @@ previous_restart="$work_dir/equilibrate.rst7"
 if (( segment_start > 1 )); then
     printf -v previous_id '%03d' "$((segment_start - 1))"
     previous_restart="$work_dir/$previous_id/production.rst7"
-    if (( ! dry_run )) && [[ ! -s "$previous_restart" || ! -f "$work_dir/$previous_id/.production.complete" ]]; then
+    previous_marker="$work_dir/$previous_id/.production.complete"
+    if (( segment_start == 2 )) && [[ -f "$work_dir/.production.complete.identity.json" ]]; then
+        previous_restart="$work_dir/production.rst7"
+        previous_marker="$work_dir/.production.complete"
+    fi
+    if (( ! dry_run )) && [[ ! -s "$previous_restart" || ! -f "$previous_marker" ]]; then
         die "Previous production segment is incomplete: $work_dir/$previous_id"
     fi
 fi
 for ((segment_number = segment_start; segment_number <= segment_end; segment_number++)); do
-    if (( segments == 1 )); then
+    single_segment_layout=0
+    if (( segments == 1 )) && [[ ! -f "$work_dir/001/.production.complete.identity.json" ]]; then
+        single_segment_layout=1
+    elif (( segment_number == 1 )) && [[ -f "$work_dir/.production.complete.identity.json" ]]; then
+        single_segment_layout=1
+    fi
+    if (( single_segment_layout )); then
         segment_dir=$work_dir
     else
         printf -v segment_id '%03d' "$segment_number"
@@ -210,7 +238,7 @@ done
 
 if (( ! dry_run )); then
     if (( segments == 1 )); then
-        echo "Production output: $work_dir/production.out"
+        echo "Production output: $segment_dir/production.out"
     else
         echo "Production segments: $work_dir/$(printf '%03d' "$segment_start") through $work_dir/$(printf '%03d' "$segment_end")"
     fi

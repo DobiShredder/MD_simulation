@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+original_args=("$@")
+
 if [[ $# -ne 1 ]]; then
     echo "Usage: $0 COMPLEX.pdb" >&2
     exit 2
@@ -13,6 +15,14 @@ die() {
 
 complex_pdb=$1
 work_dir=work
+
+if (( ! ${dry_run:-0} )) &&
+        [[ ${original_args[0]:-} != -h && ${original_args[0]:-} != --help && ${original_args[0]:-} != --dry-run ]] &&
+        [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
+    exec "${PYTHON:-python3}" helpers/writer_guard.py \
+        --registry "work" --read "$complex_pdb" --read "tleap.in" --write "work" -- "$0" "${original_args[@]}"
+fi
+
 
 # A rebuild must not mix new inputs with topology/restart files from an older build.
 if [[ -d "$work_dir" ]]; then

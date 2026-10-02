@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+original_args=("$@")
+
 selected_window=""
 dry_run=0
 while (( $# > 0 )); do
@@ -42,6 +44,11 @@ run_stage() {
         return
     fi
 
+    "${PYTHON:-python3}" helpers/input_identity.py --verify "$window_dir"
+    "${PYTHON:-python3}" helpers/input_identity.py \
+        --record "$window_dir/.$stage.identity.json" --stage "$label" \
+        --directory "$window_dir" --input "$window_dir/restraint.RST" -- "$@"
+
     if [[ -s "$window_dir/$stage.out" && -s "$window_dir/$stage.rst7" ]]; then
         reused_stage_count=$((reused_stage_count + 1))
         if [[ "${#window_dirs[@]}" -eq 1 ]]; then
@@ -77,21 +84,21 @@ run_window() {
     local window_dir=$1
 
     run_stage "$window_dir" min minimization \
-        "$engine" -O -i ../inputs/min.in -o min.out \
+        "$engine" -O -i ../../inputs/min.in -o min.out \
         -p system.parm7 -c seed.rst7 -r min.rst7
 
     run_stage "$window_dir" heat heating \
-        "$engine" -O -i ../inputs/heat.in -o heat.out \
+        "$engine" -O -i ../../inputs/heat.in -o heat.out \
         -p system.parm7 -c min.rst7 -r heat.rst7 \
         -x heat.nc -inf heat.info -ref min.rst7
 
     run_stage "$window_dir" equil equilibration \
-        "$engine" -O -i ../inputs/equil.in -o equil.out \
+        "$engine" -O -i ../../inputs/equil.in -o equil.out \
         -p system.parm7 -c heat.rst7 -r equil.rst7 \
         -x equil.nc -inf equil.info
 
     run_stage "$window_dir" production production \
-        "$engine" -O -i ../inputs/production.in -o production.out \
+        "$engine" -O -i ../../inputs/production.in -o production.out \
         -p system.parm7 -c equil.rst7 -r production.rst7 \
         -x production.nc -inf production.info
 }
@@ -128,6 +135,16 @@ if (( ${#window_dirs[@]} == 0 )); then
     die "No umbrella windows were found in work."
 fi
 
+if (( ! dry_run )) && [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
+    writer_options=()
+    for window_dir in "${window_dirs[@]}"; do
+        writer_options+=(--write "$window_dir")
+    done
+    exec "${PYTHON:-python3}" helpers/writer_guard.py \
+        --registry ../work --read ../work --read inputs "${writer_options[@]}" \
+        -- "$0" "${original_args[@]}"
+fi
+
 for window_dir in "${window_dirs[@]}"; do
     for required_file in system.parm7 seed.rst7 restraint.RST; do
         if [[ ! -s "$window_dir/$required_file" ]]; then
@@ -138,11 +155,6 @@ for window_dir in "${window_dirs[@]}"; do
         die "Production output already exists: $window_dir/production.out"
     fi
 done
-
-if (( ! dry_run )); then
-    mkdir -p work/inputs
-    cp inputs/*.in work/inputs/
-fi
 
 reused_stage_count=0
 if (( ! dry_run )); then

@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+original_args=("$@")
+
 dry_run=0
 preparation_only=0
 production_only=0
@@ -126,6 +128,13 @@ run_stage() {
     fi
 
     if (( ! dry_run )); then
+        local identity_options=()
+        if [[ "$stage" == ratchet ]]; then
+            identity_options+=(--input work/plumed.dat)
+        fi
+        "$python" ../helpers/input_identity.py \
+            --record "$marker.identity.json" --stage "$label" --marker "$marker" \
+            --directory work "${identity_options[@]}" -- "${command[@]}"
         local state
         state=$(stage_state "$marker" "${required[@]}")
         if [[ "$state" == complete ]]; then
@@ -161,6 +170,10 @@ run_stage() {
     echo "Completed: rMD - $label ($prefix)"
 }
 
+if (( ! ${dry_run:-0} )) && [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
+    exec "${PYTHON:-python3}" ../helpers/writer_guard.py \
+        --registry "../work" --read "../work" --write work -- "$0" "${original_args[@]}"
+fi
 engine=$("${PYTHON:-python3}" ../helpers/config_utils.py "../work/resolved_config.toml" engine AMBER_ENGINE pmemd.cuda)
 python=${PYTHON:-python3}
 topology=../work/system.parm7
@@ -181,6 +194,14 @@ else
             die "Shared build input is missing: $input"
         fi
     done
+    "$python" ../helpers/input_identity.py --verify work
+    identity_options=(--input "$topology" --input "$coordinates" --input "$config" --value "$engine")
+    for stage in min-solvent min-all heat equil ratchet; do
+        identity_options+=(--output "work/$stage.out" --output "work/.$stage.complete")
+    done
+    "$python" ../helpers/input_identity.py --record work/.source.identity.json \
+        --stage "rMD source configuration" "${identity_options[@]}"
+
     if [[ -e work/ratchet.out && ! -f work/.ratchet.complete ]]; then
         die "Partial ratchet-MD output detected: work/ratchet"
     fi

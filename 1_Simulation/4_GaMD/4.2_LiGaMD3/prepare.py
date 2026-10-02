@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import argparse
+import os
+import sys
 from pathlib import Path
 
 ResidueKey = tuple[str, str, str]
@@ -32,6 +34,13 @@ def disulfides(lines: list[str]) -> list[tuple[ResidueKey, ResidueKey]]:
 
 def main() -> None:
     args = arguments()
+    if (os.environ.get("MD_WRITER_PARENT") != str(os.getppid())
+            or os.environ.get("MD_WRITER_ENTRY") != sys.argv[0]):
+        os.execv(sys.executable, [sys.executable, "helpers/writer_guard.py", "--python-entry",
+                   "--registry", "work", "--read", str(args.input_pdb),
+                   "--write", str(args.output_pdb),
+                   "--write", str(args.output_pdb.with_name("disulfides.leap")),
+                   "--write", str(args.output_pdb.with_name("system_metadata.tsv")), "--", *sys.argv])
     if not args.input_pdb.is_file():
         raise SystemExit(f"Structure preparation input PDB not found: {args.input_pdb}")
     print(f"Preparing structure: {args.input_pdb}")

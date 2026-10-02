@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import argparse
+import os
+import sys
 from pathlib import Path
 
 
@@ -25,6 +27,14 @@ def write_pdb(path: Path, records: list[str]) -> None:
 
 def main() -> None:
     args = parse_arguments()
+    if (os.environ.get("MD_WRITER_PARENT") != str(os.getppid())
+            or os.environ.get("MD_WRITER_ENTRY") != sys.argv[0]):
+        os.execv(sys.executable, [sys.executable, "helpers/writer_guard.py", "--python-entry",
+                   "--registry", "work", "--read", str(args.input_pdb),
+                   "--write", str(args.protein_pdb),
+                   "--write", str(args.protein_pdb.with_name("bound_mbn.pdb")),
+                   "--write", str(args.protein_pdb.with_name("bound_bnz.pdb")),
+                   "--write", str(args.protein_pdb.with_name("preparation.tsv")), "--", *sys.argv])
     if not args.input_pdb.is_file():
         raise SystemExit(f"Structure preparation input PDB not found: {args.input_pdb}")
     print(f"Preparing structure: {args.input_pdb}")

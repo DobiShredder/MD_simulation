@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+original_args=("$@")
+
 dry_run=0
 selected_block=""
 show_help() {
@@ -59,6 +61,10 @@ esac
 AMBER_ENGINE=$("${PYTHON:-python3}" helpers/config_utils.py "$WORK_DIR/resolved_config.toml" engine AMBER_ENGINE pmemd.cuda pmemd sander)
 export AMBER_ENGINE
 export CPPTRAJ=${CPPTRAJ:-cpptraj}
+if (( ! ${dry_run:-0} )) && [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
+    exec "${PYTHON:-python3}" helpers/writer_guard.py \
+        --registry "$WORK_DIR" --write "$WORK_DIR" -- "$0" "${original_args[@]}"
+fi
 python=${PYTHON:-python3}
 work_manager=${WESTPA_WORK_MANAGER:-serial}
 workers=${WESTPA_WORKERS:-1}
@@ -91,6 +97,20 @@ if (( ! dry_run )); then
     done
 fi
 
+if (( ! dry_run )); then
+    "${PYTHON:-python3}" helpers/input_identity.py --westpa-records "$WORK_DIR"
+    "${PYTHON:-python3}" helpers/input_identity.py \
+        --record "$WORK_DIR/.we-input.identity.json" --stage "WESTPA immutable inputs" \
+        --input "$WORK_DIR/common_files/system.parm7" --input "$WORK_DIR/common_files/reference.rst7" \
+        --input "$WORK_DIR/bstates/basis.rst7" --input "$WORK_DIR/bstates/bstates.txt" \
+        --input "$WORK_DIR/tstate.file" --input "$WORK_DIR/initial_walkers.txt" \
+        --input "$WORK_DIR/basis_pcoord.txt" --input "$WORK_DIR/progress_coordinate.mask" \
+        --input "$WEST_SIM_ROOT/westpa_scripts/runseg.sh" \
+    --input "$WEST_SIM_ROOT/westpa_scripts/get_pcoord.sh" --input "$WEST_SIM_ROOT/westpa_scripts/calc_pcoord.sh" \
+    --input "$WORK_DIR/inputs/segment.in.template" --input "$WORK_DIR/configs/west.001.cfg" \
+        --output "$WORK_DIR/west.h5" --output "$WORK_DIR/west.init.log"
+fi
+
 found=0
 for config in "$WORK_DIR"/configs/west.[0-9][0-9][0-9].cfg; do
     if [[ ! -s "$config" ]]; then
@@ -105,6 +125,12 @@ for config in "$WORK_DIR"/configs/west.[0-9][0-9][0-9].cfg; do
     fi
     found=$((found + 1))
     marker="$WORK_DIR/.block.$block_text.complete"
+    if (( ! dry_run )); then
+        "$python" helpers/input_identity.py \
+            --record "$marker.identity.json" --stage "WE block $block_text" --marker "$marker" \
+            --input "$config" --value="$AMBER_ENGINE" --value="$CPPTRAJ" \
+            --output "$WORK_DIR/west.$block_text.log"
+    fi
     if [[ -f "$marker" ]]; then
         echo "Skipping completed WE block $block_text: $WORK_DIR/west.h5"
         continue

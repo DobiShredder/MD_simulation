@@ -110,3 +110,23 @@ The default is serial `pmemd.cuda` on one GPU, with only the executable exposed
 through `AMBER_ENGINE`. Configure CPU workers and system-specific WESTPA options
 in `3_Templates/6_WE/6.1_WESTPA_AMBER`. Analysis reports total weight, effective
 walker count, RMSD range, bin occupancy, and target arrivals.
+
+### 동시 실행과 input 변경
+
+Build와 run은 `work.writers/` registry를 공유합니다. 같은 output/state를 쓰는 작업은 동시에 실행하지 않습니다. `prepare.py`가 있는 경우 structure를 생성하는 작업도 input을 읽는 build와 충돌하면 거부합니다. 로컬 manager의 callback은 검증된 manager 보호를 이어받습니다. 단독 callback은 segment와 progress-coordinate output별 보호를 획득합니다.
+
+Build와 WESTPA init/run은 topology, basis/reference, AMBER input, `west.cfg`와 progress-coordinate callback을 SHA256으로 비교합니다. 변경된 input이나 identity가 없는 기존 결과는 보존하고 거부합니다. `init.sh --reset`도 input 검사를 먼저 수행하며 동일 input일 때만 기존 reset 동작을 허용합니다. 변경된 계산은 새 tutorial copy에서 시작합니다. WESTPA가 weight, resampling과 HDF5 state를 관리합니다.
+
+정상 종료, command 실패와 INT/TERM에서는 자식 process의 종료를 확인한 뒤 자기 lock만 해제합니다. SIGKILL이나 node 장애로 남은 lock은 자동 삭제하지 않습니다. Error에 표시된 lock과 `owner.json`의 host, PID, command, scope를 확인하고 scheduler와 해당 host에서 모든 writer와 자식 process가 종료됐는지 확인한 뒤 그 lock directory만 수동 제거합니다. PID가 로컬에서 보이지 않는다는 이유만으로 제거하지 않습니다. `.gate/`도 같은 확인이 필요합니다.
+
+지원하는 `--dry-run`과 `--help`는 보호나 identity 파일을 생성하지 않습니다. 진행 중인 work를 이동하거나 identity를 수정해 재사용하지 않습니다. 보호는 로컬 filesystem과 로컬 자식 process로 검증했으며 network filesystem, remote MPI와 다른 node의 writer 종료는 미검증입니다.
+
+### Concurrent runs and input changes
+
+Build and run share the `work.writers/` registry and reject concurrent writers to the same output/state. Where present, `prepare.py` also rejects structure writes that overlap an active build reader. Local manager callbacks inherit a verified manager writer. Standalone callbacks acquire protection for their segment and progress-coordinate outputs.
+
+Build and WESTPA init/run compare topology, basis/reference, AMBER inputs, `west.cfg` and progress-coordinate callbacks with SHA256. Changed inputs and results without identity records are preserved and rejected. `init.sh --reset` validates inputs before its existing reset behavior and accepts only matching inputs. Start a changed calculation in a new tutorial copy. WESTPA manages weights, resampling and HDF5 state.
+
+Normal exit, command failure and INT/TERM release only the owned lock after child termination is verified. Locks left by SIGKILL or node failure are retained. Inspect the reported lock and its `owner.json` host, PID, command and scopes; confirm through the scheduler and owning host that all writers and children stopped before manually removing only that lock directory. A PID missing locally is not sufficient. Apply the same checks to `.gate/`.
+
+Supported `--dry-run` and `--help` do not create writer or identity files. Do not move active work trees or edit identities to reuse results. Protection was tested on a local filesystem with local child processes; network filesystems, remote MPI and termination of writers on other nodes remain unverified.

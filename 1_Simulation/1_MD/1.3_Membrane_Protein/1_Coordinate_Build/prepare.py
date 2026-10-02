@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import argparse
+import os
+import sys
 import re
 from pathlib import Path
 
@@ -265,6 +267,12 @@ def build_output(
 
 def main() -> None:
     args = parse_arguments()
+    if (os.environ.get("MD_WRITER_PARENT") != str(os.getppid())
+            or os.environ.get("MD_WRITER_ENTRY") != sys.argv[0]):
+        os.execv(sys.executable, [sys.executable, "helpers/writer_guard.py", "--python-entry",
+                   "--registry", "..", "--read", str(args.opm_pdb),
+                   "--read", str(args.opm_pdb.with_name("3EFF-opm.pdb")),
+                   "--write", str(args.output_pdb), "--", *sys.argv])
     if not args.opm_pdb.is_file():
         raise SystemExit(f"Structure preparation OPM PDB not found: {args.opm_pdb}")
     print(f"Preparing structure: {args.opm_pdb}")

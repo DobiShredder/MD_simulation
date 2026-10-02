@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+original_args=("$@")
+
 source ./helpers/grompp_utils.bash
 
 method=rest2
@@ -91,6 +93,13 @@ die() {
 }
 
 work_dir=${WORK_DIR:-work}
+if (( ! ${dry_run:-0} )) && [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
+    exec "${PYTHON:-python3}" helpers/writer_guard.py \
+        --registry "$work_dir" --write "$work_dir" -- "$0" "${original_args[@]}"
+fi
+if (( ! dry_run )); then
+    "${PYTHON:-python3}" helpers/input_identity.py --verify "$work_dir"
+fi
 states="$work_dir/states.tsv"
 resolved="$work_dir/resolved_config.toml"
 gmx=$("${PYTHON:-python3}" helpers/config_utils.py "$resolved" equilibration_engine GROMACS gmx)
@@ -202,9 +211,45 @@ wait_for_batch() {
     fi
 }
 
+check_stage_identity() {
+    local stage=$1
+    local previous=$2
+    local input_name=$3
+    local marker="$work_dir/.$stage.complete"
+    local identity_options=(--input "$states" --value="$gmx" --value="$gmx_mpi"
+        --value "${GROMACS_OPTIONS:-}")
+    if [[ "$stage" == production.* ]]; then
+        identity_options+=(--value "$exchange_interval")
+    fi
+    local replica replica_dir input_coordinates suffix
+    while IFS=$'\t' read -r replica _; do
+        if [[ "$replica" == replica ]]; then
+            continue
+        fi
+        replica_dir="$work_dir/$replica"
+        input_coordinates="$replica_dir/$previous.gro"
+        if [[ "$previous" == system ]]; then
+            input_coordinates="$work_dir/system.gro"
+        fi
+        identity_options+=(--input "$replica_dir/$input_name" --input "$replica_dir/topol.top" --input "$input_coordinates")
+        if [[ "$previous" != system && "$previous" != minimize ]]; then
+            identity_options+=(--input "$replica_dir/$previous.cpt")
+        fi
+        if [[ "$stage" == production.* ]]; then
+            identity_options+=(--input "$replica_dir/plumed.dat")
+        fi
+        for suffix in gro cpt log tpr edr xtc grompp.log mdrun.log; do
+            identity_options+=(--output "$replica_dir/$stage.$suffix")
+        done
+    done < "$states"
+    "${PYTHON:-python3}" helpers/input_identity.py \
+        --record "$marker.identity.json" --stage "$stage" --marker "$marker" "${identity_options[@]}"
+}
+
 run_preproduction_stage() {
     local stage=$1
     local previous=$2
+    check_stage_identity "$stage" "$previous" "$stage.mdp"
     local marker="$work_dir/.$stage.complete"
     local partial_output=""
     local requires_checkpoint=1
@@ -307,6 +352,12 @@ fi
 
 for ((segment = segment_start; segment <= segment_end; segment++)); do
     printf -v segment_name 'production.%03d' "$segment"
+    if (( segment == 1 )); then
+        previous=equilibrate
+    else
+        printf -v previous 'production.%03d' "$((segment - 1))"
+    fi
+    check_stage_identity "$segment_name" "$previous" production.mdp
     marker="$work_dir/.$segment_name.complete"
     production_state=missing
     for replica_dir in "${replica_dirs[@]}"; do
@@ -325,11 +376,6 @@ for ((segment = segment_start; segment <= segment_end; segment++)); do
     fi
     if [[ "$production_state" == partial ]]; then
         die "Partial production output detected: $replica_dir/$segment_name"
-    fi
-    if (( segment == 1 )); then
-        previous=equilibrate
-    else
-        printf -v previous 'production.%03d' "$((segment - 1))"
     fi
     while IFS=$'\t' read -r replica _; do
         if [[ "$replica" == replica ]]; then

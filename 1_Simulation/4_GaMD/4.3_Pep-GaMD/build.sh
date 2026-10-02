@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+original_args=("$@")
+
 if [[ $# -ne 1 ]]; then
     echo "Usage: $0 SH3-PEPTIDE.pdb" >&2
     exit 2
@@ -30,6 +32,14 @@ metadata=$(dirname "$input_pdb")/system_metadata.tsv
 tleap=${TLEAP:-tleap}
 python=${PYTHON:-python3}
 work_dir=work
+
+if (( ! ${dry_run:-0} )) &&
+        [[ ${original_args[0]:-} != -h && ${original_args[0]:-} != --help && ${original_args[0]:-} != --dry-run ]] &&
+        [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
+    exec "${PYTHON:-python3}" helpers/writer_guard.py \
+        --registry "work" --read "$1" --read "$metadata" --read "inputs" --write "work" -- "$0" "${original_args[@]}"
+fi
+
 
 # A rebuild must not mix new inputs with topology/restart files from an older build.
 if [[ -d "$work_dir" ]]; then

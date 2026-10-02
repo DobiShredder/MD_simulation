@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+original_args=("$@")
+
 dry_run=0
 selected_segment=""
 segment_range=""
@@ -65,6 +67,10 @@ if [[ -n "$selected_segment" && -n "$segment_range" ]]; then
 fi
 
 work_dir=${WORK_DIR:-work}
+if (( ! ${dry_run:-0} )) && [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
+    exec "${PYTHON:-python3}" helpers/writer_guard.py \
+        --registry "$work_dir" --write "$work_dir" -- "$0" "${original_args[@]}"
+fi
 python=${PYTHON:-python3}
 plumed=${PLUMED:-plumed}
 read -r -a amber_options <<< "${AMBER_OPTIONS:-}"
@@ -178,6 +184,9 @@ run_preproduction_stage() {
         command+=(-ref "$reference_restart")
     fi
     if (( ! dry_run )); then
+        "$python" helpers/input_identity.py \
+            --record "$marker.identity.json" --stage "$stage" --marker "$marker" \
+            --directory "$work_dir" -- "${command[@]}"
         state=$(stage_state "$marker" "${required[@]}")
         if [[ "$state" == complete ]]; then
             echo "Skipping completed stage: $stage ($work_dir)"
@@ -241,7 +250,13 @@ run_production_segment() {
     local output
 
     printf -v segment_name '%03d' "$segment_index"
-    if [[ "$segments" -eq 1 ]]; then
+    local single_segment_layout=0
+    if [[ "$segments" -eq 1 && ! -f "$work_dir/001/.production.complete.identity.json" ]]; then
+        single_segment_layout=1
+    elif [[ "$segment_index" -eq 1 && -f "$work_dir/.production.complete.identity.json" ]]; then
+        single_segment_layout=1
+    fi
+    if (( single_segment_layout )); then
         segment_dir=$work_dir
         prefix=""
         topology_path=system.parm7
@@ -255,7 +270,12 @@ run_production_segment() {
         else
             previous=$((segment_index - 1))
             printf -v previous_name '%03d' "$previous"
+            previous_dir="$work_dir/$previous_name"
             input_restart="../$previous_name/production.rst7"
+            if [[ "$previous" -eq 1 && -f "$work_dir/.production.complete.identity.json" ]]; then
+                previous_dir=$work_dir
+                input_restart=../production.rst7
+            fi
         fi
     fi
     marker="$segment_dir/.production.complete"
@@ -265,6 +285,15 @@ run_production_segment() {
     )
 
     if (( ! dry_run )); then
+        local identity_options=(--input "$work_dir/system.parm7"
+            --input "$work_dir/inputs/production.in.template" --input "$segment_dir/$input_restart"
+            --value="$engine" --value="$seed_setting" --value="$segment_index" --value "${AMBER_OPTIONS:-}")
+        for output in "${required[@]}"; do
+            identity_options+=(--output "$output")
+        done
+        "$python" helpers/input_identity.py \
+            --record "$marker.identity.json" --stage "production segment $segment_name" \
+            --marker "$marker" "${identity_options[@]}"
         mkdir -p "$segment_dir"
         state=$(stage_state "$marker" "${required[@]}")
         if [[ "$state" == complete ]]; then
@@ -274,10 +303,10 @@ run_production_segment() {
         if [[ "$state" == partial ]]; then
             die "Partial production segment detected: $segment_dir"
         fi
-        if [[ "$segment_index" -gt 1 && ! -f "$work_dir/$previous_name/.production.complete" ]]; then
+        if [[ "$segment_index" -gt 1 && ! -f "$previous_dir/.production.complete" ]]; then
             die "Previous production segment is incomplete: $work_dir/$previous_name"
         fi
-        if [[ "$segment_index" -gt 1 && ! -s "$work_dir/$previous_name/production.rst7" ]]; then
+        if [[ "$segment_index" -gt 1 && ! -s "$previous_dir/production.rst7" ]]; then
             die "Previous production restart not found: $work_dir/$previous_name/production.rst7"
         fi
         if [[ "$segment_index" -gt 1 ]]; then
@@ -306,6 +335,10 @@ run_production_segment() {
             generated_plumed+=(--restart)
         fi
         "${generated_plumed[@]}"
+        "$python" helpers/input_identity.py \
+            --record "$segment_dir/.production.engine.identity.json" \
+            --stage "generated input for production segment $segment_name" \
+            --input "$segment_dir/production.in" --input "$segment_dir/plumed.dat"
     fi
 
     run_command "production segment $segment_name/$segments" "$segment_dir" "$segment_dir/production.out" \
@@ -331,6 +364,15 @@ run_production_segment() {
 }
 
 if (( ! dry_run )); then
+    "$python" helpers/input_identity.py --verify "$work_dir"
+    "$python" helpers/input_identity.py \
+        --record "$work_dir/.bias-source.identity.json" --stage "bias generator input" \
+        --input "$work_dir/system.parm7" --input "$work_dir/system.rst7" \
+        --input "$work_dir/inputs/production.in.template" --input "$work_dir/funnel_context.toml" --input "$work_dir/funnel-reference.pdb" \
+        --config "$config_file" --section funnel --section metadynamics \
+        --run-key temperature --run-key trajectory_interval_steps --run-key random_seed \
+        --output "$work_dir/HILLS" --output "$work_dir/KERNELS" --output "$work_dir/COLVAR" \
+        --output "$work_dir/opes.state" --output "$work_dir/DELTAFS" --output "$work_dir/FUNNEL_GRID"
     for executable in "$engine" "$plumed"; do
         if ! command -v "$executable" >/dev/null 2>&1; then
             die "Executable not found: $executable"

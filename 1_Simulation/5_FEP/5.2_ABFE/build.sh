@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+original_args=("$@")
+
 if [[ $# -ne 2 ]]; then
     echo "Usage: $0 COMPLEX.pdb JZ4_ideal.sdf" >&2
     exit 2
@@ -29,6 +31,14 @@ complex_pdb=$1
 ligand_sdf=$2
 structure_dir=$(dirname "$complex_pdb")
 work_dir=work
+
+if (( ! ${dry_run:-0} )) &&
+        [[ ${original_args[0]:-} != -h && ${original_args[0]:-} != --help && ${original_args[0]:-} != --dry-run ]] &&
+        [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
+    exec "${PYTHON:-python3}" helpers/writer_guard.py \
+        --registry "work" --read "$1" --read "$structure_dir" --read "$ligand_sdf" --read "inputs" --write "work" -- "$0" "${original_args[@]}"
+fi
+
 
 # A rebuild must not mix new inputs with topology/restart files from an older build.
 if [[ -d "$work_dir" ]]; then

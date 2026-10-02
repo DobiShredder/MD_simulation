@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+original_args=("$@")
+
 dry_run=0
 preparation_only=0
 production_only=0
@@ -58,6 +60,13 @@ die() {
 }
 
 work_dir=${WORK_DIR:-work}
+if (( ! ${dry_run:-0} )) && [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
+    exec "${PYTHON:-python3}" helpers/writer_guard.py \
+        --registry "$work_dir" --write "$work_dir" -- "$0" "${original_args[@]}"
+fi
+if (( ! dry_run )); then
+    "${PYTHON:-python3}" helpers/input_identity.py --verify "$work_dir"
+fi
 states_file="$work_dir/states.tsv"
 amber_engine=$("${PYTHON:-python3}" helpers/config_utils.py "$work_dir/resolved_config.toml" engine AMBER_ENGINE pmemd.cuda)
 amber_mpi_engine=$("${PYTHON:-python3}" helpers/config_utils.py "$work_dir/resolved_config.toml" mpi_engine AMBER_MPI_ENGINE pmemd.cuda.MPI)
@@ -99,6 +108,44 @@ if (( ! dry_run )); then
 fi
 
 source helpers/completion_helpers.sh
+
+check_stage_identity() {
+    local stage=$1
+    local input_restart=$2
+    local input_name=$3
+    local record_suffix=${4:-complete}
+    local marker="$work_dir/.$stage.complete"
+    local identity_options=(--input "$states_file" --input "$work_dir/system.parm7"
+        --value="$amber_engine" --value="$amber_mpi_engine" --value "${AMBER_OPTIONS:-}")
+    local replica replica_dir input_coordinates suffix
+    while IFS=$'\t' read -r replica _; do
+        if [[ "$replica" == replica ]]; then
+            continue
+        fi
+        replica_dir="$work_dir/$replica"
+        input_coordinates="$replica_dir/$input_restart"
+        if [[ "$input_restart" == system.rst7 ]]; then
+            input_coordinates="$work_dir/system.rst7"
+        fi
+        identity_options+=(--input "$replica_dir/$input_name" --input "$input_coordinates")
+        if [[ -s "$replica_dir/distance.RST" ]]; then
+            identity_options+=(--input "$replica_dir/distance.RST")
+        fi
+        for suffix in out rst7 nc info; do
+            identity_options+=(--output "$replica_dir/$stage.$suffix")
+        done
+        identity_options+=(--output "$replica_dir/restraint.$stage.dat" --output "$replica_dir/gamd.$stage.log")
+        if [[ "$stage" == production.* ]]; then
+            identity_options+=(--input "$replica_dir/$input_gamd_state" --output "$replica_dir/$stage.gamd.rst")
+        fi
+    done < "$states_file"
+    if [[ "$stage" == production.* ]]; then
+        identity_options+=(--output "$work_dir/exchange.${stage#production.}.log")
+    fi
+    "${PYTHON:-python3}" helpers/input_identity.py \
+        --record "$work_dir/.$stage.$record_suffix.identity.json" --stage "$stage" \
+        --marker "$marker" "${identity_options[@]}"
+}
 
 run_stage() {
     local stage=$1
@@ -143,6 +190,7 @@ run_stage_if_needed() {
     local completed
 
     local status
+    check_stage_identity "$stage" "$input_restart" "$stage.in"
     status=$(stage_state "$stage")
     if [[ "$status" == complete ]]; then
         echo "Skipping completed stage: $stage ($work_dir)"
@@ -173,6 +221,23 @@ prepare_common_gamd_state() {
         "$reference_dir/gamd-restart.dat"
     )
     local completion_marker="$work_dir/.gamd_prepare.complete"
+    local identity_options=(--input "$work_dir/system.parm7"
+        --input "$reference_dir/gamd_prepare.in" --input "$reference_dir/equilibrate.rst7"
+        --value="$gamd_reference_replica" --value="$amber_engine" --value "${AMBER_OPTIONS:-}")
+    for output in "${required[@]}"; do
+        identity_options+=(--output "$output")
+    done
+    while IFS=$'\t' read -r replica _; do
+        if [[ "$replica" != replica ]]; then
+            identity_options+=(--input "$work_dir/$replica/equilibrate.rst7"
+                --output "$work_dir/$replica/production_start.rst7"
+            --output "$work_dir/$replica/gamd-restart.dat" --output "$work_dir/$replica/prepared.gamd.rst")
+        fi
+    done < "$states_file"
+    "${PYTHON:-python3}" helpers/input_identity.py \
+        --record "$completion_marker.identity.json" --stage gamd_prepare \
+        --marker "$completion_marker" "${identity_options[@]}"
+
     local existing=0
     local complete=0
     for output in "${required[@]}"; do
@@ -242,6 +307,7 @@ prepare_common_gamd_state() {
             cp "$reference_dir/gamd-restart.dat" "$replica_dir/gamd-restart.dat"
         fi
         cp "$replica_dir/equilibrate.rst7" "$replica_dir/production_start.rst7"
+        cp "$replica_dir/gamd-restart.dat" "$replica_dir/prepared.gamd.rst"
         if ! cmp -s "$reference_dir/gamd-restart.dat" "$replica_dir/gamd-restart.dat"; then
             die "Could not place the shared GaMD state in replica: $replica_dir"
         fi
@@ -342,6 +408,17 @@ fi
 
 for segment in $(seq "$segment_start" "$segment_end"); do
     segment_name=$(printf 'production.%03d' "$segment")
+    if [[ "$segment" -eq 1 ]]; then
+        input_restart=production_start.rst7
+    else
+        input_restart=$(printf 'production.%03d.rst7' "$((segment - 1))")
+    fi
+    if [[ "$segment" -eq 1 ]]; then
+        input_gamd_state=prepared.gamd.rst
+    else
+        printf -v input_gamd_state 'production.%03d.gamd.rst' "$((segment - 1))"
+    fi
+    check_stage_identity "$segment_name" "$input_restart" "production.template.in"
     status=$(stage_state "$segment_name" --require-gamd-log)
     if [[ "$status" == complete ]]; then
         echo "Skipping completed stage: $segment_name ($work_dir)"
@@ -350,16 +427,17 @@ for segment in $(seq "$segment_start" "$segment_end"); do
     if [[ "$status" == partial ]]; then
         die "Partial production output detected and retained: $work_dir/$segment_name"
     fi
-    if [[ "$segment" -eq 1 ]]; then
-        input_restart=production_start.rst7
-    else
-        input_restart=$(printf 'production.%03d.rst7' "$((segment - 1))")
-    fi
 
     group_file="$work_dir/$segment_name.group"
     exchange_log="$work_dir/exchange.$(printf '%03d' "$segment").log"
     write_group_file "$segment" "$input_restart" "$group_file"
+    check_stage_identity "$segment_name" "$input_restart" "$segment_name.in" engine
 
+    while IFS=$'	' read -r replica _; do
+        if [[ "$replica" != replica ]]; then
+            cp "$work_dir/$replica/$input_gamd_state" "$work_dir/$replica/gamd-restart.dat"
+        fi
+    done < "$states_file"
     echo "Running GaREUS production segment $segment/$production_segments."
 
     if ! "$mpi_launcher" \
@@ -381,6 +459,14 @@ for segment in $(seq "$segment_start" "$segment_end"); do
     if [[ ! -s "$exchange_log" ]]; then
         die "$segment_name exchange log was not created: $exchange_log"
     fi
+    while IFS=$'	' read -r replica _; do
+        if [[ "$replica" != replica ]]; then
+            if [[ ! -s "$work_dir/$replica/gamd-restart.dat" ]]; then
+                die "GaMD continuation state missing: $work_dir/$replica/gamd-restart.dat"
+            fi
+            cp "$work_dir/$replica/gamd-restart.dat" "$work_dir/$replica/$segment_name.gamd.rst"
+        fi
+    done < "$states_file"
     touch "$work_dir/.$segment_name.complete"
     echo "Completed: $segment_name ($work_dir)"
 done

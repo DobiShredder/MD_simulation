@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+original_args=("$@")
+
 config=config.toml
 dry_run=0
 
@@ -44,6 +46,10 @@ die() {
 
 input=$1
 work_dir=${WORK_DIR:-work}
+if (( ! ${dry_run:-0} )) && [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
+    exec "${PYTHON:-python3}" helpers/writer_guard.py \
+        --registry "$work_dir" --write "$work_dir" -- "$0" "${original_args[@]}"
+fi
 tleap=${TLEAP:-tleap}
 python=${PYTHON:-python3}
 build_tmp=""
@@ -108,6 +114,26 @@ for executable in "$engine" "$cpptraj"; do
     fi
 done
 
+"$python" helpers/input_identity.py --verify "$work_dir"
+we_source_files=$("$python" - "$config" <<'PY'
+import sys
+sys.path.insert(0, "helpers")
+from pathlib import Path
+from config_utils import load_config
+config = load_config(Path(sys.argv[1]))["weighted_ensemble"]
+print(config["basis_state_file"])
+print(config["target_state_file"])
+PY
+)
+identity_options=(--input "$input" --input "$config")
+while IFS= read -r source_file; do
+    identity_options+=(--input "$source_file")
+done <<< "$we_source_files"
+"$python" helpers/input_identity.py --record "$work_dir/.build-source.identity.json" \
+    --stage "WE basis build source" "${identity_options[@]}" \
+    --output "$work_dir/.system.complete" --output "$work_dir/.basis.complete" \
+    --output "$work_dir/system.parm7" --output "$work_dir/system.rst7"
+
 if [[ -f "$work_dir/.system.complete" ]]; then
     for required in "$work_dir/system.parm7" "$work_dir/system.rst7" "$work_dir/common_files/system.parm7" "$work_dir/source_config.toml"; do
         if [[ ! -s "$required" ]]; then
@@ -164,6 +190,10 @@ fi
 
 mkdir -p "$work_dir/common_files" "$work_dir/bstates"
 
+"$python" helpers/input_identity.py \
+    --record "$work_dir/.minimize.complete.identity.json" --stage "WE basis minimize" \
+    --marker "$work_dir/.minimize.complete" --directory "$work_dir" -- "$engine" -O -i inputs/minimize.in -o minimize.out -p system.parm7 -c system.rst7 -r minimize.rst7
+
 if [[ ! -f "$work_dir/.minimize.complete" ]]; then
     for output in "$work_dir/minimize.out" "$work_dir/minimize.rst7"; do
         if [[ -e "$output" ]]; then
@@ -186,6 +216,10 @@ else
     echo "Skipping completed WE basis-state minimization: $work_dir"
 fi
 cp "$work_dir/minimize.rst7" "$work_dir/common_files/reference.rst7"
+
+"$python" helpers/input_identity.py \
+    --record "$work_dir/.heat.complete.identity.json" --stage "WE basis heat" \
+    --marker "$work_dir/.heat.complete" --directory "$work_dir" -- "$engine" -O -i inputs/heat.in -o heat.out -p system.parm7 -c minimize.rst7 -r heat.rst7 -x heat.nc -inf heat.info -ref minimize.rst7
 
 if [[ ! -f "$work_dir/.heat.complete" ]]; then
     for output in "$work_dir/heat.out" "$work_dir/heat.rst7" "$work_dir/heat.info" "$work_dir/heat.nc"; do
@@ -211,6 +245,10 @@ elif [[ ! -s "$work_dir/heat.rst7" || ! -s "$work_dir/heat.nc" ]]; then
 else
     echo "Skipping completed WE basis-state heating: $work_dir"
 fi
+
+"$python" helpers/input_identity.py \
+    --record "$work_dir/.equilibrate.complete.identity.json" --stage "WE basis equilibrate" \
+    --marker "$work_dir/.equilibrate.complete" --directory "$work_dir" -- "$engine" -O -i inputs/equilibrate.in -o equilibrate.out -p system.parm7 -c heat.rst7 -r bstates/basis.rst7 -x equilibrate.nc -inf equilibrate.info
 
 if [[ ! -f "$work_dir/.equilibrate.complete" ]]; then
     for output in "$work_dir/equilibrate.out" "$work_dir/equilibrate.info" +        "$work_dir/equilibrate.nc" "$work_dir/bstates/basis.rst7"; do

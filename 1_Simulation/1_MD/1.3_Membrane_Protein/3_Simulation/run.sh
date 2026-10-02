@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+original_args=("$@")
+
 dry_run=0
 if [[ "${1:-}" == "--dry-run" && $# -eq 1 ]]; then
     dry_run=1
@@ -28,6 +30,9 @@ run_stage() {
         return
     fi
 
+    "${PYTHON:-python3}" ../helpers/input_identity.py \
+        --record ".$output.identity.json" --stage "$label" -- "$@"
+
     if [[ -s "$output" && -s "$restart" ]]; then
         echo "Skipping completed stage: $label (work/$output)"
         return
@@ -52,6 +57,13 @@ run_stage() {
     echo "Completed: $label (work/$output)"
 }
 
+if (( ! ${dry_run:-0} )) &&
+        [[ ${original_args[0]:-} != -h && ${original_args[0]:-} != --help && ${original_args[0]:-} != --dry-run ]] &&
+        [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
+    exec "${PYTHON:-python3}" helpers/writer_guard.py \
+        --registry ".." --read "inputs" --read "../2_Topology_Build/work" --write "work" -- "$0" "${original_args[@]}"
+fi
+
 engine=${AMBER_ENGINE:-pmemd.cuda}
 topology=../2_Topology_Build/work/system.parm7
 coordinates=../2_Topology_Build/work/system.rst7
@@ -67,6 +79,15 @@ if (( ! dry_run )) && [[ -e work/production.out ]]; then
 fi
 
 if (( ! dry_run )); then
+    "${PYTHON:-python3}" helpers/input_identity.py --verify work
+    source_options=()
+    for source_input in inputs/*.in; do
+        source_options+=(--input "$source_input")
+    done
+    source_options+=(--input ../2_Topology_Build/work/system.parm7 --input ../2_Topology_Build/work/system.rst7)
+    "${PYTHON:-python3}" helpers/input_identity.py \
+        --record work/.source.identity.json --stage "run source inputs" \
+        "${source_options[@]}" --value="$engine"
     mkdir -p work/inputs
     cp "$topology" work/system.parm7
     cp "$coordinates" work/system.rst7

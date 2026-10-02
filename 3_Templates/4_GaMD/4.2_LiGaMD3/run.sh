@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+original_args=("$@")
+
 show_help() {
     cat <<'EOF'
 Usage: ./run.sh [--preparation-only | --production-only] [--segments START-END] [--dry-run]
@@ -53,6 +55,10 @@ die() {
 }
 
 work_dir=${WORK_DIR:-work}
+if (( ! ${dry_run:-0} )) && [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
+    exec "${PYTHON:-python3}" helpers/writer_guard.py \
+        --registry "$work_dir" --write "$work_dir" -- "$0" "${original_args[@]}"
+fi
 resolved="$work_dir/resolved_config.toml"
 engine=$("${PYTHON:-python3}" helpers/config_utils.py "$resolved" engine AMBER_ENGINE pmemd.cuda)
 read -r -a amber_options <<< "${AMBER_OPTIONS:-}"
@@ -150,6 +156,19 @@ run_stage() {
         return
     fi
 
+    local identity_options=()
+    if [[ -n "$previous_gamd_state" ]]; then
+        identity_options+=(--input "$previous_gamd_state")
+    fi
+    local identity_label=$label
+    if [[ "$stage" == production ]]; then
+        identity_label="production segment $segment_number"
+    fi
+    "${PYTHON:-python3}" helpers/input_identity.py \
+        --record "$marker.identity.json" --stage "$identity_label" --marker "$marker" \
+        --directory "$directory" --output "$prefix.gamd.rst" \
+        "${identity_options[@]}" -- "${command[@]}"
+
     mkdir -p "$directory"
     local state
     state=$(stage_state "$marker" "${required[@]}")
@@ -186,6 +205,10 @@ run_stage() {
 
 topology_path=system.parm7
 input_prefix=inputs
+if (( ! dry_run )); then
+    "${PYTHON:-python3}" helpers/input_identity.py --verify "$work_dir"
+fi
+
 if (( ! production_only )); then
 run_stage minimize preproduction "$work_dir" "$input_prefix/minimize.in" system.rst7
 run_stage heat preproduction "$work_dir" "$input_prefix/heat.in" minimize.rst7 minimize.rst7
@@ -209,12 +232,24 @@ if (( segment_start > 1 )); then
     printf -v previous_id '%03d' "$((segment_start - 1))"
     previous_restart="$work_dir/$previous_id/production.rst7"
     previous_gamd_state="$work_dir/$previous_id/production.gamd.rst"
-    if (( ! dry_run )) && [[ ! -s "$previous_restart" || ! -s "$previous_gamd_state" || ! -f "$work_dir/$previous_id/.production.complete" ]]; then
+    previous_marker="$work_dir/$previous_id/.production.complete"
+    if (( segment_start == 2 )) && [[ -f "$work_dir/.production.complete.identity.json" ]]; then
+        previous_restart="$work_dir/production.rst7"
+        previous_gamd_state="$work_dir/production.gamd.rst"
+        previous_marker="$work_dir/.production.complete"
+    fi
+    if (( ! dry_run )) && [[ ! -s "$previous_restart" || ! -s "$previous_gamd_state" || ! -f "$previous_marker" ]]; then
         die "Previous production segment is incomplete: $work_dir/$previous_id"
     fi
 fi
 for ((segment_number = segment_start; segment_number <= segment_end; segment_number++)); do
-    if (( segments == 1 )); then
+    single_segment_layout=0
+    if (( segments == 1 )) && [[ ! -f "$work_dir/001/.production.complete.identity.json" ]]; then
+        single_segment_layout=1
+    elif (( segment_number == 1 )) && [[ -f "$work_dir/.production.complete.identity.json" ]]; then
+        single_segment_layout=1
+    fi
+    if (( single_segment_layout )); then
         segment_dir=$work_dir
         topology_path=system.parm7
         input_prefix=inputs
@@ -225,11 +260,7 @@ for ((segment_number = segment_start; segment_number <= segment_end; segment_num
         segment_dir="$work_dir/$segment_id"
         topology_path=../system.parm7
         input_prefix=../inputs
-        if (( segment_number == 1 )); then
-            restart_path=../gamd_prepare.rst7
-        else
-            restart_path=../$(printf '%03d' "$((segment_number - 1))")/production.rst7
-        fi
+        restart_path="../${previous_restart#"$work_dir/"}"
         state_path=$previous_gamd_state
     fi
     run_stage production production "$segment_dir" "$input_prefix/production.in" "$restart_path" "" yes "$state_path"

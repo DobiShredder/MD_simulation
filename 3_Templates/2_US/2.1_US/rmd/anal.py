@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import os
 import shutil
 import subprocess
 import sys
@@ -177,6 +178,14 @@ def main() -> int:
         print(f"trajectory: {trajectory}")
         print(f"seed output: {output} ({len(centers)} windows)")
         return 0
+    if (os.environ.get("MD_WRITER_PARENT") != str(os.getppid())
+            or os.environ.get("MD_WRITER_ENTRY") != sys.argv[0]):
+        command = [sys.executable, "../helpers/writer_guard.py", "--python-entry",
+                   "--registry", "../work", "--read", "../work",
+                   "--read", str(trajectory), "--read", str(windows),
+                   "--write", str(output), "--", *sys.argv]
+        os.execv(sys.executable, command)
+
     if shutil.which(args.cpptraj) is None:
         raise SystemExit(f"cpptraj not found: {args.cpptraj}")
     for path in (topology, trajectory, windows):

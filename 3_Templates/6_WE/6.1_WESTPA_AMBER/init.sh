@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+original_args=("$@")
+
 show_help() {
     cat <<'EOF'
 Usage: ./init.sh
@@ -38,6 +40,10 @@ case "$WORK_DIR" in
 esac
 export AMBER_ENGINE=${AMBER_ENGINE:-pmemd.cuda}
 export CPPTRAJ=${CPPTRAJ:-cpptraj}
+if (( ! ${dry_run:-0} )) && [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
+    exec "${PYTHON:-python3}" helpers/writer_guard.py \
+        --registry "$WORK_DIR" --write "$WORK_DIR" -- "$0" "${original_args[@]}"
+fi
 
 for required in "$WORK_DIR/bstates/basis.rst7" "$WORK_DIR/bstates/bstates.txt" "$WORK_DIR/tstate.file" "$WORK_DIR/configs/west.001.cfg" "$WORK_DIR/initial_walkers.txt" "$WORK_DIR/basis_pcoord.txt"; do
     if [[ ! -s "$required" ]]; then
@@ -51,6 +57,18 @@ fi
 if [[ -e "$WORK_DIR/west.h5" ]]; then
     die "Existing WESTPA state retained: $WORK_DIR/west.h5. Choose a new WORK_DIR to initialize another run."
 fi
+
+"${PYTHON:-python3}" helpers/input_identity.py --westpa-records "$WORK_DIR"
+"${PYTHON:-python3}" helpers/input_identity.py \
+    --record "$WORK_DIR/.we-input.identity.json" --stage "WESTPA immutable inputs" \
+    --input "$WORK_DIR/common_files/system.parm7" --input "$WORK_DIR/common_files/reference.rst7" \
+    --input "$WORK_DIR/bstates/basis.rst7" --input "$WORK_DIR/bstates/bstates.txt" \
+    --input "$WORK_DIR/tstate.file" --input "$WORK_DIR/initial_walkers.txt" \
+    --input "$WORK_DIR/basis_pcoord.txt" --input "$WORK_DIR/progress_coordinate.mask" \
+    --input "$WEST_SIM_ROOT/westpa_scripts/runseg.sh" \
+    --input "$WEST_SIM_ROOT/westpa_scripts/get_pcoord.sh" --input "$WEST_SIM_ROOT/westpa_scripts/calc_pcoord.sh" \
+    --input "$WORK_DIR/inputs/segment.in.template" --input "$WORK_DIR/configs/west.001.cfg" \
+    --output "$WORK_DIR/west.h5" --output "$WORK_DIR/west.init.log"
 
 mkdir -p "$WORK_DIR/traj_segs" "$WORK_DIR/seg_logs" "$WORK_DIR/istates"
 initial_walkers=$(<"$WORK_DIR/initial_walkers.txt")

@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+original_args=("$@")
+
 dry_run=0
 allow_unverified=0
 while (( $# > 0 )); do
@@ -30,6 +32,14 @@ die() {
 
 engine=${AMBER_ENGINE:-pmemd.cuda}
 work_dir=work
+
+if (( ! ${dry_run:-0} )) &&
+        [[ ${original_args[0]:-} != -h && ${original_args[0]:-} != --help && ${original_args[0]:-} != --dry-run ]] &&
+        [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
+    exec "${PYTHON:-python3}" helpers/writer_guard.py \
+        --registry "work" --read "inputs" --write "work" -- "$0" "${original_args[@]}"
+fi
+
 topology=system.parm7
 
 if (( ! dry_run )) && ! command -v "$engine" >/dev/null 2>&1; then
@@ -55,6 +65,17 @@ if (( dry_run )); then
     exit 0
 fi
 
+"${PYTHON:-python3}" helpers/input_identity.py --verify "$work_dir"
+source_options=(--input "$work_dir/system.parm7" --input "$work_dir/system.rst7")
+for source_input in inputs/*; do
+    if [[ -f "$source_input" ]]; then
+        source_options+=(--input "$source_input")
+    fi
+done
+"${PYTHON:-python3}" helpers/input_identity.py \
+    --record "$work_dir/.source.identity.json" --stage "run source inputs" \
+    "${source_options[@]}" --value="$engine" --output "$work_dir/gamd-restart.dat"
+
 cp inputs/minimize.in "$work_dir/inputs/minimize.in"
 cp inputs/equilibrate.in "$work_dir/inputs/equilibrate.in"
 sed 's/@RANDOM_SEED@/42001/g' inputs/heat.in.template > "$work_dir/inputs/heat.in"
@@ -79,6 +100,10 @@ run_preparation_stage() {
     shift 3
 
     local state
+    "${PYTHON:-python3}" ../helpers/input_identity.py \
+        --record ".$stage.identity.json" --stage "$stage" -- \
+        "$engine" -O -i "$input_file" -o "$stage.out" -p "$topology" \
+        -c "$input_restart" -r "$stage.rst7" -inf "$stage.info" "$@"
     state=$(stage_state "$stage.out" "$stage.rst7")
     if [[ "$state" == complete ]]; then
         echo "Skipping: $stage outputs already exist."
@@ -118,6 +143,13 @@ run_preparation_stage heat inputs/heat.in minimize.rst7 \
 run_preparation_stage equilibrate inputs/equilibrate.in heat.rst7 \
     -x equilibrate.nc
 
+"${PYTHON:-python3}" ../helpers/input_identity.py \
+    --record .gamd_prepare.identity.json --stage "GaMD parameter preparation" \
+    --output gamd_prepare.gamd.rst --output gamd-restart.dat -- \
+    "$engine" -O -i inputs/gamd_prepare.in -o gamd_prepare.out -p "$topology" \
+    -c equilibrate.rst7 -r gamd_prepare.rst7 -inf gamd_prepare.info \
+    -x gamd_prepare.nc -gamd gamd_prepare.gamd.log
+
 gamd_state=$(stage_state gamd_prepare.out gamd_prepare.rst7)
 if [[ "$gamd_state" == complete && -s gamd_prepare.gamd.log && -s gamd_prepare.gamd.rst ]]; then
     echo "Skipping: gamd_prepare outputs already exist."
@@ -149,6 +181,13 @@ else
     cp gamd-restart.dat gamd_prepare.gamd.rst
     echo "Completed: gamd_prepare ($work_dir/gamd_prepare.gamd.rst)"
 fi
+
+"${PYTHON:-python3}" ../helpers/input_identity.py \
+    --record .production.identity.json --stage production \
+    --input gamd_prepare.gamd.rst -- \
+    "$engine" -O -i inputs/production.in -o production.out -p "$topology" \
+    -c gamd_prepare.rst7 -r production.rst7 -inf production.info \
+    -x production.nc -gamd production.gamd.log
 
 if compgen -G 'production.*' >/dev/null; then
     die "Production output already exists in $work_dir. Remove it only if you intend to restart production."

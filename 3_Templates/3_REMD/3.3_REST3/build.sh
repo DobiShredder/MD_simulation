@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+original_args=("$@")
+
 source ./helpers/grompp_utils.bash
 
 method=rest3
@@ -64,6 +66,10 @@ die() {
 
 input=$1
 work_dir=${WORK_DIR:-work}
+if (( ! ${dry_run:-0} )) && [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
+    exec "${PYTHON:-python3}" helpers/writer_guard.py \
+        --registry "$work_dir" --write "$work_dir" -- "$0" "${original_args[@]}"
+fi
 python=${PYTHON:-python3}
 tleap=${TLEAP:-tleap}
 gmx=$("$python" helpers/config_utils.py "$config" equilibration_engine GROMACS gmx)

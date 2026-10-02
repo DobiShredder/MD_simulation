@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+original_args=("$@")
+
 usage() {
     echo "Usage: $0 [--dry-run] KCSA.pdb" >&2
 }
@@ -28,6 +30,14 @@ water_padding=20
 protein_lipid_distance=2.0
 structure_dir=structure
 work_dir=work
+
+if (( ! ${dry_run:-0} )) &&
+        [[ ${original_args[0]:-} != -h && ${original_args[0]:-} != --help && ${original_args[0]:-} != --dry-run ]] &&
+        [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
+    exec "${PYTHON:-python3}" helpers/writer_guard.py \
+        --registry ".." --read "$protein_pdb" --read "structure" --write "work" -- "$0" "${original_args[@]}"
+fi
+
 output_pdb="$work_dir/system-coordinates.pdb"
 
 # Input and dependency checks

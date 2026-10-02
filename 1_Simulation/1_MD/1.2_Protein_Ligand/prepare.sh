@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+original_args=("$@")
+
 die() {
     echo "Error: $*" >&2
     exit 1
@@ -14,6 +16,14 @@ fi
 ligand_sdf=$1
 ligand_charge=0
 work_dir=work
+
+if (( ! ${dry_run:-0} )) &&
+        [[ ${original_args[0]:-} != -h && ${original_args[0]:-} != --help && ${original_args[0]:-} != --dry-run ]] &&
+        [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
+    exec "${PYTHON:-python3}" helpers/writer_guard.py \
+        --registry "work" --read "$ligand_sdf" --write "work" -- "$0" "${original_args[@]}"
+fi
+
 
 ligand_mol2="$work_dir/jz4.mol2"
 ligand_frcmod="$work_dir/jz4.frcmod"
