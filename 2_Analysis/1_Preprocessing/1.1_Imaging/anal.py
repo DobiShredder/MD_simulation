@@ -5,6 +5,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from result_generation import verify_generation
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -18,6 +20,7 @@ def vector_coordinates(path: Path) -> tuple[np.ndarray, np.ndarray]:
 
 def main() -> int:
     output_dir = Path(__file__).resolve().parent / "output"
+    generation = verify_generation(output_dir)
     print(f"Running: Imaging analysis; input directory: {output_dir}")
     frames, raw_center = vector_coordinates(output_dir / "center_raw.dat")
     imaged_frames, imaged_center = vector_coordinates(
@@ -40,6 +43,8 @@ def main() -> int:
     axis.legend()
     figure.tight_layout()
     print("Displaying Imaging analysis figure.")
+    if verify_generation(output_dir) != generation:
+        raise ValueError(f"Analysis generation changed while reading: {output_dir}")
     plt.show()
     print("Completed: Imaging analysis (interactive figure).")
     return 0

@@ -40,8 +40,7 @@ python3 anal.py
 
 `build.sh`는 ff19SB/OPC 12 Å box를 만들고 minimization, 100 ps heating과
 100 ps NPT equilibration을 거쳐 `work/bstates/basis.rst7`을 생성합니다.
-각 preparation stage의 `*.out`과 restart가 모두 있으면 건너뛰고, 둘 중 일부만
-있으면 해당 stage를 다시 실행합니다. `west.h5`나 segment output이 있으면
+각 preparation stage의 `*.out`과 restart가 모두 있으면 건너뛰고, 둘 중 완료 증거가 없거나 필수 output이 누락되면 기존 결과를 보존하고 중단합니다. `west.h5`나 segment output이 있으면
 기존 WESTPA state를 보호하기 위해 build를 중단합니다.
 Minimized structure인 `work/common_files/reference.rst7`에 residue 2–9 Cα를
 least-squares fit한 RMSD를 Å 단위로 계산합니다. Terminal residue를 제외하면
@@ -85,7 +84,7 @@ Run `download.sh`, `prepare.py`, `build.sh`, `init.sh`, `run.sh`, and `anal.py`
 in order. The build uses ff19SB, a 12 Å OPC box, minimization, 100 ps heating,
 and 100 ps NPT equilibration. RMSD is least-squares fitted to the minimized
 reference using the Cα atoms of residues 2–9. A preparation stage is skipped
-when both its output and restart exist; an incomplete pair is rerun. Existing
+only with successful completion evidence and all required outputs; partial results are preserved and rejected. Existing
 `west.h5` or segment output protects the initialized WESTPA state from rebuilds.
 
 The default configuration maintains four walkers per bin for 20 iterations.
@@ -130,3 +129,27 @@ Build and WESTPA init/run compare topology, basis/reference, AMBER inputs, `west
 Normal exit, command failure and INT/TERM release only the owned lock after child termination is verified. Locks left by SIGKILL or node failure are retained. Inspect the reported lock and its `owner.json` host, PID, command and scopes; confirm through the scheduler and owning host that all writers and children stopped before manually removing only that lock directory. A PID missing locally is not sufficient. Apply the same checks to `.gate/`.
 
 Supported `--dry-run` and `--help` do not create writer or identity files. Do not move active work trees or edit identities to reuse results. Protection was tested on a local filesystem with local child processes; network filesystems, remote MPI and termination of writers on other nodes remain unverified.
+
+### Stage 완료 판정 / Stage completion
+
+Input identity는 입력이 같은지 확인하며 engine의 성공 종료를 증명하지 않습니다.
+Runner가 engine의 성공 종료와 필수 output을 확인한 뒤 만든 완료 증거가 있어야
+stage를 재사용합니다. Output이 남았지만 완료 증거가 없거나 필수 output이
+누락·비어 있으면 기존 결과를 보존하고 중단합니다. 기존 결과를 소급 인증하지
+않습니다. 새 계산은 생성된 `work/`를 포함하지 않는 새 tutorial copy에서 시작합니다.
+`ntwx=0`인 AMBER stage는 trajectory를 완료 조건으로 요구하지 않습니다.
+지원되는 continuation은 기존 restart/state 전달 방식을 따릅니다.
+
+Input identity checks unchanged inputs; it does not prove a successful engine exit.
+A stage is reused only with completion evidence written after a successful engine
+exit and required-output checks. Outputs without that evidence, or missing/empty
+required outputs, are preserved and rejected. Existing results are not certified
+retroactively. Start a new tutorial copy without generated `work/` directories for
+a new calculation. AMBER stages with `ntwx=0` do not require a trajectory for
+completion. Supported continuation retains its existing restart/state handoff.
+
+이 완료 판정은 `build.sh`의 topology와 basis preparation에 적용합니다.
+Walker continuation과 weight/resampling은 기존 WESTPA state와 manager가 담당합니다.
+
+This completion check applies to topology and basis preparation in `build.sh`.
+Walker continuation, weights, and resampling remain managed by WESTPA state and its manager.

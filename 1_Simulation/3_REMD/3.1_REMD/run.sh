@@ -109,6 +109,10 @@ run_replica_stage() {
             continue
         fi
         replica_dir="work/$replica"
+        local reference=()
+        if [[ "$stage" == heat ]]; then
+            reference=(-ref "$replica_dir/$input_restart")
+        fi
         if ! "$amber_engine" \
             -O \
             -i "$replica_dir/$stage.in" \
@@ -117,7 +121,7 @@ run_replica_stage() {
             -c "$replica_dir/$input_restart" \
             -r "$replica_dir/$stage.rst7" \
             -x "$replica_dir/$stage.nc" \
-            -inf "$replica_dir/$stage.info"; then
+            -inf "$replica_dir/$stage.info" "${reference[@]}"; then
             die "$stage failed: $replica_dir/$stage.out"
         fi
     done < work/states.tsv
@@ -136,9 +140,13 @@ check_replica_inputs() {
         if [[ -s "$replica_dir/distance.RST" ]]; then
             identity+=(--input "$replica_dir/distance.RST" --output "$replica_dir/restraint.$stage.dat")
         fi
+        local reference=()
+        if [[ "$stage" == heat ]]; then
+            reference=(-ref "$input_restart")
+        fi
         "${PYTHON:-python3}" helpers/input_identity.py "${identity[@]}" -- "$amber_engine" \
             -O -i "$stage.in" -o "$stage.out" -p system.parm7 -c "$input_restart" \
-            -r "$stage.rst7" -x "$stage.nc" -inf "$stage.info"
+            -r "$stage.rst7" -x "$stage.nc" -inf "$stage.info" "${reference[@]}"
     done < work/states.tsv
 }
 

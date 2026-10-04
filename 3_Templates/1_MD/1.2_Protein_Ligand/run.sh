@@ -52,10 +52,9 @@ die() {
 
 run_stage() {
     local stage=$1
-    local stage_type=$2
-    local label=$3
-    local directory=$4
-    shift 4
+    local label=$2
+    local directory=$3
+    shift 3
     local marker="$directory/.$stage.complete"
     local required=()
     local index
@@ -163,27 +162,27 @@ if (( ! dry_run )); then
 fi
 
 if (( ! production_only )); then
-run_stage min-solvent preproduction "solvent minimization" "$work_dir" \
+run_stage min-solvent "solvent minimization" "$work_dir" \
     "$engine" -O -i "$work_dir/inputs/min-solvent.in" \
     -o "$work_dir/min-solvent.out" -p "$topology" -c "$coordinates" \
     -r "$work_dir/min-solvent.rst7" -inf "$work_dir/min-solvent.info" -ref "$coordinates"
 
-run_stage min-all preproduction "whole-system minimization" "$work_dir" \
+run_stage min-all "whole-system minimization" "$work_dir" \
     "$engine" -O -i "$work_dir/inputs/min-all.in" \
     -o "$work_dir/min-all.out" -p "$topology" -c "$work_dir/min-solvent.rst7" \
     -r "$work_dir/min-all.rst7" -inf "$work_dir/min-all.info"
 
-run_stage heat preproduction "NVT heating" "$work_dir" \
+run_stage heat "NVT heating" "$work_dir" \
     "$engine" -O -i "$work_dir/inputs/heat.in" \
     -o "$work_dir/heat.out" -p "$topology" -c "$work_dir/min-all.rst7" \
     -r "$work_dir/heat.rst7" -x "$work_dir/heat.nc" -inf "$work_dir/heat.info" \
     -ref "$work_dir/min-all.rst7"
 
-run_stage equilibrate preproduction "NPT equilibration" "$work_dir" \
+run_stage equilibrate "NPT equilibration" "$work_dir" \
     "$engine" -O -i "$work_dir/inputs/equilibrate.in" \
     -o "$work_dir/equilibrate.out" -p "$topology" -c "$work_dir/heat.rst7" \
     -r "$work_dir/equilibrate.rst7" -x "$work_dir/equilibrate.nc" \
-    -inf "$work_dir/equilibrate.info"
+    -inf "$work_dir/equilibrate.info" -ref "$work_dir/heat.rst7"
 fi
 if (( preparation_only )); then
     if (( ! dry_run )); then
@@ -224,7 +223,7 @@ for ((segment_number = segment_start; segment_number <= segment_end; segment_num
     if (( ! dry_run )); then
         mkdir -p "$segment_dir"
     fi
-    run_stage production production \
+    run_stage production \
         "production segment $segment_number/$segments" "$segment_dir" \
         "$engine" -O -i "$work_dir/inputs/production.in" \
         -o "$segment_dir/production.out" -p "$topology" -c "$previous_restart" \

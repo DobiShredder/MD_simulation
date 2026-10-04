@@ -49,15 +49,15 @@ run_stage() {
         --record "$window_dir/.$stage.identity.json" --stage "$label" \
         --directory "$window_dir" --input "$window_dir/restraint.RST" -- "$@"
 
-    if [[ -s "$window_dir/$stage.out" && -s "$window_dir/$stage.rst7" ]]; then
+    local completion_state
+    completion_state=$("${PYTHON:-python3}" helpers/input_identity.py \
+        --check-completion "$window_dir/.$stage.identity.json")
+    if [[ "$completion_state" == complete ]]; then
         reused_stage_count=$((reused_stage_count + 1))
         if [[ "${#window_dirs[@]}" -eq 1 ]]; then
             echo "Skipping completed stage: US window ${window_dir##*/} - $label"
         fi
         return
-    fi
-    if [[ -e "$window_dir/$stage.out" || -e "$window_dir/$stage.rst7" ]]; then
-        echo "Warning: restarting incomplete stage: US window ${window_dir##*/} - $label" >&2
     fi
 
     if [[ "${#window_dirs[@]}" -eq 1 ]]; then
@@ -78,6 +78,9 @@ run_stage() {
     if [[ "$stage" == production && ! -s "$window_dir/production.nc" ]]; then
         die "Window ${window_dir##*/} production trajectory was not created: $window_dir/production.nc"
     fi
+    "${PYTHON:-python3}" helpers/input_identity.py \
+        --finish-completion "$window_dir/.$stage.identity.json" --directory "$window_dir"
+
 }
 
 run_window() {

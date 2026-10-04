@@ -31,6 +31,15 @@ fi
 amber_named_pdb="$work_dir/amber-named.pdb"
 generated_tleap="$work_dir/tleap.in"
 
+if (( ! dry_run )); then
+    for output_name in amber-named.pdb tleap.in system.parm7 system.rst7 system.pdb leap.log; do
+        output_path="$work_dir/$output_name"
+        if [[ -e "$output_path" || -L "$output_path" ]]; then
+            die "Topology build output already exists: $output_path. Files were preserved. Start a new tutorial copy without generated work directories."
+        fi
+    done
+fi
+
 if [[ ! -f "$coordinate_pdb" ]]; then
     die "Coordinate PDB not found: $coordinate_pdb"
 fi
@@ -43,7 +52,7 @@ fi
 if (( ! dry_run )) && find "$work_dir" -type f \
     \( -name 'min*.out' -o -name 'heat*.out' -o -name 'equil*.out' \
        -o -name 'production*.out' \) -print -quit 2>/dev/null | grep -q .; then
-    die "Simulation output already exists in $work_dir. Remove it before rebuilding."
+    die "Topology build: simulation output already exists in $work_dir. Files were preserved. Start a new tutorial copy without generated work directories."
 fi
 
 if (( dry_run )); then

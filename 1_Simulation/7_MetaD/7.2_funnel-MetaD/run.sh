@@ -102,12 +102,12 @@ run_stage() {
         -o "$stage.out" -p system.parm7 -c "$input_restart" \
         -r "$stage.rst7" -inf "$stage.info" "$@"
 
-    if [[ -s "$output_file" && -s "$restart_file" ]]; then
+    local completion_state
+    completion_state=$("${PYTHON:-python3}" helpers/input_identity.py \
+        --check-completion "$work_dir/.$stage.identity.json")
+    if [[ "$completion_state" == complete ]]; then
         echo "Skipping: $stage outputs already exist."
         return
-    fi
-    if [[ -e "$output_file" || -e "$restart_file" ]]; then
-        echo "Warning: incomplete $stage outputs found; rerunning the stage." >&2
     fi
 
     echo "Running: $stage"
@@ -131,6 +131,8 @@ run_stage() {
             die "$stage output was not created: $output"
         fi
     done
+    "${PYTHON:-python3}" helpers/input_identity.py \
+        --finish-completion "$work_dir/.$stage.identity.json" --directory "$work_dir"
     echo "Completed: $stage ($output_file)"
 }
 
@@ -147,7 +149,7 @@ done
 
 sed 's/@RANDOM_SEED@/72101/g' inputs/production.in.template > "$work_dir/production.in"
 
-production_identity_options=(--input "$work_dir/plumed.dat")
+production_identity_options=(--input "$work_dir/plumed.dat" --output "$work_dir/COLVAR" --output "$work_dir/HILLS")
 if [[ -s "$work_dir/funnel-reference.pdb" ]]; then
     production_identity_options+=(--input "$work_dir/funnel-reference.pdb")
 fi
@@ -156,6 +158,9 @@ fi
     --directory "$work_dir" "${production_identity_options[@]}" -- \
     "$engine" -O -i production.in -o production.out -p system.parm7 \
     -c equilibrate.rst7 -r production.rst7 -x production.nc -inf production.info
+
+"${PYTHON:-python3}" helpers/input_identity.py \
+    --check-completion "$work_dir/.production.identity.json" >/dev/null
 
 echo "Running: production"
 if ! (
@@ -177,5 +182,9 @@ for output in production.out production.rst7 production.nc COLVAR HILLS; do
         die "Production output was not created: $work_dir/$output"
     fi
 done
+
+"${PYTHON:-python3}" helpers/input_identity.py \
+    --finish-completion "$work_dir/.production.identity.json" --directory "$work_dir" \
++    --required-output "$work_dir/COLVAR" --required-output "$work_dir/HILLS"
 
 echo "1 ns Funnel MetaD production completed: $work_dir/production.nc"

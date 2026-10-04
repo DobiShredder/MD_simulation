@@ -7,6 +7,8 @@ import argparse
 import csv
 from pathlib import Path
 
+from prepare import copy_prepared_inputs, result_generation, verify_generation
+
 import numpy as np
 
 
@@ -35,6 +37,7 @@ def logsumexp(values: np.ndarray, axis: int | None = None) -> np.ndarray:
 def read_inputs(
     output_dir: Path,
 ) -> tuple[np.ndarray, np.ndarray, list[np.ndarray], list[str]]:
+    generation = verify_generation(output_dir)
     summary = output_dir / "summary.tsv"
     if not summary.is_file():
         raise ValueError("Run ./run.sh first: output/summary.tsv")
@@ -65,6 +68,8 @@ def read_inputs(
         forces.append(float(row["amber_rk_kcal_mol_A2"]))
         series.append(values)
 
+    if verify_generation(output_dir) != generation:
+        raise ValueError(f"Analysis generation changed while reading: {output_dir}")
     return np.asarray(centers), np.asarray(forces), series, names
 
 
@@ -268,31 +273,33 @@ def main() -> None:
     print(f"Running: WHAM analysis; input directory: {OUTPUT_DIR}")
 
     try:
-        centers, forces, series, names = read_inputs(OUTPUT_DIR)
-        edges = np.linspace(PMF_MIN_ANGSTROM, PMF_MAX_ANGSTROM, PMF_BINS + 1)
-        result = solve_wham(
-            centers,
-            forces,
-            series,
-            TEMPERATURE_KELVIN,
-            edges,
-            WHAM_TOLERANCE_KCAL_MOL,
-            WHAM_MAX_ITERATIONS,
-        )
-        bin_centers, probability, counts, offsets, iterations, residual = result
-        overlap = overlap_coefficients(series)
-        pmf = write_results(
-            OUTPUT_DIR,
-            bin_centers,
-            probability,
-            counts,
-            offsets,
-            centers,
-            names,
-            overlap,
-            iterations,
-            residual,
-        )
+        with result_generation(OUTPUT_DIR) as generation_dir:
+            copy_prepared_inputs(OUTPUT_DIR, generation_dir)
+            centers, forces, series, names = read_inputs(generation_dir)
+            edges = np.linspace(PMF_MIN_ANGSTROM, PMF_MAX_ANGSTROM, PMF_BINS + 1)
+            result = solve_wham(
+                centers,
+                forces,
+                series,
+                TEMPERATURE_KELVIN,
+                edges,
+                WHAM_TOLERANCE_KCAL_MOL,
+                WHAM_MAX_ITERATIONS,
+            )
+            bin_centers, probability, counts, offsets, iterations, residual = result
+            overlap = overlap_coefficients(series)
+            pmf = write_results(
+                generation_dir,
+                bin_centers,
+                probability,
+                counts,
+                offsets,
+                centers,
+                names,
+                overlap,
+                iterations,
+                residual,
+            )
     except (OSError, KeyError, ValueError) as error:
         raise SystemExit(f"WHAM Calculation failed: {error}") from error
 

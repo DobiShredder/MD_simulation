@@ -18,12 +18,12 @@ GaMD log는 각각 100 frames여야 합니다.
 
 ### Script 역할
 
-- `run.sh`: 선택한 profile에 맞는 cpptraj input을 만들고 CV를 계산한 다음,
-  아래 두 Python script를 순서대로 실행합니다.
-- `prepare.py`: production run의 GaMD log를 읽어 CV frame과 boost
-  potential record가 일대일로 대응하는지 검사합니다.
-- `reweight.py`: 확인된 CV와 boost potential에 2차 cumulant expansion을 적용해
-  1D PMF와 bin별 진단값을 계산합니다.
+| Script | 실행 방식 | 역할 |
+| --- | --- | --- |
+| `run.sh` | 직접 실행 | CV 계산과 reweighting을 순서대로 실행하고 결과를 게시합니다. |
+| `prepare.py` | 자동 호출 | Profile별 topology, trajectory와 metadata로 cpptraj input을 만듭니다. |
+| `reweight.py` | 자동 호출 또는 parameter 조정 시 직접 실행 | CV/boost frame 수를 확인하고 2차 cumulant expansion으로 PMF를 계산합니다. |
+| `result_generation.py` | 자동 호출 | 결과 묶음을 검증·게시하고 완료 hash를 기록합니다. |
 
 일반적인 사용에서는 `run.sh`만 실행하면 됩니다. 중간 결과를 확인하거나
 분석 parameter를 수정할 때만 Python script를 직접 실행합니다.
@@ -42,12 +42,25 @@ convergence를 함께 확인합니다. Kinetic reweighting과 2D PMF는 포함�
 
 필요한 program은 cpptraj, Python 3와 NumPy입니다.
 
+### 결과 저장과 재실행
+
+`run.sh`는 profile별 temporary directory에서 cpptraj input, CV와 PMF를
+생성합니다. 새 CV와 reweighting 결과가 모두 확인된 뒤 최종 directory를
+교체합니다. 어느 단계에서 실패해도 이전 결과와 log를 유지하며, 실패한
+cpptraj log의 마지막 부분은 stderr에 출력합니다.
+
+`result_generation.py`는 자동 호출되는 내부 helper입니다. 완료한 파일의 hash를
+결과 directory의 `.generation.json`에 기록합니다. 기본 경로는 `output/PROFILE`이며
+`OUTPUT_DIR`로 바꿀 수 있습니다. 게시가 중단되면 같은 parent의
+`.PROFILE.pending`에 적힌 previous/new directory를 보존하고 검사합니다.
+Marker가 남아 있는 동안 재실행은 거부합니다.
+
 ## English
 
 cpptraj calculates one profile-specific CV from the production run.
-`prepare.py` checks the one-to-one correspondence between 100 CV and boost
-records, and `reweight.py` applies second-order cumulant expansion to produce a
-one-dimensional PMF. `run.sh` executes these steps in order.
+`prepare.py` creates the profile-specific cpptraj input. `reweight.py` checks
+the one-to-one correspondence between 100 CV and boost records and applies
+second-order cumulant expansion to produce a one-dimensional PMF. `run.sh` executes these steps in order.
 
 `pmf.tsv` reports biased and reweighted probabilities and PMFs, per-bin boost
 mean and variance, and effective sample size. The 1 ns result is a workflow
@@ -57,6 +70,19 @@ PMFs are outside this example.
 For LiGaMD3, the parser reads Amber 26's two logged aggregate columns,
 `Boost-Energy-Potential` and `Boost-Energy-Dihedral`, and uses their sum as the
 per-frame total boost `ΔV` for reweighting.
+
+### Result storage and reruns
+
+`run.sh` creates the cpptraj input, CV, and PMF in a profile-specific temporary
+directory. It replaces the final directory only after checking the new CV and
+reweighting outputs. Failure at either stage preserves previous results and
+logs; recent failed cpptraj log lines are printed to stderr.
+
+`result_generation.py` is called automatically and records completed file hashes
+in `.generation.json`. The default result directory is `output/PROFILE`, with
+`OUTPUT_DIR` available as an override. An interrupted publication leaves
+`.PROFILE.pending` in the same parent directory. Preserve and inspect the
+previous/new directories listed there; reruns refuse while the marker remains.
 
 ## References / 참고 자료
 

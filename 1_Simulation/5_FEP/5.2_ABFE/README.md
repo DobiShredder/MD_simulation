@@ -82,8 +82,9 @@ Window는 `work/restraint/complex/`, `work/charge/{complex,solvent}/`와
 Solvent topology는 ligand와 box edge 사이에 20 Å buffer를 둡니다. 이는
 `cut=10 Å`를 사용하는 `pmemd.cuda`가 작은 solvent box를 거부하지 않도록 가장
 짧은 box dimension을 늘립니다. Minimization, heating과 equilibration은
-`*.out`과 `*.rst7`이 모두 있으면 건너뜁니다. 둘 중 일부만 있으면 해당 stage를
-다시 실행합니다. 어느 window든 production output이 있으면 덮어쓰지 않고
+input identity가 일치하고 `*.out`, `*.rst7`, `*.info`와 해당 stage의
+trajectory가 모두 있으면 건너뜁니다. 일부 output만 남으면 파일을 보존하고
+중단합니다. 어느 window든 production output이 있으면 덮어쓰지 않고
 계산 전에 중단합니다.
 
 Restraint stage는 λ=0의 restrained complex에서 λ=1의 unrestrained complex로
@@ -128,6 +129,26 @@ automatic equilibration, correlated-sample stride와 20회 bootstrap을 사용�
 각 lambda의 `MBAR Energy analysis` block이 모두 기록되는지 확인합니다.
 
 Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 중단하고 파일을 보존합니다. 새 build 전에는 기존 `work/`를 다른 위치에 보관하거나 별도 tutorial 사본을 사용합니다.
+
+### Analysis 결과 저장
+
+`anal.py`는 새 extracted energy, report와 최종 TSV를 temporary generation에서
+계산합니다. Extraction, estimator, TSV 또는 HTML 생성이 실패하면 기존
+`mbar/`, `free_energy.tsv`, `mbar_diagnostics.tsv`, `overlap_matrix.tsv`를 유지합니다.
+실패한 command의 최근 log 내용은 stderr에 출력합니다.
+
+자동 호출되는 `helpers/result_generation.py`가 이 파일들을 검증하고 게시합니다.
+완료 기록은 `work/.analysis-generation.json`입니다. 여러 파일의 게시 도중
+중단되면 `work/.analysis.pending`이 consumer와 재실행을 차단합니다. 실행 process가
+종료됐는지 확인한 뒤 marker에 적힌 previous/new directory를 보존하고 검사합니다.
+Marker만 삭제하거나 파일을 개별적으로 섞지 않습니다.
+
+외부 script에서 결과를 읽기 전에는 다음 검사를 사용합니다. 별도 `WORK_DIR`을
+사용했다면 `work`를 그 경로로 바꿉니다.
+
+```bash
+python3 helpers/result_generation.py work
+```
 
 ## English
 
@@ -176,8 +197,9 @@ stage uses the asymmetric unique-atom masks `timask1=':JZ4'` and
 
 The solvent topology uses a 20 Å solute-to-box-edge buffer to keep the shortest
 box dimension out of the `pmemd.cuda` small-box guard with the 10 Å cutoff.
-Minimization, heating, and equilibration are skipped when both their `*.out`
-and `*.rst7` files exist; incomplete pairs are rerun. Existing production output
+Minimization, heating, and equilibration are skipped when input identities match
+and their `*.out`, `*.rst7`, `*.info`, and applicable trajectory files are complete.
+Partial outputs are preserved and rejected. Existing production output
 in any window stops the workflow before it can be overwritten.
 
 The restraint stage uses one full-strength `DISANG` definition in every window.
@@ -231,3 +253,42 @@ Run compares inputs for result reuse with SHA256. Changed topology, initial coor
 Normal exit, command failure and INT/TERM release only the owned lock after child termination is verified. Locks left by SIGKILL or node failure are retained. Inspect the reported lock and its `owner.json` host, PID, command and scopes; confirm through the scheduler and owning host that all writers and children stopped before manually removing only that lock directory. A PID missing locally is not sufficient. Apply the same checks to `.gate/`.
 
 Supported `--dry-run` and `--help` do not create writer or identity files. Do not move active work trees or edit identities to reuse results. Protection was tested on a local filesystem with local child processes; network filesystems, remote MPI and termination of writers on other nodes remain unverified.
+
+### Stage 완료 판정 / Stage completion
+
+Input identity는 입력이 같은지 확인하며 engine의 성공 종료를 증명하지 않습니다.
+Runner가 engine의 성공 종료와 필수 output을 확인한 뒤 만든 완료 증거가 있어야
+stage를 재사용합니다. Output이 남았지만 완료 증거가 없거나 필수 output이
+누락·비어 있으면 기존 결과를 보존하고 중단합니다. 기존 결과를 소급 인증하지
+않습니다. 새 계산은 생성된 `work/`를 포함하지 않는 새 tutorial copy에서 시작합니다.
+`ntwx=0`인 AMBER stage는 trajectory를 완료 조건으로 요구하지 않습니다.
+지원되는 continuation은 기존 restart/state 전달 방식을 따릅니다.
+
+Input identity checks unchanged inputs; it does not prove a successful engine exit.
+A stage is reused only with completion evidence written after a successful engine
+exit and required-output checks. Outputs without that evidence, or missing/empty
+required outputs, are preserved and rejected. Existing results are not certified
+retroactively. Start a new tutorial copy without generated `work/` directories for
+a new calculation. AMBER stages with `ntwx=0` do not require a trajectory for
+completion. Supported continuation retains its existing restart/state handoff.
+
+### Analysis result storage
+
+`anal.py` calculates new extracted energies, reports, and final TSV files in a
+temporary generation. Extraction, estimation, TSV, or HTML failure preserves
+the previous `mbar/`, `free_energy.tsv`, `mbar_diagnostics.tsv`, and
+`overlap_matrix.tsv`. Recent failed-command log lines are printed to stderr.
+
+The automatically called `helpers/result_generation.py` validates and publishes
+this group, recording completion in `work/.analysis-generation.json`. If multiple
+file publication is interrupted, `work/.analysis.pending` blocks consumers and
+reruns. Check that the process has ended, then preserve and inspect the
+previous/new directories listed there. Do not remove only the marker or mix
+individual files.
+
+Before reading results in an external script, run the check below. Replace
+`work` with your `WORK_DIR` if using another directory.
+
+```bash
+python3 helpers/result_generation.py work
+```

@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -70,7 +71,10 @@ def check(record, stage, inputs, values, outputs, config_path=None):
                 context = f"{config_path} (consumed settings)"
             raise RuntimeError(f"{stage}: input changed: {context}. Existing results and identity were preserved. Use a new work directory.")
         return
-    existing = [name for name in outputs if Path(name).exists()]
+    existing = [name for name in outputs if Path(name).exists() or Path(name).is_symlink()]
+    completion_marker = record.with_name(record.name.replace(".identity.json", ".success.json"))
+    if completion_marker.exists() or completion_marker.is_symlink():
+        existing.append(str(completion_marker))
     if existing:
         raise RuntimeError(f"{stage}: results have no input identity: {existing[0]}. Files were preserved. Use a new work directory.")
     record.parent.mkdir(parents=True, exist_ok=True)
@@ -129,6 +133,68 @@ def verify(directory, managed_outputs=False):
                 raise RuntimeError(f"{path.name}: results have no input identity: {path}. Files were preserved. Use a new work directory.")
 
 
+
+def check_completion(record):
+    require_writer(record)
+    previous = read_identity(record)
+    marker = record.with_name(record.name.replace(".identity.json", ".success.json"))
+    if marker.exists() or marker.is_symlink():
+        try:
+            proof = json.loads(marker.read_text())
+        except (OSError, ValueError) as error:
+            raise RuntimeError(f"{previous['stage']}: completion evidence unreadable: {marker}: {error}. Files were preserved.") from error
+        if (not isinstance(proof, dict) or proof.get("identity_sha256") != digest(record)
+                or not isinstance(proof.get("required_outputs"), list)
+                or not proof["required_outputs"]
+                or not all(isinstance(name, str) for name in proof["required_outputs"])):
+            raise RuntimeError(f"{previous['stage']}: invalid completion evidence: {marker}. Files were preserved.")
+        for name in proof["required_outputs"]:
+            path = Path(name)
+            if not path.is_file() or not path.stat().st_size:
+                raise RuntimeError(f"{previous['stage']}: completed output is missing or empty: {path}. Files were preserved.")
+        return "complete"
+    for name in previous["outputs"]:
+        path = Path(name)
+        if path.exists() or path.is_symlink():
+            raise RuntimeError(f"{previous['stage']}: output has no successful completion evidence: {path}. Files were preserved. Start a new work directory or tutorial copy.")
+    return "new"
+
+
+def finish_completion(record, directory, required):
+    require_writer(record)
+    previous = read_identity(record)
+    command = previous["values"]
+    directory = Path(directory)
+    # AMBER's ntwx=0 (also the default) does not produce a trajectory.
+    # Read the unchanged input; never infer freshness from an old output.
+    ntwx = 0
+    if "-i" in command:
+        input_file = directory / command[command.index("-i") + 1]
+        text = "\n".join(line.split("!", 1)[0] for line in input_file.read_text().splitlines())
+        cntrl = re.search(r"&cntrl\b(.*?)(?:/|&end)", text, re.IGNORECASE | re.DOTALL)
+        if cntrl:
+            match = re.search(r"\bntwx\s*=\s*([+-]?\d+)", cntrl.group(1), re.IGNORECASE)
+            if match:
+                ntwx = int(match.group(1))
+    for flag in ("-o", "-r", "-x", "-gamd"):
+        if flag in command and (flag != "-x" or ntwx != 0):
+            required.append(str(directory / command[command.index(flag) + 1]))
+    paths = sorted({str(Path(name).resolve()) for name in required})
+    if not paths:
+        raise RuntimeError(f"{previous['stage']}: no required completion outputs were specified.")
+    for name in paths:
+        path = Path(name)
+        if not path.is_file() or not path.stat().st_size:
+            raise RuntimeError(f"{previous['stage']}: output was not created or is empty: {path}. Files were preserved.")
+    marker = record.with_name(record.name.replace(".identity.json", ".success.json"))
+    proof = {"identity_sha256": digest(record), "required_outputs": paths}
+    # Call only after a successful engine exit and stage-specific output checks.
+    # Exclusive creation prevents retroactive replacement of existing evidence.
+    with marker.open("x") as handle:
+        json.dump(proof, handle, indent=2)
+        handle.write("\n")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--record", help="Stage identity record; existing records are never replaced.")
@@ -144,6 +210,9 @@ def main():
     parser.add_argument("--section", action="append", default=[], help="Consumed scientific config section to compare.")
     parser.add_argument("--run-key", action="append", default=[], help="Consumed run setting to compare; segment counts are excluded.")
     parser.add_argument("command", nargs=argparse.REMAINDER, help="AMBER command after --; parse its immutable input/output paths.")
+    parser.add_argument("--check-completion", help="Return complete/new; refuse outputs without successful completion evidence.")
+    parser.add_argument("--finish-completion", help="Record completion after a successful engine exit and output checks.")
+    parser.add_argument("--required-output", action="append", default=[], help="Additional nonempty output required for stage completion.")
     args = parser.parse_args()
     try:
         if args.config:
@@ -157,7 +226,11 @@ def main():
             run = config.get("run", config)
             settings["run"] = {key: run[key] for key in args.run_key}
             args.value.append(json.dumps(settings, sort_keys=True))
-        if args.verify:
+        if args.check_completion:
+            print(check_completion(Path(args.check_completion)))
+        elif args.finish_completion:
+            finish_completion(Path(args.finish_completion), args.directory, args.required_output)
+        elif args.verify:
             verify(args.verify)
         elif args.westpa_records:
             verify(args.westpa_records, managed_outputs=True)

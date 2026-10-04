@@ -97,13 +97,6 @@ def nonnegative_int(values: dict[str, Any], key: str) -> int:
     return value
 
 
-def boolean_value(values: dict[str, Any], key: str) -> bool:
-    value = values.get(key)
-    if not isinstance(value, bool):
-        raise ValueError(f"{key} must be true or false")
-    return value
-
-
 def choice_value(values: dict[str, Any], key: str, choices: set[str]) -> str:
     value = string_value(values, key)
     normalized = value.upper()

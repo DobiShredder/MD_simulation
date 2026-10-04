@@ -36,14 +36,27 @@ stage_status() {
         if [[ -s "work/$replica/$stage.out" && -s "work/$replica/$stage.rst7" ]]; then
             complete=$((complete + 1))
         fi
-        if [[ -e "work/$replica/$stage.out" || -e "work/$replica/$stage.rst7" ]]; then
-            existing=$((existing + 1))
-        fi
+        local output
+        for output in "work/$replica/$stage."{out,rst7,nc,info} "work/$replica/restraint.$stage.dat"; do
+            if [[ -e "$output" || -L "$output" ]]; then
+                existing=$((existing + 1))
+                break
+            fi
+        done
     done < work/states.tsv
 
-    if (( complete == replica_count )); then
+    if [[ -f "work/.$stage.complete" ]] && (( complete == replica_count )); then
+        while IFS=$'\t' read -r replica _; do
+            if [[ "$replica" == replica ]]; then
+                continue
+            fi
+            if ! "${PYTHON:-python3}" helpers/input_identity.py \
+                --check-completion "work/$replica/.$stage.identity.json" >/dev/null; then
+                return 1
+            fi
+        done < work/states.tsv
         echo complete
-    elif (( existing == 0 )); then
+    elif (( existing == 0 )) && [[ ! -e "work/.$stage.complete" && ! -L "work/.$stage.complete" ]]; then
         echo missing
     else
         echo partial
@@ -63,7 +76,7 @@ run_window_stage() {
         return
     fi
     if [[ "$status" == partial ]]; then
-        echo "Warning: restarting incomplete stage for all windows: $stage" >&2
+        die "Partial $stage output retained in work. Files were preserved. Start a new tutorial copy."
     fi
 
     echo "Running: $stage"
@@ -72,15 +85,18 @@ run_window_stage() {
             continue
         fi
         replica_dir="work/$replica"
-        if ! "$amber_engine" \
-            -O \
-            -i "$replica_dir/$stage.in" \
-            -o "$replica_dir/$stage.out" \
-            -p "$replica_dir/system.parm7" \
-            -c "$replica_dir/$input_restart" \
-            -r "$replica_dir/$stage.rst7" \
-            -x "$replica_dir/$stage.nc" \
-            -inf "$replica_dir/$stage.info"; then
+        if ! (
+            cd "$replica_dir"
+            "$amber_engine" \
+                -O \
+                -i "$stage.in" \
+                -o "$stage.out" \
+                -p system.parm7 \
+                -c "$input_restart" \
+                -r "$stage.rst7" \
+                -x "$stage.nc" \
+                -inf "$stage.info"
+        ); then
             die "$stage failed: $replica_dir/$stage.out"
         fi
         for output in "$replica_dir/$stage.out" "$replica_dir/$stage.rst7"; do
@@ -88,7 +104,10 @@ run_window_stage() {
                 die "$stage output was not created: $output"
             fi
         done
+        "${PYTHON:-python3}" helpers/input_identity.py \
+            --finish-completion "$replica_dir/.$stage.identity.json" --directory "$replica_dir"
     done < work/states.tsv
+    touch "work/.$stage.complete"
     echo "Completed: $stage (work)"
 }
 
@@ -100,7 +119,7 @@ check_replica_inputs() {
         fi
         replica_dir="work/$replica"
         identity=(--record "$replica_dir/.$stage.identity.json" --stage "$stage replica $replica"
-            --directory "$replica_dir")
+            --directory "$replica_dir" --marker "work/.$stage.complete")
         if [[ -s "$replica_dir/distance.RST" ]]; then
             identity+=(--input "$replica_dir/distance.RST" --output "$replica_dir/restraint.$stage.dat")
         fi
@@ -120,10 +139,11 @@ if [[ ! -s work/states.tsv ]]; then
 fi
 if (( dry_run )); then
     echo "Dry run: planned REUS commands; no engine execution"
+    echo "Preproduction engine cwd: work/000 (repeated for every replica)"
     printf '+ %q -O -i %q -o %q -p %q -c %q -r %q -x %q -inf %q\n' \
-        "$amber_engine" work/000/minimize.in work/000/minimize.out \
-        work/000/system.parm7 work/000/system.rst7 work/000/minimize.rst7 \
-        work/000/minimize.nc work/000/minimize.info
+        "$amber_engine" minimize.in minimize.out \
+        system.parm7 system.rst7 minimize.rst7 \
+        minimize.nc minimize.info
     printf '+ %q -np %q %q -ng %q -groupfile %q -rem 3 -remlog %q\n' \
         "$mpi_launcher" "$replica_count" "$amber_mpi_engine" "$replica_count" \
         work/production.group work/exchange.log
@@ -160,7 +180,7 @@ run_window_stage heat minimize.rst7
 run_window_stage equilibrate heat.rst7
 
 production_identity=(--record work/.production-input.identity.json --stage "replica production inputs"
-    --input work/states.tsv --value="$amber_mpi_engine" --output work/production.group --output work/exchange.log)
+    --input work/states.tsv --value="$amber_mpi_engine" --output work/production.group --output work/exchange.log --output work/.production.complete)
 while IFS=$'\t' read -r replica _; do
     if [[ "$replica" == replica ]]; then
         continue
@@ -175,6 +195,14 @@ while IFS=$'\t' read -r replica _; do
     fi
 done < work/states.tsv
 "${PYTHON:-python3}" helpers/input_identity.py "${production_identity[@]}"
+
+for output in work/production.group work/exchange.log work/.production.complete \
+    work/[0-9][0-9][0-9]/production.{out,rst7,nc,info} \
+    work/[0-9][0-9][0-9]/restraint.production.dat; do
+    if [[ -e "$output" || -L "$output" ]]; then
+        die "Production output already exists or is partial: $output. Files were preserved. Start a new tutorial copy."
+    fi
+done
 
 group_file=work/production.group
 : > "$group_file"
@@ -217,5 +245,7 @@ while IFS=$'\t' read -r replica _; do
         fi
     done
 done < work/states.tsv
+
+touch work/.production.complete
 
 echo "Completed 1 ns REUS: work"

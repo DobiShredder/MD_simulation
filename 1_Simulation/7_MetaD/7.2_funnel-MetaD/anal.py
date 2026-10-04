@@ -6,6 +6,8 @@ from __future__ import annotations
 import argparse
 import os
 from pathlib import Path
+
+from helpers.result_generation import result_generation
 import shutil
 import subprocess
 
@@ -63,68 +65,70 @@ def main() -> int:
     metad_bias = values["metad.bias"]
 
     output_dir = work_dir / "analysis"
-    output_dir.mkdir(parents=True, exist_ok=True)
+    completed_output_dir = output_dir
+    with result_generation(completed_output_dir) as output_dir:
 
-    with (output_dir / "production_summary.tsv").open("w", encoding="utf-8") as handle:
-        handle.write(
-            "frames\tlp_min_nm\tlp_max_nm\tld_min_nm\tld_max_nm\t"
-            "funnel_bias_max_kj_mol\tmetad_bias_min_kj_mol\tmetad_bias_max_kj_mol\n"
-        )
-        row = (
-            len(lp),
-            lp.min(),
-            lp.max(),
-            ld.min(),
-            ld.max(),
-            funnel_bias.max(),
-            metad_bias.min(),
-            metad_bias.max(),
-        )
-        handle.write("\t".join(map(str, row)) + "\n")
+        with (output_dir / "production_summary.tsv").open("w", encoding="utf-8") as handle:
+            handle.write(
+                "frames\tlp_min_nm\tlp_max_nm\tld_min_nm\tld_max_nm\t"
+                "funnel_bias_max_kj_mol\tmetad_bias_min_kj_mol\tmetad_bias_max_kj_mol\n"
+            )
+            row = (
+                len(lp),
+                lp.min(),
+                lp.max(),
+                ld.min(),
+                ld.max(),
+                funnel_bias.max(),
+                metad_bias.min(),
+                metad_bias.max(),
+            )
+            handle.write("\t".join(map(str, row)) + "\n")
 
-    cylinder = lp >= 1.8
-    cone_cylinder_crossings = int(np.count_nonzero(cylinder[1:] != cylinder[:-1]))
-    boundary_frames = int(np.count_nonzero(funnel_bias > 0.0))
+        cylinder = lp >= 1.8
+        cone_cylinder_crossings = int(np.count_nonzero(cylinder[1:] != cylinder[:-1]))
+        boundary_frames = int(np.count_nonzero(funnel_bias > 0.0))
 
-    with (output_dir / "sampling_summary.tsv").open("w", encoding="utf-8") as handle:
-        handle.write(
-            "frames\tlp_min_nm\tlp_max_nm\tld_min_nm\tld_max_nm\t"
-            "cone_cylinder_crossings\tcylinder_fraction\tfunnel_boundary_frames\n"
-        )
-        handle.write(
-            f"{len(lp)}\t{lp.min()}\t{lp.max()}\t{ld.min()}\t{ld.max()}\t"
-            f"{cone_cylinder_crossings}\t{cylinder.mean()}\t{boundary_frames}\n"
-        )
-
-    if not args.skip_fes:
-        plumed = os.environ.get("PLUMED", "plumed")
-
-        if shutil.which(plumed) is None:
-            raise FileNotFoundError(
-                f"plumed not found: {plumed}. Use --skip-fes to create only the TSV."
+        with (output_dir / "sampling_summary.tsv").open("w", encoding="utf-8") as handle:
+            handle.write(
+                "frames\tlp_min_nm\tlp_max_nm\tld_min_nm\tld_max_nm\t"
+                "cone_cylinder_crossings\tcylinder_fraction\tfunnel_boundary_frames\n"
+            )
+            handle.write(
+                f"{len(lp)}\t{lp.min()}\t{lp.max()}\t{ld.min()}\t{ld.max()}\t"
+                f"{cone_cylinder_crossings}\t{cylinder.mean()}\t{boundary_frames}\n"
             )
 
-        print(f"Calculating FES: {work_dir / 'HILLS'} -> {output_dir / 'fes.dat'}", flush=True)
-        subprocess.run(
-            [
-                plumed,
-                "sum_hills",
-                "--hills",
-                str(work_dir / "HILLS"),
-                "--outfile",
-                str(output_dir / "fes.dat"),
-                "--mintozero",
-            ],
-            check=True,
-        )
+        if not args.skip_fes:
+            plumed = os.environ.get("PLUMED", "plumed")
 
-        fes = output_dir / "fes.dat"
-        if not fes.is_file() or fes.stat().st_size == 0:
-            raise ValueError(f"FES calculation: plumed sum_hills did not create a nonempty output: {fes}")
-        print(f"FES output: {fes}")
-    else:
-        print("Skipping FES calculation (--skip-fes).")
+            if shutil.which(plumed) is None:
+                raise FileNotFoundError(
+                    f"plumed not found: {plumed}. Use --skip-fes to create only the TSV."
+                )
 
+            print(f"Calculating FES: {work_dir / 'HILLS'} -> {output_dir / 'fes.dat'}", flush=True)
+            subprocess.run(
+                [
+                    plumed,
+                    "sum_hills",
+                    "--hills",
+                    str(work_dir / "HILLS"),
+                    "--outfile",
+                    str(output_dir / "fes.dat"),
+                    "--mintozero",
+                ],
+                check=True,
+            )
+
+            fes = output_dir / "fes.dat"
+            if not fes.is_file() or fes.stat().st_size == 0:
+                raise ValueError(f"FES calculation: plumed sum_hills did not create a nonempty output: {fes}")
+            print(f"FES output: {fes}")
+        else:
+            print("Skipping FES calculation (--skip-fes).")
+
+    output_dir = completed_output_dir
     print(f"Funnel MetaD diagnostics results: {output_dir}")
     return 0
 

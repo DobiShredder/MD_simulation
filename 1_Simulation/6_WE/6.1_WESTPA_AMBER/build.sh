@@ -54,12 +54,11 @@ done
 
 mkdir -p "$build_dir" "$basis_dir"
 
-if [[ -s "$build_dir/system.parm7" && -s "$build_dir/system.rst7" ]]; then
+topology_status=$("${PYTHON:-python3}" helpers/input_identity.py \
+    --check-completion "$WORK_DIR/.topology.identity.json")
+if [[ "$topology_status" == complete ]]; then
     echo "Skipping: topology outputs already exist."
 else
-    if [[ -e "$build_dir/system.parm7" || -e "$build_dir/system.rst7" ]]; then
-        echo "Warning: incomplete topology outputs found; rebuilding the system." >&2
-    fi
     cp "$input_pdb" "$build_dir/input.pdb"
     cp "$WEST_SIM_ROOT/inputs/leap.in" "$build_dir/leap.in"
 
@@ -72,6 +71,9 @@ else
             die "Topology build output was not created: $build_dir/$output; log: $build_dir/leap.log"
         fi
     done
+    "${PYTHON:-python3}" helpers/input_identity.py \
+        --finish-completion "$WORK_DIR/.topology.identity.json" \
+        --required-output "$build_dir/system.parm7" --required-output "$build_dir/system.rst7"
     echo "Completed: WE topology build ($build_dir)"
 fi
 
@@ -87,12 +89,12 @@ run_basis_stage() {
         -O -i "$WEST_SIM_ROOT/inputs/$stage.in" -o "$output_file" \
         -p "$build_dir/system.parm7" -c "$input_restart" -r "$output_restart" \
         -inf "$build_dir/$stage.info" "$@"
-    if [[ -s "$output_file" && -s "$output_restart" ]]; then
+    local completion_state
+    completion_state=$("${PYTHON:-python3}" helpers/input_identity.py \
+        --check-completion "$build_dir/.$stage.identity.json")
+    if [[ "$completion_state" == complete ]]; then
         echo "Skipping: $stage outputs already exist."
         return
-    fi
-    if [[ -e "$output_file" || -e "$output_restart" ]]; then
-        echo "Warning: incomplete $stage outputs found; rerunning the stage." >&2
     fi
 
     echo "Running: $stage"
@@ -113,6 +115,8 @@ run_basis_stage() {
             die "Basis-state $stage output was not created: $output"
         fi
     done
+    "${PYTHON:-python3}" helpers/input_identity.py \
+        --finish-completion "$build_dir/.$stage.identity.json"
     echo "Completed: WE basis-state $stage ($output_restart)"
 }
 

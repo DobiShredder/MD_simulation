@@ -11,6 +11,7 @@ import subprocess
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
+
 from types import ModuleType
 
 WORK = Path("work")
@@ -228,7 +229,9 @@ def combine_binding_free_energy(
     return raw_binding, raw_binding + finite_size
 
 
-def write_free_energy(edge: object, results: dict[str, tuple[float, float]]) -> None:
+def write_free_energy(edge: object, results: dict[str, tuple[float, float]], output_dir: Path | None = None) -> None:
+    if output_dir is None:
+        output_dir = WORK
     contributions = {stage: value for stage, (value, _) in results.items()}
     restraints = read_tsv(WORK / "restraints.tsv")
     standard = standard_state_correction(restraints)
@@ -256,7 +259,7 @@ def write_free_energy(edge: object, results: dict[str, tuple[float, float]]) -> 
         )
         cycle_estimator = f"{stage_modes};analytic"
 
-    with (WORK / "free_energy.tsv").open("w", encoding="utf-8", newline="") as handle:
+    with (output_dir / "free_energy.tsv").open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle, delimiter="\t")
         writer.writerow(["quantity", "value_kcal_mol", "uncertainty_kcal_mol", "estimator"])
         for stage in sampled_stages:
@@ -290,9 +293,11 @@ def write_free_energy(edge: object, results: dict[str, tuple[float, float]]) -> 
         ])
 
 
-def write_diagnostics(edge: object) -> None:
-    diagnostics_path = WORK / "mbar_diagnostics.tsv"
-    overlap_path = WORK / "overlap_matrix.tsv"
+def write_diagnostics(edge: object, output_dir: Path | None = None) -> None:
+    if output_dir is None:
+        output_dir = WORK
+    diagnostics_path = output_dir / "mbar_diagnostics.tsv"
+    overlap_path = output_dir / "overlap_matrix.tsv"
 
     with diagnostics_path.open("w", encoding="utf-8", newline="") as diagnostics_handle:
         diagnostics = csv.writer(diagnostics_handle, delimiter="\t")
@@ -328,51 +333,52 @@ def write_diagnostics(edge: object) -> None:
 
 
 def main() -> None:
+    from helpers.result_generation import analysis_generation
+
     print(f"Reading free-energy analysis inputs: {WORK / 'states.tsv'}", flush=True)
     extractor = require_program("edgembar-amber2dats.py")
     edgembar = require_program("edgembar")
     states = read_tsv(WORK / "states.tsv")
 
-    mbar_directory = WORK / "mbar"
-    if mbar_directory.exists():
-        shutil.rmtree(mbar_directory)
-    mbar_directory.mkdir(parents=True)
-    print(f"Extracting window energies: {WORK}; logs and extracted data: {mbar_directory}", flush=True)
+    with analysis_generation(WORK) as output_dir:
+        mbar_directory = output_dir / "mbar"
+        mbar_directory.mkdir(parents=True)
+        print(f"Extracting window energies: {WORK}; logs and extracted data: {mbar_directory}", flush=True)
 
-    stages = (
-        "restraint",
-        "complex_charge",
-        "complex_vdw",
-        "solvent_charge",
-        "solvent_vdw",
-    )
-    data = {
-        stage: prepare_stage_data(extractor, stage, states, mbar_directory)
-        for stage in stages
-    }
-    xml_path = mbar_directory / "abfe.xml"
-    report_path = mbar_directory / "abfe_report.py"
-    write_edge_xml(xml_path, data)
+        stages = (
+            "restraint",
+            "complex_charge",
+            "complex_vdw",
+            "solvent_charge",
+            "solvent_vdw",
+        )
+        data = {
+            stage: prepare_stage_data(extractor, stage, states, mbar_directory)
+            for stage in stages
+        }
+        xml_path = mbar_directory / "abfe.xml"
+        report_path = mbar_directory / "abfe_report.py"
+        write_edge_xml(xml_path, data)
 
-    print(f"Estimating free energies: {xml_path}; log: {mbar_directory / 'edgembar.log'}", flush=True)
-    run_command(
-        [
-            edgembar,
-            "--mode=AUTO",
-            f"--temp={TEMPERATURE_K}",
-            f"--nboot={BOOTSTRAP_SAMPLES}",
-            f"--out={report_path}",
-            str(xml_path),
-        ],
-        mbar_directory / "edgembar.log",
-    )
-    print(f"Writing free-energy diagnostics: {WORK}; report input: {report_path}", flush=True)
-    report = load_report(report_path)
-    results = stage_results(report.edge)
-    write_free_energy(report.edge, results)
-    write_diagnostics(report.edge)
-    print(f"Generating HTML report: {report_path}; log: {mbar_directory / 'report.log'}", flush=True)
-    run_command([sys.executable, str(report_path), "--html"], mbar_directory / "report.log")
+        print(f"Estimating free energies: {xml_path}; log: {mbar_directory / 'edgembar.log'}", flush=True)
+        run_command(
+            [
+                edgembar,
+                "--mode=AUTO",
+                f"--temp={TEMPERATURE_K}",
+                f"--nboot={BOOTSTRAP_SAMPLES}",
+                f"--out={report_path}",
+                str(xml_path),
+            ],
+            mbar_directory / "edgembar.log",
+        )
+        print(f"Writing free-energy diagnostics: {WORK}; report input: {report_path}", flush=True)
+        report = load_report(report_path)
+        results = stage_results(report.edge)
+        write_free_energy(report.edge, results, output_dir)
+        write_diagnostics(report.edge, output_dir)
+        print(f"Generating HTML report: {report_path}; log: {mbar_directory / 'report.log'}", flush=True)
+        run_command([sys.executable, str(report_path), "--html"], mbar_directory / "report.log")
 
     print(f"ABFE free-energy results: {WORK / 'free_energy.tsv'}")
 

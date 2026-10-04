@@ -56,8 +56,7 @@ python3 anal.py
 `prepare.py`는 chain A 57 residues와 chain B의 PPPVPPRR sequence를 검사합니다.
 `build.sh`는 생성된 residue 범위로 `timask1`과 `scmask1`을 채웁니다.
 `igamd=15`는 peptide potential과 나머지 system potential에 dual boost를
-적용합니다. Preparation stage의 핵심 output이 모두 있으면 건너뛰고, 일부만
-있으면 해당 stage를 다시 실행합니다. Production output은 덮어쓰지 않습니다.
+적용합니다. Preparation stage의 핵심 output과 성공 완료 증거가 모두 있으면 건너뛰고, 완료 증거가 없거나 필수 output이 누락되면 기존 결과를 보존하고 중단합니다. Production output은 덮어쓰지 않습니다.
 
 ### 주요 option
 
@@ -117,8 +116,8 @@ The fixed heating seed is `43001`.
 
 The 1 ns example demonstrates preparation, restart, and reweighting data flow;
 it cannot establish peptide binding thermodynamics or kinetics. Preparation
-stages are skipped only when their primary output and restart both exist;
-incomplete pairs are rerun, and existing production output is protected. Use
+stages are reused only with successful completion evidence and all required outputs;
+partial results are preserved and rejected, and existing production output is protected. Use
 `3_Templates/4_GaMD/4.3_Pep-GaMD` for independent runs.
 
 ## References / 참고 자료
@@ -147,3 +146,27 @@ Run compares inputs for result reuse with SHA256. Changed topology, initial coor
 Normal exit, command failure and INT/TERM release only the owned lock after child termination is verified. Locks left by SIGKILL or node failure are retained. Inspect the reported lock and its `owner.json` host, PID, command and scopes; confirm through the scheduler and owning host that all writers and children stopped before manually removing only that lock directory. A PID missing locally is not sufficient. Apply the same checks to `.gate/`.
 
 Supported `--dry-run` and `--help` do not create writer or identity files. Do not move active work trees or edit identities to reuse results. Protection was tested on a local filesystem with local child processes; network filesystems, remote MPI and termination of writers on other nodes remain unverified.
+
+### Stage 완료 판정 / Stage completion
+
+Input identity는 입력이 같은지 확인하며 engine의 성공 종료를 증명하지 않습니다.
+Runner가 engine의 성공 종료와 필수 output을 확인한 뒤 만든 완료 증거가 있어야
+stage를 재사용합니다. Output이 남았지만 완료 증거가 없거나 필수 output이
+누락·비어 있으면 기존 결과를 보존하고 중단합니다. 기존 결과를 소급 인증하지
+않습니다. 새 계산은 생성된 `work/`를 포함하지 않는 새 tutorial copy에서 시작합니다.
+`ntwx=0`인 AMBER stage는 trajectory를 완료 조건으로 요구하지 않습니다.
+지원되는 continuation은 기존 restart/state 전달 방식을 따릅니다.
+
+Input identity checks unchanged inputs; it does not prove a successful engine exit.
+A stage is reused only with completion evidence written after a successful engine
+exit and required-output checks. Outputs without that evidence, or missing/empty
+required outputs, are preserved and rejected. Existing results are not certified
+retroactively. Start a new tutorial copy without generated `work/` directories for
+a new calculation. AMBER stages with `ntwx=0` do not require a trajectory for
+completion. Supported continuation retains its existing restart/state handoff.
+
+Production은 시작 증거도 보존합니다. Engine이 output 없이 mutable GaMD state만
+바꾸고 실패해도 preparation state를 복사해 그 실패 상태를 덮어쓰지 않습니다.
+
+Production also retains an attempt record. If the engine changes only mutable GaMD
+state before failing, retry does not overwrite that state with the prepared state.

@@ -40,6 +40,10 @@ fi
 
 output_pdb="$work_dir/system-coordinates.pdb"
 
+if (( ! dry_run )) && [[ -e "$output_pdb" || -L "$output_pdb" ]]; then
+    die "Coordinate build output already exists: $output_pdb. Files were preserved. Start a new tutorial copy without generated work directories."
+fi
+
 # Input and dependency checks
 if [[ ! -f "$protein_pdb" ]]; then
     die "KcsA PDB not found: $protein_pdb"

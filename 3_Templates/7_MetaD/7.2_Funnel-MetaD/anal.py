@@ -11,6 +11,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from helpers.result_generation import result_generation
+
 sys.dont_write_bytecode = True
 sys.path.insert(0, "helpers")
 from config_utils import load_config  # noqa: E402
@@ -104,42 +106,44 @@ def main() -> None:
     values = read_colvar(colvar, numpy)
     require_fields(values, {"time"}, colvar)
     output_dir = work / "analysis"
-    output_dir.mkdir(exist_ok=True)
-    rows: list[tuple[str, object, str]] = [("frames", len(values["time"]), "count")]
+    completed_output_dir = output_dir
+    with result_generation(completed_output_dir) as output_dir:
+        rows: list[tuple[str, object, str]] = [("frames", len(values["time"]), "count")]
 
-    required = {
-        "time", "fps.lp", "fps.ld", "funnel.bias", "lower.bias",
-        "upper.bias", "metad.bias", "metad.rbias",
-    }
-    require_fields(values, required, colvar)
-    rows.extend([
-        ("lp_min", values["fps.lp"].min(), "nm"),
-        ("lp_max", values["fps.lp"].max(), "nm"),
-        ("ld_min", values["fps.ld"].min(), "nm"),
-        ("ld_max", values["fps.ld"].max(), "nm"),
-        ("funnel_bias_max", values["funnel.bias"].max(), "kJ/mol"),
-        ("metad_bias_max", values["metad.bias"].max(), "kJ/mol"),
-    ])
-    hills = work / "HILLS"
-    write_metrics(output_dir / "production_summary.tsv", rows)
-    if hills is not None and not args.skip_fes:
-        if not hills.is_file():
-            raise SystemExit(f"HILLS output not found: {hills}")
-        plumed = os.environ.get("PLUMED", "plumed")
-        if shutil.which(plumed) is None:
-            raise SystemExit(f"plumed not found: {plumed}; use --skip-fes")
-        print(f"Calculating FES: {work / 'HILLS'} -> {output_dir / 'fes.dat'}", flush=True)
-        subprocess.run([
-            plumed, "sum_hills", "--hills", str(hills),
-            "--outfile", str(output_dir / "fes.dat"), "--mintozero",
-        ], check=True)
-        fes = output_dir / "fes.dat"
-        if not fes.is_file() or fes.stat().st_size == 0:
-            raise SystemExit(f"FES calculation: plumed sum_hills did not create a nonempty output: {fes}")
-        print(f"FES output: {fes}")
-    else:
-        print("Skipping FES calculation (--skip-fes).")
+        required = {
+            "time", "fps.lp", "fps.ld", "funnel.bias", "lower.bias",
+            "upper.bias", "metad.bias", "metad.rbias",
+        }
+        require_fields(values, required, colvar)
+        rows.extend([
+            ("lp_min", values["fps.lp"].min(), "nm"),
+            ("lp_max", values["fps.lp"].max(), "nm"),
+            ("ld_min", values["fps.ld"].min(), "nm"),
+            ("ld_max", values["fps.ld"].max(), "nm"),
+            ("funnel_bias_max", values["funnel.bias"].max(), "kJ/mol"),
+            ("metad_bias_max", values["metad.bias"].max(), "kJ/mol"),
+        ])
+        hills = work / "HILLS"
+        write_metrics(output_dir / "production_summary.tsv", rows)
+        if hills is not None and not args.skip_fes:
+            if not hills.is_file():
+                raise SystemExit(f"HILLS output not found: {hills}")
+            plumed = os.environ.get("PLUMED", "plumed")
+            if shutil.which(plumed) is None:
+                raise SystemExit(f"plumed not found: {plumed}; use --skip-fes")
+            print(f"Calculating FES: {work / 'HILLS'} -> {output_dir / 'fes.dat'}", flush=True)
+            subprocess.run([
+                plumed, "sum_hills", "--hills", str(hills),
+                "--outfile", str(output_dir / "fes.dat"), "--mintozero",
+            ], check=True)
+            fes = output_dir / "fes.dat"
+            if not fes.is_file() or fes.stat().st_size == 0:
+                raise SystemExit(f"FES calculation: plumed sum_hills did not create a nonempty output: {fes}")
+            print(f"FES output: {fes}")
+        else:
+            print("Skipping FES calculation (--skip-fes).")
 
+    output_dir = completed_output_dir
     print(f"Funnel-MetaD diagnostics: {output_dir / 'production_summary.tsv'}")
 
 

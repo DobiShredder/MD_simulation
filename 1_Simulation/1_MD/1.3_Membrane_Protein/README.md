@@ -63,3 +63,9 @@ review of protonation, K+ occupancy, and initial pore waters. Production is
 - [RCSB PDB 1K4C](https://www.rcsb.org/structure/1K4C)
 - [RCSB PDB 3EFF](https://www.rcsb.org/structure/3EFF)
 - [Lipid21](https://doi.org/10.1021/acs.jctc.1c01217)
+
+### 기존 build 결과 보존 / Preserving build results
+
+Coordinate와 topology entry는 기존 생성물이 있으면 쓰기 전에 거부합니다. 새 structure나 설정으로 시작하려면 생성된 `work/` directory를 포함하지 않는 새 tutorial copy를 준비합니다. 실행 중인 reader/writer 보호는 별도로 유지됩니다.
+
+The coordinate and topology entries reject existing generated outputs before writing. For changed structures or settings, prepare a new tutorial copy without generated `work/` directories. Concurrent reader/writer protection remains separate.

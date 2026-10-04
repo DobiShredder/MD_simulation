@@ -2,7 +2,7 @@
 
 ## 한국어
 
-사용자가 직접 실행하는 파일은 이 directory의 root에 있습니다. `helpers/`는 `build.sh`, `run.sh` 또는 `anal.py`가 자동 호출하는 leaf-local 내부 code이며 직접 실행하지 않습니다.
+사용자가 직접 실행하는 파일은 이 directory의 root에 있습니다. `helpers/`는 `build.sh`, `run.sh` 또는 `anal.py`가 자동 호출하는 leaf-local 내부 code입니다. `helpers/result_generation.py`는 외부 consumer에서 결과를 읽기 전 별도로 검사할 때도 사용합니다.
 
 중단되거나 marker가 없는 stage output은 자동 삭제하거나 재실행하지 않고 보존한 채 중단합니다.
 
@@ -95,9 +95,29 @@ SIGKILL 또는 node 장애로 남은 lock은 자동으로 지우지 않습니다
 종료는 로컬 fixture에서 검증하지 않았습니다.
 
 
+### Analysis 결과 저장
+
+`anal.py`는 새 extracted energy, report와 최종 TSV를 temporary generation에서
+계산합니다. Extraction, estimator, TSV 또는 HTML 생성이 실패하면 기존
+`mbar/`, `free_energy.tsv`, `mbar_diagnostics.tsv`, `overlap_matrix.tsv`를 유지합니다.
+실패한 command의 최근 log 내용은 stderr에 출력합니다.
+
+자동 호출되는 `helpers/result_generation.py`가 이 파일들을 검증하고 게시합니다.
+완료 기록은 `work/.analysis-generation.json`입니다. 여러 파일의 게시 도중
+중단되면 `work/.analysis.pending`이 consumer와 재실행을 차단합니다. 실행 process가
+종료됐는지 확인한 뒤 marker에 적힌 previous/new directory를 보존하고 검사합니다.
+Marker만 삭제하거나 파일을 개별적으로 섞지 않습니다.
+
+외부 script에서 결과를 읽기 전에는 다음 검사를 사용합니다. 별도 `WORK_DIR`을
+사용했다면 `work`를 그 경로로 바꿉니다.
+
+```bash
+python3 helpers/result_generation.py work
+```
+
 ## English
 
-User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh`, `run.sh`, or `anal.py`; it is not a separate entry point.
+User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh`, `run.sh`, or `anal.py`; `helpers/result_generation.py` also supports a separate integrity check before an external consumer reads results.
 
 Interrupted or unmarked stage output is retained and stops the workflow instead of being deleted or rerun automatically.
 
@@ -177,3 +197,24 @@ empty directory. A leftover `.gate` also requires checking that all registration
 and release operations have stopped. A PID alone does not establish that a job
 on another host has ended. Atomic directory operations on cluster filesystems
 and termination of remote/daemon processes were not tested by local fixtures.
+
+### Analysis result storage
+
+`anal.py` calculates new extracted energies, reports, and final TSV files in a
+temporary generation. Extraction, estimation, TSV, or HTML failure preserves
+the previous `mbar/`, `free_energy.tsv`, `mbar_diagnostics.tsv`, and
+`overlap_matrix.tsv`. Recent failed-command log lines are printed to stderr.
+
+The automatically called `helpers/result_generation.py` validates and publishes
+this group, recording completion in `work/.analysis-generation.json`. If multiple
+file publication is interrupted, `work/.analysis.pending` blocks consumers and
+reruns. Check that the process has ended, then preserve and inspect the
+previous/new directories listed there. Do not remove only the marker or mix
+individual files.
+
+Before reading results in an external script, run the check below. Replace
+`work` with your `WORK_DIR` if using another directory.
+
+```bash
+python3 helpers/result_generation.py work
+```

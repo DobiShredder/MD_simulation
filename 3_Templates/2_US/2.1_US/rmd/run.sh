@@ -84,16 +84,11 @@ run_stage() {
     local label=$2
     local input_restart=$3
     shift 3
-    local production=0
     local trajectory=0
     local reference_restart=""
 
     while (( $# > 0 )); do
         case "$1" in
-            --production)
-                production=1
-                shift
-                ;;
             --trajectory)
                 trajectory=1
                 shift
@@ -250,7 +245,7 @@ PY
         fi
         echo "Equilibration final density: ${final_density} g/cm^3"
     fi
-    run_stage ratchet "ratchet MD" equil.rst7 --trajectory --production
+    run_stage ratchet "ratchet MD" equil.rst7 --trajectory
 fi
 
 if (( ! dry_run )); then

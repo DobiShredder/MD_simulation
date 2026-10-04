@@ -49,8 +49,7 @@ GPU nonbonded pair-list의 여유 폭을 늘립니다. 따라서 100 ps equilibr
 `2 × (cut + skinnb)`가 shortest box dimension보다 작은지 확인합니다.
 
 Production은 `work/`에서 1 ns를 실행합니다. Minimization, heating과
-equilibration은 `*.out`과 `*.rst7`이 모두 있으면 건너뛰고, 일부만 있으면
-다시 실행합니다. Production output이 있으면 덮어쓰지 않고 중단합니다.
+equilibration은 `*.out`과 `*.rst7`이 모두 있고 성공 완료 증거가 있으면 건너뛰고, 실패하거나 일부만 있으면 기존 결과를 보존하고 중단합니다. Production output이 있으면 덮어쓰지 않고 중단합니다.
 `HILLS`는 bias를 복원하는
 기록이며 `COLVAR`를 대신하지 않습니다.
 
@@ -64,6 +63,18 @@ PLUMED가 없는 분석 환경에서는 `python3 anal.py --skip-fes`로 diagnost
 별도의 반복 계산과 오차 분석이 필요합니다.
 
 Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 중단하고 파일을 보존합니다. 새 build 전에는 기존 `work/`를 다른 위치에 보관하거나 별도 tutorial 사본을 사용합니다.
+
+### Analysis 결과 저장
+
+`anal.py`는 diagnostic TSV와 새 FES를 별도 temporary generation에서 만들고
+확인한 뒤 `work/analysis/`을 교체합니다. `sum_hills`가 exit 0을 반환해도
+새 `fes.dat`이 없거나 비어 있으면 실패로 처리하고 이전 결과를 유지합니다.
+`--skip-fes`의 새 결과에는 과거 FES를 포함하지 않습니다.
+
+자동 호출되는 `helpers/result_generation.py`가 완료한 output hash를
+`analysis/.generation.json`에 기록합니다. 게시가 중단되어
+`work/.analysis.pending`이 남으면 재실행을 거부합니다. 실행 process가 종료됐는지
+확인한 뒤 marker의 previous/new directory를 보존하고 검사합니다.
 
 ## English
 
@@ -110,3 +121,33 @@ Run compares inputs for result reuse with SHA256. Changed topology, initial coor
 Normal exit, command failure and INT/TERM release only the owned lock after child termination is verified. Locks left by SIGKILL or node failure are retained. Inspect the reported lock and its `owner.json` host, PID, command and scopes; confirm through the scheduler and owning host that all writers and children stopped before manually removing only that lock directory. A PID missing locally is not sufficient. Apply the same checks to `.gate/`.
 
 Supported `--dry-run` and `--help` do not create writer or identity files. Do not move active work trees or edit identities to reuse results. Protection was tested on a local filesystem with local child processes; network filesystems, remote MPI and termination of writers on other nodes remain unverified.
+
+### Stage 완료 판정 / Stage completion
+
+Input identity는 입력이 같은지 확인하며 engine의 성공 종료를 증명하지 않습니다.
+Runner가 engine의 성공 종료와 필수 output을 확인한 뒤 만든 완료 증거가 있어야
+stage를 재사용합니다. Output이 남았지만 완료 증거가 없거나 필수 output이
+누락·비어 있으면 기존 결과를 보존하고 중단합니다. 기존 결과를 소급 인증하지
+않습니다. 새 계산은 생성된 `work/`를 포함하지 않는 새 tutorial copy에서 시작합니다.
+`ntwx=0`인 AMBER stage는 trajectory를 완료 조건으로 요구하지 않습니다.
+지원되는 continuation은 기존 restart/state 전달 방식을 따릅니다.
+
+Input identity checks unchanged inputs; it does not prove a successful engine exit.
+A stage is reused only with completion evidence written after a successful engine
+exit and required-output checks. Outputs without that evidence, or missing/empty
+required outputs, are preserved and rejected. Existing results are not certified
+retroactively. Start a new tutorial copy without generated `work/` directories for
+a new calculation. AMBER stages with `ntwx=0` do not require a trajectory for
+completion. Supported continuation retains its existing restart/state handoff.
+
+### Analysis result storage
+
+`anal.py` creates diagnostic TSV files and a fresh FES in a separate temporary
+generation before replacing `work/analysis/`. An exit-zero `sum_hills` that
+creates no nonempty `fes.dat` is a failure and preserves previous results.
+A new `--skip-fes` generation does not retain the old FES.
+
+The automatically called `helpers/result_generation.py` records output hashes
+in `analysis/.generation.json`. Interrupted publication leaves
+`work/.analysis.pending` and blocks reruns. Check that the process has ended,
+then preserve and inspect the previous/new directories listed in the marker.

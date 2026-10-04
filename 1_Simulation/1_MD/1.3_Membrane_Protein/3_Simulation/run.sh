@@ -33,12 +33,12 @@ run_stage() {
     "${PYTHON:-python3}" ../helpers/input_identity.py \
         --record ".$output.identity.json" --stage "$label" -- "$@"
 
-    if [[ -s "$output" && -s "$restart" ]]; then
+    local completion_state
+    completion_state=$("${PYTHON:-python3}" ../helpers/input_identity.py \
+        --check-completion ".$output.identity.json")
+    if [[ "$completion_state" == complete ]]; then
         echo "Skipping completed stage: $label (work/$output)"
         return
-    fi
-    if [[ -e "$output" || -e "$restart" ]]; then
-        echo "Warning: restarting incomplete stage: $label (work/$output, work/$restart)" >&2
     fi
 
     echo "Running: $label"
@@ -54,6 +54,8 @@ run_stage() {
     if [[ "$output" == production.out && ! -s production.nc ]]; then
         die "$label trajectory was not created: work/production.nc"
     fi
+    "${PYTHON:-python3}" ../helpers/input_identity.py \
+        --finish-completion ".$output.identity.json"
     echo "Completed: $label (work/$output)"
 }
 

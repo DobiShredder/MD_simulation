@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+
+from result_generation import input_generation
 import tempfile
 
 numba_cache = Path(tempfile.gettempdir()) / "md-tutorial-numba-cache"
@@ -39,49 +41,52 @@ def read_features(path: Path) -> tuple[np.ndarray, np.ndarray]:
 
 def main() -> int:
     output_dir = Path(__file__).resolve().parent / "output"
-    print(f"Running: UMAP analysis; input directory: {output_dir}")
-    frames, features = read_features(output_dir / "phi_psi.dat")
-    if len(frames) <= N_NEIGHBORS:
-        raise ValueError(
-            f"UMAP requires more frames than the n_neighbors value: "
-            f"frames={len(frames)}, n_neighbors={N_NEIGHBORS}"
+    completed_output_dir = output_dir
+    with input_generation(output_dir) as output_dir:
+        print(f"Running: UMAP analysis; input directory: {output_dir}")
+        frames, features = read_features(output_dir / "phi_psi.dat")
+        if len(frames) <= N_NEIGHBORS:
+            raise ValueError(
+                f"UMAP requires more frames than the n_neighbors value: "
+                f"frames={len(frames)}, n_neighbors={N_NEIGHBORS}"
+            )
+
+        model = umap.UMAP(
+            n_neighbors=N_NEIGHBORS,
+            min_dist=MIN_DIST,
+            n_components=2,
+            metric="euclidean",
+            random_state=RANDOM_STATE,
+            n_jobs=1,
+        )
+        embedding = model.fit_transform(features)
+
+        np.savetxt(
+            output_dir / "embedding.tsv",
+            np.column_stack((frames, embedding)),
+            delimiter="\t",
+            header="frame\tUMAP1\tUMAP2",
+            comments="",
+        )
+        (output_dir / "metadata.tsv").write_text(
+            "parameter\tvalue\n"
+            f"umap_version\t{umap.__version__}\n"
+            f"n_neighbors\t{N_NEIGHBORS}\n"
+            f"min_dist\t{MIN_DIST}\n"
+            f"random_state\t{RANDOM_STATE}\n"
+            "scaling\tStandardScaler\n",
+            encoding="utf-8",
         )
 
-    model = umap.UMAP(
-        n_neighbors=N_NEIGHBORS,
-        min_dist=MIN_DIST,
-        n_components=2,
-        metric="euclidean",
-        random_state=RANDOM_STATE,
-        n_jobs=1,
-    )
-    embedding = model.fit_transform(features)
-
-    np.savetxt(
-        output_dir / "embedding.tsv",
-        np.column_stack((frames, embedding)),
-        delimiter="\t",
-        header="frame\tUMAP1\tUMAP2",
-        comments="",
-    )
-    (output_dir / "metadata.tsv").write_text(
-        "parameter\tvalue\n"
-        f"umap_version\t{umap.__version__}\n"
-        f"n_neighbors\t{N_NEIGHBORS}\n"
-        f"min_dist\t{MIN_DIST}\n"
-        f"random_state\t{RANDOM_STATE}\n"
-        "scaling\tStandardScaler\n",
-        encoding="utf-8",
-    )
-
-    figure, axis = plt.subplots(figsize=(7, 5.5))
-    scatter = axis.scatter(embedding[:, 0], embedding[:, 1], c=frames, s=14)
-    axis.set_xlabel("UMAP 1")
-    axis.set_ylabel("UMAP 2")
-    figure.colorbar(scatter, ax=axis, label="Frame")
-    figure.tight_layout()
-    print("Displaying UMAP analysis figure.")
-    plt.show()
+        figure, axis = plt.subplots(figsize=(7, 5.5))
+        scatter = axis.scatter(embedding[:, 0], embedding[:, 1], c=frames, s=14)
+        axis.set_xlabel("UMAP 1")
+        axis.set_ylabel("UMAP 2")
+        figure.colorbar(scatter, ax=axis, label="Frame")
+        figure.tight_layout()
+        print("Displaying UMAP analysis figure.")
+        plt.show()
+    output_dir = completed_output_dir
     print(f"Completed: UMAP analysis; results: {output_dir} (figure displayed interactively)")
     return 0
 

@@ -7,6 +7,8 @@ import csv
 from importlib.metadata import version
 from pathlib import Path
 
+from prepare import copy_prepared_inputs, result_generation, verify_generation
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -25,6 +27,7 @@ GAS_CONSTANT_KCAL_MOL_K = 0.00198720425864083
 def read_inputs(
     output_dir: Path,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    generation = verify_generation(output_dir)
     summary_file = output_dir / "summary.tsv"
     if not summary_file.is_file():
         raise ValueError("Run ./run.sh first: output/summary.tsv")
@@ -54,6 +57,8 @@ def read_inputs(
         distances.extend(data[:, 0])
         boosts.extend(data[:, 1])
 
+    if verify_generation(output_dir) != generation:
+        raise ValueError(f"Analysis generation changed while reading: {output_dir}")
     return (
         np.asarray(centers),
         np.asarray(forces),
@@ -306,19 +311,21 @@ def plot_pmf(
 def main() -> None:
     print(f"Running: GaREUS reweighting analysis; input directory: {OUTPUT_DIR}")
     try:
-        centers, forces, sample_counts, distances, boosts = read_inputs(OUTPUT_DIR)
-        weights, overlap = umbrella_weights(centers, forces, sample_counts, distances)
-        _, rows = calculate_pmf(distances, boosts, weights)
-        bin_centers, mbar_pmf, reweighted_pmf = write_outputs(
-            OUTPUT_DIR,
-            rows,
-            centers,
-            sample_counts,
-            distances,
-            boosts,
-            weights,
-            overlap,
-        )
+        with result_generation(OUTPUT_DIR) as generation_dir:
+            copy_prepared_inputs(OUTPUT_DIR, generation_dir)
+            centers, forces, sample_counts, distances, boosts = read_inputs(generation_dir)
+            weights, overlap = umbrella_weights(centers, forces, sample_counts, distances)
+            _, rows = calculate_pmf(distances, boosts, weights)
+            bin_centers, mbar_pmf, reweighted_pmf = write_outputs(
+                generation_dir,
+                rows,
+                centers,
+                sample_counts,
+                distances,
+                boosts,
+                weights,
+                overlap,
+            )
     except (OSError, KeyError, ValueError) as error:
         raise SystemExit(f"GaREUS reweighting failed: {error}") from error
 

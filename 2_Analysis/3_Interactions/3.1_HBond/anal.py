@@ -5,6 +5,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from result_generation import verify_generation
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -43,6 +45,7 @@ def read_hbond_counts(path: Path, numeric_columns: int) -> np.ndarray:
 
 def main() -> int:
     output_dir = Path(__file__).resolve().parent / "output"
+    generation = verify_generation(output_dir)
     print(f"Running: HBond analysis; input directory: {output_dir}")
     protein = np.loadtxt(
         output_dir / "protein_hbond_count.dat", comments="#", ndmin=2
@@ -76,6 +79,8 @@ def main() -> int:
 
     figure.tight_layout()
     print("Displaying HBond analysis figure.")
+    if verify_generation(output_dir) != generation:
+        raise ValueError(f"Analysis generation changed while reading: {output_dir}")
     plt.show()
     print("Completed: HBond analysis (interactive figure).")
     return 0

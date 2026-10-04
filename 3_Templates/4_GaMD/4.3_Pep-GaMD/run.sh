@@ -120,13 +120,12 @@ stage_state() {
 
 run_stage() {
     local stage=$1
-    local stage_type=$2
-    local directory=$3
-    local input_file=$4
-    local input_restart=$5
-    local reference_restart=${6:-}
-    local use_gamd=${7:-no}
-    local previous_gamd_state=${8:-}
+    local directory=$2
+    local input_file=$3
+    local input_restart=$4
+    local reference_restart=${5:-}
+    local use_gamd=${6:-no}
+    local previous_gamd_state=${7:-}
     local label=$stage
     if [[ "$stage" == production ]]; then
         label="production segment $segment_number/$segments"
@@ -210,10 +209,10 @@ if (( ! dry_run )); then
 fi
 
 if (( ! production_only )); then
-run_stage minimize preproduction "$work_dir" "$input_prefix/minimize.in" system.rst7
-run_stage heat preproduction "$work_dir" "$input_prefix/heat.in" minimize.rst7 minimize.rst7
-run_stage equilibrate preproduction "$work_dir" "$input_prefix/equilibrate.in" heat.rst7
-run_stage gamd_prepare production "$work_dir" "$input_prefix/gamd_prepare.in" equilibrate.rst7 "" yes
+run_stage minimize "$work_dir" "$input_prefix/minimize.in" system.rst7
+run_stage heat "$work_dir" "$input_prefix/heat.in" minimize.rst7 minimize.rst7
+run_stage equilibrate "$work_dir" "$input_prefix/equilibrate.in" heat.rst7
+run_stage gamd_prepare "$work_dir" "$input_prefix/gamd_prepare.in" equilibrate.rst7 "" yes
 fi
 
 if (( preparation_only )); then
@@ -263,7 +262,7 @@ for ((segment_number = segment_start; segment_number <= segment_end; segment_num
         restart_path="../${previous_restart#"$work_dir/"}"
         state_path=$previous_gamd_state
     fi
-    run_stage production production "$segment_dir" "$input_prefix/production.in" "$restart_path" "" yes "$state_path"
+    run_stage production "$segment_dir" "$input_prefix/production.in" "$restart_path" "" yes "$state_path"
     previous_restart="$segment_dir/production.rst7"
     previous_gamd_state="$segment_dir/production.gamd.rst"
 done

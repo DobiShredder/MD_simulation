@@ -75,3 +75,21 @@ Run checks topology, initial coordinates, stage inputs and predecessor restarts 
 Normal exit, command failure and INT/TERM release only the owned lock after child termination is verified. Locks left by SIGKILL or node failure are retained. Inspect the reported lock and its `owner.json` host, PID, command and scopes; confirm through the scheduler and owning host that all writers and children stopped before manually removing only that lock directory. A PID missing locally is not sufficient. Apply the same checks to `.gate/`.
 
 Supported `--dry-run` and `--help` do not create writer or identity files. Do not move active work trees or edit identities to reuse results. Protection was tested on a local filesystem with local child processes; network filesystems, remote MPI and termination of writers on other nodes remain unverified.
+
+### Stage 완료 판정 / Stage completion
+
+Input identity는 입력이 같은지 확인하며 engine의 성공 종료를 증명하지 않습니다.
+Runner가 engine의 성공 종료와 필수 output을 확인한 뒤 만든 완료 증거가 있어야
+stage를 재사용합니다. Output이 남았지만 완료 증거가 없거나 필수 output이
+누락·비어 있으면 기존 결과를 보존하고 중단합니다. 기존 결과를 소급 인증하지
+않습니다. 새 계산은 생성된 `work/`를 포함하지 않는 새 tutorial copy에서 시작합니다.
+`ntwx=0`인 AMBER stage는 trajectory를 완료 조건으로 요구하지 않습니다.
+지원되는 continuation은 기존 restart/state 전달 방식을 따릅니다.
+
+Input identity checks unchanged inputs; it does not prove a successful engine exit.
+A stage is reused only with completion evidence written after a successful engine
+exit and required-output checks. Outputs without that evidence, or missing/empty
+required outputs, are preserved and rejected. Existing results are not certified
+retroactively. Start a new tutorial copy without generated `work/` directories for
+a new calculation. AMBER stages with `ntwx=0` do not require a trajectory for
+completion. Supported continuation retains its existing restart/state handoff.

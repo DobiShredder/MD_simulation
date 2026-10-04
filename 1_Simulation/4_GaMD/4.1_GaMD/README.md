@@ -33,8 +33,7 @@ python3 anal.py
 `igamd=3`은 total potential과 dihedral potential에 boost를 적용합니다.
 `work/gamd-restart.dat`에는 preparation에서 결정한 boost parameter가 저장되고,
 production은 `irest_gamd=1`로 이 값을 이어받습니다. Minimization, heating,
-equilibration과 parameter preparation의 핵심 output이 모두 있으면 그 stage를
-건너뜁니다. 일부만 있으면 해당 stage를 다시 실행하며, production output이
+equilibration과 parameter preparation의 핵심 output과 성공 완료 증거가 모두 있으면 그 stage를 건너뜁니다. 실패하거나 일부만 있으면 기존 결과를 보존하고 중단하며, production output이
 있으면 덮어쓰지 않고 중단합니다.
 
 ### 주요 option
@@ -81,8 +80,7 @@ averaging interval. Production uses `irest_gamd=1`; `ntwx=5000` and
 passes `minimize.rst7` as the positional-restraint reference with `-ref`.
 
 Production continues with `irest_gamd=1`. Completed preparation stages are
-skipped when their primary output and restart both exist; incomplete pairs are
-rerun. Existing production output is never overwritten. `AMBER_ENGINE` changes
+reused only with successful completion evidence and all required outputs; partial results are preserved and rejected. Existing production output is never overwritten. `AMBER_ENGINE` changes
 only the executable, and the fixed heating seed is `41001`. Use
 `3_Templates/4_GaMD/4.1_GaMD` for system-specific or repeated production runs.
 The 1 ns example does not establish folding equilibrium or convergence.
@@ -113,3 +111,27 @@ Run compares inputs for result reuse with SHA256. Changed topology, initial coor
 Normal exit, command failure and INT/TERM release only the owned lock after child termination is verified. Locks left by SIGKILL or node failure are retained. Inspect the reported lock and its `owner.json` host, PID, command and scopes; confirm through the scheduler and owning host that all writers and children stopped before manually removing only that lock directory. A PID missing locally is not sufficient. Apply the same checks to `.gate/`.
 
 Supported `--dry-run` and `--help` do not create writer or identity files. Do not move active work trees or edit identities to reuse results. Protection was tested on a local filesystem with local child processes; network filesystems, remote MPI and termination of writers on other nodes remain unverified.
+
+### Stage 완료 판정 / Stage completion
+
+Input identity는 입력이 같은지 확인하며 engine의 성공 종료를 증명하지 않습니다.
+Runner가 engine의 성공 종료와 필수 output을 확인한 뒤 만든 완료 증거가 있어야
+stage를 재사용합니다. Output이 남았지만 완료 증거가 없거나 필수 output이
+누락·비어 있으면 기존 결과를 보존하고 중단합니다. 기존 결과를 소급 인증하지
+않습니다. 새 계산은 생성된 `work/`를 포함하지 않는 새 tutorial copy에서 시작합니다.
+`ntwx=0`인 AMBER stage는 trajectory를 완료 조건으로 요구하지 않습니다.
+지원되는 continuation은 기존 restart/state 전달 방식을 따릅니다.
+
+Input identity checks unchanged inputs; it does not prove a successful engine exit.
+A stage is reused only with completion evidence written after a successful engine
+exit and required-output checks. Outputs without that evidence, or missing/empty
+required outputs, are preserved and rejected. Existing results are not certified
+retroactively. Start a new tutorial copy without generated `work/` directories for
+a new calculation. AMBER stages with `ntwx=0` do not require a trajectory for
+completion. Supported continuation retains its existing restart/state handoff.
+
+Production은 시작 증거도 보존합니다. Engine이 output 없이 mutable GaMD state만
+바꾸고 실패해도 preparation state를 복사해 그 실패 상태를 덮어쓰지 않습니다.
+
+Production also retains an attempt record. If the engine changes only mutable GaMD
+state before failing, retry does not overwrite that state with the prepared state.

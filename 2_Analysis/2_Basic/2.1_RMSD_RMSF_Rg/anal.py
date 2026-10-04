@@ -5,12 +5,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from result_generation import verify_generation
+
 import matplotlib.pyplot as plt
 import numpy as np
 
 
 def main() -> int:
     output_dir = Path(__file__).resolve().parent / "output"
+    generation = verify_generation(output_dir)
     print(f"Running: RMSD/RMSF/Rg analysis; input directory: {output_dir}")
     rmsd_first = np.loadtxt(output_dir / "rmsd_first.dat", comments="#", ndmin=2)
     rmsd_average = np.loadtxt(
@@ -40,6 +43,8 @@ def main() -> int:
 
     figure.tight_layout()
     print("Displaying RMSD/RMSF/Rg analysis figure.")
+    if verify_generation(output_dir) != generation:
+        raise ValueError(f"Analysis generation changed while reading: {output_dir}")
     plt.show()
     print("Completed: RMSD/RMSF/Rg analysis (interactive figure).")
     return 0

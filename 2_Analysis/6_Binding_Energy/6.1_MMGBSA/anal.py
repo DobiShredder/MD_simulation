@@ -6,6 +6,8 @@ from __future__ import annotations
 import csv
 from pathlib import Path
 
+from result_generation import input_generation
+
 try:
     import matplotlib.pyplot as plt
     import numpy as np
@@ -149,23 +151,26 @@ def write_decomposition(
 
 def main() -> int:
     output_dir = Path(__file__).resolve().parent / "output"
-    print(f"Running: MMGBSA analysis; input directory: {output_dir}")
-    energy = read_energy(output_dir / "energy.csv")
-    decomposition = read_decomposition(output_dir / "decomposition.csv")
-    write_energy_outputs(output_dir, energy)
-    write_decomposition(output_dir, decomposition)
+    completed_output_dir = output_dir
+    with input_generation(output_dir) as output_dir:
+        print(f"Running: MMGBSA analysis; input directory: {output_dir}")
+        energy = read_energy(output_dir / "energy.csv")
+        decomposition = read_decomposition(output_dir / "decomposition.csv")
+        write_energy_outputs(output_dir, energy)
+        write_decomposition(output_dir, decomposition)
 
-    figure, axis = plt.subplots(figsize=(8, 4.5))
-    for model, (header, data) in energy.items():
-        total = data[:, header.index("DELTA TOTAL")]
-        cumulative = np.cumsum(total) / np.arange(1, len(total) + 1)
-        axis.plot(data[:, 0], cumulative, label=model)
-    axis.set_xlabel("MMPBSA frame")
-    axis.set_ylabel("Running mean ΔTOTAL (kcal/mol)")
-    axis.legend()
-    figure.tight_layout()
-    print("Displaying MMGBSA analysis figure.")
-    plt.show()
+        figure, axis = plt.subplots(figsize=(8, 4.5))
+        for model, (header, data) in energy.items():
+            total = data[:, header.index("DELTA TOTAL")]
+            cumulative = np.cumsum(total) / np.arange(1, len(total) + 1)
+            axis.plot(data[:, 0], cumulative, label=model)
+        axis.set_xlabel("MMPBSA frame")
+        axis.set_ylabel("Running mean ΔTOTAL (kcal/mol)")
+        axis.legend()
+        figure.tight_layout()
+        print("Displaying MMGBSA analysis figure.")
+        plt.show()
+    output_dir = completed_output_dir
     print(f"Completed: MMGBSA analysis; results: {output_dir} (figure displayed interactively)")
     return 0
 

@@ -13,6 +13,10 @@
 directory나 `3_Templates/common`의 code를 호출하지 않습니다. 복사한 leaf
 directory 안에서 script를 실행합니다.
 
+각 leaf의 `requirements.txt`로 필요한 Python dependency를 설치합니다.
+상위 `requirements.txt`는 모든 leaf의 dependency를 합친 목록입니다.
+`h5py`는 WESTPA의 HDF5 state를 읽는 WE leaf에 포함됩니다.
+
 ```bash
 ./download.sh 1UBQ
 ./build.sh structure/1UBQ.pdb
@@ -133,6 +137,10 @@ inside the leaf; scripts do not call code from the family directory or
 source structure and does not decide protonation, missing atoms, alternate
 locations, biological assemblies, ligands, bound ions, or crystallographic
 waters. Pass a reviewed, build-ready PDB to `build.sh`.
+
+Install Python dependencies from the leaf's `requirements.txt`. The root
+`requirements.txt` lists the union of all leaf dependencies. `h5py` is included
+in the WE leaf for WESTPA HDF5 state access.
 
 Each `config.toml` defines build choices, thermodynamic conditions, production
 length, and method-specific parameters. The build writes the applied settings

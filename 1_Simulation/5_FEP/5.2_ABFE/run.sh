@@ -86,12 +86,16 @@ run_stage() {
         --record "$directory/.$stage.identity.json" --stage "$calculation - $stage" \
         --directory "$directory" "${identity_options[@]}" -- "${command[@]}"
 
-    if [[ -s "$output_file" && -s "$restart_file" ]]; then
+    local required=("$output_file" "$restart_file" "$directory/$stage.info")
+    if [[ "$trajectory" == yes ]]; then
+        required+=("$directory/$stage.nc")
+    fi
+    local output completion_state
+    completion_state=$("${PYTHON:-python3}" helpers/input_identity.py \
+        --check-completion "$directory/.$stage.identity.json")
+    if [[ "$completion_state" == complete ]]; then
         reused_stage_count=$((reused_stage_count + 1))
         return
-    fi
-    if [[ -e "$output_file" || -e "$restart_file" ]]; then
-        echo "Warning: incomplete $stage outputs found; rerunning $calculation." >&2
     fi
 
     if ! (
@@ -100,15 +104,15 @@ run_stage() {
     ); then
         die "$stage calculation failed: $output_file"
     fi
-    local output
-    for output in "$output_file" "$restart_file"; do
+    for output in "${required[@]}"; do
         if [[ ! -s "$output" ]]; then
             die "$calculation - $stage output was not created: $output"
         fi
     done
-    if [[ "$trajectory" == yes && ! -s "$directory/$stage.nc" ]]; then
-        die "$calculation - $stage trajectory was not created: $directory/$stage.nc"
-    fi
+    "${PYTHON:-python3}" helpers/input_identity.py \
+        --finish-completion "$directory/.$stage.identity.json" --directory "$directory" \
+        --required-output "$directory/$stage.info"
+
 }
 
 if (( dry_run )); then

@@ -96,6 +96,18 @@ SIGKILL 또는 node 장애로 남은 lock은 자동으로 지우지 않습니다
 처음 numbered layout으로 실행했다면 segment 수를 줄여도 첫 output은 `work/001/`에 유지합니다. 한 segment를 root `work/production.*`로 완료한 뒤 segment 수를 늘렸다면 첫 output은 그대로 두고 후속 output만 `work/002/`, `work/003/`에 생성합니다. 처음부터 여러 segment를 실행하면 `work/001/`부터 생성합니다.
 
 
+### Analysis 결과 저장
+
+`anal.py`는 diagnostic TSV와 새 FES를 별도 temporary generation에서 만들고
+확인한 뒤 `work/analysis/`을 교체합니다. `sum_hills`가 exit 0을 반환해도
+새 `fes.dat`이 없거나 비어 있으면 실패로 처리하고 이전 결과를 유지합니다.
+`--skip-fes`의 새 결과에는 과거 FES를 포함하지 않습니다.
+
+자동 호출되는 `helpers/result_generation.py`가 완료한 output hash를
+`analysis/.generation.json`에 기록합니다. 게시가 중단되어
+`work/.analysis.pending`이 남으면 재실행을 거부합니다. 실행 process가 종료됐는지
+확인한 뒤 marker의 previous/new directory를 보존하고 검사합니다.
+
 ## English
 
 User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh`, `run.sh`, or `anal.py`; it is not a separate entry point.
@@ -182,3 +194,15 @@ on another host has ended. Atomic directory operations on cluster filesystems
 and termination of remote/daemon processes were not tested by local fixtures.
 
 If one segment completed as `work/production.*`, increasing the segment count retains that first output and writes later outputs under `work/002/`, `work/003/`, etc. Runs configured with multiple segments from the start use `work/001/` onward.
+
+### Analysis result storage
+
+`anal.py` creates diagnostic TSV files and a fresh FES in a separate temporary
+generation before replacing `work/analysis/`. An exit-zero `sum_hills` that
+creates no nonempty `fes.dat` is a failure and preserves previous results.
+A new `--skip-fes` generation does not retain the old FES.
+
+The automatically called `helpers/result_generation.py` records output hashes
+in `analysis/.generation.json`. Interrupted publication leaves
+`work/.analysis.pending` and blocks reruns. Check that the process has ended,
+then preserve and inspect the previous/new directories listed in the marker.

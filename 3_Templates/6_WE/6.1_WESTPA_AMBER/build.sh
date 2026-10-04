@@ -233,15 +233,15 @@ if [[ ! -f "$work_dir/.heat.complete" ]]; then
         -inf heat.info -ref minimize.rst7); then
         die "Basis-state heating failed: $work_dir/heat.out"
     fi
-    for output in heat.out heat.rst7 heat.nc heat.info; do
+    for output in heat.out heat.rst7 heat.info; do
         if [[ ! -s "$work_dir/$output" ]]; then
             die "Basis-state heating output is incomplete: $work_dir/$output"
         fi
     done
     touch "$work_dir/.heat.complete"
     echo "Completed: WE basis-state heating ($work_dir)"
-elif [[ ! -s "$work_dir/heat.rst7" || ! -s "$work_dir/heat.nc" ]]; then
-    die "Completed heating is missing its restart or trajectory: $work_dir"
+elif [[ ! -s "$work_dir/heat.out" || ! -s "$work_dir/heat.rst7" || ! -s "$work_dir/heat.info" ]]; then
+    die "Completed heating is missing required output or restart: $work_dir"
 else
     echo "Skipping completed WE basis-state heating: $work_dir"
 fi
@@ -251,7 +251,8 @@ fi
     --marker "$work_dir/.equilibrate.complete" --directory "$work_dir" -- "$engine" -O -i inputs/equilibrate.in -o equilibrate.out -p system.parm7 -c heat.rst7 -r bstates/basis.rst7 -x equilibrate.nc -inf equilibrate.info
 
 if [[ ! -f "$work_dir/.equilibrate.complete" ]]; then
-    for output in "$work_dir/equilibrate.out" "$work_dir/equilibrate.info" +        "$work_dir/equilibrate.nc" "$work_dir/bstates/basis.rst7"; do
+    for output in "$work_dir/equilibrate.out" "$work_dir/equilibrate.info" \
+        "$work_dir/equilibrate.nc" "$work_dir/bstates/basis.rst7"; do
         if [[ -e "$output" ]]; then
             die "Unmarked equilibration output detected and retained: $output"
         fi
@@ -262,15 +263,15 @@ if [[ ! -f "$work_dir/.equilibrate.complete" ]]; then
         -x equilibrate.nc -inf equilibrate.info); then
         die "Basis-state equilibration failed: $work_dir/equilibrate.out"
     fi
-    for output in equilibrate.out equilibrate.nc equilibrate.info bstates/basis.rst7; do
+    for output in equilibrate.out equilibrate.info bstates/basis.rst7; do
         if [[ ! -s "$work_dir/$output" ]]; then
             die "Basis-state equilibration output is incomplete: $work_dir/$output"
         fi
     done
     touch "$work_dir/.equilibrate.complete"
     echo "Completed: WE basis-state equilibration ($work_dir)"
-elif [[ ! -s "$work_dir/bstates/basis.rst7" || ! -s "$work_dir/equilibrate.nc" ]]; then
-    die "Completed equilibration is missing its restart or trajectory: $work_dir"
+elif [[ ! -s "$work_dir/equilibrate.out" || ! -s "$work_dir/equilibrate.info" || ! -s "$work_dir/bstates/basis.rst7" ]]; then
+    die "Completed equilibration is missing required output or restart: $work_dir"
 else
     echo "Skipping completed WE basis-state equilibration: $work_dir"
 fi

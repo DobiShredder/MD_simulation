@@ -127,16 +127,11 @@ run_stage() {
     local input_file=$4
     local input_restart=$5
     shift 5
-    local stage_type=preproduction
     local reference_restart=""
     local write_trajectory=0
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            --production)
-                stage_type=production
-                shift
-                ;;
             --trajectory)
                 write_trajectory=1
                 shift
@@ -262,7 +257,7 @@ run_window() {
             die "Completed equilibration output is required: $window_dir/equil.rst7"
         fi
         run_stage "$window_dir" production production production.in equil.rst7 \
-            --trajectory --production
+            --trajectory
     fi
 
     processed_window_count=$((processed_window_count + 1))

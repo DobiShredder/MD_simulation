@@ -71,14 +71,18 @@ stage_status() {
         if (( stage_complete )); then
             complete=$((complete + 1))
         fi
-        if [[ -e "work/$replica/$stage.gro" || -e "work/$replica/$stage.cpt" || -e "work/$replica/$stage.log" ]]; then
-            existing=$((existing + 1))
-        fi
+        local output
+        for output in "work/$replica/$stage."{gro,cpt,log,tpr,edr,grompp.log,mdrun.log}; do
+            if [[ -e "$output" || -L "$output" ]]; then
+                existing=$((existing + 1))
+                break
+            fi
+        done
     done < work/states.tsv
 
-    if (( complete == replica_count )); then
+    if [[ -f "work/.$stage.complete" ]] && (( complete == replica_count )); then
         echo complete
-    elif (( existing == 0 )); then
+    elif (( existing == 0 )) && [[ ! -e "work/.$stage.complete" && ! -L "work/.$stage.complete" ]]; then
         echo missing
     else
         echo partial
@@ -119,6 +123,7 @@ check_stage_identity() {
         if [[ "$stage" == production ]]; then
             identity_options+=(--input "$replica_dir/equilibrate.cpt" --input "$replica_dir/plumed.dat")
         fi
+        identity_options+=(--output "work/.$stage.complete")
         local suffix
         for suffix in gro log tpr edr cpt grompp.log mdrun.log; do
             identity_options+=(--output "$replica_dir/$stage.$suffix")
@@ -144,7 +149,7 @@ run_preproduction_stage() {
         return
     fi
     if [[ "$status" == partial ]]; then
-        echo "Warning: restarting incomplete stage for all replicas: $stage" >&2
+        die "Partial $stage output retained in work. Files were preserved. Start a new tutorial copy."
     fi
 
     echo "Running: $stage"
@@ -195,6 +200,7 @@ run_preproduction_stage() {
             die "$stage checkpoint was not created: work/$replica/$stage.cpt"
         fi
     done < work/states.tsv
+    touch "work/.$stage.complete"
     echo "Completed: $stage (work)"
 }
 
@@ -267,6 +273,10 @@ run_preproduction_stage minimize system
 run_preproduction_stage equilibrate minimize
 
 check_stage_identity production equilibrate
+production_status=$(stage_status production)
+if [[ "$production_status" != missing ]]; then
+    die "Production output already exists or is partial in work. Files were preserved. Start a new tutorial copy."
+fi
 
 replica_dirs=()
 while IFS=$'\t' read -r replica _; do
@@ -306,5 +316,7 @@ for replica_dir in "${replica_dirs[@]}"; do
         die "Production output was not created: $replica_dir/production.gro"
     fi
 done
+
+touch work/.production.complete
 
 echo "Completed 1 ns REST2: work"

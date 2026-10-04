@@ -148,6 +148,9 @@ check_stage_identity() {
             input_coordinates="$work_dir/system.rst7"
         fi
         identity_options+=(--input "$replica_dir/$input_name" --input "$input_coordinates")
+        if [[ "$stage" == heat ]]; then
+            identity_options+=(--value "-ref=$input_coordinates")
+        fi
         if [[ -s "$replica_dir/distance.RST" ]]; then
             identity_options+=(--input "$replica_dir/distance.RST")
         fi
@@ -191,6 +194,10 @@ run_replica_stage() {
         if [[ "$input_restart" == "system.rst7" ]]; then
             input_coordinates="$work_dir/system.rst7"
         fi
+        local reference=()
+        if [[ "$stage" == heat ]]; then
+            reference=(-ref "$input_coordinates")
+        fi
         if ! "$amber_engine" \
             "${amber_options[@]}" \
             -O \
@@ -200,7 +207,7 @@ run_replica_stage() {
             -c "$input_coordinates" \
             -r "$replica_dir/$stage.rst7" \
             -x "$replica_dir/$stage.nc" \
-            -inf "$replica_dir/$stage.info"; then
+            -inf "$replica_dir/$stage.info" "${reference[@]}"; then
             die "$stage failed: $replica_dir/$stage.out"
         fi
     done < "$states_file"

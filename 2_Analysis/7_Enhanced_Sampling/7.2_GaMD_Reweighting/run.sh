@@ -35,7 +35,40 @@ if ! "$python" -c 'import numpy' >/dev/null 2>&1; then
     die "Cannot import NumPy."
 fi
 
-mkdir -p "$output_dir"
+completed_output_dir=$output_dir
+output_parent=.
+if [[ "$output_dir" == */* ]]; then
+    output_parent=${output_dir%/*}
+    if [[ -z "$output_parent" ]]; then
+        output_parent=/
+    fi
+fi
+pending="$output_parent/.${output_dir##*/}.pending"
+if [[ -e "$pending" || -L "$pending" ]]; then
+    die "Analysis publication is incomplete; inspect $pending"
+fi
+mkdir -p "$output_parent"
+generation_dir=$(mktemp -d "$output_dir.generation.XXXXXX")
+cleanup_generation() {
+    status=$?
+    if [[ -d "$generation_dir" ]]; then
+        if [[ $status -ne 0 ]]; then
+            echo "Error: analysis failed; previous output is unchanged. Recent generation logs:" >&2
+            for log in "$generation_dir"/*.log; do
+                if [[ -f "$log" ]]; then
+                    echo "Log: $log" >&2
+                    tail -n 20 "$log" >&2
+                fi
+            done
+        fi
+        case "$generation_dir" in
+            "$completed_output_dir".generation.*) rm -rf -- "$generation_dir" ;;
+        esac
+    fi
+    exit "$status"
+}
+trap cleanup_generation EXIT
+output_dir=$generation_dir
 
 if ! "$python" \
     prepare.py \
@@ -77,4 +110,5 @@ if [[ ! -s "$output_dir/pmf.tsv" ]]; then
     die "GaMD reweighting output was not created: $output_dir/pmf.tsv"
 fi
 
-echo "GaMD reweighting results: $output_dir"
+"$python" result_generation.py "$generation_dir" "$completed_output_dir"
+echo "GaMD reweighting results: $completed_output_dir"

@@ -58,7 +58,7 @@ overflow such as `VDWAALS = *************`.
 
 Coordinate build, topology build와 simulation은 membrane tutorial root 옆의 `.writers/` registry를 공유합니다. 앞 단계의 work를 읽는 동안 그 directory를 다시 생성하는 작업은 거부합니다.
 
-Build는 기존 생성 output을 재작성하지 않습니다. 새 structure나 설정으로 계산하려면 새 directory에 tutorial을 복사해 시작합니다. Simulation 단계의 run이 topology, initial coordinate file과 stage input을 SHA256으로 확인합니다.
+`work/amber-named.pdb`, `tleap.in`, `system.parm7`, `system.rst7`, `system.pdb` 또는 `leap.log`가 있으면 크기가 0인 partial 결과도 보존하고 복사와 LEaP 실행 전에 거부합니다. 새 계산은 생성된 `work/`를 포함하지 않는 새 tutorial copy에서 시작합니다. Simulation의 identity 검사는 이 build 보호를 대신하지 않습니다.
 
 정상 종료, command 실패와 INT/TERM에서는 자식 process의 종료를 확인한 뒤 자기 lock만 해제합니다. SIGKILL이나 node 장애로 남은 lock은 자동 삭제하지 않습니다. Error에 표시된 lock과 `owner.json`의 host, PID, command, scope를 확인하고 scheduler와 해당 host에서 모든 writer와 자식 process가 종료됐는지 확인한 뒤 그 lock directory만 수동 제거합니다. PID가 로컬에서 보이지 않는다는 이유만으로 제거하지 않습니다. `.gate/`도 같은 확인이 필요합니다.
 
@@ -68,7 +68,7 @@ Build는 기존 생성 output을 재작성하지 않습니다. 새 structure나 
 
 Coordinate build, topology build and simulation share the `.writers/` registry beside the membrane tutorial root. A downstream reader prevents a builder from rewriting its input directory.
 
-Build preserves existing generated outputs. Start a new tutorial copy for changed structures or settings. The simulation runner checks topology, initial coordinates and stage inputs with SHA256.
+Existing `work/amber-named.pdb`, `tleap.in`, `system.parm7`, `system.rst7`, `system.pdb`, or `leap.log`, including empty partial results, blocks copying and LEaP execution. Start a new tutorial copy without generated `work/` directories for a new calculation. Simulation identity checks do not replace this build protection.
 
 Normal exit, command failure and INT/TERM release only the owned lock after child termination is verified. Locks left by SIGKILL or node failure are retained. Inspect the reported lock and its `owner.json` host, PID, command and scopes; confirm through the scheduler and owning host that all writers and children stopped before manually removing only that lock directory. A PID missing locally is not sufficient. Apply the same checks to `.gate/`.
 

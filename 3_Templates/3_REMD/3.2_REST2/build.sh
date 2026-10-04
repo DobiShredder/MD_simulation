@@ -235,7 +235,6 @@ if ! run_grompp "$build_tmp/grompp_preprocess.log" \
 fi
 "$python" "$helper_dir/scale_cmap.py" "$work_dir/topol.top" "$build_tmp/processed.top" 1.0
 
-helper_dir=helpers
 "$python" "$helper_dir/mark_hot.py" "$build_tmp/processed.top" "$build_tmp/processed.hot.top"
 while IFS=$'\t' read -r replica _ lambda_pp _ _; do
     if [[ "$replica" == replica ]]; then

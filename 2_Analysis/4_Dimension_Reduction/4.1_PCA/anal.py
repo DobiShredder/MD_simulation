@@ -5,6 +5,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from result_generation import input_generation
+
 try:
     import matplotlib.pyplot as plt
     import numpy as np
@@ -45,55 +47,58 @@ def write_table(path: Path, header: list[str], data: np.ndarray) -> None:
 
 def main() -> int:
     output_dir = Path(__file__).resolve().parent / "output"
-    print(f"Running: PCA analysis; input directory: {output_dir}")
-    frames, angle_names, raw_angles = read_dihedrals(output_dir / "phi_psi.dat")
-    feature_names, features = periodic_features(angle_names, raw_angles)
-    scaled_features = StandardScaler().fit_transform(features)
+    completed_output_dir = output_dir
+    with input_generation(output_dir) as output_dir:
+        print(f"Running: PCA analysis; input directory: {output_dir}")
+        frames, angle_names, raw_angles = read_dihedrals(output_dir / "phi_psi.dat")
+        feature_names, features = periodic_features(angle_names, raw_angles)
+        scaled_features = StandardScaler().fit_transform(features)
 
-    model = PCA()
-    projection = model.fit_transform(scaled_features)
-    component_names = [f"PC{index}" for index in range(1, projection.shape[1] + 1)]
+        model = PCA()
+        projection = model.fit_transform(scaled_features)
+        component_names = [f"PC{index}" for index in range(1, projection.shape[1] + 1)]
 
-    write_table(
-        output_dir / "features.tsv",
-        ["frame", *feature_names],
-        np.column_stack((frames, scaled_features)),
-    )
-    write_table(
-        output_dir / "projection.tsv",
-        ["frame", *component_names],
-        np.column_stack((frames, projection)),
-    )
-
-    component_index = np.arange(1, len(model.explained_variance_ratio_) + 1)
-    variance = np.column_stack(
-        (
-            component_index,
-            model.explained_variance_ratio_,
-            np.cumsum(model.explained_variance_ratio_),
+        write_table(
+            output_dir / "features.tsv",
+            ["frame", *feature_names],
+            np.column_stack((frames, scaled_features)),
         )
-    )
-    write_table(
-        output_dir / "explained_variance.tsv",
-        ["component", "explained_variance_ratio", "cumulative_ratio"],
-        variance,
-    )
+        write_table(
+            output_dir / "projection.tsv",
+            ["frame", *component_names],
+            np.column_stack((frames, projection)),
+        )
 
-    figure, axes = plt.subplots(1, 2, figsize=(11, 4.5))
-    axes[0].plot(component_index, variance[:, 1], marker="o", label="Individual")
-    axes[0].plot(component_index, variance[:, 2], marker="o", label="Cumulative")
-    axes[0].set_xlabel("Principal component")
-    axes[0].set_ylabel("Explained variance ratio")
-    axes[0].legend()
+        component_index = np.arange(1, len(model.explained_variance_ratio_) + 1)
+        variance = np.column_stack(
+            (
+                component_index,
+                model.explained_variance_ratio_,
+                np.cumsum(model.explained_variance_ratio_),
+            )
+        )
+        write_table(
+            output_dir / "explained_variance.tsv",
+            ["component", "explained_variance_ratio", "cumulative_ratio"],
+            variance,
+        )
 
-    scatter = axes[1].scatter(projection[:, 0], projection[:, 1], c=frames, s=14)
-    axes[1].set_xlabel("PC1")
-    axes[1].set_ylabel("PC2")
-    figure.colorbar(scatter, ax=axes[1], label="Frame")
-    figure.suptitle(f"scikit-learn {sklearn.__version__}")
-    figure.tight_layout()
-    print("Displaying PCA analysis figure.")
-    plt.show()
+        figure, axes = plt.subplots(1, 2, figsize=(11, 4.5))
+        axes[0].plot(component_index, variance[:, 1], marker="o", label="Individual")
+        axes[0].plot(component_index, variance[:, 2], marker="o", label="Cumulative")
+        axes[0].set_xlabel("Principal component")
+        axes[0].set_ylabel("Explained variance ratio")
+        axes[0].legend()
+
+        scatter = axes[1].scatter(projection[:, 0], projection[:, 1], c=frames, s=14)
+        axes[1].set_xlabel("PC1")
+        axes[1].set_ylabel("PC2")
+        figure.colorbar(scatter, ax=axes[1], label="Frame")
+        figure.suptitle(f"scikit-learn {sklearn.__version__}")
+        figure.tight_layout()
+        print("Displaying PCA analysis figure.")
+        plt.show()
+    output_dir = completed_output_dir
     print(f"Completed: PCA analysis; results: {output_dir} (figure displayed interactively)")
     return 0
 

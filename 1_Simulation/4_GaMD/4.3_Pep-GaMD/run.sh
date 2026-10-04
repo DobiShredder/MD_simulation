@@ -66,19 +66,6 @@ cp inputs/minimize.in "$work_dir/inputs/minimize.in"
 cp inputs/equilibrate.in "$work_dir/inputs/equilibrate.in"
 sed 's/@RANDOM_SEED@/43001/g' inputs/heat.in.template > "$work_dir/inputs/heat.in"
 
-stage_state() {
-    local output_file=$1
-    local restart_file=$2
-
-    if [[ -s "$output_file" && -s "$restart_file" ]]; then
-        echo complete
-    elif [[ ! -e "$output_file" && ! -e "$restart_file" ]]; then
-        echo missing
-    else
-        echo partial
-    fi
-}
-
 run_preparation_stage() {
     local stage=$1
     local input_file=$2
@@ -90,13 +77,11 @@ run_preparation_stage() {
         --record ".$stage.identity.json" --stage "$stage" -- \
         "$engine" -O -i "$input_file" -o "$stage.out" -p "$topology" \
         -c "$input_restart" -r "$stage.rst7" -inf "$stage.info" "$@"
-    state=$(stage_state "$stage.out" "$stage.rst7")
+    state=$("${PYTHON:-python3}" ../helpers/input_identity.py \
+        --check-completion ".$stage.identity.json")
     if [[ "$state" == complete ]]; then
         echo "Skipping: $stage outputs already exist."
         return
-    fi
-    if [[ "$state" == partial ]]; then
-        echo "Warning: incomplete $stage outputs found; rerunning the stage." >&2
     fi
 
     echo "Running: $stage"
@@ -117,6 +102,8 @@ run_preparation_stage() {
             die "$stage output was not created: $work_dir/$output"
         fi
     done
+    "${PYTHON:-python3}" ../helpers/input_identity.py \
+        --finish-completion ".$stage.identity.json"
     echo "Completed: $stage ($work_dir/$stage.out)"
 }
 
@@ -136,13 +123,11 @@ run_preparation_stage equilibrate inputs/equilibrate.in heat.rst7 \
     -c equilibrate.rst7 -r gamd_prepare.rst7 -inf gamd_prepare.info \
     -x gamd_prepare.nc -gamd gamd_prepare.gamd.log
 
-gamd_state=$(stage_state gamd_prepare.out gamd_prepare.rst7)
+gamd_state=$("${PYTHON:-python3}" ../helpers/input_identity.py \
+    --check-completion .gamd_prepare.identity.json)
 if [[ "$gamd_state" == complete && -s gamd_prepare.gamd.log && -s gamd_prepare.gamd.rst ]]; then
     echo "Skipping: gamd_prepare outputs already exist."
 else
-    if [[ "$gamd_state" != missing || -e gamd_prepare.gamd.log || -e gamd_prepare.gamd.rst ]]; then
-        echo "Warning: incomplete gamd_prepare outputs found; rerunning the stage." >&2
-    fi
     echo "Running: gamd_prepare"
     if ! "$engine" \
         -O \
@@ -165,11 +150,13 @@ else
         fi
     done
     cp gamd-restart.dat gamd_prepare.gamd.rst
+    "${PYTHON:-python3}" ../helpers/input_identity.py \
+        --finish-completion .gamd_prepare.identity.json --required-output gamd_prepare.gamd.rst
     echo "Completed: gamd_prepare ($work_dir/gamd_prepare.gamd.rst)"
 fi
 
 "${PYTHON:-python3}" ../helpers/input_identity.py \
-    --record .production.identity.json --stage production \
+    --record .production.identity.json --stage production --output .production.started \
     --input gamd_prepare.gamd.rst -- \
     "$engine" -O -i inputs/production.in -o production.out -p "$topology" \
     -c gamd_prepare.rst7 -r production.rst7 -inf production.info \
@@ -179,6 +166,10 @@ if compgen -G 'production.*' >/dev/null; then
     die "Production output already exists in $work_dir. Remove it only if you intend to restart production."
 fi
 
+"${PYTHON:-python3}" ../helpers/input_identity.py \
+    --check-completion .production.identity.json >/dev/null
+# Preserve an attempted production even when only its mutable GaMD state changed.
+: > .production.started
 cp gamd_prepare.gamd.rst gamd-restart.dat
 echo "Running: production"
 if ! "$engine" \
@@ -199,5 +190,8 @@ for output in production.out production.rst7 production.nc production.gamd.log; 
         die "Production output was not created: $work_dir/$output"
     fi
 done
+
+"${PYTHON:-python3}" ../helpers/input_identity.py \
+    --finish-completion .production.identity.json
 
 echo "1 ns Pep-GaMD production completed: $work_dir/production.nc"

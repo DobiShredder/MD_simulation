@@ -143,18 +143,18 @@ from config_utils import load_config
 import parmed
 
 build = load_config(Path(sys.argv[1]))["build"]
-ligand = parmed.load_file(sys.argv[2])
+ligand = parmed.load_file(sys.argv[2], structure=True)
 names = {residue.name for residue in ligand.residues}
 expected_name = build["ligand_residue_name"]
 if names != {expected_name}:
     raise SystemExit(
-        f"Ligand MOL2 residue name mismatch: expected {expected_name}, found {sorted(names)}"
+        f"Ligand validation: MOL2 residue name mismatch: expected {expected_name}, found {sorted(names)}"
     )
 observed_charge = sum(float(atom.charge) for atom in ligand.atoms)
 expected_charge = int(build["ligand_net_charge"])
 if abs(observed_charge - expected_charge) > 1.0e-4:
     raise SystemExit(
-        f"Ligand MOL2 charge mismatch: expected {expected_charge}, found {observed_charge:.6f}"
+        f"Ligand validation: MOL2 charge mismatch: expected {expected_charge}, found {observed_charge:.6f}"
     )
 PY
 
@@ -162,6 +162,8 @@ PY
 build_tmp=$(mktemp -d "$work_dir/.build_tmp.XXXXXX")
 cp "$work_dir/input.pdb" "$build_tmp/input.pdb"
 mv "$work_dir/inputs/tleap.solvate.in" "$build_tmp/tleap.solvate.in"
+# Reuse the validated parameter copies in both LEaP passes.
+cp "$work_dir/ligand.mol2" "$work_dir/ligand.frcmod" "$build_tmp/"
 
 echo "Solvating the MetaD system to determine the water count."
 if ! (cd "$build_tmp"; "$tleap" -f tleap.solvate.in > leap.solvate.log 2>&1); then

@@ -5,6 +5,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from result_generation import input_generation
+
 try:
     import matplotlib.pyplot as plt
     import numpy as np
@@ -38,71 +40,74 @@ def representative_index(feature: np.ndarray, labels: np.ndarray, cluster: int) 
 
 def main() -> int:
     output_dir = Path(__file__).resolve().parent / "output"
-    print(f"Running: KMeans analysis; input directory: {output_dir}")
-    frames, projection, feature = pca_features(output_dir / "phi_psi.dat")
-    if len(frames) < 9:
-        raise ValueError("K-means diagnostics require at least 9 frames.")
+    completed_output_dir = output_dir
+    with input_generation(output_dir) as output_dir:
+        print(f"Running: KMeans analysis; input directory: {output_dir}")
+        frames, projection, feature = pca_features(output_dir / "phi_psi.dat")
+        if len(frames) < 9:
+            raise ValueError("K-means diagnostics require at least 9 frames.")
 
-    model = KMeans(
-        n_clusters=CLUSTER_COUNT,
-        n_init=20,
-        random_state=RANDOM_STATE,
-    ).fit(feature)
-    labels = model.labels_
-    distances = np.min(model.transform(feature), axis=1)
-
-    np.savetxt(
-        output_dir / "pca_projection.tsv",
-        np.column_stack((frames, projection)),
-        delimiter="\t",
-        header="frame\tPC1\tPC2\tPC3\tPC4\tPC5",
-        comments="",
-    )
-    np.savetxt(
-        output_dir / "cluster_labels.tsv",
-        np.column_stack((frames, labels, distances)),
-        delimiter="\t",
-        header="frame\tcluster\tcentroid_distance",
-        comments="",
-    )
-
-    summary = ["cluster\tframes\tpopulation\trepresentative_frame"]
-    representatives = ["cluster\tframe"]
-    for cluster in range(CLUSTER_COUNT):
-        count = int(np.sum(labels == cluster))
-        index = representative_index(feature, labels, cluster)
-        summary.append(
-            f"{cluster}\t{count}\t{count / len(frames):.8f}\t{frames[index]:g}"
-        )
-        representatives.append(f"{cluster}\t{frames[index]:g}")
-    (output_dir / "cluster_summary.tsv").write_text("\n".join(summary) + "\n", encoding="utf-8")
-    (output_dir / "representative_frames.tsv").write_text(
-        "\n".join(representatives) + "\n", encoding="utf-8"
-    )
-
-    diagnostic = ["clusters\tsilhouette_score"]
-    for cluster_count in range(2, 9):
-        candidate = KMeans(
-            n_clusters=cluster_count,
+        model = KMeans(
+            n_clusters=CLUSTER_COUNT,
             n_init=20,
             random_state=RANDOM_STATE,
-        ).fit_predict(feature)
-        diagnostic.append(f"{cluster_count}\t{silhouette_score(feature, candidate):.8f}")
-    (output_dir / "silhouette.tsv").write_text(
-        "\n".join(diagnostic) + "\n", encoding="utf-8"
-    )
+        ).fit(feature)
+        labels = model.labels_
+        distances = np.min(model.transform(feature), axis=1)
 
-    figure, axes = plt.subplots(1, 2, figsize=(11, 4.5))
-    axes[0].scatter(projection[:, 0], projection[:, 1], c=labels, s=14, cmap="tab10")
-    axes[0].set_xlabel("PC1")
-    axes[0].set_ylabel("PC2")
-    counts = np.bincount(labels, minlength=CLUSTER_COUNT)
-    axes[1].bar(np.arange(CLUSTER_COUNT), counts / len(labels))
-    axes[1].set_xlabel("Cluster")
-    axes[1].set_ylabel("Population")
-    figure.tight_layout()
-    print("Displaying KMeans analysis figure.")
-    plt.show()
+        np.savetxt(
+            output_dir / "pca_projection.tsv",
+            np.column_stack((frames, projection)),
+            delimiter="\t",
+            header="frame\tPC1\tPC2\tPC3\tPC4\tPC5",
+            comments="",
+        )
+        np.savetxt(
+            output_dir / "cluster_labels.tsv",
+            np.column_stack((frames, labels, distances)),
+            delimiter="\t",
+            header="frame\tcluster\tcentroid_distance",
+            comments="",
+        )
+
+        summary = ["cluster\tframes\tpopulation\trepresentative_frame"]
+        representatives = ["cluster\tframe"]
+        for cluster in range(CLUSTER_COUNT):
+            count = int(np.sum(labels == cluster))
+            index = representative_index(feature, labels, cluster)
+            summary.append(
+                f"{cluster}\t{count}\t{count / len(frames):.8f}\t{frames[index]:g}"
+            )
+            representatives.append(f"{cluster}\t{frames[index]:g}")
+        (output_dir / "cluster_summary.tsv").write_text("\n".join(summary) + "\n", encoding="utf-8")
+        (output_dir / "representative_frames.tsv").write_text(
+            "\n".join(representatives) + "\n", encoding="utf-8"
+        )
+
+        diagnostic = ["clusters\tsilhouette_score"]
+        for cluster_count in range(2, 9):
+            candidate = KMeans(
+                n_clusters=cluster_count,
+                n_init=20,
+                random_state=RANDOM_STATE,
+            ).fit_predict(feature)
+            diagnostic.append(f"{cluster_count}\t{silhouette_score(feature, candidate):.8f}")
+        (output_dir / "silhouette.tsv").write_text(
+            "\n".join(diagnostic) + "\n", encoding="utf-8"
+        )
+
+        figure, axes = plt.subplots(1, 2, figsize=(11, 4.5))
+        axes[0].scatter(projection[:, 0], projection[:, 1], c=labels, s=14, cmap="tab10")
+        axes[0].set_xlabel("PC1")
+        axes[0].set_ylabel("PC2")
+        counts = np.bincount(labels, minlength=CLUSTER_COUNT)
+        axes[1].bar(np.arange(CLUSTER_COUNT), counts / len(labels))
+        axes[1].set_xlabel("Cluster")
+        axes[1].set_ylabel("Population")
+        figure.tight_layout()
+        print("Displaying KMeans analysis figure.")
+        plt.show()
+    output_dir = completed_output_dir
     print(f"Completed: KMeans analysis; results: {output_dir} (figure displayed interactively)")
     return 0
 

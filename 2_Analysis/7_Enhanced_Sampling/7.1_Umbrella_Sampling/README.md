@@ -19,6 +19,10 @@ window별 series를 `output/series/`에 만듭니다. DUMPAVE의 1열을 time, 8
 distance로 읽습니다. Column이나 discard 구간이 다르면 `prepare.py` 상단의
 값을 수정합니다.
 
+Input과 output 경로는 `prepare.py`의 `WINDOWS_DIR`과 `OUTPUT_DIR`에서
+설정합니다. `run.sh`는 이 script를 호출하며 input 검사와 결과 경로 출력도
+`prepare.py`가 처리합니다.
+
 `anal.py`는 300 K, 5–25 Å 범위와 100 bins를 기본으로 사용합니다. AMBER
 NMR-style restraint의 bias는 `rk(r-r0)^2`이므로 `window.tsv`의 `rk`를 그대로
 사용합니다. External WHAM의 `1/2 k(r-r0)^2` convention을 위한 factor-of-two
@@ -40,6 +44,21 @@ Bootstrap uncertainty와 radial Jacobian correction은 포함하지 않습니다
 이 CV는 Chignolin 내부의 terminal distance이므로 결과를 절대 binding free
 energy 또는 전체 folding free energy로 해석하지 않습니다.
 
+### 결과 저장과 재실행
+
+`prepare.py`는 모든 window의 series와 `summary.tsv`를 temporary directory에
+만든 뒤 `output/`을 교체합니다. 뒤 window에서 실패해도 이전 결과를 유지합니다.
+완료한 파일의 hash는 `output/.generation.json`에 기록합니다.
+
+`anal.py`는 이 기록과 일치하는 series/summary만 읽습니다. 검증한 input을
+별도 generation에 복사하고, PMF와 진단 파일이 모두 작성된 뒤 함께 반영합니다.
+Preparation을 성공적으로 다시 실행하면 이전 PMF는 새 series와 섞이지 않도록
+교체됩니다. 완료 기록이 없는 과거 결과는 `run.sh`로 다시 생성합니다.
+
+게시가 중단되어 `.output.pending`이 남으면 preparation과 consumer가 중단합니다.
+실행 process가 종료됐는지 확인한 뒤 marker에 적힌 previous/new directory를
+보존하고 검사합니다. 여러 파일의 교체를 하나의 atomic write로 취급하지 않습니다.
+
 ## English
 
 Per-window `us/work/NNN/distance.dat` files from the matching 2_US simulation
@@ -51,6 +70,9 @@ Run `./run.sh` to discard the first 100 ps and prepare each distance series,
 then run `python3 anal.py` to calculate and plot the PMF and neighboring-window
 overlap. The default grid covers 5–25 Å with 100 bins at 300 K.
 
+Set input and output paths with `WINDOWS_DIR` and `OUTPUT_DIR` in `prepare.py`.
+`run.sh` calls this script, which also checks inputs and reports output paths.
+
 The bias is evaluated directly as AMBER's `rk(r-r0)^2`. No factor-of-two
 conversion for an external `1/2 k(r-r0)^2` convention is needed. Empty bins are
 reported as `nan`, while samples outside the selected PMF range or failure to
@@ -61,6 +83,23 @@ contain the numerical results. Histogram overlap diagnoses window placement but 
 convergence. Bootstrap uncertainty and a radial Jacobian correction are outside
 this example. The short terminal-distance PMF is neither an absolute binding
 free energy nor a complete folding free energy.
+
+### Result storage and reruns
+
+`prepare.py` creates every window series and `summary.tsv` in a temporary
+directory before replacing `output/`. Failure in a later window preserves the
+previous results. Completed file hashes are recorded in `output/.generation.json`.
+
+`anal.py` reads only series/summary files matching that record. It copies checked
+inputs to a separate generation and publishes the PMF and diagnostics only after
+all files have been written. A successful preparation rerun replaces the old PMF
+along with its inputs rather than mixing it with new series. Regenerate older
+results without a completion record by running `run.sh`.
+
+If publication stops with `.output.pending` present, preparation and consumers
+refuse to proceed. Check that the process has ended, then preserve and inspect
+the previous/new directories listed in the marker. Multiple file replacements
+are not treated as one atomic write.
 
 ## References / 참고 자료
 

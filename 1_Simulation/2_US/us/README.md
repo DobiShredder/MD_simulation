@@ -37,8 +37,8 @@ window directory가 있으면 종료합니다. 각 window의 계산 순서는 �
 3. Distance restraint를 사용한 100 ps NPT equilibration
 4. Distance restraint를 사용한 1 ns NPT production
 
-Minimization, heating 또는 equilibration의 `*.out`과 `*.rst7`이 모두 있으면
-해당 stage를 건너뜁니다. 둘 중 일부만 있으면 그 stage를 다시 실행합니다.
+Minimization, heating 또는 equilibration의 `*.out`과 `*.rst7`이 모두 있고 성공 완료 증거가 있으면
+해당 stage를 건너뜁니다. 완료 증거가 없거나 필수 output이 누락되면 기존 결과를 보존하고 중단합니다.
 기존 `production.out`이 있는 window는 덮어쓰지 않고 시작 전에 중단합니다.
 `inputs/continue.in`은 production restart에서 좌표와 velocity를 이어받는
 1 ns continuation input입니다.
@@ -77,8 +77,7 @@ restraint active. `--window N` limits execution to one window.
 `build.sh` creates `work/NNN/` only after validating every seed and
 refuses to overwrite an existing build. Each window runs restrained
 minimization, 200 ps NVT heating, 100 ps NPT equilibration, and 1 ns NPT
-production. A preparation stage is skipped when both its output and restart
-exist; an incomplete pair is rerun. A window with an existing `production.out`
+production. A preparation stage is skipped only with successful completion evidence and all required outputs; partial results are preserved and rejected. A window with an existing `production.out`
 is rejected before any production output is overwritten.
 
 `inputs/continue.in` inherits coordinates and velocities from a production
@@ -109,3 +108,21 @@ Run compares inputs for result reuse with SHA256. Changed topology, initial coor
 Normal exit, command failure and INT/TERM release only the owned lock after child termination is verified. Locks left by SIGKILL or node failure are retained. Inspect the reported lock and its `owner.json` host, PID, command and scopes; confirm through the scheduler and owning host that all writers and children stopped before manually removing only that lock directory. A PID missing locally is not sufficient. Apply the same checks to `.gate/`.
 
 Supported `--dry-run` and `--help` do not create writer or identity files. Do not move active work trees or edit identities to reuse results. Protection was tested on a local filesystem with local child processes; network filesystems, remote MPI and termination of writers on other nodes remain unverified.
+
+### Stage 완료 판정 / Stage completion
+
+Input identity는 입력이 같은지 확인하며 engine의 성공 종료를 증명하지 않습니다.
+Runner가 engine의 성공 종료와 필수 output을 확인한 뒤 만든 완료 증거가 있어야
+stage를 재사용합니다. Output이 남았지만 완료 증거가 없거나 필수 output이
+누락·비어 있으면 기존 결과를 보존하고 중단합니다. 기존 결과를 소급 인증하지
+않습니다. 새 계산은 생성된 `work/`를 포함하지 않는 새 tutorial copy에서 시작합니다.
+`ntwx=0`인 AMBER stage는 trajectory를 완료 조건으로 요구하지 않습니다.
+지원되는 continuation은 기존 restart/state 전달 방식을 따릅니다.
+
+Input identity checks unchanged inputs; it does not prove a successful engine exit.
+A stage is reused only with completion evidence written after a successful engine
+exit and required-output checks. Outputs without that evidence, or missing/empty
+required outputs, are preserved and rejected. Existing results are not certified
+retroactively. Start a new tutorial copy without generated `work/` directories for
+a new calculation. AMBER stages with `ntwx=0` do not require a trajectory for
+completion. Supported continuation retains its existing restart/state handoff.

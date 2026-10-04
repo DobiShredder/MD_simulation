@@ -36,12 +36,12 @@ run_stage() {
     "${PYTHON:-python3}" ../helpers/input_identity.py \
         --record ".$output.identity.json" --stage "$label" "${identity_options[@]}" -- "$@"
 
-    if [[ -s "$output" && -s "$restart" ]]; then
+    local completion_state
+    completion_state=$("${PYTHON:-python3}" ../helpers/input_identity.py \
+        --check-completion ".$output.identity.json")
+    if [[ "$completion_state" == complete ]]; then
         echo "Skipping completed stage: $label"
         return
-    fi
-    if [[ -e "$output" || -e "$restart" ]]; then
-        echo "Warning: restarting incomplete stage: $label" >&2
     fi
 
     echo "Running: $label"
@@ -54,6 +54,8 @@ run_stage() {
             die "$label output was not created: work/$required_output"
         fi
     done
+    "${PYTHON:-python3}" ../helpers/input_identity.py \
+        --finish-completion ".$output.identity.json"
     echo "Completed: $label (work/$output)"
 }
 

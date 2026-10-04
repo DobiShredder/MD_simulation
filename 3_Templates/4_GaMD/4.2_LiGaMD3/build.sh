@@ -130,6 +130,9 @@ cp "$input" "$work_dir/input.pdb"
 build_tmp=$(mktemp -d "$work_dir/.build_tmp.XXXXXX")
 cp "$work_dir/input.pdb" "$build_tmp/input.pdb"
 mv "$work_dir/inputs/tleap.solvate.in" "$build_tmp/tleap.solvate.in"
+# Both LEaP passes read the same generated ligand parameters.
+mkdir -p "$build_tmp/inputs"
+cp "$work_dir/inputs/ligand.mol2" "$work_dir/inputs/ligand.frcmod" "$build_tmp/inputs/"
 
 echo "Solvating the input structure to determine the water count."
 if ! (
@@ -153,6 +156,11 @@ salt_pairs=$(awk -v waters="$water_count" -v concentration="$salt_concentration"
     'BEGIN { printf "%d", waters * concentration / 55.5 + 0.5 }')
 
 "$python" helpers/generate_inputs.py "$config" "$work_dir/inputs" --salt-pairs "$salt_pairs"
+for parameter in ligand.mol2 ligand.frcmod; do
+    if ! cmp -s "$build_tmp/inputs/$parameter" "$work_dir/inputs/$parameter"; then
+        die "Final build: ligand parameter changed between LEaP passes: $parameter. Files were preserved; see $build_tmp/leap.solvate.log"
+    fi
+done
 
 echo "Building the final solvated system ($water_count waters, $salt_pairs salt formula units)."
 if ! (
