@@ -309,6 +309,8 @@ def plot_pmf(
 
 
 def main() -> None:
+    from writer_guard import protect_python_entry
+    protect_python_entry("output", writes=(OUTPUT_DIR,))
     print(f"Running: GaREUS reweighting analysis; input directory: {OUTPUT_DIR}")
     try:
         with result_generation(OUTPUT_DIR) as generation_dir:

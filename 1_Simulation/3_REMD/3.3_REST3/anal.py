@@ -19,7 +19,10 @@ EXPLICIT = re.compile(
 
 def read_states() -> list[dict[str, str]]:
     with (WORK / "states.tsv").open(encoding="utf-8", newline="") as handle:
-        return list(csv.DictReader(handle, delimiter="\t"))
+        states = list(csv.DictReader(handle, delimiter="\t"))
+    if len(states) < 2 or len(states) % 2:
+        raise SystemExit(f"Replica exchange requires at least two and an even number of states: {WORK / 'states.tsv'} ({len(states)} states)")
+    return states
 
 
 def require_production_output() -> None:
@@ -84,6 +87,27 @@ def parse_exchanges(state_count: int) -> list[list[tuple[int, int, int]]]:
     return events
 
 
+def count_round_trips(states: list[int], highest: int) -> int:
+    if highest < 1:
+        return 0
+    starting_endpoint = None
+    reached_opposite = False
+    round_trips = 0
+
+    for state in states:
+        if state not in {0, highest}:
+            continue
+        if starting_endpoint is None:
+            starting_endpoint = state
+        elif state != starting_endpoint:
+            reached_opposite = True
+        elif reached_opposite:
+            round_trips += 1
+            reached_opposite = False
+
+    return round_trips
+
+
 def write_exchange_outputs(
     events: list[list[tuple[int, int, int]]], states: list[dict[str, str]]
 ) -> None:
@@ -121,11 +145,7 @@ def write_exchange_outputs(
         writer = csv.writer(handle, delimiter="\t")
         writer.writerow(["replica", "min_state", "max_state", "round_trips"])
         for replica, history in enumerate(visits):
-            endpoints = [value for value in history if value in {0, len(states) - 1}]
-            round_trips = sum(
-                left == len(states) - 1 and right == 0
-                for left, right in zip(endpoints, endpoints[1:])
-            )
+            round_trips = count_round_trips(history, len(states) - 1)
             writer.writerow(
                 [f"{replica:03d}", min(history), max(history), round_trips]
             )

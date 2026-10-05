@@ -2,6 +2,8 @@
 
 ## 한국어
 
+T-REMD, REST2, REST3, REUS와 GaREUS는 최소 2개·짝수 replica만 지원합니다. 일반 US의 독립 window에는 이 제한을 적용하지 않습니다.
+
 다섯 template는 같은 config 중심 interface를 사용하지만 교환하는 state와 engine이
 다릅니다.
 
@@ -75,6 +77,8 @@ trip을 확인합니다. REST3의 linear κ schedule도 published example을 일
 exchange ensemble이 아니므로 제공하지 않습니다.
 
 ## English
+
+T-REMD, REST2, REST3, REUS and GaREUS support only even replica counts of at least two. Independent windows in ordinary US are outside this restriction.
 
 ### REST2/REST3 GROMACS–PLUMED build
 

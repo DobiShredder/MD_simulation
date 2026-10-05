@@ -78,6 +78,8 @@ def target_bin_indices(
 def main() -> None:
     args = parse_arguments()
     work = args.work_dir
+    from helpers.writer_guard import protect_python_entry
+    protect_python_entry(work, writes=(work,))
     west_file = work / "west.h5"
     print(f"Reading WESTPA weight and pcoord data: {west_file}", flush=True)
     config_file = work / "resolved_config.toml"
@@ -112,7 +114,17 @@ def main() -> None:
                 continue
             segment_index = group["seg_index"][:]
             pcoord = group["pcoord"][:]
+            if segment_index.ndim != 1 or not segment_index.dtype.names or "weight" not in segment_index.dtype.names:
+                raise SystemExit(f"WESTPA analysis: {west_file}, {iteration_name}: invalid segment weight schema")
+            if pcoord.ndim != 3 or pcoord.shape[0] != len(segment_index) or pcoord.shape[1] == 0 or pcoord.shape[2] != 1:
+                raise SystemExit(f"WESTPA analysis: {west_file}, {iteration_name}: expected one-dimensional pcoord for each segment")
+            if pcoord.dtype.kind not in "fiu" or segment_index["weight"].dtype.kind not in "fiu":
+                raise SystemExit(f"WESTPA analysis: {west_file}, {iteration_name}: weights and pcoord must be numeric")
+            if not all(math.isfinite(float(value)) for value in pcoord.flat):
+                raise SystemExit(f"WESTPA analysis: {west_file}, {iteration_name}: nonfinite pcoord")
             weights = [float(record["weight"]) for record in segment_index]
+            if not all(math.isfinite(weight) and weight >= 0 for weight in weights):
+                raise SystemExit(f"WESTPA analysis: {west_file}, {iteration_name}: weights must be finite and nonnegative")
             if not weights:
                 continue
             final_coordinates = [float(values[-1][0]) for values in pcoord]
@@ -121,6 +133,8 @@ def main() -> None:
 
             total_weight = sum(weights)
             squared_weight_sum = sum(weight * weight for weight in weights)
+            if not math.isfinite(total_weight) or not math.isfinite(squared_weight_sum) or total_weight <= 0:
+                raise SystemExit(f"WESTPA analysis: {west_file}, {iteration_name}: invalid total walker weight")
             if squared_weight_sum == 0.0:
                 raise SystemExit(f"WESTPA analysis: {west_file}, {iteration_name}: walker weights sum to zero")
             effective_walkers = total_weight * total_weight / squared_weight_sum

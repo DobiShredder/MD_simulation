@@ -149,7 +149,7 @@ check_stage_identity() {
         fi
         identity_options+=(--input "$replica_dir/$input_name" --input "$input_coordinates")
         if [[ "$stage" == heat ]]; then
-            identity_options+=(--value "-ref=$input_coordinates")
+            identity_options+=(--value="-ref=$input_coordinates")
         fi
         if [[ -s "$replica_dir/distance.RST" ]]; then
             identity_options+=(--input "$replica_dir/distance.RST")
@@ -252,6 +252,9 @@ if [[ -n "$segment_range" ]]; then
     fi
 fi
 replica_count=$(awk 'NR > 1 {count++} END {print count + 0}' "$states_file")
+if (( replica_count < 2 || replica_count % 2 != 0 )); then
+    die "Replica exchange requires at least two and an even number of states: $states_file ($replica_count states)"
+fi
 mpi_processes=${MPI_PROCESSES:-$replica_count}
 read -r -a mpi_options <<< "${MPI_OPTIONS:-}"
 read -r -a amber_options <<< "${AMBER_OPTIONS:-}"

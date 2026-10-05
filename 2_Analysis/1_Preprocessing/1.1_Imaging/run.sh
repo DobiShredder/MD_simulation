@@ -15,6 +15,13 @@ cpptraj=cpptraj
 input_file=inputs/cpptraj.in
 output_dir=output
 
+if [[ "${MD_WRITER_PARENT:-}" != "$PPID" || "${MD_WRITER_ENTRY:-}" != "$0" ]]; then
+    exec "python3" writer_guard.py \
+        --registry output --write "$output_dir" \
+        -- "$0" "$@"
+fi
+
+
 if ! command -v "$cpptraj" >/dev/null 2>&1; then
     echo "Error: cpptraj not found." >&2
     exit 1

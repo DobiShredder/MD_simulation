@@ -115,6 +115,8 @@ Marker만 삭제하거나 파일을 개별적으로 섞지 않습니다.
 python3 helpers/result_generation.py work
 ```
 
+공개 analysis entry는 자동으로 `helpers/writer_guard.py`를 호출해 같은 output의 동시 writer를 거부합니다. Engine 실행부터 결과 게시까지 보호하며, signal 종료 시 child가 멈춘 뒤 lock을 해제합니다. Lock을 임의로 삭제해 실행을 재개하지 않습니다.
+
 ## English
 
 User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh`, `run.sh`, or `anal.py`; `helpers/result_generation.py` also supports a separate integrity check before an external consumer reads results.
@@ -218,3 +220,5 @@ Before reading results in an external script, run the check below. Replace
 ```bash
 python3 helpers/result_generation.py work
 ```
+
+Public analysis entries automatically use `helpers/writer_guard.py` to reject concurrent writers to the same output. Protection covers engine execution through publication, and signal cleanup drains children before releasing the lock. Do not delete a lock to force a retry.

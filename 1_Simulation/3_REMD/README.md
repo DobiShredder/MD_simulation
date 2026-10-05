@@ -7,6 +7,8 @@
 
 ## 한국어
 
+T-REMD, REST2, REST3, REUS와 GaREUS는 최소 2개·짝수 replica만 지원합니다. 일반 US의 독립 window에는 이 제한을 적용하지 않습니다.
+
 다섯 예제 모두 Chignolin(PDB 1UAO)을 ff19SB/OPC로 만들며 다른 tutorial의
 output을 사용하지 않습니다.
 
@@ -20,7 +22,7 @@ Replica exchange는 서로 다른 thermodynamic state 또는 Hamiltonian을 병�
 | 3.1 | [T-REMD](3.1_REMD/README.md) | OPC 기준 18 temperatures | `pmemd.cuda.MPI -rem 1` |
 | 3.2 | [REST2](3.2_REST2/README.md) | 기본 8 effective temperatures | GROMACS/PLUMED HREX |
 | 3.3 | [REST3](3.3_REST3/README.md) | 기본 8 λ/κ states | GROMACS/PLUMED HREX |
-| 3.4 | [REUS](3.4_REUS/README.md) | 19 distance windows | `pmemd.cuda.MPI -rem 3` |
+| 3.4 | [REUS](3.4_REUS/README.md) | 20 distance windows | `pmemd.cuda.MPI -rem 3` |
 | 3.5 | [GaREUS](3.5_GaREUS/README.md) | 20 distance windows | `pmemd.cuda.MPI -rem 3` |
 
 REST2와 REST3는 `GROMACS 2024.3` 또는 `2024.6`에 PLUMED 2.10의
@@ -68,9 +70,9 @@ Replica별 preproduction은 GPU별로 병렬 실행하면서 한 process를
 `-ntmpi 1`로 제한하고, production은 replica당 external-MPI rank 하나를
 사용합니다.
 
-Minimization, heating과 equilibration은 모든 replica의 main output과 restart가
-있으면 건너뜁니다. 일부 replica만 incomplete하면 해당 stage를 모든 replica에서
-다시 실행합니다. Production/exchange output은 덮어쓰지 않습니다.
+Minimization, heating과 equilibration은 completion marker, 필요한 output과 input
+identity가 일치하면 건너뜁니다. Partial output이나 변경된 input은 기존 파일을
+보존하고 거부합니다. Production 완료 후 재실행 동작은 각 method README를 따릅니다.
 
 Exchange acceptance, state 방문과 occupancy는 `anal.py`에서 계산합니다.
 REUS/GaREUS PMF처럼 더 긴 후처리는
@@ -93,8 +95,10 @@ REST3는 temperature와 별도로 `inputs/kappa.txt`도 읽습니다. REUS와 Ga
 
 ## English
 
+T-REMD, REST2, REST3, REUS and GaREUS support only even replica counts of at least two. Independent windows in ordinary US are outside this restriction.
+
 All five examples independently build ff19SB/OPC Chignolin. They cover
-20-temperature T-REMD, eight-state REST2, eight-state REST3, 19-window REUS,
+18-temperature T-REMD, eight-state REST2, eight-state REST3, 20-window REUS,
 and 20-window GaREUS with the engines listed in the table above.
 
 Replica exchange propagates parallel thermodynamic states or Hamiltonians and
@@ -123,9 +127,10 @@ REST2/REST3 accept allocated resources through `run.sh --cpus N --gpus N`.
 Per-replica preproduction runs concurrently across GPUs with `-ntmpi 1` per
 process, while production uses one external-MPI rank per replica.
 
-Minimization, heating, and equilibration are skipped when all replicas have
-their main output and restart. If any replica is incomplete, that stage is
-rerun across all replicas. Existing production/exchange output is protected.
+Minimization, heating, and equilibration are skipped when completion markers,
+required outputs, and input identities agree. Partial outputs and changed
+inputs are rejected with existing files retained. Each method README describes
+the behavior when production is already complete.
 
 In every folder, download and preparation handle the source structure, build
 creates topology/state inputs, run performs pre-production and exchange, and

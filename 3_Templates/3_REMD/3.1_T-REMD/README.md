@@ -2,6 +2,12 @@
 
 ## 한국어
 
+최소 2개·짝수 replica만 지원합니다. `build.sh`와 `run.sh`는 홀수 schedule을 자동 조정하지 않고 거부합니다. `run.sh --dry-run`도 실제 state table의 count를 검사합니다. 기존 홀수 결과는 새 work directory에서 다시 준비합니다.
+
+File schedule은 LEaP 실행 전에 검사합니다. Auto count는 임시 topology에서 predictor를 실행한 뒤 검사하고, 통과한 preparation만 work directory에 복사합니다. 홀수이면 기존 input/state/log를 보존하고 진단용 temporary directory를 남깁니다. `build.sh --dry-run`은 file을 검사하지만 auto predictor를 실행하지 않으므로 auto count 검증은 실제 build까지 보류됩니다. Predictor 계산식과 temperature/target probability는 자동 변경하지 않습니다.
+
+Heating은 각 replica의 `minimize.rst7`을 `-c`와 positional restraint의 `-ref` input으로 함께 사용합니다. Reference의 변경과 누락은 기존 heating 결과의 재사용을 거부합니다.
+
 사용자가 직접 실행하는 파일은 이 directory의 root에 있습니다. `helpers/`는 `build.sh`, `run.sh` 또는 `anal.py`가 자동 호출하는 leaf-local 내부 code이며 직접 실행하지 않습니다.
 
 중단되거나 marker가 없는 stage output은 자동 삭제하거나 재실행하지 않고 보존한 채 중단합니다.
@@ -99,6 +105,12 @@ SIGKILL 또는 node 장애로 남은 lock은 자동으로 지우지 않습니다
 
 ## English
 
+Only even replica counts of at least two are supported. `build.sh` and `run.sh` reject odd schedules without adjusting them. `run.sh --dry-run` checks the actual state-table count too. Prepare a new work directory for results built with an odd schedule.
+
+File schedules are checked before LEaP. Auto counts are checked after running the predictor on a temporary topology; only preparation with a valid count is copied to the work directory. Odd results preserve existing inputs, states and logs and retain temporary diagnostics. `build.sh --dry-run` validates files but defers auto-count validation until an actual build. The predictor algorithm, temperature range and target probability are not adjusted automatically.
+
+Heating uses each replica’s `minimize.rst7` for both `-c` and the positional-restraint `-ref` input. A changed or missing reference prevents reuse of existing heating results.
+
 User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh`, `run.sh`, or `anal.py`; it is not a separate entry point.
 
 Interrupted or unmarked stage output is retained and stops the workflow instead of being deleted or rerun automatically.
@@ -185,3 +197,18 @@ empty directory. A leftover `.gate` also requires checking that all registration
 and release operations have stopped. A PID alone does not establish that a job
 on another host has ended. Atomic directory operations on cluster filesystems
 and termination of remote/daemon processes were not tested by local fixtures.
+
+### Schedule file 검사 / Schedule file checks
+
+Temperature file에는 finite 값만 사용합니다. `nan`, `inf`,
+`-inf`와 float 범위를 넘는 값은 거부합니다. `build.sh`는 topology, raw PDB 사본,
+engine input과 build log를 저장하기 전에 검사하며, 오류에 해당 file 경로를 표시합니다.
+내부 input generator의 `--validate-only`는 이 preflight에 자동으로 사용됩니다.
+Temperature 순서·양수 조건은 기존 조건을 따릅니다.
+
+Temperature files accept only finite values. `nan`, `inf`,
+`-inf`, and values outside the float range are rejected. `build.sh` checks them
+before saving topology, the raw PDB copy, engine inputs, or build logs, and reports
+the offending file path. The internal input generator's `--validate-only` option
+is called automatically for this preflight. Existing temperature ordering,
+and positivity still apply.

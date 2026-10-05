@@ -108,6 +108,10 @@ SIGKILL 또는 node 장애로 남은 lock은 자동으로 지우지 않습니다
 `work/.analysis.pending`이 남으면 재실행을 거부합니다. 실행 process가 종료됐는지
 확인한 뒤 marker의 previous/new directory를 보존하고 검사합니다.
 
+Analysis는 COLVAR의 column 수, field name과 finite 값을 확인합니다. 같은 header의 반복은 허용하지만 header 변경, 중복 field와 NaN/Inf는 거부합니다. 잘못된 input을 읽으면 기존 analysis 결과를 교체하지 않습니다. 음수 CV 값은 method의 범위에 따라 사용할 수 있습니다.
+
+공개 analysis entry는 자동으로 `helpers/writer_guard.py`를 호출해 같은 output의 동시 writer를 거부합니다. Engine 실행부터 결과 게시까지 보호하며, signal 종료 시 child가 멈춘 뒤 lock을 해제합니다. Lock을 임의로 삭제해 실행을 재개하지 않습니다.
+
 ## English
 
 User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh`, `run.sh`, or `anal.py`; it is not a separate entry point.
@@ -206,3 +210,7 @@ The automatically called `helpers/result_generation.py` records output hashes
 in `analysis/.generation.json`. Interrupted publication leaves
 `work/.analysis.pending` and blocks reruns. Check that the process has ended,
 then preserve and inspect the previous/new directories listed in the marker.
+
+Analysis checks COLVAR column counts, field names, and finite values. Repeated identical headers are allowed; changed headers, duplicate fields, and NaN/Inf are rejected. Invalid input leaves previous analysis results intact. Negative CV values remain valid where the method permits them.
+
+Public analysis entries automatically use `helpers/writer_guard.py` to reject concurrent writers to the same output. Protection covers engine execution through publication, and signal cleanup drains children before releasing the lock. Do not delete a lock to force a retry.

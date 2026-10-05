@@ -7,16 +7,7 @@ import argparse
 from pathlib import Path
 
 SOLVENT_AND_IONS = {
-    "WAT",
-    "HOH",
-    "SOL",
-    "TIP3",
-    "NA",
-    "NA+",
-    "SOD",
-    "CL",
-    "CL-",
-    "CLA",
+    "CA", "CA2", "CA2+", "CL", "CL-", "CLA", "HOH", "K", "K+", "MG", "MG2", "MG2+", "NA", "NA+", "OPC", "POT", "SOD", "SOL", "TIP3", "TIP3P", "WAT", "ZN", "ZN2", "ZN2+",
 }
 
 

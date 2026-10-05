@@ -307,7 +307,7 @@ def write_free_energy(edge: object, results: dict[str, tuple[float, float]], out
             estimators["restraint"],
         ])
         writer.writerow(["standard_state_correction", f"{standard:.8f}", "", "analytic"])
-        writer.writerow(["leading_pme_net_charge_correction", f"{finite_size:.8f}", "", "analytic"])
+        writer.writerow(["leading_pme_net_charge_correction", f"{finite_size:.8f}", "", "not_applicable_neutral_ligand"])
         writer.writerow([
             "raw_standard_binding_delta_g",
             f"{raw_binding:.8f}",
@@ -362,6 +362,8 @@ def write_diagnostics(edge: object, output_dir: Path | None = None) -> None:
 
 
 def main() -> None:
+    from helpers.writer_guard import protect_python_entry
+    protect_python_entry(WORK, writes=(WORK,))
     from helpers.result_generation import analysis_generation
 
     print(f"Reading free-energy analysis inputs: {WORK / 'states.tsv'}", flush=True)

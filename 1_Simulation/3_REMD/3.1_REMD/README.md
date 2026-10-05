@@ -2,6 +2,10 @@
 
 ## 한국어
 
+최소 2개·짝수 replica만 지원합니다. `build.sh`와 `run.sh`는 홀수 schedule을 자동 조정하지 않고 거부합니다. `run.sh --dry-run`도 실제 state table의 count를 검사합니다. 기존 홀수 결과는 새 work directory에서 다시 준비합니다.
+
+Heating은 각 replica의 `minimize.rst7`을 `-c`와 positional restraint의 `-ref` input으로 함께 사용합니다. Reference의 변경과 누락은 기존 heating 결과의 재사용을 거부합니다.
+
 Chignolin(PDB 1UAO)을 ff19SB/OPC로 만들고 18-replica T-REMD를 실행합니다.
 Temperature는 300–373 K이며 replica당 production은 1 ns입니다.
 
@@ -101,7 +105,17 @@ zero-length 파일, marker만 있는 상태 또는 marker 없는 기존 output�
 
 Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 중단하고 파일을 보존합니다. 새 build 전에는 기존 `work/`를 다른 위치에 보관하거나 별도 tutorial 사본을 사용합니다.
 
+`download.sh`는 모든 asset과 `SHA256SUMS`를 staging에서 확인한 뒤 `helpers/publish_download.py`로 게시합니다. Transfer, checksum 또는 일반 publication 실패에서는 기존 파일을 보존하며, 관련 없는 preparation 파일도 유지합니다. `structure/.download.pending`가 남으면 prepare/build와 새 download가 거부됩니다. 보존된 staging과 marker를 점검하고, marker만 삭제해 이전 파일과 새 파일을 섞어 사용하지 않습니다.
+
+### Exchange 진단
+
+`round_trips`는 처음 도달한 endpoint에서 반대 endpoint를 방문한 뒤 처음 endpoint로 돌아온 cycle 수입니다. 편도 이동과 같은 endpoint의 반복 방문은 왕복으로 세지 않습니다.
+
 ## English
+
+Only even replica counts of at least two are supported. `build.sh` and `run.sh` reject odd schedules without adjusting them. `run.sh --dry-run` checks the actual state-table count too. Prepare a new work directory for results built with an odd schedule.
+
+Heating uses each replica’s `minimize.rst7` for both `-c` and the positional-restraint `-ref` input. A changed or missing reference prevents reuse of existing heating results.
 
 This example builds ff19SB/OPC Chignolin and runs 18-replica T-REMD from
 300 to 373 K. Heating is 200 ps, NPT equilibration is 100 ps, and production is
@@ -177,3 +191,21 @@ Run compares inputs for result reuse with SHA256. Changed topology, initial coor
 Normal exit, command failure and INT/TERM release only the owned lock after child termination is verified. Locks left by SIGKILL or node failure are retained. Inspect the reported lock and its `owner.json` host, PID, command and scopes; confirm through the scheduler and owning host that all writers and children stopped before manually removing only that lock directory. A PID missing locally is not sufficient. Apply the same checks to `.gate/`.
 
 Supported `--dry-run` and `--help` do not create writer or identity files. Do not move active work trees or edit identities to reuse results. Protection was tested on a local filesystem with local child processes; network filesystems, remote MPI and termination of writers on other nodes remain unverified.
+
+`download.sh` validates every asset and `SHA256SUMS` in staging before publishing through `helpers/publish_download.py`. Transfer, checksum and ordinary publication failures preserve existing files, including unrelated preparation files. A retained `structure/.download.pending` blocks source readers and new downloads. Inspect the retained staging and marker; deleting only the marker can expose a mixed generation.
+
+### Exchange diagnostics
+
+`round_trips` counts complete cycles from the first endpoint reached, through the opposite endpoint, and back to the starting endpoint. One-way movement and repeated visits to the same endpoint do not count as round trips.
+
+### File schedule 검사 / File schedule checks
+
+AMBER T-REMD는 최소 2개의 짝수 replica가 필요합니다. `build.sh`는
+`inputs/states.tsv`, `run.sh`는 `work/states.tsv`의 state 수를 검사합니다.
+홀수 table은 LEaP 또는 MD 실행 전에 거부하며 기존 output을 보존합니다.
+`run.sh --dry-run`도 같은 검사를 적용합니다. 기본 18-state table은 유지합니다.
+
+AMBER T-REMD requires at least two and an even number of replicas. `build.sh`
+checks `inputs/states.tsv`, and `run.sh` checks `work/states.tsv`. Odd tables are
+rejected before LEaP or MD execution, preserving existing outputs.
+`run.sh --dry-run` applies the same check. The default 18-state table is unchanged.

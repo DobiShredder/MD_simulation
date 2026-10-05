@@ -35,6 +35,9 @@ def validate(path):
     if len(rows) < 3:
         raise ValueError(f"{path}: at least two replica rows are required")
 
+    if (len(rows) - 1) % 2:
+        raise ValueError(f"{path}: replica exchange requires an even number of replica rows")
+
     seen_replicas = set()
     previous_temperature = None
 

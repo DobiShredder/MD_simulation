@@ -41,6 +41,8 @@ def read_temperatures(path):
 
     if len(temperatures) < 2:
         raise ValueError(f"{path}: at least two temperatures are required")
+    if len(temperatures) % 2:
+        raise ValueError(f"{path}: replica exchange requires an even number of temperatures")
     if len(temperatures) > 1000:
         raise ValueError(f"{path}: at most 1000 temperatures are supported")
     if not math.isclose(temperatures[0], REFERENCE_TEMPERATURE_K, abs_tol=1.0e-6):

@@ -256,7 +256,6 @@ check_replica_inputs() {
 amber_engine=${AMBER_ENGINE:-pmemd.cuda}
 amber_mpi_engine=${AMBER_MPI_ENGINE:-pmemd.cuda.MPI}
 mpi_launcher=${MPI_LAUNCHER:-mpirun}
-replica_count=20
 gamd_reference_replica=009
 
 if [[ ! -s work/states.tsv ]]; then
@@ -275,6 +274,11 @@ while IFS=$'\t' read -r replica _; do
     fi
     gamd_required+=("work/$replica/gamd-restart.dat" "work/$replica/production_start.rst7")
 done < work/states.tsv
+
+replica_count=$(awk 'NR > 1 {count++} END {print count + 0}' work/states.tsv)
+if (( replica_count < 2 || replica_count % 2 != 0 )); then
+    die "Replica exchange requires at least two and an even number of states: work/states.tsv ($replica_count states)"
+fi
 
 if (( dry_run )); then
     echo "Dry run: planned replica commands; no engine execution"

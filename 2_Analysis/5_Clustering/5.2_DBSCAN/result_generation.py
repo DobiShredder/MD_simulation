@@ -141,6 +141,8 @@ def main() -> None:
     parser.add_argument("stage", type=Path, help="Fresh output directory created by run.sh")
     parser.add_argument("output", type=Path, help="Completed analysis output directory")
     args = parser.parse_args()
+    from writer_guard import protect_python_entry
+    protect_python_entry("output", writes=(args.output,))
     try:
         with result_generation(args.output) as stage:
             stage.rmdir()

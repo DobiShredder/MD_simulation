@@ -29,7 +29,7 @@ def preserve_residue_specific_cmaps(structure: parmed.Structure) -> dict[str, st
             cmap.atom3.atom_type.name = cmap_name
             cmap.atom3.type = cmap_name
             atom_names[atom_key] = cmap_name
-    if structure.cmaps and len(cmap_names) < 2:
+    if structure.cmaps and not cmap_names:
         raise SystemExit("Could not separate residue-specific CMAPs.")
 
     return {name: residue for (_, residue), name in cmap_names.items()}

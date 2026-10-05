@@ -55,6 +55,8 @@ cpptraj log의 마지막 부분은 stderr에 출력합니다.
 `.PROFILE.pending`에 적힌 previous/new directory를 보존하고 검사합니다.
 Marker가 남아 있는 동안 재실행은 거부합니다.
 
+공개 analysis entry는 자동으로 `writer_guard.py`를 호출해 같은 output의 동시 writer를 거부합니다. Engine 실행부터 결과 게시까지 보호하며, signal 종료 시 child가 멈춘 뒤 lock을 해제합니다. Lock을 임의로 삭제해 실행을 재개하지 않습니다.
+
 ## English
 
 cpptraj calculates one profile-specific CV from the production run.
@@ -88,3 +90,5 @@ previous/new directories listed there; reruns refuse while the marker remains.
 
 - [GaMD AMBER manual](https://www.med.unc.edu/pharm/miaolab/wp-content/uploads/sites/1385/2023/09/GaMD_Amber-manual.pdf)
 - [PyReweighting](https://github.com/MiaoLab20/pyreweighting)
+
+Public analysis entries automatically use `writer_guard.py` to reject concurrent writers to the same output. Protection covers engine execution through publication, and signal cleanup drains children before releasing the lock. Do not delete a lock to force a retry.

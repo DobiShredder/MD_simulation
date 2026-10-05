@@ -38,14 +38,14 @@ def main() -> None:
     parser.add_argument("output_directory", type=Path)
     args = parser.parse_args()
 
-    module = load_parser_module()
-    args.output_directory.mkdir(parents=True, exist_ok=True)
-
     with args.states.open(encoding="utf-8", newline="") as handle:
         states = list(csv.DictReader(handle, delimiter="\t"))
 
-    if len(states) < 2:
-        raise SystemExit(f"REST3 requires at least two states: {len(states)}")
+    if len(states) < 2 or len(states) % 2:
+        raise SystemExit(f"REST3 requires at least two and an even number of states: {args.states} ({len(states)} states)")
+
+    module = load_parser_module()
+    args.output_directory.mkdir(parents=True, exist_ok=True)
 
     base_target = args.output_directory / "000" / "topol.top"
     base_target.parent.mkdir(parents=True, exist_ok=True)

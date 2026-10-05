@@ -28,15 +28,28 @@ die() {
 }
 
 python=${PYTHON:-python3}
-window_file=windows.tsv
 seed_dir=../rmd/work/seeds
 seed_metadata="$seed_dir/seeds.tsv"
 topology=../work/system.parm7
 config=../work/resolved_config.toml
 window_root=work
+if [[ ! -s "$config" ]]; then
+    die "Resolved config not found: $config. Run the root build.sh first."
+fi
+window_file=$("$python" - "$config" <<'PY'
+import sys
+from pathlib import Path
+sys.path.insert(0, "../helpers")
+from config_utils import load_config, section, string_value
+
+config = load_config(Path(sys.argv[1]))
+print(Path("..") / string_value(section(config, "umbrella"), "windows_file"))
+PY
+)
+seed_windows="$seed_dir/windows.tsv"
 if (( ! ${dry_run:-0} )) && [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
     exec "${PYTHON:-python3}" ../helpers/writer_guard.py \
-        --registry "../work" --read "../work" --read "$seed_dir" --write "$window_root" -- "$0" "${original_args[@]}"
+        --registry "../work" --read "../work" --read "$seed_dir" --read "$window_file" --write "$window_root" -- "$0" "${original_args[@]}"
 fi
 
 if [[ ! -s "$window_file" ]]; then
@@ -83,11 +96,18 @@ fi
 if ! command -v "$python" >/dev/null 2>&1; then
     die "Python not found: $python"
 fi
-for input in "$topology" "$config" "$seed_metadata"; do
+for input in "$topology" "$config" "$seed_metadata" "$seed_windows"; do
     if [[ ! -s "$input" ]]; then
         die "Required input not found: $input"
     fi
 done
+if ! cmp -s "$window_file" "$seed_windows"; then
+    die "Window table changed since seed extraction: $window_file (seed table: $seed_windows). Extract a new seed generation."
+fi
+metadata_count=$(awk 'NR > 1 && NF {count++} END {print count+0}' "$seed_metadata")
+if (( metadata_count != ${#window_rows[@]} )); then
+    die "Window count differs from seed metadata: $window_file ($metadata_count seeds)."
+fi
 if [[ -e "$window_root" ]]; then
     die "Window output already exists: $window_root"
 fi

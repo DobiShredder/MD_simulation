@@ -55,6 +55,11 @@ def acquire(registry, reads, writes, command):
         "started": time.time(), "command": command, "reads": reads, "writes": writes,
     }
     try:
+        for read in reads:
+            for parent in (Path(read), *Path(read).parents):
+                for pending in (parent / ".download.pending", parent.parent / f".{parent.name}.download.pending"):
+                    if pending.exists() or pending.is_symlink():
+                        raise RuntimeError(f"Source download publication is incomplete; inspect {pending}")
         for existing in registry.iterdir():
             if existing == gate:
                 continue

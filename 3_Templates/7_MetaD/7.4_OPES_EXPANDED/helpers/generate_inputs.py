@@ -34,6 +34,8 @@ def parse_arguments() -> argparse.Namespace:
         type=int,
         help="Number of configured-salt formula units to add after neutralization",
     )
+    parser.add_argument("--validate-only", action="store_true",
+                        help="Validate settings without writing inputs")
     return parser.parse_args()
 
 
@@ -219,6 +221,9 @@ def main() -> None:
         values = resolve(args.config)
     except ValueError as error:
         raise SystemExit(f"Config error: {error}") from None
+    if args.validate_only:
+        return
+
     args.output.mkdir(parents=True, exist_ok=True)
     write_tleap(args.output, values, args.salt_pairs)
     write_md_inputs(args.output, values)

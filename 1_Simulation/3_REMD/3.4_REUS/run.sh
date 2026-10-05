@@ -132,11 +132,15 @@ check_replica_inputs() {
 amber_engine=${AMBER_ENGINE:-pmemd.cuda}
 amber_mpi_engine=${AMBER_MPI_ENGINE:-pmemd.cuda.MPI}
 mpi_launcher=${MPI_LAUNCHER:-mpirun}
-replica_count=19
 
 if [[ ! -s work/states.tsv ]]; then
     die "Run ./build.sh first."
 fi
+replica_count=$(awk 'NR > 1 {count++} END {print count + 0}' work/states.tsv)
+if (( replica_count < 2 || replica_count % 2 != 0 )); then
+    die "Replica exchange requires at least two and an even number of states: work/states.tsv ($replica_count states)"
+fi
+
 if (( dry_run )); then
     echo "Dry run: planned REUS commands; no engine execution"
     echo "Preproduction engine cwd: work/000 (repeated for every replica)"

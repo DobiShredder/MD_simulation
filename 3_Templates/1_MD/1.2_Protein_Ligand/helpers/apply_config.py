@@ -11,6 +11,7 @@ from pathlib import Path
 
 sys.dont_write_bytecode = True
 from config_utils import (
+    finite_float,
     choice_value,
     disulfide_pairs,
     disulfide_tleap_lines,
@@ -399,7 +400,7 @@ def _apply_config(config_path: Path, work_dir: Path) -> None:
         raise ValueError("Funnel-MetaD requires box_shape=rectangular")
     if "membrane" in config and box_shape != "rectangular":
         raise ValueError("membrane-protein templates require box_shape=rectangular")
-    pressure = float(run.get("pressure", 1.0))
+    pressure = finite_float(run, "pressure", default=1.0)
     pressure_coupling = str(run.get("pressure_coupling", "isotropic")).lower()
     validate_divalent_neutralization(work_dir, salt)
 

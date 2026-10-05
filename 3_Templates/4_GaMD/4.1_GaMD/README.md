@@ -12,8 +12,8 @@ Water count를 위한 first-pass LEaP input과 `solvated.pdb`는 `work/.build_tm
 directory의 `requirements.txt`를 사용해 설치합니다.
 
 `igamd=3`으로 total potential과 dihedral energy에 dual boost를 적용합니다.
-`config.toml`의 200,000-step preparation, 1,000,000-step statistics 구간을
-conventional MD와 boost equilibration에 각각 사용합니다. `sigma0P`와
+Conventional MD와 boost equilibration은 각각 전체 1,000,000 steps 중 처음
+200,000 steps를 preparation에, 나머지를 statistics 수집에 사용합니다. `sigma0P`와
 `sigma0D`의 기본값은 6 kcal/mol입니다.
 
 ```bash
@@ -45,7 +45,7 @@ Production이 여러 segment이면 `work/001`, `work/002`, ...에 저장합니�
 | `equilibration_ensemble` | `NPT`만 지원 | `NPT` | Conventional equilibration에 적용합니다. |
 | `production_ensemble` | `NVT`, `NPT` | `NVT` | GaMD preparation과 production의 `ntb`와 `ntp`를 설정합니다. |
 | `constraint_mode` | `h-bonds`만 지원 | `h-bonds` | Hydrogen-containing bond에 SHAKE를 적용합니다. |
-| `random_seed` | `"random"` 또는 양의 정수 | `"random"` | `"random"`은 AMBER `ig=-1`, 정수는 고정 seed를 사용합니다. |
+| `random_seed` | `"random"` 또는 양의 정수 | `"random"` | `"random"`은 AMBER `ig=-1`, 정수에서 stage와 segment별 seed를 파생합니다. |
 
 GaMD boost 종류는 이 directory에서 dual boost로 고정되어 있으며 별도 config
 mode가 아닙니다.
@@ -93,6 +93,23 @@ SIGKILL 또는 node 장애로 남은 lock은 자동으로 지우지 않습니다
 
 처음 numbered layout으로 실행했다면 segment 수를 줄여도 첫 output은 `work/001/`에 유지합니다. 한 segment를 root `work/production.*`로 완료한 뒤 segment 수를 늘렸다면 첫 output은 그대로 두고 후속 output만 `work/002/`, `work/003/`에 생성합니다. 처음부터 여러 segment를 실행하면 `work/001/`부터 생성합니다.
 
+### Seed와 segment input
+
+정수 `random_seed=s`에서 heating은 `s`, equilibration은 `s+1`, GaMD parameter preparation은 `s+2`를 사용합니다. Production segment `n`은 `s+2+n`을 사용합니다. `"random"`은 각 stage의 `ig=-1`로 AMBER가 seed를 선택하게 합니다.
+
+Stage seed와 production seed의 기준값은 `resolved_config.toml`의 `[gamd]`에 기록합니다. `inputs/production.in`은 첫 production seed를 가진 template이며, runner가 각 segment directory의 `production.in`을 생성해 실제 `ig`를 기록합니다. 완료된 input은 다시 쓰지 않고 identity와 내용이 일치하는지 확인합니다. Seed가 같아도 engine, hardware와 실행 조건이 다르면 trajectory가 같다는 뜻은 아닙니다.
+
+### Statistics 구간
+
+`conventional_preparation_steps`는 `ntcmdprep`, `conventional_statistics_steps`는
+preparation을 포함한 conventional MD 전체 길이인 `ntcmd`입니다.
+`boost_preparation_steps`는 `ntebprep`, `boost_statistics_steps`는 preparation을
+포함한 boost equilibration 전체 길이인 `nteb`입니다. 각 statistics 값은 대응하는
+preparation 값보다 커야 하며, 네 값은 `averaging_interval_steps`의 배수여야 합니다.
+
+기본값은 각 구간의 전체 1,000,000 steps 중 처음 200,000 steps를 preparation에
+사용하고, 나머지 800,000 steps에서 statistics를 수집합니다. Parameter preparation의
+전체 길이는 `ntcmd + nteb`인 2,000,000 steps이며 production 길이에는 포함하지 않습니다.
 
 ## English
 
@@ -113,7 +130,7 @@ The first-pass LEaP input and water-count `solvated.pdb` are created under `work
 | `equilibration_ensemble` | `NPT` only | `NPT` | Applies to conventional equilibration. |
 | `production_ensemble` | `NVT`, `NPT` | `NVT` | Sets `ntb` and `ntp` for GaMD preparation and production. |
 | `constraint_mode` | `h-bonds` only | `h-bonds` | Applies SHAKE to bonds involving hydrogen. |
-| `random_seed` | `"random"` or a positive integer | `"random"` | `"random"` maps to AMBER `ig=-1`; an integer fixes the seed. |
+| `random_seed` | `"random"` or a positive integer | `"random"` | `"random"` maps to AMBER `ig=-1`; an integer derives stage and segment seeds. |
 
 The GaMD boost type is fixed to dual boost in this directory and is not a
 config mode.
@@ -175,3 +192,22 @@ on another host has ended. Atomic directory operations on cluster filesystems
 and termination of remote/daemon processes were not tested by local fixtures.
 
 If one segment completed as `work/production.*`, increasing the segment count retains that first output and writes later outputs under `work/002/`, `work/003/`, etc. Runs configured with multiple segments from the start use `work/001/` onward.
+
+### Seeds and segment inputs
+
+For integer `random_seed=s`, heating uses `s`, equilibration `s+1`, and GaMD parameter preparation `s+2`. Production segment `n` uses `s+2+n`. With `"random"`, each stage uses `ig=-1` and AMBER selects its seed.
+
+Stage seeds and the production seed base are recorded under `[gamd]` in `resolved_config.toml`. `inputs/production.in` is the first-seed template; the runner creates `production.in` in each segment directory with its actual `ig`. Completed inputs are checked against their identity and retained without rewriting. Fixed seeds do not guarantee identical trajectories across engines, hardware, or execution conditions.
+
+### Statistics intervals
+
+`conventional_preparation_steps` sets `ntcmdprep`; `conventional_statistics_steps`
+sets `ntcmd`, the total conventional MD length including preparation.
+`boost_preparation_steps` sets `ntebprep`; `boost_statistics_steps` sets `nteb`,
+the total boost equilibration length including preparation. Each statistics value
+must exceed its preparation value, and all four values must be multiples of
+`averaging_interval_steps`.
+
+By default, each 1,000,000-step interval contains 200,000 preparation steps and
+800,000 steps for statistics collection. The full parameter preparation length is
+`ntcmd + nteb`, or 2,000,000 steps; it is separate from the production length.

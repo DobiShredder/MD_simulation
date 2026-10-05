@@ -72,6 +72,18 @@ WESTPA 설정은 `3_Templates/6_WE/6.1_WESTPA_AMBER`에서 구성합니다.
 `bin_occupancy.tsv`는 iteration별 segment 수와 weight를 보여주며,
 `target_events.tsv`는 RMSD 3.0 Å 이상에 도달한 segment를 기록합니다.
 
+Weight diagnostics는 finite이며 음수가 아닌 weight와 segment별 1차원 finite pcoord를 요구합니다. Total weight는 유한한 양수여야 합니다. 합을 1로 강제 보정하지 않고 실제 합을 출력합니다. 잘못된 HDF5를 읽으면 기존 TSV를 보존합니다. `calc_pcoord.sh`는 cpptraj output의 numeric RMSD와 column 수를 확인하고 잘못된 값을 반환하지 않습니다.
+
+공개 analysis entry는 자동으로 `helpers/writer_guard.py`를 호출해 같은 output의 동시 writer를 거부합니다. Engine 실행부터 결과 게시까지 보호하며, signal 종료 시 child가 멈춘 뒤 lock을 해제합니다. Lock을 임의로 삭제해 실행을 재개하지 않습니다.
+
+`download.sh`는 모든 asset과 `SHA256SUMS`를 staging에서 확인한 뒤 `helpers/publish_download.py`로 게시합니다. Transfer, checksum 또는 일반 publication 실패에서는 기존 파일을 보존하며, 관련 없는 preparation 파일도 유지합니다. `structure/.download.pending`가 남으면 prepare/build와 새 download가 거부됩니다. 보존된 staging과 marker를 점검하고, marker만 삭제해 이전 파일과 새 파일을 섞어 사용하지 않습니다.
+
+### 중단 상태와 완료 iteration
+
+`run.sh`는 `west.cfg`의 requested iteration 수와 HDF5의 `west_current_iteration-1`을 비교합니다. Wall-clock 제한으로 정상 중단되면 `paused`와 완료한 iteration 수를 출력합니다. 같은 input에서 `./run.sh`를 다시 실행해 이어갑니다.
+
+`anal.py`는 current iteration보다 작은 iteration만 읽으며 모든 segment의 status가 완료인지 검사합니다. 다음 propagation을 위해 미리 만든 pending group은 diagnostics에 넣지 않습니다. 완료 metadata가 없거나 완료 iteration에 미완료 segment가 있으면 기존 TSV를 쓰기 전에 중단합니다.
+
 ## English
 
 This example propagates PDB 1UAO Chignolin in explicit OPC water and uses the
@@ -153,3 +165,15 @@ Walker continuation과 weight/resampling은 기존 WESTPA state와 manager가 �
 
 This completion check applies to topology and basis preparation in `build.sh`.
 Walker continuation, weights, and resampling remain managed by WESTPA state and its manager.
+
+Weight diagnostics require finite, nonnegative weights and finite one-dimensional pcoord for each segment. Total weight must be finite and positive; diagnostics report the actual sum without renormalizing it to one. Invalid HDF5 leaves existing TSV files intact. `calc_pcoord.sh` checks numeric RMSD and column counts before returning a cpptraj result.
+
+Public analysis entries automatically use `helpers/writer_guard.py` to reject concurrent writers to the same output. Protection covers engine execution through publication, and signal cleanup drains children before releasing the lock. Do not delete a lock to force a retry.
+
+`download.sh` validates every asset and `SHA256SUMS` in staging before publishing through `helpers/publish_download.py`. Transfer, checksum and ordinary publication failures preserve existing files, including unrelated preparation files. A retained `structure/.download.pending` blocks source readers and new downloads. Inspect the retained staging and marker; deleting only the marker can expose a mixed generation.
+
+### Paused runs and completed iterations
+
+`run.sh` compares the requested iteration count in `west.cfg` with `west_current_iteration-1` in HDF5. A normal wall-clock stop is reported as `paused`, with the completed count. Run `./run.sh` again with the same inputs to continue.
+
+`anal.py` reads only iterations below the current iteration and checks that every segment has completed status. Pending groups prepared for the next propagation are excluded. Missing completion metadata or incomplete segments in a completed iteration stop analysis before replacing existing TSV files.

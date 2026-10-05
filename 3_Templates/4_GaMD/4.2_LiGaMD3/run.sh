@@ -133,6 +133,10 @@ run_stage() {
     local marker="$directory/.$stage.complete"
     local prefix="$directory/$stage"
     local required=("$prefix.out" "$prefix.rst7" "$prefix.info")
+    local template_file=$input_file
+    if [[ "$stage" == production ]]; then
+        input_file=production.in
+    fi
     local command=("$engine" "${amber_options[@]}" -O -i "$input_file" -o "$stage.out" -p "$topology_path" -c "$input_restart" -r "$stage.rst7" -inf "$stage.info")
 
     if [[ "$stage" != minimize ]]; then
@@ -155,7 +159,45 @@ run_stage() {
         return
     fi
 
+    if [[ "$stage" == production ]]; then
+        local production_state
+        production_state=$(stage_state "$marker" "${required[@]}")
+        if [[ "$production_state" == partial ]]; then
+            die "Partial $label output detected and retained: $directory"
+        fi
+        if [[ "$production_state" == complete && ! -s "$directory/production.in" ]]; then
+            die "$label input is missing and outputs were retained: $directory/production.in"
+        fi
+        mkdir -p "$directory"
+        if ! "${PYTHON:-python3}" - "$directory/$template_file" "$directory/production.in" "$segment_number" <<'PY'
+import re
+import sys
+from pathlib import Path
+
+template, output = map(Path, sys.argv[1:3])
+text = template.read_text()
+matches = re.findall(r"\big\s*=\s*(-?\d+)", text)
+if len(matches) != 1:
+    raise SystemExit(f"Expected one ig assignment in {template}")
+base_seed = int(matches[0])
+seed = -1 if base_seed == -1 else base_seed + int(sys.argv[3]) - 1
+text = re.sub(r"\big\s*=\s*-?\d+", f"ig={seed}", text)
+if output.exists():
+    if output.read_text() != text:
+        raise SystemExit(f"Production input changed; existing file retained: {output}")
+else:
+    with output.open("x") as handle:
+        handle.write(text)
+PY
+        then
+            die "$label input preparation failed: $directory/production.in"
+        fi
+    fi
+
     local identity_options=()
+    if [[ "$stage" == production ]]; then
+        identity_options+=(--input "$directory/$template_file")
+    fi
     if [[ -n "$previous_gamd_state" ]]; then
         identity_options+=(--input "$previous_gamd_state")
     fi

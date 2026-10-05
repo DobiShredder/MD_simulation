@@ -75,6 +75,8 @@ Preparation을 성공적으로 다시 실행하면 이전 PMF는 새 series와 �
 실행 process가 종료됐는지 확인한 뒤 marker에 적힌 previous/new directory를
 보존하고 검사합니다. 여러 파일의 교체를 하나의 atomic write로 취급하지 않습니다.
 
+공개 analysis entry는 자동으로 `writer_guard.py`를 호출해 같은 output의 동시 writer를 거부합니다. Engine 실행부터 결과 게시까지 보호하며, signal 종료 시 child가 멈춘 뒤 lock을 해제합니다. Lock을 임의로 삭제해 실행을 재개하지 않습니다.
+
 ## English
 
 This example calculates a one-dimensional terminal-Cα-distance PMF from the
@@ -121,3 +123,5 @@ are not treated as one atomic write.
 - [PyMBAR documentation](https://pymbar.readthedocs.io/)
 
 This analysis reads the tutorial’s `restraint.production.dat` and `gamd.production.log` in each window. The output TSV retains `segment = 1`. Segmented template outputs are not supported.
+
+Public analysis entries automatically use `writer_guard.py` to reject concurrent writers to the same output. Protection covers engine execution through publication, and signal cleanup drains children before releasing the lock. Do not delete a lock to force a retry.

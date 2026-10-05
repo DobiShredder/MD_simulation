@@ -61,6 +61,9 @@ amber_engine=$("${PYTHON:-python3}" helpers/config_utils.py "$work_dir/resolved_
 amber_mpi_engine=$("${PYTHON:-python3}" helpers/config_utils.py "$work_dir/resolved_config.toml" mpi_engine AMBER_MPI_ENGINE pmemd.cuda.MPI)
 mpi_launcher=${MPI_LAUNCHER:-mpirun}
 replica_count=$(awk 'NR > 1 {count++} END {print count + 0}' "$states_file")
+if (( replica_count < 2 || replica_count % 2 != 0 )); then
+    die "Replica exchange requires at least two and an even number of states: $states_file ($replica_count states)"
+fi
 mpi_processes=${MPI_PROCESSES:-$replica_count}
 production_segments=$(awk -F' = ' '$1 == "production_segments" {value=$2} END {print value}' "$work_dir/resolved_config.toml")
 production_segments=${production_segments:-1}

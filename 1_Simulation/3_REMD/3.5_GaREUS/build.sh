@@ -55,11 +55,11 @@ if ! "$python_bin" -c "import parmed" >/dev/null 2>&1; then
 fi
 
 window_count=$(awk 'NR > 1 {count++} END {print count + 0}' "$states_file")
-if [[ "$window_count" -ne 20 ]]; then
-    die "states.tsv must contain 20 windows: $window_count"
+if (( window_count < 2 || window_count % 2 != 0 )); then
+    die "Replica exchange requires at least two and an even number of windows: $states_file ($window_count windows)"
 fi
 
-echo "Generating ff19SB/OPC systems for 20 GaREUS windows."
+echo "Generating ff19SB/OPC systems for $window_count GaREUS windows."
 mkdir -p "$work_dir"
 cp "$input_pdb" "$work_dir/input.pdb"
 cp inputs/tleap.in "$work_dir/tleap.in"

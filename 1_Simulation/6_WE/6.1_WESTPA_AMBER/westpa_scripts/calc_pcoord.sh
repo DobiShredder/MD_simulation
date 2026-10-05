@@ -37,7 +37,20 @@ rms chignolin_ca :2-9@CA reference out $tmp_file
 run
 EOF
 
-awk 'NF >= 2 && $1 !~ /^#/ { value=$2 } END {
-    if (value == "") exit 1
+awk -v source="$tmp_file" '
+BEGIN { number = "^[-+]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][-+]?[0-9]+)?$" }
+NF && $1 !~ /^#/ {
+    if (NF != 2 || $1 !~ /^[0-9]+$/ || $2 !~ number || sprintf("%.17g", $2 + 0) !~ number) {
+        invalid = 1
+        exit
+    }
+    value = $2
+    found = 1
+}
+END {
+    if (invalid || !found) {
+        print "Error: invalid or nonfinite cpptraj RMSD output: " source > "/dev/stderr"
+        exit 1
+    }
     printf "%.6f\n", value
 }' "$tmp_file"

@@ -20,6 +20,7 @@ from config_utils import (  # noqa: E402
     string_value,
 )
 from force_field_profiles import resolve_force_field_profile  # noqa: E402
+from generate_states import read_temperatures
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -43,6 +44,10 @@ def parse_arguments() -> argparse.Namespace:
         type=Path,
         help="Resolved state table used to generate per-replica engine inputs",
     )
+    parser.add_argument(
+        "--validate-only", action="store_true",
+        help="Validate config and file schedules without writing inputs",
+    )
     return parser.parse_args()
 
 
@@ -59,6 +64,10 @@ def resolve(config_path: Path, method: str) -> dict[str, object]:
         raise ValueError("ensemble currently supports only NPT")
     if string_value(run, "constraint_mode").lower() != "h-bonds":
         raise ValueError("constraint_mode currently supports only h-bonds")
+
+    temperature_mode = string_value(exchange, "temperature_mode")
+    if temperature_mode == "file":
+        read_temperatures(Path(string_value(exchange, "temperature_file")))
 
     production_steps = positive_int(run, "production_steps")
     segments = positive_int(run, "production_segments")
@@ -91,6 +100,7 @@ def resolve(config_path: Path, method: str) -> dict[str, object]:
         "trajectory_interval": positive_int(run, "trajectory_interval_steps"),
         "exchange_interval": positive_int(exchange, "exchange_interval_steps"),
         "random_seed": random_seed,
+        "temperature_mode": temperature_mode,
     }
     if method == "remd":
         values["engine"] = string_value(run, "engine")
@@ -141,6 +151,8 @@ def read_states(path: Path, method: str) -> list[dict[str, str]]:
     temperature_column = "temperature_K" if method == "remd" else "effective_temperature_K"
     if len(rows) < 2 or any(temperature_column not in row or "seed" not in row for row in rows):
         raise ValueError(f"invalid state table: {path}")
+    if len(rows) % 2:
+        raise ValueError(f"Replica exchange requires an even number of states: {path} ({len(rows)} states)")
     return rows
 
 
@@ -410,6 +422,9 @@ def main() -> None:
             rows = []
     except ValueError as error:
         raise SystemExit(f"Config error: {error}") from None
+
+    if args.validate_only:
+        return
 
     args.output.mkdir(parents=True, exist_ok=True)
     write_tleap(args.output, values, args.salt_pairs)

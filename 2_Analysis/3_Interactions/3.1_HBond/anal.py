@@ -45,6 +45,8 @@ def read_hbond_counts(path: Path, numeric_columns: int) -> np.ndarray:
 
 def main() -> int:
     output_dir = Path(__file__).resolve().parent / "output"
+    from writer_guard import protect_python_entry
+    protect_python_entry("output", reads=(output_dir,))
     generation = verify_generation(output_dir)
     print(f"Running: HBond analysis; input directory: {output_dir}")
     protein = np.loadtxt(

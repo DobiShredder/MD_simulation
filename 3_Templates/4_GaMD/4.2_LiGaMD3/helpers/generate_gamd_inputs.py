@@ -4,12 +4,13 @@
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from pathlib import Path
 
 sys.dont_write_bytecode = True
 sys.path.insert(0, ".")
-from apply_config import apply_config  # noqa: E402
+from apply_config import add_cntrl_assignments, apply_config  # noqa: E402
 from config_utils import load_config, positive_float, positive_int, section, string_value  # noqa: E402
 
 
@@ -59,6 +60,14 @@ def main() -> None:
     gamd = section(config, "gamd")
     settings = METHOD_SETTINGS[args.method]
 
+    configured_seed = run.get("random_seed")
+    if configured_seed == "random":
+        random_seed = -1
+    elif isinstance(configured_seed, int) and not isinstance(configured_seed, bool) and configured_seed > 0:
+        random_seed = configured_seed
+    else:
+        raise SystemExit("random_seed must be 'random' or a positive integer")
+
     timestep = positive_float(run, "timestep")
     temperature = positive_float(run, "temperature")
     interval = positive_int(run, "trajectory_interval_steps")
@@ -72,6 +81,16 @@ def main() -> None:
     boost_preparation = positive_int(gamd, "boost_preparation_steps")
     boost_statistics = positive_int(gamd, "boost_statistics_steps")
     averaging = positive_int(gamd, "averaging_interval_steps")
+    if conventional_statistics <= conventional_preparation:
+        raise SystemExit(
+            f"GaMD conventional statistics in {args.config}: "
+            "conventional_statistics_steps must exceed conventional_preparation_steps"
+        )
+    if boost_statistics <= boost_preparation:
+        raise SystemExit(
+            f"GaMD boost statistics in {args.config}: "
+            "boost_statistics_steps must exceed boost_preparation_steps"
+        )
     for name, value in (
         ("conventional_preparation_steps", conventional_preparation),
         ("conventional_statistics_steps", conventional_statistics),
@@ -81,6 +100,11 @@ def main() -> None:
         if value % averaging != 0:
             raise SystemExit(f"{name} must be a multiple of averaging_interval_steps")
 
+    # Each restart uses a different deterministic Langevin sequence.
+    heating_seed = random_seed
+    equilibration_seed = -1 if random_seed == -1 else random_seed + 1
+    preparation_seed = -1 if random_seed == -1 else random_seed + 2
+    production_seed_base = -1 if random_seed == -1 else random_seed + 3
     sigma = positive_float(gamd, "sigma0")
     method_lines: list[str] = []
     resolved_lines: list[str] = []
@@ -122,7 +146,7 @@ def main() -> None:
     force_evaluation = 1 if selection is not None else 2
     common = [
         "imin=0", "irest=1", "ntx=5", f"dt={timestep / 1000.0:.6f}",
-        f"temp0={temperature:.3f}", "ntt=3", "gamma_ln=1.0", "ig=-1",
+        f"temp0={temperature:.3f}", "ntt=3", "gamma_ln=1.0",
         "ntb=1", "ntp=0", "ntc=2", f"ntf={force_evaluation}", "cut=10.0", "iwrap=0",
         f"ntpr={interval}", f"ntwx={interval}", f"ntwr={interval}", "ioutfm=1",
         f"igamd={settings['igamd']}", settings["thresholds"], *method_lines,
@@ -133,7 +157,7 @@ def main() -> None:
         render(
             "GaMD parameter preparation",
             [
-                f"nstlim={preparation_steps}", *common, "irest_gamd=0",
+                f"nstlim={preparation_steps}", *common, f"ig={preparation_seed}", "irest_gamd=0",
                 f"ntcmdprep={conventional_preparation}", f"ntcmd={conventional_statistics}",
                 f"ntebprep={boost_preparation}", f"nteb={boost_statistics}",
                 f"ntave={averaging}", f"sigma0P={sigma:.3f}", f"sigma0D={sigma:.3f}",
@@ -146,7 +170,7 @@ def main() -> None:
         render(
             "GaMD production segment",
             [
-                f"nstlim={production_steps // segments}", *common, "irest_gamd=1",
+                f"nstlim={production_steps // segments}", *common, f"ig={production_seed_base}", "irest_gamd=1",
                 "ntcmdprep=0", "ntcmd=0", "ntebprep=0", "nteb=0",
                 f"ntave={averaging}", f"sigma0P={sigma:.3f}", f"sigma0D={sigma:.3f}",
                 *( [f"sigma0B={sigma:.3f}"] if args.method == "ligamd3" else [] ),
@@ -155,12 +179,27 @@ def main() -> None:
         encoding="utf-8",
     )
 
+    for filename, seed in (("heat.in", heating_seed), ("equilibrate.in", equilibration_seed)):
+        input_path = args.output / filename
+        if input_path.is_file():
+            text, count = re.subn(r"\big\s*=\s*-?\d+", f"ig={seed}", input_path.read_text())
+            if count == 0:
+                text = add_cntrl_assignments(text, [f"ig={seed}"])
+            elif count != 1:
+                raise SystemExit(f"Expected one ig assignment in {input_path}")
+            input_path.write_text(text, encoding="utf-8")
+
     resolved = args.output.parent / "resolved_config.toml"
     with resolved.open("a", encoding="utf-8") as handle:
         handle.write(
             "\n[gamd]\n"
             f'method = "{args.method}"\n'
             f"igamd = {settings['igamd']}\n"
+            f"heating_seed = {heating_seed}\n"
+            f"equilibration_seed = {equilibration_seed}\n"
+            f"preparation_seed = {preparation_seed}\n"
+            f"production_seed_base = {production_seed_base}\n"
+            "production_seed_stride = 1\n"
             f"conventional_preparation_steps = {conventional_preparation}\n"
             f"conventional_statistics_steps = {conventional_statistics}\n"
             f"boost_preparation_steps = {boost_preparation}\n"

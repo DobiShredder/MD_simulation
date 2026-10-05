@@ -68,6 +68,8 @@ def effective_sample_size(values: list[float]) -> float:
 
 
 def main() -> None:
+    from helpers.writer_guard import protect_python_entry
+    protect_python_entry(WORK, writes=(WORK,))
     print(f"Calculating boost diagnostics: {WORK / 'production.gamd.log'}", flush=True)
     all_records: list[tuple[int, int, list[float]]] = []
     summaries: list[list[str]] = []

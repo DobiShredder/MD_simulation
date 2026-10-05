@@ -7,6 +7,8 @@
 
 ## 한국어
 
+최소 2개·짝수 replica만 지원합니다. `build.sh`와 `run.sh`는 홀수 schedule을 자동 조정하지 않고 거부합니다. `run.sh --dry-run`도 실제 state table의 count를 검사합니다. 기존 홀수 결과는 새 work directory에서 다시 준비합니다.
+
 Chignolin을 ff19SB/OPC로 만들고 8-replica REST2를 실행합니다. Protein
 Hamiltonian만 300–450 K effective temperature에 맞춰 scaling하며 실제 bath
 temperature는 300 K입니다. Equilibration은 100 ps, production은 replica당
@@ -146,7 +148,17 @@ Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 
 
 Replica 실행이나 batch 도중 `grompp`가 실패하면 이미 시작한 replica가 모두 종료될 때까지 기다린 뒤 실패로 종료합니다. 후속 stage는 시작하지 않습니다.
 
+Scale-one energy 비교에는 finite energy와 finite tolerance가 필요합니다. Tolerance는 0 이상의 kJ/mol 값입니다. NaN/Inf energy, overflow한 차이 또는 잘못된 tolerance는 검증 실패이며 기존 비교 output을 교체하지 않습니다.
+
+`download.sh`는 모든 asset과 `SHA256SUMS`를 staging에서 확인한 뒤 `helpers/publish_download.py`로 게시합니다. Transfer, checksum 또는 일반 publication 실패에서는 기존 파일을 보존하며, 관련 없는 preparation 파일도 유지합니다. `structure/.download.pending`가 남으면 prepare/build와 새 download가 거부됩니다. 보존된 staging과 marker를 점검하고, marker만 삭제해 이전 파일과 새 파일을 섞어 사용하지 않습니다.
+
+### Exchange 진단
+
+`round_trips`는 처음 도달한 endpoint에서 반대 endpoint를 방문한 뒤 처음 endpoint로 돌아온 cycle 수입니다. 편도 이동과 같은 endpoint의 반복 방문은 왕복으로 세지 않습니다.
+
 ## English
+
+Only even replica counts of at least two are supported. `build.sh` and `run.sh` reject odd schedules without adjusting them. `run.sh --dry-run` checks the actual state-table count too. Prepare a new work directory for results built with an odd schedule.
 
 `grompp_utils.bash` first runs `grompp` without `-maxwarn`. It is retried with
 `-maxwarn 1` only when the AMBER-to-GROMACS topology conversion leaves a charge
@@ -266,3 +278,11 @@ required outputs, are preserved and rejected. Existing results are not certified
 retroactively. Start a new tutorial copy without generated `work/` directories for
 a new calculation. AMBER stages with `ntwx=0` do not require a trajectory for
 completion. Supported continuation retains its existing restart/state handoff.
+
+The scale-one energy comparison requires finite energies and a finite, nonnegative tolerance in kJ/mol. Nonfinite energy, an overflowed difference, or invalid tolerance fails validation without replacing existing comparison output.
+
+`download.sh` validates every asset and `SHA256SUMS` in staging before publishing through `helpers/publish_download.py`. Transfer, checksum and ordinary publication failures preserve existing files, including unrelated preparation files. A retained `structure/.download.pending` blocks source readers and new downloads. Inspect the retained staging and marker; deleting only the marker can expose a mixed generation.
+
+### Exchange diagnostics
+
+`round_trips` counts complete cycles from the first endpoint reached, through the opposite endpoint, and back to the starting endpoint. One-way movement and repeated visits to the same endpoint do not count as round trips.

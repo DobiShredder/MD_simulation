@@ -18,6 +18,12 @@ def main() -> None:
     parser.add_argument("output_directory", type=Path)
     args = parser.parse_args()
 
+    with args.states.open(encoding="utf-8", newline="") as handle:
+        states = list(csv.DictReader(handle, delimiter="\t"))
+
+    if len(states) < 2 or len(states) % 2:
+        raise SystemExit(f"Replica exchange requires at least two and an even number of states: {args.states} ({len(states)} states)")
+
     structure = parmed.load_file(str(args.topology), xyz=str(args.coordinates))
     first = [
         atom.idx + 1
@@ -35,8 +41,6 @@ def main() -> None:
 
     args.output_directory.mkdir(parents=True, exist_ok=True)
 
-    with args.states.open(encoding="utf-8", newline="") as handle:
-        states = list(csv.DictReader(handle, delimiter="\t"))
 
     for state in states:
         center = float(state["window_center_A"])

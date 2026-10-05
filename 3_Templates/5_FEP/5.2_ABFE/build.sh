@@ -53,7 +53,8 @@ input=$1
 work_dir=${WORK_DIR:-work}
 if (( ! ${dry_run:-0} )) && [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
     exec "${PYTHON:-python3}" helpers/writer_guard.py \
-        --registry "$work_dir" --write "$work_dir" -- "$0" "${original_args[@]}"
+        --registry "$work_dir" --read "$input" --read "$config" \
+        --write "$work_dir" -- "$0" "${original_args[@]}"
 fi
 build_dir="$work_dir/build"
 tleap=${TLEAP:-tleap}
@@ -95,6 +96,17 @@ if [[ -d "$work_dir" ]]; then
     fi
 fi
 
+for required in "$input" "$config"; do
+    if [[ ! -s "$required" ]]; then
+        die "Required input not found: $required"
+    fi
+done
+if ! command -v "$python" >/dev/null 2>&1; then
+    die "Executable not found: $python"
+fi
+
+"$python" helpers/prepare_fep_systems.py "$config" "$input" "$build_dir" --validate-only
+
 if (( dry_run )); then
     echo "+ $python helpers/prepare_fep_systems.py $config $input $build_dir"
     echo "+ $tleap -f tleap.complex.solvate.in"
@@ -106,18 +118,8 @@ if (( dry_run )); then
     exit 0
 fi
 
-for required in "$input" "$config"; do
-    if [[ ! -s "$required" ]]; then
-        die "Required input not found: $required"
-    fi
-done
-for executable in "$tleap" "$python"; do
-    if ! command -v "$executable" >/dev/null 2>&1; then
-        die "Executable not found: $executable"
-    fi
-done
-if ! "$python" -c 'import parmed' >/dev/null 2>&1; then
-    die "ParmEd is required in the selected Python environment."
+if ! command -v "$tleap" >/dev/null 2>&1; then
+    die "Executable not found: $tleap"
 fi
 
 mkdir -p "$build_dir"

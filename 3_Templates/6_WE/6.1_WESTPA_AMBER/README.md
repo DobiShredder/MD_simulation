@@ -2,6 +2,8 @@
 
 ## 한국어
 
+Basis-state heating과 equilibration은 `ntwx=0`이므로 `.nc`를 생성하지 않습니다. 완료와 재사용에는 stage별 `.out`, `.info`와 restart file이 필요하며, restart는 heating의 `heat.rst7`과 equilibration의 `bstates/basis.rst7`입니다. Minimization diagnostic은 `minimize.info`에 저장합니다. 완료된 stage의 필수 output이 없거나 비어 있으면 기존 파일을 보존하고 중단합니다.
+
 사용자가 직접 실행하는 파일은 이 directory의 root에 있습니다. `helpers/`는 `build.sh`, `run.sh` 또는 `anal.py`가 자동 호출하는 leaf-local 내부 code이며 직접 실행하지 않습니다.
 
 중단되거나 marker가 없는 stage output은 자동 삭제하거나 재실행하지 않고 보존한 채 중단합니다.
@@ -153,7 +155,13 @@ SIGKILL 또는 node 장애로 남은 lock은 자동으로 지우지 않습니다
 종료는 로컬 fixture에서 검증하지 않았습니다.
 
 
+Weight diagnostics는 finite이며 음수가 아닌 weight와 segment별 1차원 finite pcoord를 요구합니다. Total weight는 유한한 양수여야 합니다. 합을 1로 강제 보정하지 않고 실제 합을 출력합니다. 잘못된 HDF5를 읽으면 기존 TSV를 보존합니다. `calc_pcoord.sh`는 cpptraj output의 numeric RMSD와 column 수를 확인하고 잘못된 값을 반환하지 않습니다.
+
+공개 analysis entry는 자동으로 `helpers/writer_guard.py`를 호출해 같은 output의 동시 writer를 거부합니다. Engine 실행부터 결과 게시까지 보호하며, signal 종료 시 child가 멈춘 뒤 lock을 해제합니다. Lock을 임의로 삭제해 실행을 재개하지 않습니다.
+
 ## English
+
+Basis-state heating and equilibration use `ntwx=0` and do not generate `.nc`. Completion and reuse require each stage’s `.out`, `.info`, and restart: `heat.rst7` for heating and `bstates/basis.rst7` for equilibration. Minimization diagnostics go to `minimize.info`. Missing or empty required output stops the build and preserves existing files.
 
 User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh`, `run.sh`, or `anal.py`; it is not a separate entry point.
 
@@ -267,3 +275,7 @@ empty directory. A leftover `.gate` also requires checking that all registration
 and release operations have stopped. A PID alone does not establish that a job
 on another host has ended. Atomic directory operations on cluster filesystems
 and termination of remote/daemon processes were not tested by local fixtures.
+
+Weight diagnostics require finite, nonnegative weights and finite one-dimensional pcoord for each segment. Total weight must be finite and positive; diagnostics report the actual sum without renormalizing it to one. Invalid HDF5 leaves existing TSV files intact. `calc_pcoord.sh` checks numeric RMSD and column counts before returning a cpptraj result.
+
+Public analysis entries automatically use `helpers/writer_guard.py` to reject concurrent writers to the same output. Protection covers engine execution through publication, and signal cleanup drains children before releasing the lock. Do not delete a lock to force a retry.

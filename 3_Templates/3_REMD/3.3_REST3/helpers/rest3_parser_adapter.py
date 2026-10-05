@@ -27,6 +27,26 @@ def use_full_precision_nonbonded_output(module: ModuleType) -> ModuleType:
     return module
 
 
+def use_molecule_definition_indices(module: ModuleType) -> ModuleType:
+    """Match parser selections to definitions, preserving molecule row order."""
+    def ordered_molecules(converter: object) -> None:
+        molecules = {}
+        # One definition may occur in several nonadjacent [ molecules ] rows.
+        for index, definition in converter._sections["moleculetype"].items():
+            for line in definition["header"]:
+                fields = line.split(";", 1)[0].split()
+                if fields and not fields[0].startswith("["):
+                    molecules[index] = fields[0]
+                    break
+            else:
+                raise ValueError(f"Molecule definition {index} has no name")
+        converter.molecules = molecules
+        converter.nmol = max(molecules)
+
+    module.topo2rest._ordered_molecules = ordered_molecules
+    return module
+
+
 def run_parser(converter: object, **options: object) -> None:
     """Run the parser while suppressing its unconditional empty-list output."""
     captured = io.StringIO()
@@ -45,7 +65,7 @@ def load_parser_module() -> ModuleType:
     for name in ("repex_topology_parser", "src.repex_topology_parser"):
         try:
             module = importlib.import_module(name)
-            return use_full_precision_nonbonded_output(module)
+            return use_molecule_definition_indices(use_full_precision_nonbonded_output(module))
         except ModuleNotFoundError:
             continue
 
@@ -71,7 +91,7 @@ def load_parser_module() -> ModuleType:
 
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
-        return use_full_precision_nonbonded_output(module)
+        return use_molecule_definition_indices(use_full_precision_nonbonded_output(module))
 
     raise SystemExit(
         "repex-topology-parser 0.2.2 module not found. "

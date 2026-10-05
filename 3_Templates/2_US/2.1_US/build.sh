@@ -57,7 +57,8 @@ input=$1
 work_dir=work
 if (( ! ${dry_run:-0} )) && [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
     exec "${PYTHON:-python3}" helpers/writer_guard.py \
-        --registry "$work_dir" --write "$work_dir" -- "$0" "${original_args[@]}"
+        --registry "$work_dir" --read "$input" --read "$config" \
+        --write "$work_dir" -- "$0" "${original_args[@]}"
 fi
 tleap=${TLEAP:-tleap}
 python=${PYTHON:-python3}

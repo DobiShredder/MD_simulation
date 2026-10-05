@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
+import math
 
 
 def last_value(path: Path) -> float:
@@ -29,10 +30,16 @@ def main() -> None:
     parser.add_argument("scale_one", type=Path)
     parser.add_argument("tolerance", type=float)
     args = parser.parse_args()
+    if not math.isfinite(args.tolerance) or args.tolerance < 0:
+        raise SystemExit("Energy comparison tolerance must be finite and nonnegative")
 
     unscaled = last_value(args.unscaled)
     scale_one = last_value(args.scale_one)
+    if not math.isfinite(unscaled) or not math.isfinite(scale_one):
+        raise SystemExit(f"Nonfinite energy: {args.unscaled} or {args.scale_one}")
     difference = abs(unscaled - scale_one)
+    if not math.isfinite(difference):
+        raise SystemExit(f"Nonfinite energy difference: {args.unscaled} and {args.scale_one}")
 
     if difference > args.tolerance:
         raise SystemExit(

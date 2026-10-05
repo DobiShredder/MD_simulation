@@ -2,6 +2,10 @@
 
 ## 한국어
 
+최소 2개·짝수 replica만 지원합니다. `build.sh`와 `run.sh`는 홀수 schedule을 자동 조정하지 않고 거부합니다. `run.sh --dry-run`도 실제 state table의 count를 검사합니다. 기존 홀수 결과는 새 work directory에서 다시 준비합니다.
+
+File schedule은 LEaP 실행 전에 검사합니다. Auto count는 임시 topology에서 predictor를 실행한 뒤 검사하고, 통과한 preparation만 work directory에 복사합니다. 홀수이면 기존 input/state/log를 보존하고 진단용 temporary directory를 남깁니다. `build.sh --dry-run`은 file을 검사하지만 auto predictor를 실행하지 않으므로 auto count 검증은 실제 build까지 보류됩니다. Predictor 계산식과 temperature/target probability는 자동 변경하지 않습니다.
+
 사용자가 직접 실행하는 파일은 이 directory의 root에 있습니다. `helpers/`는 `build.sh`, `run.sh` 또는 `anal.py`가 자동 호출하는 leaf-local 내부 code이며 직접 실행하지 않습니다.
 
 중단되거나 marker가 없는 stage output은 자동 삭제하거나 재실행하지 않고 보존한 채 중단합니다.
@@ -115,7 +119,48 @@ SIGKILL 또는 node 장애로 남은 lock은 자동으로 지우지 않습니다
 종료는 로컬 fixture에서 검증하지 않았습니다.
 
 
+Scale-one energy 비교에는 finite energy와 finite tolerance가 필요합니다. Tolerance는 0 이상의 kJ/mol 값입니다. NaN/Inf energy, overflow한 차이 또는 잘못된 tolerance는 검증 실패이며 기존 비교 output을 교체하지 않습니다.
+
+### Salt와 charge 기록
+
+`helpers/rest3_parser_adapter.py`는 parser 0.2.2의 molecule index를
+`[ moleculetype ]` definition에 맞춥니다. 같은 이름이 `[ molecules ]`의 여러
+row에 나타나도 row 순서와 개수는 유지합니다. Coordinate file을 재배열하지 않습니다.
+
+Temperature predictor와 topology 검사는 NaCl, KCl, MgCl2, CaCl2의 실제 ion residue 이름을 같은 기준으로 분류합니다. REST2 hot marker는 water와 이 ion을 제외합니다. REST3 verifier는 각 cation/anion과 water의 interaction 보존을 검사합니다.
+
+`build_summary.toml`은 `System has non-zero total charge` 문구의 값을 `total_charge_e`에 기록합니다. Log에 charge 값이 없으면 `total_charge_known=false`로 표시하고 값을 0으로 추정하지 않습니다. Log가 누락되면 summary 생성을 중단합니다.
+
+### Production checkpoint continuation
+
+첫 production segment는 equilibration의 coordinate/velocity를 `grompp -t`로 읽고
+새 production 계산을 시작합니다. 두 번째부터는 predecessor checkpoint를
+`mdrun -cpi`에도 전달해 thermostat/barostat와 전체 MD state를 이어받습니다.
+`helpers/production_segment.py`가 자동 호출되어 predecessor의 step/time/part를
+검사하고, 원본 `production.mdp`에서 누적 `init-step`을 가진
+`production.NNN.mdp`를 생성합니다. 기존 파생 input은 내용이 같을 때만 재사용합니다.
+
+각 후속 segment는 `-noappend`로 독립 output을 생성합니다. Engine의
+`production.NNN.partMMMM.*`는 모든 요청 step이 완료된 checkpoint를 확인한 뒤
+`production.NNN.*`로 옮깁니다. `.cpt` 이름은 바꾸지 않습니다. 다음 segment도
+`-noappend`를 사용하므로 checkpoint에 기록된 원래 part output의 이름과 checksum을
+수정하지 않습니다. Trajectory는 이 canonical `.xtc` 경로에서 읽습니다.
+
+Exit 0이어도 checkpoint가 요청한 마지막 step/time에 도달하지 않았으면 완료 marker를
+만들지 않습니다. 실패 뒤 canonical 또는 part output이 남으면 보존하고 재실행을
+거부합니다. 이전 runner의 후속 segment가 time을 다시 시작했거나 checkpoint part가
+맞지 않으면 새 `WORK_DIR`에서 시작합니다. 과거 결과나 identity를 자동 복구하지 않습니다.
+
+실제 GROMACS 2024.3의 단일 replica CPU 계산에서 segment helper의 누적 step/time,
+part output 이름과 기존 파일 보존을 확인했습니다. 공개 runner의 MPI HREX/GPU
+continuation은 미검증입니다. Runner가 GPU ID를 전달하므로 CPU-only 환경에서는
+실행되지 않습니다.
+
 ## English
+
+Only even replica counts of at least two are supported. `build.sh` and `run.sh` reject odd schedules without adjusting them. `run.sh --dry-run` checks the actual state-table count too. Prepare a new work directory for results built with an odd schedule.
+
+File schedules are checked before LEaP. Auto counts are checked after running the predictor on a temporary topology; only preparation with a valid count is copied to the work directory. Odd results preserve existing inputs, states and logs and retain temporary diagnostics. `build.sh --dry-run` validates files but defers auto-count validation until an actual build. The predictor algorithm, temperature range and target probability are not adjusted automatically.
 
 User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh`, `run.sh`, or `anal.py`; it is not a separate entry point.
 
@@ -222,3 +267,56 @@ empty directory. A leftover `.gate` also requires checking that all registration
 and release operations have stopped. A PID alone does not establish that a job
 on another host has ended. Atomic directory operations on cluster filesystems
 and termination of remote/daemon processes were not tested by local fixtures.
+
+The scale-one energy comparison requires finite energies and a finite, nonnegative tolerance in kJ/mol. Nonfinite energy, an overflowed difference, or invalid tolerance fails validation without replacing existing comparison output.
+
+### Salt and charge records
+
+`helpers/rest3_parser_adapter.py` maps parser 0.2.2 molecule indices to
+`[ moleculetype ]` definitions. Repeated names in `[ molecules ]` retain their
+row order and counts, without reordering the coordinate file.
+
+The temperature predictor and topology checks use consistent residue names for NaCl, KCl, MgCl2, and CaCl2. The REST2 hot marker excludes water and these ions. REST3 verification checks preservation of every cation/anion interaction with water.
+
+`build_summary.toml` records the value reported by `System has non-zero total charge` as `total_charge_e`. If the log contains no charge value, it records `total_charge_known=false` and omits the numeric value. Missing logs stop summary generation.
+
+### Production checkpoint continuation
+
+The first production segment reads equilibration coordinates and velocities with
+`grompp -t` and starts a new production stage. From the second segment onward,
+`mdrun -cpi` also restores the predecessor checkpoint's full MD state, including
+thermostat/barostat state. The runner automatically calls
+`helpers/production_segment.py` to check predecessor step/time/part and derive
+`production.NNN.mdp` with cumulative `init-step` from the original `production.mdp`.
+An existing derived input is reused only when its content matches.
+
+Each continuation uses `-noappend` for separate outputs. After checking that the
+checkpoint reached the requested final step/time, the runner moves
+`production.NNN.partMMMM.*` to the canonical `production.NNN.*` names. The `.cpt`
+name is unchanged. Subsequent segments also use `-noappend`, so checkpoint-recorded
+part output names and checksums remain intact. Read trajectories from the canonical
+`.xtc` paths.
+
+Exit 0 alone does not create a completion marker when the checkpoint ends early.
+Canonical or part outputs left by failure are retained and prevent rerunning that
+stage. Use a new `WORK_DIR` if an older runner's continuation reset time or has an
+incompatible checkpoint part. Old results and identities are not repaired automatically.
+The segment helper was checked with actual single-replica GROMACS 2024.3 CPU runs
+for cumulative step/time, part output names, and preservation of existing files.
+Public-runner MPI HREX/GPU continuation remains unverified. The runner passes GPU
+IDs and cannot run in a CPU-only environment.
+
+### Schedule file 검사 / Schedule file checks
+
+Temperature file과 file mode의 κ 목록에는 finite 값만 사용합니다. `nan`, `inf`,
+`-inf`와 float 범위를 넘는 값은 거부합니다. `build.sh`는 topology, raw PDB 사본,
+engine input과 build log를 저장하기 전에 검사하며, 오류에 해당 file 경로를 표시합니다.
+내부 input generator의 `--validate-only`는 이 preflight에 자동으로 사용됩니다.
+Temperature 순서·양수 조건과 method별 κ 범위는 기존 조건을 따릅니다.
+
+Temperature files and file-mode κ lists accept only finite values. `nan`, `inf`,
+`-inf`, and values outside the float range are rejected. `build.sh` checks them
+before saving topology, the raw PDB copy, engine inputs, or build logs, and reports
+the offending file path. The internal input generator's `--validate-only` option
+is called automatically for this preflight. Existing temperature ordering,
+positivity, and method-specific κ limits still apply.

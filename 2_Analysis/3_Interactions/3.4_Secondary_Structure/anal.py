@@ -26,6 +26,8 @@ STRUCTURE_LABELS = [
 
 def main() -> int:
     output_dir = Path(__file__).resolve().parent / "output"
+    from writer_guard import protect_python_entry
+    protect_python_entry("output", reads=(output_dir,))
     generation = verify_generation(output_dir)
     print(f"Running: Secondary/Structure analysis; input directory: {output_dir}")
     assignments = np.loadtxt(

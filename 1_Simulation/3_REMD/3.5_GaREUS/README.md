@@ -7,6 +7,8 @@
 
 ## 한국어
 
+최소 2개·짝수 replica만 지원합니다. `build.sh`와 `run.sh`는 홀수 schedule을 자동 조정하지 않고 거부합니다. `run.sh --dry-run`도 실제 state table의 count를 검사합니다. 기존 홀수 결과는 새 work directory에서 다시 준비합니다.
+
 REUS의 terminal Cα distance CV와 20개 window에 dual-boost GaMD를 결합합니다.
 Window는 6–25 Å, 1 Å 간격이고
 `rk2=rk3=10 kcal mol⁻¹ Å⁻²`입니다.
@@ -98,9 +100,7 @@ suffix를 붙입니다. Amber 26 GPU에서 replica별 state read/write가 분리
   `window_occupancy.tsv`
 - `work/restraint_sampling.tsv`, `boost_potential.tsv`
 
-`boost_potential.tsv`는 AMBER GaMD log의 마지막 numeric column을 total boost
-potential로 읽습니다. AMBER version에서 log column 순서가 다르면
-`anal.py`의 parser를 해당 header에 맞게 수정합니다.
+`boost_potential.tsv`는 AMBER GaMD header의 `Boost-Energy-Potential`과 `Boost-Energy-Dihedral`을 합한 total boost 범위(kcal/mol)를 기록합니다. Header의 이름으로 column을 찾고, 누락·변경된 header 또는 nonfinite boost는 거부합니다.
 
 PMF는 [GaREUS reweighting tutorial](../../../2_Analysis/7_Enhanced_Sampling/7.3_GaREUS_Reweighting/README.md)에서
 MBAR와 2차 cumulant expansion으로 계산합니다.
@@ -126,7 +126,17 @@ zero-length 파일, marker만 있는 상태 또는 marker 없는 기존 output�
 
 Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 중단하고 파일을 보존합니다. 새 build 전에는 기존 `work/`를 다른 위치에 보관하거나 별도 tutorial 사본을 사용합니다.
 
+`download.sh`는 모든 asset과 `SHA256SUMS`를 staging에서 확인한 뒤 `helpers/publish_download.py`로 게시합니다. Transfer, checksum 또는 일반 publication 실패에서는 기존 파일을 보존하며, 관련 없는 preparation 파일도 유지합니다. `structure/.download.pending`가 남으면 prepare/build와 새 download가 거부됩니다. 보존된 staging과 marker를 점검하고, marker만 삭제해 이전 파일과 새 파일을 섞어 사용하지 않습니다.
+
+### Exchange 진단
+
+`round_trips`는 처음 도달한 endpoint에서 반대 endpoint를 방문한 뒤 처음 endpoint로 돌아온 cycle 수입니다. 편도 이동과 같은 endpoint의 반복 방문은 왕복으로 세지 않습니다.
+
+REUS/GaREUS parser는 AMBER H-REMD의 `# exchange N` block을 읽습니다. 1-based replica 번호와 `Success`의 `T/F`를 해석하고, 서로를 기록한 두 partner row를 pair당 한 번 처리합니다. `state_a=... state_b=... accepted=...` 형식은 0-based index를 사용하며 한 line이 한 exchange event입니다.
+
 ## English
+
+Only even replica counts of at least two are supported. `build.sh` and `run.sh` reject odd schedules without adjusting them. `run.sh --dry-run` checks the actual state-table count too. Prepare a new work directory for results built with an odd schedule.
 
 This example combines dual-boost GaMD with 20 terminal-Cα distance windows from
 6 to 25 Å. Each window is minimized, heated for 200 ps, and equilibrated for
@@ -172,9 +182,7 @@ option against the target AMBER build.
 Analysis writes exchange, visits, occupancy, restraint sampling, and boost
 potential ranges as TSV files. Window trajectories and boost logs are written
 to `work/NNN/production.nc` and
-`work/NNN/gamd.production.log`. The boost parser treats the final numeric
-GaMD log column as the total boost and should be adjusted if an AMBER build
-uses a different log layout.
+`work/NNN/gamd.production.log`. The boost parser locates `Boost-Energy-Potential` and `Boost-Energy-Dihedral` by header name and sums them to report total boost ranges in kcal/mol. Missing or changed headers and nonfinite boosts are rejected.
 
 The separate [GaREUS reweighting tutorial](../../../2_Analysis/7_Enhanced_Sampling/7.3_GaREUS_Reweighting/README.md)
 uses MBAR followed by second-order cumulant expansion to calculate the PMF.
@@ -220,3 +228,11 @@ Run compares inputs for result reuse with SHA256. Changed topology, initial coor
 Normal exit, command failure and INT/TERM release only the owned lock after child termination is verified. Locks left by SIGKILL or node failure are retained. Inspect the reported lock and its `owner.json` host, PID, command and scopes; confirm through the scheduler and owning host that all writers and children stopped before manually removing only that lock directory. A PID missing locally is not sufficient. Apply the same checks to `.gate/`.
 
 Supported `--dry-run` and `--help` do not create writer or identity files. Do not move active work trees or edit identities to reuse results. Protection was tested on a local filesystem with local child processes; network filesystems, remote MPI and termination of writers on other nodes remain unverified.
+
+`download.sh` validates every asset and `SHA256SUMS` in staging before publishing through `helpers/publish_download.py`. Transfer, checksum and ordinary publication failures preserve existing files, including unrelated preparation files. A retained `structure/.download.pending` blocks source readers and new downloads. Inspect the retained staging and marker; deleting only the marker can expose a mixed generation.
+
+### Exchange diagnostics
+
+`round_trips` counts complete cycles from the first endpoint reached, through the opposite endpoint, and back to the starting endpoint. One-way movement and repeated visits to the same endpoint do not count as round trips.
+
+The REUS/GaREUS parser reads AMBER H-REMD `# exchange N` blocks, converts 1-based replica indices and `T/F` success values, and counts the two reciprocal partner rows once per pair. The explicit `state_a=... state_b=... accepted=...` format uses 0-based indices and one exchange event per line.

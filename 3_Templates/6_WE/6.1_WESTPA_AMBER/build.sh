@@ -48,7 +48,8 @@ input=$1
 work_dir=${WORK_DIR:-work}
 if (( ! ${dry_run:-0} )) && [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
     exec "${PYTHON:-python3}" helpers/writer_guard.py \
-        --registry "$work_dir" --write "$work_dir" -- "$0" "${original_args[@]}"
+        --registry "$work_dir" --read "$input" --read "$config" \
+        --write "$work_dir" -- "$0" "${original_args[@]}"
 fi
 tleap=${TLEAP:-tleap}
 python=${PYTHON:-python3}
@@ -192,7 +193,7 @@ mkdir -p "$work_dir/common_files" "$work_dir/bstates"
 
 "$python" helpers/input_identity.py \
     --record "$work_dir/.minimize.complete.identity.json" --stage "WE basis minimize" \
-    --marker "$work_dir/.minimize.complete" --directory "$work_dir" -- "$engine" -O -i inputs/minimize.in -o minimize.out -p system.parm7 -c system.rst7 -r minimize.rst7
+    --marker "$work_dir/.minimize.complete" --directory "$work_dir" -- "$engine" -O -i inputs/minimize.in -o minimize.out -p system.parm7 -c system.rst7 -r minimize.rst7 -inf minimize.info
 
 if [[ ! -f "$work_dir/.minimize.complete" ]]; then
     for output in "$work_dir/minimize.out" "$work_dir/minimize.rst7"; do
@@ -202,7 +203,7 @@ if [[ ! -f "$work_dir/.minimize.complete" ]]; then
     done
     echo "Running: WE basis-state minimization"
     if ! (cd "$work_dir"; "$engine" -O -i inputs/minimize.in -o minimize.out \
-        -p system.parm7 -c system.rst7 -r minimize.rst7); then
+        -p system.parm7 -c system.rst7 -r minimize.rst7 -inf minimize.info); then
         die "Basis-state minimization failed: $work_dir/minimize.out"
     fi
     if [[ ! -s "$work_dir/minimize.out" || ! -s "$work_dir/minimize.rst7" ]]; then
@@ -215,7 +216,11 @@ elif [[ ! -s "$work_dir/minimize.rst7" ]]; then
 else
     echo "Skipping completed WE basis-state minimization: $work_dir"
 fi
-cp "$work_dir/minimize.rst7" "$work_dir/common_files/reference.rst7"
+if [[ ! -e "$work_dir/common_files/reference.rst7" ]]; then
+    cp "$work_dir/minimize.rst7" "$work_dir/common_files/reference.rst7"
+elif ! cmp -s "$work_dir/minimize.rst7" "$work_dir/common_files/reference.rst7"; then
+    die "Basis-state reference differs from minimization restart: $work_dir/common_files/reference.rst7"
+fi
 
 "$python" helpers/input_identity.py \
     --record "$work_dir/.heat.complete.identity.json" --stage "WE basis heat" \

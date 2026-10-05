@@ -41,8 +41,8 @@ def main() -> None:
 
     with args.states.open(encoding="utf-8", newline="") as handle:
         states = list(csv.DictReader(handle, delimiter="\t"))
-    if len(states) < 2:
-        raise SystemExit("REST3 requires at least two states")
+    if len(states) < 2 or len(states) % 2:
+        raise SystemExit(f"REST3 requires at least two and an even number of states: {args.states} ({len(states)} states)")
 
     base_temperature = float(states[0]["effective_temperature_K"])
     base_target = args.output / states[0]["replica"] / "topol.top"

@@ -21,7 +21,10 @@ def read_states() -> list[dict[str, str]]:
     if not path.is_file():
         raise SystemExit(f"window table not found: {path}")
     with path.open(encoding="utf-8", newline="") as handle:
-        return list(csv.DictReader(handle, delimiter="\t"))
+        states = list(csv.DictReader(handle, delimiter="\t"))
+    if len(states) < 2 or len(states) % 2:
+        raise SystemExit(f"Replica exchange requires at least two and an even number of states: {WORK / 'states.tsv'} ({len(states)} states)")
+    return states
 
 
 def require_production_output() -> None:
@@ -30,59 +33,104 @@ def require_production_output() -> None:
         raise SystemExit(f"exchange log not found: {path}")
 
 
-def parse_exchanges(state_count: int) -> list[tuple[int, int, int]]:
-    records: list[tuple[int, int, int]] = []
+def native_exchange_event(
+    rows: dict[int, tuple[int, int]], state_count: int, path: Path
+) -> list[tuple[int, int, int]]:
+    if len(rows) != state_count:
+        raise SystemExit(f"Exchange analysis: incomplete exchange block in {path}")
+    event = []
+    for replica, (neighbor, accepted) in sorted(rows.items()):
+        if rows.get(neighbor) != (replica, accepted):
+            raise SystemExit(f"Exchange analysis: inconsistent partner rows in {path}")
+        if replica < neighbor:
+            event.append((replica, neighbor, accepted))
+    return event
 
-    for path in [WORK / "exchange.log"]:
-        for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
-            match = EXPLICIT.search(line)
-            if match:
-                records.append(
-                    (
-                        int(match.group("a")),
-                        int(match.group("b")),
-                        int(match.group("ok")),
-                    )
-                )
-                continue
 
-            fields = line.split()
-            if len(fields) < 8 or not fields[0].isdigit():
-                continue
+def parse_exchanges(state_count: int) -> list[list[tuple[int, int, int]]]:
+    events: list[list[tuple[int, int, int]]] = []
+    path = WORK / "exchange.log"
+    block_rows: dict[int, tuple[int, int]] = {}
+    in_native_block = False
 
-            try:
-                replica = int(fields[0])
-                neighbor = int(fields[1])
-                accepted = int(float(fields[-2]) > 0.0)
-            except ValueError:
-                continue
+    for line_number, line in enumerate(path.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+        if re.match(r"^\s*#\s*exchange\s+\d+\b", line):
+            if in_native_block:
+                events.append(native_exchange_event(block_rows, state_count, path))
+            block_rows = {}
+            in_native_block = True
+            continue
 
-            if 0 <= replica < state_count and 0 <= neighbor < state_count:
-                records.append(
-                    (min(replica, neighbor), max(replica, neighbor), accepted)
-                )
+        match = EXPLICIT.search(line)
+        if match:
+            if in_native_block:
+                raise SystemExit(f"Exchange analysis: mixed log formats in {path}:{line_number}")
+            replica = int(match.group("a"))
+            neighbor = int(match.group("b"))
+            if not 0 <= replica < state_count or not 0 <= neighbor < state_count or replica == neighbor:
+                raise SystemExit(f"Exchange analysis: invalid state index in {path}:{line_number}")
+            events.append([(min(replica, neighbor), max(replica, neighbor), int(match.group("ok")))])
+            continue
 
-    if not records:
-        raise SystemExit(f"Exchange analysis: AMBER replica-exchange record not found in {WORK / 'exchange.log'}.")
+        fields = line.split()
+        if not fields or fields[0].startswith("#"):
+            continue
+        if not fields[0].isdigit():
+            continue
+        if not in_native_block or len(fields) != 9 or fields[7] not in {"T", "F"}:
+            raise SystemExit(f"Exchange analysis: invalid native record in {path}:{line_number}")
+        try:
+            replica, neighbor = int(fields[0]) - 1, int(fields[1]) - 1
+        except ValueError:
+            raise SystemExit(f"Exchange analysis: invalid replica index in {path}:{line_number}") from None
+        if not 0 <= replica < state_count or not 0 <= neighbor < state_count or replica == neighbor or replica in block_rows:
+            raise SystemExit(f"Exchange analysis: invalid or duplicated replica in {path}:{line_number}")
+        block_rows[replica] = (neighbor, int(fields[7] == "T"))
 
-    return records
+    if in_native_block:
+        events.append(native_exchange_event(block_rows, state_count, path))
+    if not events:
+        raise SystemExit(f"Exchange analysis: AMBER replica-exchange record not found in {path}.")
+    return events
+
+
+def count_round_trips(states: list[int], highest: int) -> int:
+    if highest < 1:
+        return 0
+    starting_endpoint = None
+    reached_opposite = False
+    round_trips = 0
+
+    for state in states:
+        if state not in {0, highest}:
+            continue
+        if starting_endpoint is None:
+            starting_endpoint = state
+        elif state != starting_endpoint:
+            reached_opposite = True
+        elif reached_opposite:
+            round_trips += 1
+            reached_opposite = False
+
+    return round_trips
 
 
 def write_exchange_outputs(
-    records: list[tuple[int, int, int]], states: list[dict[str, str]]
+    records: list[list[tuple[int, int, int]]], states: list[dict[str, str]]
 ) -> None:
     totals: dict[tuple[int, int], list[int]] = defaultdict(lambda: [0, 0])
     labels = list(range(len(states)))
     visits = [[state] for state in labels]
 
-    for state_a, state_b, accepted in records:
-        totals[(state_a, state_b)][0] += 1
-        totals[(state_a, state_b)][1] += accepted
+    for event in records:
+        for state_a, state_b, accepted in event:
+            totals[(state_a, state_b)][0] += 1
+            totals[(state_a, state_b)][1] += accepted
 
-        if accepted:
-            replica_a = labels.index(state_a)
-            replica_b = labels.index(state_b)
-            labels[replica_a], labels[replica_b] = labels[replica_b], labels[replica_a]
+            if accepted:
+                replica_a = labels.index(state_a)
+                replica_b = labels.index(state_b)
+                labels[replica_a], labels[replica_b] = labels[replica_b], labels[replica_a]
 
         for replica, state in enumerate(labels):
             visits[replica].append(state)
@@ -101,11 +149,7 @@ def write_exchange_outputs(
         writer = csv.writer(handle, delimiter="\t")
         writer.writerow(["replica", "min_state", "max_state", "round_trips"])
         for replica, history in enumerate(visits):
-            endpoints = [value for value in history if value in {0, len(states) - 1}]
-            round_trips = sum(
-                left == len(states) - 1 and right == 0
-                for left, right in zip(endpoints, endpoints[1:])
-            )
+            round_trips = count_round_trips(history, len(states) - 1)
             writer.writerow(
                 [f"{replica:03d}", min(history), max(history), round_trips]
             )

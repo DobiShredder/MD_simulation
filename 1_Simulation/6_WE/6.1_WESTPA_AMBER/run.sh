@@ -45,7 +45,13 @@ for executable in w_run "$AMBER_ENGINE" "$CPPTRAJ"; do
     fi
 done
 
-echo "Running: 20 WESTPA iterations with the serial work manager"
+requested_iteration=$(awk '/^[[:space:]]*max_total_iterations:/ {print $2; exit}' west.cfg)
+if [[ ! "$requested_iteration" =~ ^[1-9][0-9]*$ ]]; then
+    echo "Error: could not read max_total_iterations: west.cfg" >&2
+    exit 1
+fi
+
+echo "Running: up to $requested_iteration WESTPA iterations; log: $WORK_DIR/west.log"
 if ! w_run --work-manager serial > "$WORK_DIR/west.log" 2>&1; then
     echo "Error: WESTPA Run failed: $WORK_DIR/west.log" >&2
     exit 1
@@ -55,4 +61,29 @@ if grep -q -- '-- ERROR' "$WORK_DIR/west.log"; then
     exit 1
 fi
 
-echo "WESTPA run completed: $WORK_DIR/west.h5"
+if ! current_iteration=$("${PYTHON:-python3}" - "$WORK_DIR/west.h5" <<'PY'
+import numbers
+import sys
+import h5py
+
+try:
+    with h5py.File(sys.argv[1], "r") as handle:
+        current = handle.attrs.get("west_current_iteration")
+        if not isinstance(current, numbers.Integral) or current < 1:
+            raise ValueError("invalid west_current_iteration")
+        print(current)
+except (OSError, ValueError) as error:
+    print(f"Error: WESTPA progress check: {sys.argv[1]}; {error}", file=sys.stderr)
+    raise SystemExit(1) from None
+PY
+); then
+    exit 1
+fi
+
+completed_iteration=$((current_iteration - 1))
+if [[ "$current_iteration" -le "$requested_iteration" ]]; then
+    echo "WESTPA paused: $completed_iteration of $requested_iteration iterations completed; state: $WORK_DIR/west.h5"
+    echo "Run ./run.sh again to continue; log: $WORK_DIR/west.log"
+else
+    echo "WESTPA run completed: $completed_iteration iterations; state: $WORK_DIR/west.h5; log: $WORK_DIR/west.log"
+fi

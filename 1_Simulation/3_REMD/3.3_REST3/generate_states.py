@@ -48,6 +48,8 @@ def read_schedule(temperature_path, kappa_path):
 
     if len(temperatures) < 2:
         raise ValueError(f"{temperature_path}: at least two temperatures are required")
+    if len(temperatures) % 2:
+        raise ValueError(f"{temperature_path}: replica exchange requires an even number of temperatures")
     if len(temperatures) > 1000:
         raise ValueError(f"{temperature_path}: at most 1000 temperatures are supported")
     if len(kappas) != len(temperatures):

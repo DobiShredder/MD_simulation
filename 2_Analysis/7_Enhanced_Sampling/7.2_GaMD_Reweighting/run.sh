@@ -35,6 +35,12 @@ if ! "$python" -c 'import numpy' >/dev/null 2>&1; then
     die "Cannot import NumPy."
 fi
 
+if [[ "${MD_WRITER_PARENT:-}" != "$PPID" || "${MD_WRITER_ENTRY:-}" != "$0" ]]; then
+    exec "$python" writer_guard.py \
+        --registry output --write "$output_dir" \
+        -- "$0" "$@"
+fi
+
 completed_output_dir=$output_dir
 output_parent=.
 if [[ "$output_dir" == */* ]]; then

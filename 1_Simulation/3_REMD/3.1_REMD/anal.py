@@ -21,7 +21,10 @@ def read_states() -> list[dict[str, str]]:
         raise SystemExit(f"state table not found: {path}")
 
     with path.open(encoding="utf-8", newline="") as handle:
-        return list(csv.DictReader(handle, delimiter="\t"))
+        states = list(csv.DictReader(handle, delimiter="\t"))
+    if len(states) < 2 or len(states) % 2:
+        raise SystemExit(f"Replica exchange requires at least two and an even number of states: {WORK / 'states.tsv'} ({len(states)} states)")
+    return states
 
 
 def require_production_outputs(states: list[dict[str, str]]) -> None:
@@ -186,19 +189,22 @@ def write_exchange_summary(
 
 
 def count_round_trips(states: list[int], highest: int) -> int:
-    endpoint = None
-    reached_highest = False
+    if highest < 1:
+        return 0
+    starting_endpoint = None
+    reached_opposite = False
     round_trips = 0
 
     for state in states:
-        if state == highest:
-            reached_highest = True
-            endpoint = highest
-        elif state == 0:
-            if endpoint == highest and reached_highest:
-                round_trips += 1
-            endpoint = 0
-            reached_highest = False
+        if state not in {0, highest}:
+            continue
+        if starting_endpoint is None:
+            starting_endpoint = state
+        elif state != starting_endpoint:
+            reached_opposite = True
+        elif reached_opposite:
+            round_trips += 1
+            reached_opposite = False
 
     return round_trips
 

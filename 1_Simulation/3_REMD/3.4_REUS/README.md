@@ -7,8 +7,14 @@
 
 ## 한국어
 
+최소 2개·짝수 replica만 지원합니다. `build.sh`와 `run.sh`는 홀수 schedule을 자동 조정하지 않고 거부합니다. `run.sh --dry-run`도 실제 state table의 count를 검사합니다. 기존 홀수 결과는 새 work directory에서 다시 준비합니다.
+
+기본 center는 6–24 Å 양 끝을 포함하는 20개이며 spacing은 `18/19 ≈ 0.947368 Å`입니다. State table과 restraint center는 소수점 8자리로 기록합니다.
+
+`run.sh`는 minimization, heating과 equilibration을 각 replica directory에서 실행합니다. `DISANG=distance.RST`와 `DUMPAVE=restraint.<stage>.dat`도 그 directory에서 읽고 저장합니다. Production groupfile은 tutorial directory에서 사용하는 `work/<replica>/...` 경로를 유지합니다.
+
 Chignolin의 residue 1과 10 Cα distance를 CV로 사용하는 REUS 예제입니다.
-6–24 Å를 1 Å 간격으로 나눈 19개 window를 같은 온도에서 교환합니다.
+6–24 Å 양 끝을 포함하는 20개 window를 같은 온도에서 교환합니다.
 `rk2=rk3=10 kcal mol⁻¹ Å⁻²`이며, heating 200 ps, equilibration 100 ps,
 production은 window당 1 ns입니다. 교환은 1 ps마다 시도합니다.
 
@@ -31,14 +37,14 @@ replica는 한 state의 Hamiltonian으로 MD를 진행합니다. Exchange가 acc
 | --- | --- |
 | `download.sh` | 1UAO PDB/mmCIF를 받고 checksum을 기록합니다. |
 | `prepare.py` | 1UAO의 첫 NMR model을 simulation PDB로 정리합니다. |
-| `make_restraints.py` | Topology에서 terminal Cα index를 찾아 19개 `distance.RST`를 만듭니다. |
+| `make_restraints.py` | Topology에서 terminal Cα index를 찾아 20개 `distance.RST`를 만듭니다. |
 | `build.sh` | 공통 topology와 `states.tsv`를 replica directory에 배치합니다. |
 | `run.sh` | Window별 pre-production과 `pmemd.cuda.MPI -rem 3` exchange를 실행합니다. |
 | `anal.py` | Exchange, window 방문, occupancy와 sampled distance 범위를 요약합니다. |
 
 ### 실행
 
-AMBER 26, ParmEd와 19개 MPI process가 필요합니다.
+AMBER 26, ParmEd와 20개 MPI process가 필요합니다.
 
 ```bash
 python3 -m pip install -r requirements.txt
@@ -86,10 +92,24 @@ Window overlap과 PMF는
 
 Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 중단하고 파일을 보존합니다. 새 build 전에는 기존 `work/`를 다른 위치에 보관하거나 별도 tutorial 사본을 사용합니다.
 
+`download.sh`는 모든 asset과 `SHA256SUMS`를 staging에서 확인한 뒤 `helpers/publish_download.py`로 게시합니다. Transfer, checksum 또는 일반 publication 실패에서는 기존 파일을 보존하며, 관련 없는 preparation 파일도 유지합니다. `structure/.download.pending`가 남으면 prepare/build와 새 download가 거부됩니다. 보존된 staging과 marker를 점검하고, marker만 삭제해 이전 파일과 새 파일을 섞어 사용하지 않습니다.
+
+### Exchange 진단
+
+`round_trips`는 처음 도달한 endpoint에서 반대 endpoint를 방문한 뒤 처음 endpoint로 돌아온 cycle 수입니다. 편도 이동과 같은 endpoint의 반복 방문은 왕복으로 세지 않습니다.
+
+REUS/GaREUS parser는 AMBER H-REMD의 `# exchange N` block을 읽습니다. 1-based replica 번호와 `Success`의 `T/F`를 해석하고, 서로를 기록한 두 partner row를 pair당 한 번 처리합니다. `state_a=... state_b=... accepted=...` 형식은 0-based index를 사용하며 한 line이 한 exchange event입니다.
+
 ## English
 
-This REUS example exchanges 19 windows along the Chignolin residue 1–10 Cα
-distance. Centers span 6–24 Å at 1 Å spacing, with
+Only even replica counts of at least two are supported. `build.sh` and `run.sh` reject odd schedules without adjusting them. `run.sh --dry-run` checks the actual state-table count too. Prepare a new work directory for results built with an odd schedule.
+
+The default has 20 centers including both 6 and 24 Å, spaced by `18/19 ≈ 0.947368 Å`. State tables and restraint centers use eight decimal places.
+
+`run.sh` executes minimization, heating, and equilibration inside each replica directory. It reads `DISANG=distance.RST` and writes `DUMPAVE=restraint.<stage>.dat` there. The production groupfile retains its `work/<replica>/...` paths relative to the tutorial directory.
+
+This REUS example exchanges 20 windows along the Chignolin residue 1–10 Cα
+distance. Centers span 6–24 Å at 18/19 Å spacing, with
 `rk2=rk3=10 kcal mol⁻¹ Å⁻²`. Heating is 200 ps, equilibration is 100 ps,
 production is 1 ns per window, and exchanges are attempted every
 1 ps.
@@ -116,7 +136,7 @@ are skipped; partial window sets are preserved and rejected. Production is not o
 `make_restraints.py` resolves `iat` and writes `r2=r3` centers with
 `rk2=rk3=10.0`. `nmropt=1`/`DISANG` activate the restraint; `nstlim=500` and
 `numexchg=1000` attempt exchange every 1 ps for a 1 ns run. `DUMPAVE` records the restraint coordinate at
-the same interval. The runner launches 19 MPI processes.
+the same interval. The runner launches 20 MPI processes.
 
 Analysis writes acceptance, state visits, window occupancy, and sampled
 restraint-distance ranges as TSV files. Window trajectories are written to
@@ -162,3 +182,11 @@ required outputs, are preserved and rejected. Existing results are not certified
 retroactively. Start a new tutorial copy without generated `work/` directories for
 a new calculation. AMBER stages with `ntwx=0` do not require a trajectory for
 completion. Supported continuation retains its existing restart/state handoff.
+
+`download.sh` validates every asset and `SHA256SUMS` in staging before publishing through `helpers/publish_download.py`. Transfer, checksum and ordinary publication failures preserve existing files, including unrelated preparation files. A retained `structure/.download.pending` blocks source readers and new downloads. Inspect the retained staging and marker; deleting only the marker can expose a mixed generation.
+
+### Exchange diagnostics
+
+`round_trips` counts complete cycles from the first endpoint reached, through the opposite endpoint, and back to the starting endpoint. One-way movement and repeated visits to the same endpoint do not count as round trips.
+
+The REUS/GaREUS parser reads AMBER H-REMD `# exchange N` blocks, converts 1-based replica indices and `T/F` success values, and counts the two reciprocal partner rows once per pair. The explicit `state_a=... state_b=... accepted=...` format uses 0-based indices and one exchange event per line.

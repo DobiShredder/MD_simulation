@@ -42,6 +42,8 @@ def new_model(component_count: int) -> GaussianMixture:
 
 def main() -> int:
     output_dir = Path(__file__).resolve().parent / "output"
+    from writer_guard import protect_python_entry
+    protect_python_entry("output", writes=(output_dir,))
     completed_output_dir = output_dir
     with input_generation(output_dir) as output_dir:
         print(f"Running: GMM analysis; input directory: {output_dir}")

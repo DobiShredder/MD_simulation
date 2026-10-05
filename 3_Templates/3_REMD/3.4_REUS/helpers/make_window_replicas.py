@@ -53,7 +53,9 @@ def read_centers(path: Path) -> list[float]:
             raise SystemExit(f"{path}:{line_number}: expected one center per line")
         result.append(float(fields[0]))
     if not result or result != sorted(set(result)):
-        raise SystemExit("Window centers must be non-empty, unique, and increasing")
+        raise SystemExit(f"{path}: window centers must be non-empty, unique, and increasing")
+    if len(result) < 2 or len(result) % 2:
+        raise SystemExit(f"Replica exchange requires at least two and an even number of windows: {path} ({len(result)} windows)")
     return result
 
 
@@ -113,7 +115,7 @@ def main() -> None:
         writer = csv.writer(handle, delimiter="\t", lineterminator="\n")
         writer.writerow(("replica", "window_center_A", "seed"))
         for index, center in enumerate(state_centers):
-            writer.writerow((f"{index:03d}", f"{center:.6f}", 510001 + 7919 * index))
+            writer.writerow((f"{index:03d}", f"{center:.8f}", 510001 + 7919 * index))
 
     dynamics = [
         f"dt={dt:.6f}",
@@ -140,7 +142,7 @@ def main() -> None:
         replica = f"{index:03d}"
         directory = args.output / replica
         directory.mkdir()
-        (directory / "distance.RST").write_text(f"&rst\n iat={atom_1},{atom_2},\n r1=0.0, r2={center:.6f}, r3={center:.6f}, r4=999.0,\n rk2={force:.6f}, rk3={force:.6f},\n/\n", encoding="utf-8")
+        (directory / "distance.RST").write_text(f"&rst\n iat={atom_1},{atom_2},\n r1=0.0, r2={center:.8f}, r3={center:.8f}, r4=999.0,\n rk2={force:.6f}, rk3={force:.6f},\n/\n", encoding="utf-8")
         (directory / "minimize.in").write_text(render("Window minimization", ["imin=1", "maxcyc=5000", "ncyc=2500", "ntb=1", "cut=10.0", "nmropt=1"]), encoding="utf-8")
         heating_steps = positive_int(run, "heating_steps")
         (directory / "heat.in").write_text(
@@ -175,7 +177,7 @@ def main() -> None:
                     *dynamics,
                 ],
                 positive_int(umbrella, "distance_output_interval_steps"),
-            ),
+            ).replace("@DISANG@", "distance.RST").replace("@DUMPAVE@", "restraint.equilibrate.dat"),
             encoding="utf-8",
         )
         production_ensemble = ["ntb=1", "ntp=0"] if args.method == "gareus" else npt

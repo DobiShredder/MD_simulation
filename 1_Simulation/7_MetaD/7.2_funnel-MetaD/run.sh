@@ -57,7 +57,10 @@ if (( dry_run )); then
 fi
 
 "${PYTHON:-python3}" helpers/input_identity.py --verify "$work_dir"
-source_options=(--input "$work_dir/system.parm7" --input "$work_dir/system.rst7")
+source_options=(
+    --input "$work_dir/system.parm7" --input "$work_dir/system.rst7"
+    --input "$work_dir/plumed.dat" --input "$work_dir/funnel-reference.pdb"
+)
 for source_input in inputs/*; do
     if [[ -f "$source_input" ]]; then
         source_options+=(--input "$source_input")
@@ -65,7 +68,7 @@ for source_input in inputs/*; do
 done
 "${PYTHON:-python3}" helpers/input_identity.py \
     --record "$work_dir/.source.identity.json" --stage "run source inputs" \
-    "${source_options[@]}" --value="$engine" --output "$work_dir/COLVAR" --output "$work_dir/HILLS" --output "$work_dir/KERNELS"
+    "${source_options[@]}" --value="$engine" --output "$work_dir/COLVAR" --output "$work_dir/HILLS" --output "$work_dir/KERNELS" --output "$work_dir/FUNNEL_GRID"
 
 mkdir -p "$work_dir/inputs"
 cp inputs/minimize-solvent.in "$work_dir/inputs/minimize-solvent.in"
@@ -74,19 +77,32 @@ sed 's/@RANDOM_SEED@/72001/g' inputs/heat.in.template > "$work_dir/inputs/heat.i
 sed 's/@RANDOM_SEED@/72002/g' inputs/equilibrate.in.template > "$work_dir/inputs/equilibrate.in"
 
 atom_count=$(<"$work_dir/atom_count.txt")
-echo "Checking PLUMED input: $work_dir/plumed.dat"
-if (
-    cd "$work_dir"
-    "$plumed" driver --plumed plumed.dat --parse-only --natoms "$atom_count"
-); then
-    echo "Completed: PLUMED input check"
+setup_record="$work_dir/.plumed-setup.identity.json"
+"${PYTHON:-python3}" helpers/input_identity.py \
+    --record "$setup_record" --stage "PLUMED setup" \
+    --input "$work_dir/plumed.dat" --input "$work_dir/funnel-reference.pdb" \
+    --input "$work_dir/atom_count.txt" --value="$plumed" \
+    --output "$work_dir/FUNNEL_GRID"
+setup_state=$("${PYTHON:-python3}" helpers/input_identity.py --check-completion "$setup_record")
+if [[ "$setup_state" == complete ]]; then
+    echo "Using completed PLUMED setup: $work_dir/FUNNEL_GRID"
 else
-    status=$?
-    echo "Error: PLUMED input check failed: $work_dir/plumed.dat; inspect terminal diagnostics." >&2
-    exit "$status"
-fi
-if [[ ! -s "$work_dir/FUNNEL_GRID" ]]; then
-    die "PLUMED setup did not create the funnel grid: $work_dir/FUNNEL_GRID"
+    echo "Checking PLUMED input: $work_dir/plumed.dat"
+    if (
+        cd "$work_dir"
+        "$plumed" driver --plumed plumed.dat --parse-only --natoms "$atom_count"
+    ); then
+        echo "Completed: PLUMED input check"
+    else
+        status=$?
+        echo "Error: PLUMED input check failed: $work_dir/plumed.dat; inspect terminal diagnostics." >&2
+        exit "$status"
+    fi
+    if [[ ! -s "$work_dir/FUNNEL_GRID" ]]; then
+        die "PLUMED setup did not create the funnel grid: $work_dir/FUNNEL_GRID"
+    fi
+    "${PYTHON:-python3}" helpers/input_identity.py \
+        --finish-completion "$setup_record" --required-output "$work_dir/FUNNEL_GRID"
 fi
 
 run_stage() {

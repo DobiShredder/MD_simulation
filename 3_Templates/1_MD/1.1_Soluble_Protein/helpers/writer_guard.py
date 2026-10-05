@@ -55,6 +55,11 @@ def acquire(registry, reads, writes, command):
         "started": time.time(), "command": command, "reads": reads, "writes": writes,
     }
     try:
+        for read in reads:
+            for parent in (Path(read), *Path(read).parents):
+                for pending in (parent / ".download.pending", parent.parent / f".{parent.name}.download.pending"):
+                    if pending.exists() or pending.is_symlink():
+                        raise RuntimeError(f"Source download publication is incomplete; inspect {pending}")
         for existing in registry.iterdir():
             if existing == gate:
                 continue
@@ -115,8 +120,8 @@ def supervise(args):
     command = args.command
     if command and command[0] == "--":
         command = command[1:]
-    if not command or not writes:
-        raise RuntimeError("A shell entry and at least one write scope are required.")
+    if not command or not (reads or writes):
+        raise RuntimeError("An entry and at least one input or output scope are required.")
     if args.callback_entry and os.environ.get("MD_WRITER_OWNER"):
         # Local WESTPA callbacks inherit the manager's session and root writer.
         owner_file = Path(os.environ["MD_WRITER_OWNER"])
@@ -169,6 +174,43 @@ def supervise(args):
             release(lock, token)
         else:
             print(f"Warning: child termination was not verified; writer lock retained: {lock}", file=sys.stderr)
+
+
+
+def protect_python_entry(registry, *, reads=(), writes=()):
+    """Protect a public Python workflow, borrowing a verified parent scope."""
+    registry_path = Path(str(Path(registry).resolve()) + ".writers")
+    read_paths = [str(Path(path).resolve()) for path in reads]
+    write_paths = [str(Path(path).resolve()) for path in writes]
+    try:
+        owner_path = os.environ.get("MD_WRITER_OWNER")
+        if owner_path:
+            owner_file = Path(owner_path)
+            owner = json.loads(owner_file.read_text())
+            if (owner_file.parent.parent != registry_path
+                    or owner.get("token") != os.environ.get("MD_WRITER_TOKEN")
+                    or owner.get("host") != socket.gethostname()):
+                raise RuntimeError(f"Cannot borrow parent writer: {owner_file}")
+            os.kill(owner["pid"], 0)
+            for path in write_paths:
+                if not any(Path(scope) == Path(path) or Path(scope) in Path(path).parents
+                           for scope in owner["writes"]):
+                    raise RuntimeError(f"Output is outside parent writer scope: {path}")
+            for path in read_paths:
+                if not any(Path(scope) == Path(path) or Path(scope) in Path(path).parents
+                           for scope in owner["reads"] + owner["writes"]):
+                    raise RuntimeError(f"Input is outside parent writer scope: {path}")
+            return
+        args = argparse.Namespace(
+            registry=str(registry), read=list(reads), write=list(writes),
+            command=[sys.argv[0], *sys.argv[1:]],
+            python_entry=True, callback_entry=False,
+        )
+        status = supervise(args)
+    except (OSError, KeyError, ValueError, RuntimeError) as error:
+        print(f"Error: writer protection: {error}", file=sys.stderr)
+        raise SystemExit(1) from None
+    raise SystemExit(status)
 
 
 def main():

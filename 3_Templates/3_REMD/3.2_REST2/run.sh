@@ -110,6 +110,9 @@ if [[ ! -s "$states" || ! -s "$resolved" ]]; then
 fi
 
 replica_count=$(awk 'NR > 1 {count++} END {print count + 0}' "$states")
+if (( replica_count < 2 || replica_count % 2 != 0 )); then
+    die "Replica exchange requires at least two and an even number of states: $states ($replica_count states)"
+fi
 default_threads=$(awk -F' = ' '$1=="cpu_threads_per_replica" {print $2}' "$resolved")
 default_gpus=$(awk -F' = ' '$1=="gpu_count" {print $2}' "$resolved")
 segments=$(awk -F' = ' '$1=="production_segments" {print $2}' "$resolved")
@@ -157,10 +160,14 @@ if (( ! dry_run )); then
         fi
     done
     option_log="$work_dir/mdrun_option_check.log"
-    if ! "$gmx_mpi" mdrun -h -hrex > "$option_log" 2>&1; then
+    if ! option_output=$("$gmx_mpi" mdrun -h -hrex 2>&1); then
+        echo "$option_output" > "$option_log"
         die "The GROMACS MPI build does not recognize -hrex: $option_log"
     fi
-    if ! grep -Fq HREX_WORKLOAD_FIX_1 "$option_log"; then
+    if [[ ! -f "$option_log" || "$(< "$option_log")" != "$option_output" ]]; then
+        echo "$option_output" > "$option_log"
+    fi
+    if [[ "$option_output" != *HREX_WORKLOAD_FIX_1* ]]; then
         die "The GROMACS build lacks the required HREX swapped-energy fix: $option_log"
     fi
 fi
@@ -185,10 +192,23 @@ if (( dry_run )); then
     if (( ! preparation_only )); then
         for ((segment = segment_start; segment <= segment_end; segment++)); do
             printf -v segment_name 'production.%03d' "$segment"
+            if (( segment > 1 )); then
+                printf -v previous 'production.%03d' "$((segment - 1))"
+                for replica_dir in "${replica_dirs[@]}"; do
+                    printf '+ %q helpers/production_segment.py prepare %q %d --gromacs %q\n' \
+                        "${PYTHON:-python3}" "$replica_dir" "$segment" "$gmx"
+                    printf '+ %q grompp -f %q -p %q -c %q -t %q -o %q\n' \
+                        "$gmx" "$replica_dir/$segment_name.mdp" "$replica_dir/topol.top" \
+                        "$replica_dir/$previous.gro" "$replica_dir/$previous.cpt" "$replica_dir/$segment_name.tpr"
+                done
+            fi
             printf '+'
             printf ' %q' "$mpi_launcher" "${mpi_options[@]}" -np "$replica_count" "$gmx_mpi" mdrun -ntomp "$threads_per_replica" -gpu_id "$gpu_ids" -multidir
             printf ' %q' "${replica_dirs[@]}"
             printf ' %q' -deffnm "$segment_name" -hrex -replex "$exchange_interval" -plumed plumed.dat
+            if (( segment > 1 )); then
+                printf ' %q' -cpi "$previous.cpt" -noappend
+            fi
             printf '\n'
         done
     fi
@@ -215,6 +235,7 @@ check_stage_identity() {
     local stage=$1
     local previous=$2
     local input_name=$3
+    local production_segment=${4:-0}
     local marker="$work_dir/.$stage.complete"
     local identity_options=(--input "$states" --value="$gmx" --value="$gmx_mpi"
         --value "${GROMACS_OPTIONS:-}")
@@ -237,6 +258,15 @@ check_stage_identity() {
         fi
         if [[ "$stage" == production.* ]]; then
             identity_options+=(--input "$replica_dir/plumed.dat")
+            if [[ "$input_name" != production.mdp ]]; then
+                identity_options+=(--input "$replica_dir/production.mdp")
+                local part_suffix
+                printf -v part_suffix 'part%04d' "$production_segment"
+                for suffix in gro log edr xtc trr; do
+                    identity_options+=(--output "$replica_dir/$stage.$part_suffix.$suffix")
+                done
+                identity_options+=(--output "$replica_dir/$stage.trr")
+            fi
         fi
         for suffix in gro cpt log tpr edr xtc grompp.log mdrun.log; do
             identity_options+=(--output "$replica_dir/$stage.$suffix")
@@ -357,7 +387,15 @@ for ((segment = segment_start; segment <= segment_end; segment++)); do
     else
         printf -v previous 'production.%03d' "$((segment - 1))"
     fi
-    check_stage_identity "$segment_name" "$previous" production.mdp
+    segment_input=production.mdp
+    if (( segment > 1 )); then
+        segment_input="$segment_name.mdp"
+        for replica_dir in "${replica_dirs[@]}"; do
+            "${PYTHON:-python3}" helpers/production_segment.py prepare \
+                "$replica_dir" "$segment" --gromacs "$gmx"
+        done
+    fi
+    check_stage_identity "$segment_name" "$previous" "$segment_input" "$segment"
     marker="$work_dir/.$segment_name.complete"
     production_state=missing
     for replica_dir in "${replica_dirs[@]}"; do
@@ -368,6 +406,18 @@ for ((segment = segment_start; segment <= segment_end; segment++)); do
         if [[ ! -f "$marker" && ( -e "$replica_dir/$segment_name.log" || -e "$replica_dir/$segment_name.gro" || -e "$replica_dir/$segment_name.cpt" ) ]]; then
             production_state=partial
             break
+        fi
+        if (( segment > 1 )) && [[ ! -f "$marker" ]]; then
+            printf -v part_suffix 'part%04d' "$segment"
+            for suffix in gro log edr xtc trr; do
+                if [[ -e "$replica_dir/$segment_name.$part_suffix.$suffix" ]]; then
+                    production_state=partial
+                    break
+                fi
+            done
+            if [[ "$production_state" == partial ]]; then
+                break
+            fi
         fi
     done
     if [[ -f "$marker" && "$production_state" == missing ]]; then
@@ -383,7 +433,7 @@ for ((segment = segment_start; segment <= segment_end; segment++)); do
         fi
         replica_dir="$work_dir/$replica"
         if ! run_grompp "$replica_dir/$segment_name.grompp.log" \
-            "$gmx" grompp -f "$replica_dir/production.mdp" -p "$replica_dir/topol.top" \
+            "$gmx" grompp -f "$replica_dir/$segment_input" -p "$replica_dir/topol.top" \
             -c "$replica_dir/$previous.gro" -t "$replica_dir/$previous.cpt" \
             -o "$replica_dir/$segment_name.tpr"; then
             die "Production tpr generation failed: $replica_dir/$segment_name.grompp.log"
@@ -394,11 +444,16 @@ for ((segment = segment_start; segment <= segment_end; segment++)); do
         -ntomp "$threads_per_replica" -gpu_id "$gpu_ids" -multidir "${replica_dirs[@]}"
         -deffnm "$segment_name" -replex "$exchange_interval")
     command+=(-hrex -plumed plumed.dat)
+    if (( segment > 1 )); then
+        command+=(-cpi "$previous.cpt" -noappend)
+    fi
     command+=("${gromacs_options[@]}")
     if ! "${command[@]}"; then
         die "$method production segment $segment failed in $work_dir; expected replica logs: $work_dir/<replica>/$segment_name.log (may be absent); see engine diagnostics above"
     fi
     for replica_dir in "${replica_dirs[@]}"; do
+        "${PYTHON:-python3}" helpers/production_segment.py publish \
+            "$replica_dir" "$segment" --gromacs "$gmx"
         if [[ ! -s "$replica_dir/$segment_name.gro" ]]; then
             die "Production output was not created: $replica_dir/$segment_name.gro"
         fi

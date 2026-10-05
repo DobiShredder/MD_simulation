@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+import math
 
 try:
     import tomllib
@@ -18,12 +19,24 @@ except ModuleNotFoundError:  # Python 3.10
         ) from None
 
 
+def check_finite_config(value: object, location: str = "config") -> None:
+    if isinstance(value, float) and not math.isfinite(value):
+        raise ValueError(f"{location} must be finite")
+    if isinstance(value, dict):
+        for key, item in value.items():
+            check_finite_config(item, f"{location}.{key}")
+    elif isinstance(value, list):
+        for index, item in enumerate(value):
+            check_finite_config(item, f"{location}[{index}]")
+
+
 def load_config(path: Path) -> dict[str, Any]:
     if not path.is_file():
         raise ValueError(f"Config file not found: {path}")
     try:
         with path.open("rb") as handle:
             config = tomllib.load(handle)
+            check_finite_config(config)
             build = config.get("build")
             if isinstance(build, dict) and "salt_concentration" in build:
                 concentration = build["salt_concentration"]
@@ -45,7 +58,12 @@ def load_config(path: Path) -> dict[str, Any]:
                             value = value.replace("Na+,Cl-", f"{cation},{anion}")
                             value = value.replace("K+,Cl-", f"{cation},{anion}")
                             section_value[key] = value
-            run = config.get("run")
+            run = section(config, "run")
+            if choice_value(run, "production_ensemble", {"NVT", "NPT"}) != "NVT":
+                raise ValueError(
+                    f"OPES_EXPANDED production supports only NVT: "
+                    f"run.production_ensemble must be NVT ({path})"
+                )
             if isinstance(run, dict) and "equilibration_ensemble" in run:
                 # Compatibility alias while existing generators are converted to
                 # stage-specific ensemble fields.
@@ -69,11 +87,24 @@ def string_value(values: dict[str, Any], key: str) -> str:
     return value
 
 
+def finite_float(values: dict[str, Any], key: str, *, default: object = None) -> float:
+    value = values.get(key, default)
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f"{key} must be a finite number")
+    try:
+        converted = float(value)
+    except OverflowError as error:
+        raise ValueError(f"{key} must be a finite number") from error
+    if not math.isfinite(converted):
+        raise ValueError(f"{key} must be a finite number")
+    return converted
+
+
 def positive_float(values: dict[str, Any], key: str) -> float:
-    value = values.get(key)
-    if isinstance(value, bool) or not isinstance(value, (int, float)) or value <= 0:
+    value = finite_float(values, key)
+    if value <= 0:
         raise ValueError(f"{key} must be greater than zero")
-    return float(value)
+    return value
 
 
 def positive_int(values: dict[str, Any], key: str) -> int:
@@ -84,10 +115,10 @@ def positive_int(values: dict[str, Any], key: str) -> int:
 
 
 def nonnegative_float(values: dict[str, Any], key: str) -> float:
-    value = values.get(key)
-    if isinstance(value, bool) or not isinstance(value, (int, float)) or value < 0:
+    value = finite_float(values, key)
+    if value < 0:
         raise ValueError(f"{key} must be zero or greater")
-    return float(value)
+    return value
 
 
 def nonnegative_int(values: dict[str, Any], key: str) -> int:
@@ -276,11 +307,10 @@ def main() -> None:
     parser.add_argument("allowed", nargs="+", help="Supported executable basenames for this stage")
     args = parser.parse_args()
     try:
+        config = load_config(args.config)
         if args.environment in os.environ:
             engine = os.environ[args.environment]
         else:
-            with args.config.open("rb") as handle:
-                config = tomllib.load(handle)
             engine = config.get("run", config)[args.key]
         if not isinstance(engine, str) or not engine.strip():
             raise ValueError(f"Empty or invalid engine: {args.key}")

@@ -97,6 +97,16 @@ Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 
 `work/.analysis.pending`이 남으면 재실행을 거부합니다. 실행 process가 종료됐는지
 확인한 뒤 marker의 previous/new directory를 보존하고 검사합니다.
 
+Analysis는 COLVAR의 column 수, field name과 finite 값을 확인합니다. 같은 header의 반복은 허용하지만 header 변경, 중복 field와 NaN/Inf는 거부합니다. 잘못된 input을 읽으면 기존 analysis 결과를 교체하지 않습니다. 음수 CV 값은 method의 범위에 따라 사용할 수 있습니다.
+
+공개 analysis entry는 자동으로 `helpers/writer_guard.py`를 호출해 같은 output의 동시 writer를 거부합니다. Engine 실행부터 결과 게시까지 보호하며, signal 종료 시 child가 멈춘 뒤 lock을 해제합니다. Lock을 임의로 삭제해 실행을 재개하지 않습니다.
+
+`download.sh`는 모든 asset과 `SHA256SUMS`를 staging에서 확인한 뒤 `helpers/publish_download.py`로 게시합니다. Transfer, checksum 또는 일반 publication 실패에서는 기존 파일을 보존하며, 관련 없는 preparation 파일도 유지합니다. `structure/.download.pending`가 남으면 prepare/build와 새 download가 거부됩니다. 보존된 staging과 marker를 점검하고, marker만 삭제해 이전 파일과 새 파일을 섞어 사용하지 않습니다.
+
+### Funnel setup 재사용
+
+PLUMED parse가 만든 `work/FUNNEL_GRID`는 `.plumed-setup.identity.json`과 `.plumed-setup.success.json`으로 관리합니다. 완료된 setup은 grid를 다시 생성하지 않습니다. `plumed.dat`, reference PDB, atom count 또는 PLUMED executable이 바뀌거나 grid가 누락되면 보존한 채 중단합니다. Parse가 grid를 만든 뒤 실패한 상태와 완료 기록이 없는 기존 grid도 재사용하지 않습니다. Setup 완료와 heating·production 완료는 별도로 확인합니다.
+
 ## English
 
 This example applies Funnel MetaD to trypsin–benzamidine (PDB 3PTB). A
@@ -184,3 +194,13 @@ required outputs, are preserved and rejected. Existing results are not certified
 retroactively. Start a new tutorial copy without generated `work/` directories for
 a new calculation. AMBER stages with `ntwx=0` do not require a trajectory for
 completion. Supported continuation retains its existing restart/state handoff.
+
+Analysis checks COLVAR column counts, field names, and finite values. Repeated identical headers are allowed; changed headers, duplicate fields, and NaN/Inf are rejected. Invalid input leaves previous analysis results intact. Negative CV values remain valid where the method permits them.
+
+Public analysis entries automatically use `helpers/writer_guard.py` to reject concurrent writers to the same output. Protection covers engine execution through publication, and signal cleanup drains children before releasing the lock. Do not delete a lock to force a retry.
+
+`download.sh` validates every asset and `SHA256SUMS` in staging before publishing through `helpers/publish_download.py`. Transfer, checksum and ordinary publication failures preserve existing files, including unrelated preparation files. A retained `structure/.download.pending` blocks source readers and new downloads. Inspect the retained staging and marker; deleting only the marker can expose a mixed generation.
+
+### Reusing Funnel setup
+
+The `work/FUNNEL_GRID` produced by PLUMED parsing is tracked by `.plumed-setup.identity.json` and `.plumed-setup.success.json`. Completed setup reuses the grid without regenerating it. Changed `plumed.dat`, reference PDB, atom count, or PLUMED executable, and a missing grid, stop the run while retaining results. A failed parse that left a grid, or a legacy grid without completion evidence, cannot be reused. Setup completion is separate from heating and production completion.

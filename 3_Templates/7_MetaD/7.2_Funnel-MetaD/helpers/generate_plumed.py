@@ -11,6 +11,7 @@ from pathlib import Path
 sys.dont_write_bytecode = True
 sys.path.insert(0, ".")
 from config_utils import (  # noqa: E402
+    finite_float,
     load_config,
     positive_float,
     positive_int,
@@ -75,9 +76,9 @@ def render_funnel(args: argparse.Namespace, config: dict[str, object]) -> str:
     funnel = section(config, "funnel")
     metad = section(config, "metadynamics")
     zcc = positive_float(funnel, "zcc")
-    minimum = float(funnel.get("minimum_projection"))
+    minimum = finite_float(funnel, "minimum_projection")
     maximum = positive_float(funnel, "maximum_projection")
-    lower = float(funnel.get("lower_wall"))
+    lower = finite_float(funnel, "lower_wall")
     upper = positive_float(funnel, "upper_wall")
     if not minimum < lower < zcc < upper < maximum:
         raise ValueError("funnel projection limits must satisfy min < lower < zcc < upper < max")

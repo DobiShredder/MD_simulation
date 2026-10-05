@@ -36,6 +36,8 @@ log를 유지합니다. 실패한 실행의 log 마지막 부분은 stderr에 �
 directory를 함께 보존하고 검사합니다. 파일을 개별적으로 섞거나 marker만
 삭제해서 재실행하지 않습니다.
 
+공개 analysis entry는 자동으로 `writer_guard.py`를 호출해 같은 output의 동시 writer를 거부합니다. Engine 실행부터 결과 게시까지 보호하며, signal 종료 시 child가 멈춘 뒤 lock을 해제합니다. Lock을 임의로 삭제해 실행을 재개하지 않습니다.
+
 ## English
 
 MM/PBSA numerically solves the Poisson–Boltzmann model and runs GB on the same
@@ -59,3 +61,5 @@ If publication stops with `.output.pending` present, readers and publishers
 refuse to proceed. Check that the process has ended, then preserve and inspect
 both previous/new directories listed in the marker. Do not mix individual files
 or remove only the marker to retry.
+
+Public analysis entries automatically use `writer_guard.py` to reject concurrent writers to the same output. Protection covers engine execution through publication, and signal cleanup drains children before releasing the lock. Do not delete a lock to force a retry.

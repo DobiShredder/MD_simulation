@@ -59,7 +59,8 @@ input=$1
 work_dir=${WORK_DIR:-work}
 if (( ! ${dry_run:-0} )) && [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
     exec "${PYTHON:-python3}" helpers/writer_guard.py \
-        --registry "$work_dir" --write "$work_dir" -- "$0" "${original_args[@]}"
+        --registry "$work_dir" --read "$input" --read "$config" \
+        --write "$work_dir" -- "$0" "${original_args[@]}"
 fi
 python=${PYTHON:-python3}
 build_tmp=""
@@ -117,26 +118,33 @@ if (( ! dry_run )); then
     fi
 fi
 
+# Reject invalid file schedules before replacing build inputs or logs.
+"$python" helpers/generate_inputs.py "$method" "$config" "$work_dir/inputs" --validate-only
+
 if (( dry_run )); then
     echo "Method: $method"
     echo "Input structure: $input"
     echo "Config: $config"
     echo "Planned output: $work_dir/states.tsv and $work_dir/NNN replica directories"
+    echo "Auto replica count is checked after temporary topology preparation; dry-run does not run the predictor."
     exit 0
 fi
 
-mkdir -p "$work_dir/inputs"
-cp "$input" "$work_dir/input.pdb"
-"$python" helpers/generate_inputs.py "$method" "$config" "$work_dir/inputs"
+
+mkdir -p "$work_dir"
 build_tmp=$(mktemp -d "$work_dir/.build_tmp.XXXXXX")
-cp "$work_dir/input.pdb" "$build_tmp/input.pdb"
-mv "$work_dir/inputs/tleap.solvate.in" "$build_tmp/tleap.solvate.in"
+candidate_dir="$build_tmp/candidate"
+mkdir -p "$candidate_dir/inputs"
+"$python" helpers/generate_inputs.py "$method" "$config" "$candidate_dir/inputs"
+cp "$input" "$candidate_dir/input.pdb"
+cp "$candidate_dir/input.pdb" "$build_tmp/input.pdb"
+mv "$candidate_dir/inputs/tleap.solvate.in" "$build_tmp/tleap.solvate.in"
 
 echo "Solvating the input structure to determine the water count."
 if ! (cd "$build_tmp" && "$tleap" -f tleap.solvate.in > leap.solvate.log 2>&1); then
     die "Initial tleap solvation failed. See log: $build_tmp/leap.solvate.log"
 fi
-cp "$build_tmp/leap.solvate.log" "$work_dir/leap.solvate.log"
+cp "$build_tmp/leap.solvate.log" "$candidate_dir/leap.solvate.log"
 water_count=$("$python" helpers/count_waters.py "$build_tmp/solvated.pdb")
 salt_concentration=$("$python" - "$config" <<'PY'
 import sys
@@ -147,23 +155,26 @@ print(load_config(Path(sys.argv[1]))["build"]["salt_concentration_molar"])
 PY
 )
 salt_pairs=$(awk -v waters="$water_count" -v concentration="$salt_concentration" 'BEGIN {printf "%d", waters * concentration / 55.5 + 0.5}')
-"$python" helpers/generate_inputs.py "$method" "$config" "$work_dir/inputs" --salt-pairs "$salt_pairs"
+"$python" helpers/generate_inputs.py "$method" "$config" "$candidate_dir/inputs" --salt-pairs "$salt_pairs"
 
 echo "Building the AMBER system ($water_count waters, $salt_pairs salt formula units)."
-if ! (cd "$work_dir" && "$tleap" -f inputs/tleap.final.in > leap.log 2>&1); then
-    die "Final tleap build failed. See log: $work_dir/leap.log"
+if ! (cd "$candidate_dir" && "$tleap" -f inputs/tleap.final.in > leap.log 2>&1); then
+    die "Final tleap build failed. See log: $candidate_dir/leap.log"
 fi
 
 for output in system.parm7 system.rst7 system.pdb; do
-    if [[ ! -s "$work_dir/$output" ]]; then
-        die "AMBER build output was not created: $work_dir/$output; log: $work_dir/leap.log"
+    if [[ ! -s "$candidate_dir/$output" ]]; then
+        die "AMBER build output was not created: $candidate_dir/$output; log: $candidate_dir/leap.log"
     fi
 done
 
 echo "Generating $method replica states and inputs: $work_dir"
-"$python" helpers/generate_states.py "$method" "$config" "$work_dir/system.parm7" "$work_dir"
-"$python" helpers/generate_inputs.py "$method" "$config" "$work_dir/inputs" \
-    --salt-pairs "$salt_pairs" --states "$work_dir/states.tsv"
+"$python" helpers/generate_states.py "$method" "$config" "$candidate_dir/system.parm7" "$candidate_dir"
+"$python" helpers/generate_inputs.py "$method" "$config" "$candidate_dir/inputs" \
+    --salt-pairs "$salt_pairs" --states "$candidate_dir/states.tsv"
+
+# Publish preparation only after the schedule passed; old inputs survive rejection.
+cp -R "$candidate_dir/." "$work_dir/"
 
 replica_count=$(awk 'NR > 1 {count++} END {print count + 0}' "$work_dir/states.tsv")
 remove_build_tmp

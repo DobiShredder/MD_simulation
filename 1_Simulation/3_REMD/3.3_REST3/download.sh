@@ -14,6 +14,7 @@ fi
 curl_bin=${CURL:-curl}
 structure_dir="structure"
 dependency_dir="dependencies"
+dependency_pending=".dependencies.download.pending"
 pdb_url="https://files.rcsb.org/download/1UAO.pdb"
 cif_url="https://files.rcsb.org/download/1UAO.cif"
 parser_version="0.2.2"
@@ -30,64 +31,94 @@ if ! command -v tar >/dev/null 2>&1; then
     die "tar not found"
 fi
 
+if ! command -v python3 >/dev/null 2>&1; then
+    die "Python executable not found: python3"
+fi
+
 echo "Downloading the Chignolin structure (PDB 1UAO)."
-mkdir -p "$structure_dir"
+if [[ "${MD_WRITER_PARENT:-}" != "$PPID" || "${MD_WRITER_ENTRY:-}" != "$0" ]]; then
+    exec python3 helpers/writer_guard.py \
+        --registry work --write "$structure_dir" --write "$dependency_dir" \
+        -- "$0" "$@"
+fi
+if [[ -e "$structure_dir/.download.pending" || -L "$structure_dir/.download.pending" || -e "$dependency_pending" || -L "$dependency_pending" ]]; then
+    die "Download publication is incomplete; inspect $structure_dir/.download.pending or $dependency_pending."
+fi
+
+generation_dir=$(mktemp -d "$structure_dir.download.XXXXXX")
+cleanup_download() {
+    status=$?
+    if [[ -e "$structure_dir/.download.pending" || -L "$structure_dir/.download.pending" || -e "$dependency_pending" || -L "$dependency_pending" ]]; then
+        echo "Warning: download publication is incomplete; staging retained: $generation_dir" >&2
+    else
+        case "$generation_dir" in
+            "$structure_dir".download.*) rm -rf -- "$generation_dir" ;;
+        esac
+    fi
+    exit "$status"
+}
+trap cleanup_download EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 if ! "$curl_bin" \
     -fsSL \
     "$pdb_url" \
-    -o "$structure_dir/1UAO.raw.pdb"; then
+    -o "$generation_dir/1UAO.raw.pdb"; then
     die "Failed to download PDB: $pdb_url"
 fi
 
 if ! "$curl_bin" \
     -fsSL \
     "$cif_url" \
-    -o "$structure_dir/1UAO.cif"; then
+    -o "$generation_dir/1UAO.cif"; then
     die "Failed to download mmCIF: $cif_url"
 fi
 
 if command -v sha256sum >/dev/null 2>&1; then
     (
-        cd "$structure_dir"
+        cd "$generation_dir"
         sha256sum 1UAO.raw.pdb 1UAO.cif > SHA256SUMS
     )
 else
     (
-        cd "$structure_dir"
+        cd "$generation_dir"
         shasum -a 256 1UAO.raw.pdb 1UAO.cif > SHA256SUMS
     )
 fi
 
-echo "Downloaded files and checksums: $structure_dir"
 
 printf '\n'
 echo "Downloading repex-topology-parser ${parser_version} source."
-mkdir -p "$dependency_dir"
+mkdir -p "$generation_dir/.dependencies"
+staged_parser_source="$generation_dir/.dependencies/repex_topology_parser-${parser_version}/src/repex_topology_parser.py"
 
 if ! "$curl_bin" \
     -fsSL \
     "$parser_url" \
-    -o "$dependency_dir/$parser_archive"; then
+    -o "$generation_dir/.dependencies/$parser_archive"; then
     die "Failed to download parser source: $parser_url"
 fi
 
 if command -v sha256sum >/dev/null 2>&1; then
-    actual_parser_sha256=$(sha256sum "$dependency_dir/$parser_archive" | awk '{print $1}')
+    actual_parser_sha256=$(sha256sum "$generation_dir/.dependencies/$parser_archive" | awk '{print $1}')
 else
-    actual_parser_sha256=$(shasum -a 256 "$dependency_dir/$parser_archive" | awk '{print $1}')
+    actual_parser_sha256=$(shasum -a 256 "$generation_dir/.dependencies/$parser_archive" | awk '{print $1}')
 fi
 
 if [[ "$actual_parser_sha256" != "$parser_sha256" ]]; then
-    die "Parser source checksum mismatch: $dependency_dir/$parser_archive"
+    die "Parser source checksum mismatch: $generation_dir/.dependencies/$parser_archive"
 fi
 
-if ! tar -xzf "$dependency_dir/$parser_archive" -C "$dependency_dir"; then
-    die "Failed to extract parser source: $dependency_dir/$parser_archive"
+if ! tar -xzf "$generation_dir/.dependencies/$parser_archive" -C "$generation_dir/.dependencies"; then
+    die "Failed to extract parser source: $generation_dir/.dependencies/$parser_archive"
 fi
 
-if [[ ! -s "$parser_source" ]]; then
-    die "Parser source not found after extraction: $parser_source"
+if [[ ! -s "$staged_parser_source" ]]; then
+    die "Parser source not found after extraction: $staged_parser_source"
 fi
+
+python3 helpers/publish_download.py "$generation_dir" "$structure_dir" --dependencies "$dependency_dir"
+echo "Downloaded files and checksums: $structure_dir"
 
 echo "Downloaded parser source: $parser_source"

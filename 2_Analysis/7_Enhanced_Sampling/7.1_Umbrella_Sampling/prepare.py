@@ -261,6 +261,8 @@ def prepare_windows(windows_dir: Path, output_dir: Path) -> int:
 
 
 def main() -> None:
+    from writer_guard import protect_python_entry
+    protect_python_entry("output", writes=(OUTPUT_DIR,))
     print(f"Preparing WHAM inputs: {WINDOWS_DIR} -> {OUTPUT_DIR}")
     try:
         window_count = prepare_windows(WINDOWS_DIR, OUTPUT_DIR)

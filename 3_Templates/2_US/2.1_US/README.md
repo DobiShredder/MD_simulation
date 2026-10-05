@@ -99,6 +99,9 @@ SIGKILL 또는 node 장애로 남은 lock은 자동으로 지우지 않습니다
 않습니다. Cluster filesystem의 atomic directory 생성과 remote/daemon process
 종료는 로컬 fixture에서 검증하지 않았습니다.
 
+### Window table과 seed generation
+
+`rmd/anal.py`와 `us/build.sh`는 `resolved_config.toml`의 `umbrella.windows_file`을 같은 leaf 기준으로 읽습니다. 기본값은 `us/windows.tsv`입니다. Seed 추출은 table 사본을 `rmd/work/seeds/windows.tsv`에 저장합니다. Builder는 이 사본과 실제 table이 같은지, `seeds.tsv`의 개수·순서·center가 같은지 검사한 뒤 window를 만듭니다. Center 또는 force를 바꾸었다면 별도 work directory에서 seed부터 새로 생성합니다.
 
 ## English
 
@@ -188,3 +191,7 @@ empty directory. A leftover `.gate` also requires checking that all registration
 and release operations have stopped. A PID alone does not establish that a job
 on another host has ended. Atomic directory operations on cluster filesystems
 and termination of remote/daemon processes were not tested by local fixtures.
+
+### Window tables and seed generations
+
+Both `rmd/anal.py` and `us/build.sh` read `umbrella.windows_file` from `resolved_config.toml`, relative to the leaf directory; the default is `us/windows.tsv`. Seed extraction saves a copy at `rmd/work/seeds/windows.tsv`. Before creating windows, the builder checks this copy against the current table and verifies the count, order, and centers in `seeds.tsv`. Changing centers or forces requires a new seed generation in a separate work directory.

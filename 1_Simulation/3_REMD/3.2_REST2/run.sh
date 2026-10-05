@@ -212,6 +212,9 @@ if [[ ! -s work/states.tsv ]]; then
     die "Run ./build.sh first."
 fi
 replica_count=$(awk 'NR > 1 {count++} END {print count + 0}' work/states.tsv)
+if (( replica_count < 2 || replica_count % 2 != 0 )); then
+    die "Replica exchange requires at least two and an even number of states: work/states.tsv ($replica_count states)"
+fi
 
 if [[ ! "$cpu_count" =~ ^[1-9][0-9]*$ ]] || (( cpu_count % replica_count != 0 )); then
     die "--cpus must be a positive multiple of $replica_count."

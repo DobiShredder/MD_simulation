@@ -9,8 +9,12 @@ import hashlib
 import math
 from pathlib import Path
 
-SOLVENT_NAMES = {"WAT", "HOH", "SOL", "TIP3"}
-ION_NAMES = {"NA", "NA+", "SOD", "CL", "CL-", "CLA"}
+SOLVENT_NAMES = {
+    "HOH", "OPC", "SOL", "TIP3", "TIP3P", "WAT",
+}
+ION_NAMES = {
+    "CA", "CA2", "CA2+", "CL", "CL-", "CLA", "K", "K+", "MG", "MG2", "MG2+", "NA", "NA+", "POT", "SOD", "ZN", "ZN2", "ZN2+",
+}
 
 
 def digest(path: Path) -> str:

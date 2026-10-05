@@ -36,7 +36,7 @@ def parse_arguments() -> argparse.Namespace:
 
 def check_segments(work: Path, segments: int) -> None:
     for index in range(1, segments + 1):
-        if segments == 1 or (index == 1 and (work / ".production.complete").is_file()):
+        if index == 1 and (work / ".production.complete").is_file():
             directory = work
         else:
             directory = work / f"{index:03d}"
@@ -46,22 +46,33 @@ def check_segments(work: Path, segments: int) -> None:
 
 
 def read_colvar(path: Path, numpy) -> dict[str, object]:
-    fields: list[str] | None = None
-    rows: list[list[float]] = []
-    for raw in path.read_text(encoding="utf-8").splitlines():
-        if raw.startswith("#! FIELDS"):
-            candidate = raw.split()[2:]
+    fields = None
+    rows = []
+    for line_number, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        line = raw.strip()
+        if line.startswith("#! FIELDS"):
+            candidate = line.split()[2:]
+            if not candidate or len(candidate) != len(set(candidate)):
+                raise ValueError(f"COLVAR fields are empty or duplicated: {path}:{line_number}")
+            if fields is not None and fields != candidate:
+                raise ValueError(f"COLVAR header changed: {path}:{line_number}")
+            fields = candidate
+        elif line and not line.startswith("#"):
             if fields is None:
-                fields = candidate
-            elif candidate != fields:
-                raise SystemExit(f"COLVAR fields change within the file: {path}")
-        elif raw and not raw.startswith("#"):
-            rows.append([float(value) for value in raw.split()])
+                raise ValueError(f"COLVAR data precedes its header: {path}:{line_number}")
+            values = line.split()
+            if len(values) != len(fields):
+                raise ValueError(f"COLVAR column count differs from header: {path}:{line_number}")
+            try:
+                row = [float(value) for value in values]
+            except ValueError as error:
+                raise ValueError(f"COLVAR contains nonnumeric data: {path}:{line_number}") from error
+            if not numpy.isfinite(row).all():
+                raise ValueError(f"COLVAR contains nonfinite data: {path}:{line_number}")
+            rows.append(row)
     if fields is None or not rows:
-        raise SystemExit(f"COLVAR header or data not found: {path}")
+        raise ValueError(f"COLVAR header or data not found: {path}")
     data = numpy.asarray(rows, dtype=float)
-    if data.ndim != 2 or data.shape[1] != len(fields):
-        raise SystemExit(f"COLVAR column count does not match its header: {path}")
     return {name: data[:, index] for index, name in enumerate(fields)}
 
 
@@ -88,6 +99,8 @@ def write_metrics(path: Path, rows: list[tuple[str, object, str]]) -> None:
 def main() -> None:
     args = parse_arguments()
     work = args.work_dir
+    from helpers.writer_guard import protect_python_entry
+    protect_python_entry(work, reads=(work,), writes=(work / "analysis",))
     print(f"Reading bias-analysis inputs: {work}", flush=True)
     config_file = work / "resolved_config.toml"
     if not config_file.is_file():

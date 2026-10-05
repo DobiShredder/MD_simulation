@@ -2,6 +2,8 @@
 
 ## 한국어
 
+Equilibration은 `work/heat.rst7`을 initial coordinate file과 positional restraint의 `-ref` input으로 함께 읽습니다. 이 reference가 변경되거나 누락되면 기존 stage 결과를 보존하고 실행을 거부합니다.
+
 사용자가 직접 실행하는 파일은 이 directory의 root에 있습니다. `helpers/`는 `build.sh`, `run.sh` 또는 `anal.py`가 자동 호출하는 leaf-local 내부 code이며 직접 실행하지 않습니다.
 
 중단되거나 marker가 없는 stage output은 자동 삭제하거나 재실행하지 않고 보존한 채 중단합니다.
@@ -97,6 +99,8 @@ SIGKILL 또는 node 장애로 남은 lock은 자동으로 지우지 않습니다
 
 
 ## English
+
+Equilibration reads `work/heat.rst7` as both the initial coordinate file and the positional-restraint `-ref` input. A changed or missing reference stops the run and preserves existing stage results.
 
 User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh`, `run.sh`, or `anal.py`; it is not a separate entry point.
 

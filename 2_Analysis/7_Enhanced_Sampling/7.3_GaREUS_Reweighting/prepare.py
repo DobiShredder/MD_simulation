@@ -252,6 +252,8 @@ def prepare_inputs(simulation_work: Path, output_dir: Path) -> int:
 
 
 def main() -> None:
+    from writer_guard import protect_python_entry
+    protect_python_entry("output", writes=(OUTPUT_DIR,))
     print(f"Preparing GaREUS inputs: {SIMULATION_WORK} -> {OUTPUT_DIR}")
     try:
         state_count = prepare_inputs(SIMULATION_WORK, OUTPUT_DIR)

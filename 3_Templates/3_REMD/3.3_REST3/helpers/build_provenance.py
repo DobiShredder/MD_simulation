@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import math
 import re
 import subprocess
 from datetime import datetime, timezone
@@ -38,18 +39,20 @@ def version_line(command: list[str]) -> str:
     return next((line.strip() for line in text.splitlines() if line.strip()), "unknown")
 
 
-def charge_summary(logs: list[Path]) -> tuple[int, float]:
+def charge_summary(logs: list[Path]) -> tuple[int, float | None]:
     warning_count = 0
-    total_charge = 0.0
-    pattern = re.compile(r"System non-zero total charge:\s*([-+0-9.eE]+)")
+    total_charge = None
+    pattern = re.compile(r"System has non-zero total charge:\s*([-+0-9.eE]+)")
     for path in logs:
         if not path.is_file():
-            continue
+            raise SystemExit(f"Charge provenance log is missing: {path}")
         text = path.read_text(encoding="utf-8", errors="replace")
         warning_count += len(re.findall(r"^WARNING \d+ \[", text, flags=re.MULTILINE))
         matches = pattern.findall(text)
         if matches:
             total_charge = float(matches[-1])
+            if not math.isfinite(total_charge):
+                raise SystemExit(f"Charge provenance is nonfinite: {path}")
     return warning_count, total_charge
 
 
@@ -113,8 +116,9 @@ def main() -> None:
         "",
         "[validation]",
         f"charge_warning_count = {warning_count}",
-        f"total_charge_e = {total_charge:.12g}",
-        f"charge_warning_accepted = {str(warning_count > 0 and abs(total_charge) <= 0.01).lower()}",
+        f"total_charge_known = {str(total_charge is not None).lower()}",
+        *([f"total_charge_e = {total_charge:.12g}"] if total_charge is not None else []),
+        f"charge_warning_accepted = {str(warning_count > 0 and total_charge is not None and abs(total_charge) <= 0.01).lower()}",
         f"energy_check_status = {toml_string(check_status)}",
         f"energy_tolerance_kJ_mol = {tolerance:.12g}",
         "",

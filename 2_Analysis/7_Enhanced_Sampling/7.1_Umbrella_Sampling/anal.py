@@ -269,6 +269,8 @@ def parse_arguments() -> argparse.Namespace:
 
 
 def main() -> None:
+    from writer_guard import protect_python_entry
+    protect_python_entry("output", writes=(OUTPUT_DIR,))
     parse_arguments()
     print(f"Running: WHAM analysis; input directory: {OUTPUT_DIR}")
 

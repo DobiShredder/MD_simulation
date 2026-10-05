@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import math
 import shutil
 import sys
 from pathlib import Path
@@ -32,6 +33,8 @@ def arguments() -> argparse.Namespace:
         type=int,
         help="Number of configured-salt formula units for the solvent system",
     )
+    parser.add_argument("--validate-only", action="store_true",
+                        help="Check config and source inputs without writing outputs")
     return parser.parse_args()
 
 
@@ -61,7 +64,7 @@ def validate_mol2(path: Path, residue_name: str, expected_charge: int) -> None:
     if names != {residue_name}:
         raise ValueError(f"{path} residue names {sorted(names)} do not match {residue_name}")
     charge = sum(float(atom.charge) for atom in atoms)
-    if abs(charge - expected_charge) > 0.01:
+    if not math.isfinite(charge) or abs(charge - expected_charge) > 0.01:
         raise ValueError(f"{path} charge {charge:.6f} does not match expected {expected_charge}")
 
 
@@ -128,18 +131,24 @@ def main() -> None:
         if string_value(build, "charge_method").upper() != "RESP":
             raise ValueError("charge_method currently supports precharged RESP MOL2 input")
         nonnegative_float(build, "salt_concentration_molar")
-    except ValueError as error:
-        raise SystemExit(f"Config error: {error}") from None
+        for source in (args.structure, Path(string_value(build, "ligand_frcmod"))):
+            if not source.is_file():
+                raise ValueError(f"Required input not found: {source}")
+        validate_mol2(
+            Path(string_value(build, "ligand_mol2")),
+            string_value(build, "ligand_residue_name"),
+            integer_value(build, "ligand_net_charge"),
+        )
+    except (OSError, ValueError) as error:
+        raise SystemExit(f"ABFE preparation preflight failed ({args.config}): {error}") from None
+
+    if args.validate_only:
+        return
 
     args.output.mkdir(parents=True, exist_ok=True)
     copy_input(args.structure, args.output / "input.pdb")
     copy_input(Path(string_value(build, "ligand_mol2")), args.output / "ligand.mol2")
     copy_input(Path(string_value(build, "ligand_frcmod")), args.output / "ligand.frcmod")
-    validate_mol2(
-        args.output / "ligand.mol2",
-        string_value(build, "ligand_residue_name"),
-        integer_value(build, "ligand_net_charge"),
-    )
 
     for environment, salt_pairs in (
         ("complex", args.complex_salt_pairs),

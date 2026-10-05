@@ -7,10 +7,14 @@ import csv
 from pathlib import Path
 
 import h5py
+import math
+import numbers
 
 
 WORK = Path("work")
 TARGET_RMSD_ANGSTROM = 3.0
+# WESTPA Segment.SEG_STATUS_COMPLETE in the HDF5 seg_index schema.
+SEG_STATUS_COMPLETE = 2
 BINS = [
     (0.0, 0.5),
     (0.5, 0.75),
@@ -27,6 +31,8 @@ BINS = [
 
 
 def main() -> None:
+    from helpers.writer_guard import protect_python_entry
+    protect_python_entry(WORK, writes=(WORK,))
     west_file = WORK / "west.h5"
     print(f"Reading WESTPA weight and pcoord data: {west_file}", flush=True)
     if not west_file.is_file():
@@ -41,13 +47,34 @@ def main() -> None:
         if iterations is None:
             raise SystemExit(f"WESTPA analysis: {west_file} is missing the iterations group.")
 
+        current_iteration = handle.attrs.get("west_current_iteration")
+        if not isinstance(current_iteration, numbers.Integral) or current_iteration < 1:
+            raise SystemExit(f"WESTPA analysis: invalid west_current_iteration in {west_file}")
+
         for iteration_name in sorted(iterations):
+            iteration_number = int(iteration_name.split("_")[-1])
+            if iteration_number >= current_iteration:
+                continue
             group = iterations[iteration_name]
             if "seg_index" not in group or "pcoord" not in group:
-                continue
+                raise SystemExit(f"WESTPA analysis: {west_file}, {iteration_name}: completed iteration data is missing")
             segment_index = group["seg_index"][:]
             pcoord = group["pcoord"][:]
+            if segment_index.ndim != 1 or not segment_index.dtype.names or "weight" not in segment_index.dtype.names:
+                raise SystemExit(f"WESTPA analysis: {west_file}, {iteration_name}: invalid segment weight schema")
+            if "status" not in segment_index.dtype.names or segment_index["status"].dtype.kind not in "iu":
+                raise SystemExit(f"WESTPA analysis: {west_file}, {iteration_name}: invalid segment status schema")
+            if not all(status == SEG_STATUS_COMPLETE for status in segment_index["status"]):
+                raise SystemExit(f"WESTPA analysis: {west_file}, {iteration_name}: not all segments are complete")
+            if pcoord.ndim != 3 or pcoord.shape[0] != len(segment_index) or pcoord.shape[1] == 0 or pcoord.shape[2] != 1:
+                raise SystemExit(f"WESTPA analysis: {west_file}, {iteration_name}: expected one-dimensional pcoord for each segment")
+            if pcoord.dtype.kind not in "fiu" or segment_index["weight"].dtype.kind not in "fiu":
+                raise SystemExit(f"WESTPA analysis: {west_file}, {iteration_name}: weights and pcoord must be numeric")
+            if not all(math.isfinite(float(value)) for value in pcoord.flat):
+                raise SystemExit(f"WESTPA analysis: {west_file}, {iteration_name}: nonfinite pcoord")
             weights = [float(record["weight"]) for record in segment_index]
+            if not all(math.isfinite(weight) and weight >= 0 for weight in weights):
+                raise SystemExit(f"WESTPA analysis: {west_file}, {iteration_name}: weights must be finite and nonnegative")
             if not weights:
                 continue
             final_coordinates = [float(values[-1][0]) for values in pcoord]
@@ -55,10 +82,11 @@ def main() -> None:
                 raise SystemExit(f"WESTPA analysis: {west_file}, {iteration_name}: segment and pcoord counts differ.")
             total_weight = sum(weights)
             squared_weight_sum = sum(weight * weight for weight in weights)
+            if not math.isfinite(total_weight) or not math.isfinite(squared_weight_sum) or total_weight <= 0:
+                raise SystemExit(f"WESTPA analysis: {west_file}, {iteration_name}: invalid total walker weight")
             if squared_weight_sum == 0.0:
                 raise SystemExit(f"WESTPA analysis: {west_file}, {iteration_name}: could not calculate the total walker weight.")
             ess = total_weight * total_weight / squared_weight_sum
-            iteration_number = int(iteration_name.split("_")[-1])
             target_count = sum(
                 value >= TARGET_RMSD_ANGSTROM for value in final_coordinates
             )

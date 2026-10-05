@@ -53,7 +53,9 @@ def read_centers(path: Path) -> list[float]:
             raise SystemExit(f"{path}:{line_number}: expected one center per line")
         result.append(float(fields[0]))
     if not result or result != sorted(set(result)):
-        raise SystemExit("Window centers must be non-empty, unique, and increasing")
+        raise SystemExit(f"{path}: window centers must be non-empty, unique, and increasing")
+    if len(result) < 2 or len(result) % 2:
+        raise SystemExit(f"Replica exchange requires at least two and an even number of windows: {path} ({len(result)} windows)")
     return result
 
 

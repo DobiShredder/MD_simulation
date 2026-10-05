@@ -18,6 +18,7 @@ from config_utils import (  # noqa: E402
     section,
     string_value,
 )
+from make_window_replicas import read_centers
 from force_field_profiles import resolve_force_field_profile  # noqa: E402
 
 
@@ -32,6 +33,8 @@ def parse_arguments() -> argparse.Namespace:
         type=int,
         help="Number of configured-salt formula units for the final tleap build",
     )
+    parser.add_argument("--validate-only", action="store_true",
+                        help="Validate config and window count without writing inputs")
     return parser.parse_args()
 
 
@@ -42,6 +45,8 @@ def render_cntrl(title: str, values: list[str]) -> str:
 
 def resolve(config_path: Path) -> dict[str, object]:
     config = load_config(config_path)
+    umbrella = section(config, "umbrella")
+    read_centers(Path(string_value(umbrella, "windows_file")))
     build = section(config, "build")
     run = section(config, "run")
 
@@ -221,6 +226,8 @@ def main() -> None:
         values = resolve(args.config)
     except ValueError as error:
         raise SystemExit(f"Config error: {error}") from None
+    if args.validate_only:
+        return
     args.output.mkdir(parents=True, exist_ok=True)
     write_tleap(args.output, values, args.salt_pairs)
     write_md_inputs(args.output, values)

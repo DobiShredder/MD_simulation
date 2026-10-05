@@ -57,7 +57,8 @@ input=$1
 work_dir=${WORK_DIR:-work}
 if (( ! ${dry_run:-0} )) && [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
     exec "${PYTHON:-python3}" helpers/writer_guard.py \
-        --registry "$work_dir" --write "$work_dir" -- "$0" "${original_args[@]}"
+        --registry "$work_dir" --read "$input" --read "$config" \
+        --write "$work_dir" -- "$0" "${original_args[@]}"
 fi
 tleap=${TLEAP:-tleap}
 python=${PYTHON:-python3}
@@ -112,6 +113,8 @@ if (( ! dry_run )); then
         die "Python not found: $python"
     fi
 fi
+
+"$python" helpers/generate_inputs.py "$config" "$work_dir/inputs" --validate-only
 
 if (( dry_run )); then
     printf '+ %q helpers/generate_inputs.py %q %q\n' "$python" "$config" "$work_dir/inputs"

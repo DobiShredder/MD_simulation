@@ -79,13 +79,17 @@ def read_number_list(path: Path, label: str) -> list[float]:
         values = [float(part) for part in parts if part]
     except ValueError as error:
         raise ValueError(f"{label} file contains a nonnumeric value: {path}") from error
+    if any(not math.isfinite(value) for value in values):
+        raise ValueError(f"{label} file contains a nonfinite value: {path}")
     return values
 
 
 def read_temperatures(path: Path) -> list[float]:
     values = read_number_list(path, "temperature")
     if len(values) < 2 or values != sorted(set(values)) or values[0] <= 0:
-        raise ValueError("temperatures must contain at least two unique increasing values")
+        raise ValueError(f"{path}: temperatures must contain at least two unique increasing values")
+    if len(values) % 2:
+        raise ValueError(f"Replica exchange requires an even number of temperatures: {path} ({len(values)} states)")
     return values
 
 
@@ -159,7 +163,7 @@ def main() -> None:
             temperatures = [row.temperature for row in diagnostic_rows]
         elif mode == "file":
             temperatures = read_temperatures(
-                Path(string_value(exchange, "temperature_file"))
+                Path(string_value(exchange, "temperature_file")),
             )
             predictor_atoms = (
                 counts["solute_atoms"] + counts["ion_atoms"]
@@ -169,6 +173,14 @@ def main() -> None:
             predictor_waters = counts["water_molecules"] if args.method == "remd" else 0
         else:
             raise ValueError("temperature_mode must be auto or file")
+
+        if len(temperatures) < 2 or len(temperatures) % 2:
+            raise ValueError(
+                f"{args.config}: {mode} schedule produced {len(temperatures)} states; "
+                "replica exchange requires at least two and an even number. "
+                "The schedule was not adjusted; choose a different configuration "
+                "or supply an even temperature file."
+            )
 
         base_temperature = positive_float(section(config, "run"), "temperature")
         if not math.isclose(temperatures[0], base_temperature, abs_tol=1.0e-6):

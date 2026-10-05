@@ -10,7 +10,7 @@ from pathlib import Path
 
 sys.dont_write_bytecode = True
 sys.path.insert(0, ".")
-from config_utils import load_config, positive_float, section, string_value  # noqa: E402
+from config_utils import load_config, positive_float, section, string_value, finite_float  # noqa: E402
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -161,7 +161,7 @@ def main() -> None:
         alpha = positive_float(funnel, "alpha")
         if alpha >= math.pi / 2.0:
             raise ValueError("alpha must be smaller than pi/2")
-        minimum = float(funnel.get("minimum_projection"))
+        minimum = finite_float(funnel, "minimum_projection")
         if projection_nm <= zcc:
             allowed_radius = radius + math.tan(alpha) * (zcc - projection_nm)
         else:

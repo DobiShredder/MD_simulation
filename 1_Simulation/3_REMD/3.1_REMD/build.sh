@@ -59,6 +59,9 @@ if ! awk -F '\t' '
 fi
 
 replica_count=$(awk 'NR > 1 {count++} END {print count + 0}' "$states_file")
+if (( replica_count < 2 || replica_count % 2 != 0 )); then
+    die "AMBER T-REMD requires at least two and an even number of states: $states_file ($replica_count states)"
+fi
 echo "Generating ff19SB/OPC systems for $replica_count replicas."
 
 # A rebuild must not mix new inputs with topology/restart files from an older build.

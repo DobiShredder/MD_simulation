@@ -36,6 +36,13 @@ double-decoupling system과 65개 window를 만들고, `run.sh`는 stage를 실�
 `anal.py`는 FE-ToolKit의 `edgembar-amber2dats.py`와 `edgembar`를 사용해
 restraint correction과 각 alchemical contribution을 합산합니다.
 
+Neutral ligand만 지원합니다. `build.ligand_net_charge`는 정수 0이어야 하며,
+MOL2 charge 합은 이 값과 0.01 e 이내로 일치해야 합니다. Build와 dry-run은
+output을 복사하거나 생성하기 전에 ParmEd로 이를 확인합니다. 과거 charged config도
+input 생성, run과 analysis에서 거부합니다. Summary의
+`leading_pme_net_charge_correction`은 0과 `not_applicable_neutral_ligand`를 기록하며,
+charged correction을 계산한 값이 아닙니다.
+
 ### Config 선택값
 
 | Option | 현재 지원값 | 기본값 | 적용 방식 |
@@ -115,6 +122,8 @@ Marker만 삭제하거나 파일을 개별적으로 섞지 않습니다.
 python3 helpers/result_generation.py work
 ```
 
+공개 analysis entry는 자동으로 `helpers/writer_guard.py`를 호출해 같은 output의 동시 writer를 거부합니다. Engine 실행부터 결과 게시까지 보호하며, signal 종료 시 child가 멈춘 뒤 lock을 해제합니다. Lock을 임의로 삭제해 실행을 재개하지 않습니다.
+
 ## English
 
 User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh`, `run.sh`, or `anal.py`; `helpers/result_generation.py` also supports a separate integrity check before an external consumer reads results.
@@ -155,6 +164,13 @@ creates the double-decoupling systems and windows, `run.sh` executes them, and
 `anal.py` combines the alchemical terms and restraint correction. Partial
 production is preserved. FE-ToolKit `edgembar-amber2dats.py` and `edgembar`
 must be available on `PATH` for analysis.
+
+Only neutral ligands are supported. `build.ligand_net_charge` must be integer
+zero, and the MOL2 charge sum must match within 0.01 e. Build and dry-run check
+this before copying or generating outputs; ParmEd is required for this check.
+Legacy charged configs are also rejected by input generation, run and analysis.
+The summary records zero and `not_applicable_neutral_ligand` for
+`leading_pme_net_charge_correction`; this is not a calculated charged correction.
 
 ### Engine selection and run state
 
@@ -218,3 +234,5 @@ Before reading results in an external script, run the check below. Replace
 ```bash
 python3 helpers/result_generation.py work
 ```
+
+Public analysis entries automatically use `helpers/writer_guard.py` to reject concurrent writers to the same output. Protection covers engine execution through publication, and signal cleanup drains children before releasing the lock. Do not delete a lock to force a retry.

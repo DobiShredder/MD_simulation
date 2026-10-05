@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import math
 import os
 import shutil
 import subprocess
@@ -38,7 +39,7 @@ def read_centers(path: Path) -> list[float]:
                 raise ValueError(f"{path}:{line_number}: expected CENTER_A FORCE")
             center = float(fields[0])
             force = float(fields[1])
-            if center <= 0 or force <= 0:
+            if not math.isfinite(center) or not math.isfinite(force) or center <= 0 or force <= 0:
                 raise ValueError(f"{path}:{line_number}: center and force must be positive")
             centers.append(center)
     if not centers:
@@ -222,6 +223,7 @@ def main() -> int:
         )
         stage = "seed metadata writing"
         write_metadata(output / "seeds.tsv", centers, selected)
+        shutil.copyfile(windows, output / "windows.tsv")
     except (OSError, RuntimeError, ValueError) as error:
         raise SystemExit(
             f"Error during {stage} (trajectory: {trajectory}; output: {output}): {error}"

@@ -59,6 +59,8 @@ Preparation을 성공적으로 다시 실행하면 이전 PMF는 새 series와 �
 실행 process가 종료됐는지 확인한 뒤 marker에 적힌 previous/new directory를
 보존하고 검사합니다. 여러 파일의 교체를 하나의 atomic write로 취급하지 않습니다.
 
+공개 analysis entry는 자동으로 `writer_guard.py`를 호출해 같은 output의 동시 writer를 거부합니다. Engine 실행부터 결과 게시까지 보호하며, signal 종료 시 child가 멈춘 뒤 lock을 해제합니다. Lock을 임의로 삭제해 실행을 재개하지 않습니다.
+
 ## English
 
 Per-window `us/work/NNN/distance.dat` files from the matching 2_US simulation
@@ -104,3 +106,5 @@ are not treated as one atomic write.
 ## References / 참고 자료
 
 - [Kumar et al., WHAM](https://doi.org/10.1002/jcc.540130812)
+
+Public analysis entries automatically use `writer_guard.py` to reject concurrent writers to the same output. Protection covers engine execution through publication, and signal cleanup drains children before releasing the lock. Do not delete a lock to force a retry.

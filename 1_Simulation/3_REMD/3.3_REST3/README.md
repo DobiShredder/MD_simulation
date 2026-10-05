@@ -7,6 +7,8 @@
 
 ## 한국어
 
+최소 2개·짝수 replica만 지원합니다. `build.sh`와 `run.sh`는 홀수 schedule을 자동 조정하지 않고 거부합니다. `run.sh --dry-run`도 실제 state table의 count를 검사합니다. 기존 홀수 결과는 새 work directory에서 다시 준비합니다.
+
 Chignolin을 ff19SB/OPC로 만들고 8-replica solvent-scaled REST3를
 실행합니다. Effective temperature는 geometric ladder로 300–450 K를
 사용합니다. `build.sh`는 temperature 목록에서
@@ -100,6 +102,10 @@ Parser 0.2.2는 solvent override의 σ와 ε를 소수점 4자리로 출력합�
 override가 필요한 water–water와 ion–water parameter는 base topology 값을
 유지합니다.
 
+Adapter는 parser의 molecule index를 `[ moleculetype ]` definition에 맞춥니다.
+같은 molecule 이름이 `[ molecules ]`의 여러 row에 나타나도 definition을 한 번만
+선택하며, row 순서와 개수 및 coordinate file의 atom 순서는 바꾸지 않습니다.
+
 ParmEd는 여러 residue로 이루어진 첫 molecule을 기본적으로 `system1`이라고
 기록합니다. Parser 0.2.2는 이 이름을 `[ system ]` section으로 잘못 인식하므로
 `convert_topology.py`가 첫 molecule의 definition과 reference를
@@ -188,7 +194,17 @@ Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 
 
 Replica 실행이나 batch 도중 `grompp`가 실패하면 이미 시작한 replica가 모두 종료될 때까지 기다린 뒤 실패로 종료합니다. 후속 stage는 시작하지 않습니다.
 
+`download.sh`는 모든 asset과 `SHA256SUMS`를 staging에서 확인한 뒤 `helpers/publish_download.py`로 게시합니다. Transfer, checksum 또는 일반 publication 실패에서는 기존 파일을 보존하며, 관련 없는 preparation 파일도 유지합니다. `structure/.download.pending`가 남으면 prepare/build와 새 download가 거부됩니다. 보존된 staging과 marker를 점검하고, marker만 삭제해 이전 파일과 새 파일을 섞어 사용하지 않습니다.
+
+Parser archive와 추출된 source도 구조 파일과 함께 게시합니다. `.dependencies.download.pending`가 남으면 해당 parser를 읽는 build와 새 download를 거부합니다.
+
+### Exchange 진단
+
+`round_trips`는 처음 도달한 endpoint에서 반대 endpoint를 방문한 뒤 처음 endpoint로 돌아온 cycle 수입니다. 편도 이동과 같은 endpoint의 반복 방문은 왕복으로 세지 않습니다.
+
 ## English
+
+Only even replica counts of at least two are supported. `build.sh` and `run.sh` reject odd schedules without adjusting them. `run.sh --dry-run` checks the actual state-table count too. Prepare a new work directory for results built with an odd schedule.
 
 `grompp_utils.bash` first runs `grompp` without `-maxwarn`. It is retried with
 `-maxwarn 1` only when the AMBER-to-GROMACS topology conversion leaves a charge
@@ -253,6 +269,10 @@ Parser 0.2.2 writes solvent nonbonded overrides with only four decimal places.
 double precision and records 16 digits. This keeps explicit water–water and
 ion–water overrides equal to the base topology while retaining the intended
 kappa-scaled protein–water interaction.
+
+The adapter also matches parser molecule indices to `[ moleculetype ]` definitions.
+Repeated names in `[ molecules ]` select the same definition without changing
+row order, molecule counts, or the atom order in the coordinate file.
 
 Run with `--cpus TOTAL --gpus GPU_COUNT`; the CPU count must divide evenly among
 the replicas, while `GPU_COUNT` may range from one to the replica count.
@@ -335,3 +355,11 @@ required outputs, are preserved and rejected. Existing results are not certified
 retroactively. Start a new tutorial copy without generated `work/` directories for
 a new calculation. AMBER stages with `ntwx=0` do not require a trajectory for
 completion. Supported continuation retains its existing restart/state handoff.
+
+`download.sh` validates every asset and `SHA256SUMS` in staging before publishing through `helpers/publish_download.py`. Transfer, checksum and ordinary publication failures preserve existing files, including unrelated preparation files. A retained `structure/.download.pending` blocks source readers and new downloads. Inspect the retained staging and marker; deleting only the marker can expose a mixed generation.
+
+The parser archive and extracted source are published with the structure assets. A retained `.dependencies.download.pending` blocks builds reading that parser and new downloads.
+
+### Exchange diagnostics
+
+`round_trips` counts complete cycles from the first endpoint reached, through the opposite endpoint, and back to the starting endpoint. One-way movement and repeated visits to the same endpoint do not count as round trips.

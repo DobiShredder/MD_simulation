@@ -108,6 +108,8 @@ Production, replica-exchange state, GaMD state, WESTPA state와 PLUMED bias stat
 자동으로 삭제하거나 덮어쓰지 않습니다. Method별 continuation 조건은 leaf
 README에서 설명합니다.
 
+Config의 숫자 값과 numeric array에는 NaN/Inf를 사용할 수 없습니다. 양수와 0을 허용하는 범위는 parameter별로 다릅니다. Build는 같은 work registry에서 준비된 input과 config를 쓰는 작업이 실행 중이면 읽기 전에 중단합니다. 기존 input과 output은 보존합니다.
+
 ## English
 
 The `Config choices` table in each leaf README documents options that select
@@ -189,3 +191,5 @@ workflow stops and preserves the existing files. AMBER `.out`, `.rst7`, `.nc`,
 and `.mdinfo`/`.info` files are retained for minimization, equilibration, and
 production. Production and method state files are never overwritten
 automatically. See each leaf README for its continuation contract.
+
+Numeric config values and arrays must be finite. Whether zero is allowed depends on the parameter. Build stops before reading a prepared input or config with an active writer in the same work registry, preserving existing inputs and outputs.

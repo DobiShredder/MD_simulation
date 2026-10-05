@@ -8,19 +8,38 @@ import numpy as np
 def read_colvar(path: Path) -> dict[str, np.ndarray]:
     fields = None
     rows = []
-    for line in path.read_text(encoding="utf-8").splitlines():
+    for line_number, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        line = raw.strip()
         if line.startswith("#! FIELDS"):
-            fields = line.split()[2:]
+            candidate = line.split()[2:]
+            if not candidate or len(candidate) != len(set(candidate)):
+                raise ValueError(f"COLVAR fields are empty or duplicated: {path}:{line_number}")
+            if fields is not None and fields != candidate:
+                raise ValueError(f"COLVAR header changed: {path}:{line_number}")
+            fields = candidate
         elif line and not line.startswith("#"):
-            rows.append([float(value) for value in line.split()])
+            if fields is None:
+                raise ValueError(f"COLVAR data precedes its header: {path}:{line_number}")
+            values = line.split()
+            if len(values) != len(fields):
+                raise ValueError(f"COLVAR column count differs from header: {path}:{line_number}")
+            try:
+                row = [float(value) for value in values]
+            except ValueError as error:
+                raise ValueError(f"COLVAR contains nonnumeric data: {path}:{line_number}") from error
+            if not np.isfinite(row).all():
+                raise ValueError(f"COLVAR contains nonfinite data: {path}:{line_number}")
+            rows.append(row)
     if fields is None or not rows:
         raise ValueError(f"COLVAR header or data not found: {path}")
-    data = np.asarray(rows)
+    data = np.asarray(rows, dtype=float)
     return {name: data[:, index] for index, name in enumerate(fields)}
 
 
 def main() -> int:
     work_dir = Path("work")
+    from helpers.writer_guard import protect_python_entry
+    protect_python_entry(work_dir, reads=(work_dir,), writes=(work_dir / "analysis",))
     print(f"Reading bias-analysis inputs: {work_dir}", flush=True)
     for filename in ("COLVAR", "KERNELS", "opes.state"):
         path = work_dir / filename

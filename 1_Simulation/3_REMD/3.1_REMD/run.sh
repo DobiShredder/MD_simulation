@@ -157,7 +157,11 @@ mpi_launcher=${MPI_LAUNCHER:-mpirun}
 if [[ ! -s work/states.tsv ]]; then
     die "Run ./build.sh first."
 fi
-replica_count=$(awk 'NR > 1 {count++} END {print count + 0}' work/states.tsv)
+states_file=work/states.tsv
+replica_count=$(awk 'NR > 1 {count++} END {print count + 0}' "$states_file")
+if (( replica_count < 2 || replica_count % 2 != 0 )); then
+    die "AMBER T-REMD requires at least two and an even number of states: $states_file ($replica_count states)"
+fi
 
 if (( dry_run )); then
     echo "Dry run: planned replica commands; no engine execution"

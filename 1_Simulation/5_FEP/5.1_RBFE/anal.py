@@ -255,6 +255,8 @@ def write_diagnostics(edge: object, output_dir: Path | None = None) -> None:
 
 
 def main() -> None:
+    from helpers.writer_guard import protect_python_entry
+    protect_python_entry(WORK, writes=(WORK,))
     from helpers.result_generation import analysis_generation
 
     print(f"Reading free-energy analysis inputs: {WORK / 'states.tsv'}", flush=True)
