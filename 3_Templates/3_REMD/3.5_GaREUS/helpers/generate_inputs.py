@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate config and generate AMBER inputs for soluble-protein MD."""
+"""Validate window settings and generate LEaP build inputs."""
 
 from __future__ import annotations
 
@@ -36,11 +36,6 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--validate-only", action="store_true",
                         help="Validate config and window count without writing inputs")
     return parser.parse_args()
-
-
-def render_cntrl(title: str, values: list[str]) -> str:
-    body = "\n".join(f"  {value}," for value in values)
-    return f"{title}\n&cntrl\n{body}\n/\n"
 
 
 def resolve(config_path: Path) -> dict[str, object]:
@@ -128,67 +123,6 @@ def write_tleap(output: Path, values: dict[str, object], salt_pairs: int | None)
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def write_md_inputs(output: Path, values: dict[str, object]) -> None:
-    dt_ps = float(values["timestep"]) / 1000.0
-    temperature = values["temperature"]
-    pressure = values["pressure"]
-    interval = values["trajectory_interval"]
-    seed = -1 if values["seed"] == "random" else values["seed"]
-
-    (output / "min-solvent.in").write_text(
-        render_cntrl(
-            "Minimize solvent while restraining the solute",
-            [
-                "imin=1", "maxcyc=5000", "ncyc=2500", "ntb=1", "cut=10.0",
-                "ntr=1", "restraint_wt=10.0", "restraintmask='!:WAT,Na+,Cl-'",
-            ],
-        ),
-        encoding="utf-8",
-    )
-    (output / "min-all.in").write_text(
-        render_cntrl(
-            "Minimize the complete system",
-            ["imin=1", "maxcyc=5000", "ncyc=2500", "ntb=1", "cut=10.0", "ntr=0"],
-        ),
-        encoding="utf-8",
-    )
-    (output / "heat.in").write_text(
-        render_cntrl(
-            "Heat the system to the target temperature",
-            [
-                "imin=0", "irest=0", "ntx=1", f"nstlim={values['heating_steps']}",
-                f"dt={dt_ps:.6f}", "tempi=20.0", f"temp0={temperature:.3f}",
-                "ntt=3", "gamma_ln=1.0", f"ig={seed}", "ntb=1", "ntc=2",
-                "ntf=2", "cut=10.0", "ntr=1", "restraint_wt=2.0",
-                "restraintmask='!:WAT,Na+,Cl-'", f"ntpr={interval}",
-                f"ntwx={interval}", f"ntwr={interval}", "ioutfm=1",
-            ],
-        ),
-        encoding="utf-8",
-    )
-    dynamics = [
-        "imin=0", "irest=1", "ntx=5", f"dt={dt_ps:.6f}",
-        f"temp0={temperature:.3f}", "ntt=3", "gamma_ln=1.0", "ig=-1",
-        "ntb=2", "ntp=1", "barostat=2", f"pres0={pressure:.3f}",
-        "taup=2.0", "ntc=2", "ntf=2", "cut=10.0", "ntr=0",
-        f"ntpr={interval}", f"ntwx={interval}", f"ntwr={interval}", "ioutfm=1",
-    ]
-    (output / "equilibrate.in").write_text(
-        render_cntrl(
-            "NPT equilibration",
-            [f"nstlim={values['equilibration_steps']}", *dynamics],
-        ),
-        encoding="utf-8",
-    )
-    (output / "production.in").write_text(
-        render_cntrl(
-            "Production MD segment",
-            [f"nstlim={values['production_steps_per_segment']}", *dynamics],
-        ),
-        encoding="utf-8",
-    )
-
-
 def write_resolved(output: Path, values: dict[str, object], salt_pairs: int | None) -> None:
     seed = f'"{values["seed"]}"' if isinstance(values["seed"], str) else values["seed"]
     salt_text = -1 if salt_pairs is None else salt_pairs
@@ -230,7 +164,6 @@ def main() -> None:
         return
     args.output.mkdir(parents=True, exist_ok=True)
     write_tleap(args.output, values, args.salt_pairs)
-    write_md_inputs(args.output, values)
     write_resolved(args.output.parent, values, args.salt_pairs)
     apply_config(args.config, args.output.parent)
 

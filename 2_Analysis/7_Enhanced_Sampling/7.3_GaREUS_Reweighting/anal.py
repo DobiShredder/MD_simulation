@@ -34,6 +34,8 @@ def read_inputs(
 
     with summary_file.open(encoding="utf-8", newline="") as handle:
         states = list(csv.DictReader(handle, delimiter="\t"))
+    if len(states) < 2 or len(states) % 2:
+        raise ValueError(f"GaREUS requires at least two and an even number of states: {summary_file} ({len(states)} states)")
 
     centers = []
     forces = []

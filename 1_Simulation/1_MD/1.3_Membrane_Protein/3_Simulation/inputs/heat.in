@@ -29,6 +29,9 @@ Heat KcsA membrane system from 20 K to 310 K over 200 ps
  ioutfm=1,
  nmropt=1,
 /
+&ewald
+ netfrc=0,
+/
 &wt
  type='TEMP0',
  istep1=0,

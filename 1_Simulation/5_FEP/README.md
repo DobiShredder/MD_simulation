@@ -19,8 +19,9 @@ interaction을 단계적으로 바꿉니다. Lambda는 simulation time이나 lig
 
 두 예제 모두 AMBER가 각 configuration을 모든 lambda state에서 다시 평가하도록
 `ifmbar=1`을 사용합니다. `anal.py`는 AmberTools 26 FE-ToolKit의
-`edgembar-amber2dats.py`와 `edgembar --mode=MBAR`로 Gibbs free energy,
-bootstrap uncertainty와 state overlap을 계산합니다. Window당 1 ns는 실행 가능한
+`edgembar-amber2dats.py`로 자료를 변환하고 `edgembar --mode=AUTO`로 Gibbs
+free energy와 bootstrap uncertainty를 계산합니다. 전체 cross-state matrix가 있으면
+MBAR와 state overlap을 계산하고, 인접 state energy만 있으면 BAR를 사용합니다. Window당 1 ns는 실행 가능한
 tutorial 기본값이며 수렴된 연구 결과를 보장하지 않습니다.
 
 MBAR analysis에는 AmberTools 26의 `edgembar`가 필요합니다.
@@ -47,7 +48,9 @@ free-energy estimates.
 The RBFE example transforms benzene into toluene in T4 lysozyme L99A. The ABFE
 example applies a restrained double-decoupling cycle to JZ4 bound to T4
 lysozyme L99A/M102Q. Both collect the full cross-state energy matrix with AMBER `ifmbar=1`
-and use the AmberTools 26 FE-ToolKit MBAR estimator. One nanosecond of
+and use AmberTools 26 FE-ToolKit with `--mode=AUTO`: MBAR with overlap
+for a complete cross-state matrix, or adjacent-state BAR when only
+neighboring energies are available. One nanosecond of
 production per window is a tutorial-scale default.
 
 The ACES26 cross-state matrix and restrained ABFE path still require a short

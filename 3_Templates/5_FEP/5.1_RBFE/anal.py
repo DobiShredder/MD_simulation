@@ -19,7 +19,6 @@ sys.path.insert(0, "helpers")
 from config_utils import load_config, positive_float, section  # noqa: E402
 
 
-ROOT = Path.cwd()
 WORK = Path(os.environ.get("WORK_DIR", "work"))
 TEMPERATURE_K = 300.0
 BOOTSTRAP_SAMPLES = 20

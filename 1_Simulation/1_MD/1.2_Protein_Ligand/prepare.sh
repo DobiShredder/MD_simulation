@@ -41,6 +41,16 @@ fi
 # Assign GAFF2 atom types and AM1-BCC charges.
 echo "Parameterizing JZ4 with GAFF2/AM1-BCC (net charge: $ligand_charge); log: $work_dir/antechamber.log"
 mkdir -p "$work_dir"
+parameter_record="$work_dir/.ligand-parameters.identity.json"
+"${PYTHON:-python3}" helpers/input_identity.py \
+    --record "$parameter_record" --stage "ligand parameter preparation" \
+    --input "$ligand_sdf" --value="$ligand_charge" \
+    --output "$work_dir/sqm.out" --output "$ligand_mol2" --output "$ligand_frcmod"
+parameter_state=$("${PYTHON:-python3}" helpers/input_identity.py --check-completion "$parameter_record")
+if [[ "$parameter_state" == complete ]]; then
+    echo "Using completed ligand parameters: $ligand_mol2, $ligand_frcmod"
+    exit 0
+fi
 cp "$ligand_sdf" "$work_dir/JZ4_ideal.sdf"
 
 if ! (
@@ -85,4 +95,9 @@ if [[ ! -s "$ligand_frcmod" ]]; then
     die "ligand frcmod was not created: $ligand_frcmod"
 fi
 
+"${PYTHON:-python3}" helpers/input_identity.py \
+    --finish-completion "$parameter_record" \
+    --required-output "$work_dir/sqm.out" \
+    --required-output "$ligand_mol2" \
+    --required-output "$ligand_frcmod"
 echo "Ligand parameter: $work_dir"

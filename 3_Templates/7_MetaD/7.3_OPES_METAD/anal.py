@@ -133,7 +133,6 @@ def main() -> None:
         ("effective_samples_final", values["opes.neff"][-1], "count"),
         ("kernels_final", values["opes.nker"][-1], "count"),
     ])
-    hills = None
     write_metrics(output_dir / "production_summary.tsv", rows)
     print(f"OPES_METAD diagnostics: {output_dir / 'production_summary.tsv'}")
 

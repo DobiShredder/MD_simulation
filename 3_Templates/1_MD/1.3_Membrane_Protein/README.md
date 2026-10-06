@@ -2,9 +2,14 @@
 
 ## 한국어
 
-Equilibration은 `work/heat.rst7`을 initial coordinate file과 positional restraint의 `-ref` input으로 함께 읽습니다. 이 reference가 변경되거나 누락되면 기존 stage 결과를 보존하고 실행을 거부합니다.
+Salt pair 수는 packed PDB의 WAT oxygen atom 수와 설정 농도로 계산합니다. Residue 번호가 반복되어도 water count는 유지합니다. 반올림한 pair 수가 0이면 neutralization만 실행하고 bulk-salt 추가 command는 생성하지 않습니다.
 
-사용자가 직접 실행하는 파일은 이 directory의 root에 있습니다. `helpers/`는 `build.sh`, `run.sh` 또는 `anal.py`가 자동 호출하는 leaf-local 내부 code이며 직접 실행하지 않습니다.
+Protein restraint는 heavy atoms → backbone → 전체 해제 순서로 진행합니다.
+Equilibration은 총 1 ns를 400 ps + 400 ps + 200 ps로 나눕니다.
+두 restrained stage의 `-ref`는 같은 `work/heat.rst7`입니다. 이 reference가
+변경되거나 누락되면 기존 stage 결과를 보존하고 실행을 거부합니다.
+
+사용자가 직접 실행하는 파일은 이 directory의 root에 있습니다. `helpers/`는 `build.sh` 또는 `run.sh`가 자동 호출하는 leaf-local 내부 code이며 직접 실행하지 않습니다.
 
 중단되거나 marker가 없는 stage output은 자동 삭제하거나 재실행하지 않고 보존한 채 중단합니다.
 
@@ -40,9 +45,47 @@ force-field naming과 출처를 확인한 뒤 config 경로에 둡니다.
 
 Build는 bilayer를 복제하고 protein overlap을 제거한 뒤 ff19SB/Lipid21/OPC
 topology를 생성합니다. 기본 production은 anisotropic Monte Carlo pressure
-coupling을 사용하며 10×10 ns segments입니다. `protein_restraint_mask`는 system의
-protein와 retained pore ion/water 선택에 맞게 검토해야 합니다.
+coupling을 사용하며 10×10 ns segments입니다. `protein_restraint_mask`는 protein
+residue만, `lipid_restraint_mask`는 lipid residue만 선택하도록 topology와 대조합니다.
+기본 protein mask는 Lipid21의 `PA,PC,PE,OL,CHL`과 water·bulk ions를 제외합니다.
+별도 ligand나 다른 lipid가 있으면 이 selection을 수정합니다. Bound ion/water
+restraint는 자동으로 추가하지 않습니다.
 `helpers/build_membrane.py`는 `build.sh`가 자동 호출하는 bilayer 배치 helper입니다.
+
+### 계산 단계와 restraint
+
+Water와 bulk ions는 첫 minimization부터 움직입니다. Lipid heavy-atom restraint는
+첫 minimization 뒤에 풀고, protein restraint는 마지막 equilibration까지 단계적으로
+줄입니다. Sampling은 conventional MD이며 restraint는 preparation에만 적용합니다.
+
+| Generated input | 단계 | Positional restraint | 기본 길이 |
+| --- | --- | --- | --- |
+| `work/inputs/min-solvent.in` | Solvent minimization | Protein + lipid heavy atoms, 10 kcal·mol⁻¹·Å⁻² | 10,000 cycles |
+| `work/inputs/min-lipid.in` | Lipid/environment minimization | Protein heavy atoms, 10 kcal·mol⁻¹·Å⁻² | 10,000 cycles |
+| `work/inputs/heat.in` | NVT heating, 20→300 K | Protein heavy atoms, 5 kcal·mol⁻¹·Å⁻² | 500 ps |
+| `work/inputs/equilibrate-heavy.in` | NPT equilibration | Protein heavy atoms, 1 kcal·mol⁻¹·Å⁻² | 400 ps |
+| `work/inputs/equilibrate-backbone.in` | NPT equilibration | Protein backbone, 1 kcal·mol⁻¹·Å⁻² | 400 ps |
+| `work/inputs/equilibrate.in` | NPT equilibration | 없음 (`ntr=0`) | 200 ps |
+| `work/inputs/production.in` | Production segment | 없음 (`ntr=0`) | 10 ns × 10 |
+
+Heavy atoms는 protein selection에 `!@H=`를 적용합니다. Backbone은 같은 protein
+selection에 `@N,CA,C,O,OXT`를 적용하므로 lipid·water의 `O`는 제외합니다.
+Restrained stage는 `&ewald`의 `netfrc=0`으로 인위적인 net-force 제거를 끕니다.
+
+두 minimization은 최초 `system.rst7`을 `-ref`로 사용합니다. Heating은
+`min-lipid.rst7`에서 velocity를 생성합니다(`irest=0`, `ntx=1`). 세 equilibration은
+이전 stage의 restart를 순서대로 읽어 원자 좌표와 velocity를 이어받습니다
+(`irest=1`, `ntx=5`). Heavy-atom과 backbone stage는 `heat.rst7`을 같은 restraint
+reference로 쓰고, 마지막 unrestrained stage의 `equilibrate.rst7`이 production의
+initial restart가 됩니다. Stage별 `.out`, `.rst7`, dynamics의 `.nc`와 `.info`는
+`work/`에 남습니다.
+
+`equilibration_steps`는 세 stage의 합계입니다. `equilibration_heavy_steps`와
+`equilibration_backbone_steps`를 지정하고, 남은 steps를 unrestrained stage에
+사용합니다. 각 stage에는 1 step 이상이 필요합니다. 두 stage 값을 생략한 config는
+각각 총 steps의 40%를 사용합니다. 생성된 값은 `resolved_config.toml`에 기록합니다.
+1 ns는 기본 실행 길이이며 membrane 수렴을 보장하지 않습니다. Membrane area·두께와
+protein 상태를 확인하면서 system에 맞게 equilibration을 늘립니다.
 
 ### Config 선택값
 
@@ -57,7 +100,7 @@ protein와 retained pore ion/water 선택에 맞게 검토해야 합니다.
 | `production_ensemble` | `NVT`, `NPT` | `NPT` | Production의 `ntb`와 `ntp`를 설정합니다. |
 | `pressure_coupling` | `anisotropic`만 지원 | `anisotropic` | Membrane box 축의 pressure scaling을 분리합니다. |
 | `constraint_mode` | `h-bonds`만 지원 | `h-bonds` | Hydrogen-containing bond에 SHAKE를 적용합니다. |
-| `random_seed` | `"random"` 또는 양의 정수 | `"random"` | `"random"`은 AMBER `ig=-1`, 정수는 고정 seed를 사용합니다. |
+| `random_seed` | `"random"` 또는 양의 정수 | `"random"` | Heating의 seed입니다. 이후 stage는 `ig=-1`로 실행할 때마다 새 seed를 사용합니다. |
 
 이 leaf는 Lipid21 membrane build와 함께 검증한 `ff19SB + OPC`만 지원합니다.
 `ff99SB-ILDN + TIP3P`와 `ff14SB + TIP3P`는 membrane/Lipid21 조합을 별도로
@@ -109,9 +152,14 @@ SIGKILL 또는 node 장애로 남은 lock은 자동으로 지우지 않습니다
 
 ## English
 
-Equilibration reads `work/heat.rst7` as both the initial coordinate file and the positional-restraint `-ref` input. A changed or missing reference stops the run and preserves existing stage results.
+Salt pairs use the packed PDB WAT oxygen count and configured concentration. Repeated residue numbers do not reduce the water count. A rounded pair count of zero keeps neutralization and omits the bulk-salt command.
 
-User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh`, `run.sh`, or `anal.py`; it is not a separate entry point.
+Protein restraints progress from heavy atoms to backbone to none. The total 1 ns
+equilibration is split into 400 ps + 400 ps + 200 ps. Both restrained stages use
+the same `work/heat.rst7` reference. A changed or missing reference stops the run
+and preserves existing stage results.
+
+User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh` or `run.sh`; it is not a separate entry point.
 
 Interrupted or unmarked stage output is retained and stops the workflow instead of being deleted or rerun automatically.
 
@@ -128,7 +176,7 @@ Interrupted or unmarked stage output is retained and stops the workflow instead 
 | `production_ensemble` | `NVT`, `NPT` | `NPT` | Sets production `ntb` and `ntp`. |
 | `pressure_coupling` | `anisotropic` only | `anisotropic` | Separates pressure scaling along the membrane box axes. |
 | `constraint_mode` | `h-bonds` only | `h-bonds` | Applies SHAKE to bonds involving hydrogen. |
-| `random_seed` | `"random"` or a positive integer | `"random"` | `"random"` maps to AMBER `ig=-1`; an integer fixes the seed. |
+| `random_seed` | `"random"` or a positive integer | `"random"` | Sets the heating seed; later stages use `ig=-1` and receive a new seed per invocation. |
 
 This leaf supports only `ff19SB + OPC`, the pair validated with the Lipid21
 membrane build. Config validation rejects `ff99SB-ILDN + TIP3P` and
@@ -149,6 +197,46 @@ water padding in `config.toml`. Bilayer coordinate patches are not redistributed
 by this repository. The default run uses ff19SB/Lipid21/OPC, anisotropic Monte
 Carlo pressure coupling, and ten 10 ns production segments. `build.sh` calls
 `helpers/build_membrane.py` to place the bilayer and remove overlaps.
+
+Check `protein_restraint_mask` against the protein residues and
+`lipid_restraint_mask` against the lipids. The default protein mask excludes
+Lipid21 `PA,PC,PE,OL,CHL`, water, and bulk ions. Update it for additional ligands
+or lipid types. Bound-ion/water restraints are not added automatically.
+
+### Stages and restraints
+
+Water and bulk ions move from the first minimization. Lipid heavy-atom restraints
+end after that stage. Protein restraints are narrowed during equilibration.
+Sampling remains conventional MD; these restraints apply during preparation only.
+
+| Generated input | Stage | Positional restraint | Default length |
+| --- | --- | --- | --- |
+| `work/inputs/min-solvent.in` | Solvent minimization | Protein + lipid heavy atoms, 10 kcal·mol⁻¹·Å⁻² | 10,000 cycles |
+| `work/inputs/min-lipid.in` | Lipid/environment minimization | Protein heavy atoms, 10 kcal·mol⁻¹·Å⁻² | 10,000 cycles |
+| `work/inputs/heat.in` | NVT heating, 20→300 K | Protein heavy atoms, 5 kcal·mol⁻¹·Å⁻² | 500 ps |
+| `work/inputs/equilibrate-heavy.in` | NPT equilibration | Protein heavy atoms, 1 kcal·mol⁻¹·Å⁻² | 400 ps |
+| `work/inputs/equilibrate-backbone.in` | NPT equilibration | Protein backbone, 1 kcal·mol⁻¹·Å⁻² | 400 ps |
+| `work/inputs/equilibrate.in` | NPT equilibration | None (`ntr=0`) | 200 ps |
+| `work/inputs/production.in` | Production segment | None (`ntr=0`) | 10 ns × 10 |
+
+Heavy atoms use the protein selection intersected with `!@H=`. Backbone atoms
+use the same selection intersected with `@N,CA,C,O,OXT`; lipid/water atoms named
+`O` are excluded. Restrained stages set `netfrc=0` in `&ewald` to disable
+artificial net-force removal.
+
+Both minimizations reference the initial `system.rst7`. Heating generates
+velocities from `min-lipid.rst7` (`irest=0`, `ntx=1`). All three equilibration
+stages inherit coordinates and velocities from their predecessor restart
+(`irest=1`, `ntx=5`). Heavy-atom and backbone stages share the `heat.rst7`
+restraint reference. The final unrestrained `equilibrate.rst7` starts production.
+Stage `.out`, `.rst7`, dynamics `.nc`, and `.info` outputs remain in `work/`.
+
+`equilibration_steps` is the total across all three stages. Set
+`equilibration_heavy_steps` and `equilibration_backbone_steps`; the remainder is
+unrestrained. Every stage needs at least one step. If the two stage settings are
+omitted, each defaults to 40% of the total. Resolved step counts are recorded in
+`resolved_config.toml`. The default 1 ns does not establish membrane convergence.
+Extend equilibration based on membrane area, thickness, and protein-state checks.
 
 ### Engine selection and run state
 

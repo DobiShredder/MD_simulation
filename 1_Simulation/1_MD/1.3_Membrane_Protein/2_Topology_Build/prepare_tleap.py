@@ -53,6 +53,8 @@ def main() -> None:
     text = text.replace("BOX_X", f"{box[0]:.3f}")
     text = text.replace("BOX_Y", f"{box[1]:.3f}")
     text = text.replace("BOX_Z", f"{box[2]:.3f}")
+    if salt_pairs == 0:
+        text = text.replace("addionsrand system K+ SALT_PAIRS Cl- SALT_PAIRS\n", "")
     text = text.replace("SALT_PAIRS", str(salt_pairs))
     args.output.write_text(text, encoding="ascii")
 

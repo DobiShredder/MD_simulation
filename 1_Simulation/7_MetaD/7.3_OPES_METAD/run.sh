@@ -204,6 +204,6 @@ done
 
 "${PYTHON:-python3}" helpers/input_identity.py \
     --finish-completion "$work_dir/.production.identity.json" --directory "$work_dir" \
-+    --required-output "$work_dir/COLVAR" --required-output "$work_dir/KERNELS" --required-output "$work_dir/opes.state"
+    --required-output "$work_dir/COLVAR" --required-output "$work_dir/KERNELS" --required-output "$work_dir/opes.state"
 
 echo "1 ns OPES_METAD production completed: $work_dir/production.nc"

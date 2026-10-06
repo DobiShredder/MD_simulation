@@ -21,7 +21,6 @@ def main() -> None:
     output: list[str] = []
     section = ""
     marked = 0
-    nonprotein_marked = 0
 
     for line in lines:
         stripped = line.strip()
@@ -54,14 +53,8 @@ def main() -> None:
             rebuilt = f"{rebuilt} ;{comment}"
         output.append(rebuilt)
 
-        if residue_name in SOLVENT_AND_IONS:
-            nonprotein_marked += 1
-
     if marked == 0:
         raise SystemExit("No protein atoms were marked as the hot region.")
-
-    if nonprotein_marked:
-        raise SystemExit("The hot region contains solvent or ion atoms.")
 
     args.output_topology.write_text("\n".join(output) + "\n", encoding="utf-8")
     print(f"Protein hot-region marker: {marked} atoms")

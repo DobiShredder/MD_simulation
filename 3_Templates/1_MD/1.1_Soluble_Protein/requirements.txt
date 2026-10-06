@@ -1,3 +1,1 @@
 tomli>=2.0; python_version < "3.11"
-numpy>=1.24
-parmed>=4.2

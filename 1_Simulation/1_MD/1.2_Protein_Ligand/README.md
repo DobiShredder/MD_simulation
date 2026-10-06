@@ -49,6 +49,11 @@ His31은 neutral-pH baseline으로 `HIE`를 사용합니다.
 
 
 
+`prepare.sh`는 SDF와 net charge의 identity를 parameter 생성 전에 기록합니다.
+`sqm.out`, `jz4.mol2`, `jz4.frcmod`가 생성되고 두 program이 성공하면 완료 증거를 남깁니다.
+같은 input의 완료 parameter는 재사용합니다. Input 변경, 기록 없는 기존 output이나
+누락된 완료 output은 파일을 보존하고 거부합니다. 새 parameter 계산은 별도 tutorial 사본에서 시작합니다.
+
 ### 주요 option
 
 | Option | 의미 |
@@ -125,6 +130,12 @@ The trajectory can supply interaction and MM/GBSA or MM/PBSA examples, but it
 does not establish a converged binding affinity. Check the JZ4 atom mapping,
 net charge, missing parameters, and total system charge in `leap.log`.
 `run.sh` defaults to `pmemd.cuda`; set `AMBER_ENGINE` to use another executable.
+
+`prepare.sh` records the SDF and net-charge identity before parameter generation.
+Completion requires successful antechamber/parmchk2 exits and nonempty `sqm.out`,
+`jz4.mol2`, and `jz4.frcmod`. Completed parameters with unchanged inputs are reused.
+Changed inputs, existing outputs without records, and missing completed outputs are
+preserved and rejected. Use a separate tutorial copy for new parameter calculations.
 
 ## References / 참고 자료
 

@@ -1,4 +1,4 @@
-Relax lipids, water, and bulk ions while restraining KcsA and filter K+
+Relax lipids and solvent while restraining KcsA heavy atoms and filter K+
 &cntrl
  imin=1,
  maxcyc=10000,
@@ -10,8 +10,10 @@ Relax lipids, water, and bulk ions while restraining KcsA and filter K+
  ntf=1,
  ntb=1,
  cut=10.0,
-
  ntr=1,
  restraint_wt=10.0,
  restraintmask=':1-415 & !@H=',
+/
+&ewald
+ netfrc=0,
 /

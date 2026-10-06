@@ -24,7 +24,6 @@ def arguments() -> argparse.Namespace:
     )
     parser.add_argument("config", type=Path, help="TOML configuration file")
     parser.add_argument("topology", type=Path, help="Shared AMBER parm7 topology")
-    parser.add_argument("coordinates", type=Path, help="Shared AMBER restart coordinates")
     parser.add_argument("output", type=Path, help="Directory for generated replicas")
     return parser.parse_args()
 

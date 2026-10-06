@@ -14,6 +14,9 @@ GaREUS production을 완료한 다음 이 directory에서 실행합니다.
 python3 anal.py
 ```
 
+최소 2개·짝수 state만 읽습니다. 기본 GaREUS schedule은 20개이며, preparation과
+`anal.py` 모두 0개·1개·홀수 state를 기존 output 교체 전에 거부합니다.
+
 PyMBAR 4가 필요합니다.
 
 ```bash
@@ -21,7 +24,7 @@ conda activate ambertools26
 conda install -c conda-forge "pymbar>=4,<5"
 ```
 
-`run.sh`는 20개 window의 `restraint.production.dat`과
+`run.sh`는 state table의 모든 window에서 `restraint.production.dat`과
 `gamd.production.log`를 읽습니다. 각 window에서 distance와 dual-boost
 record 수가 같지 않으면 중단합니다. AMBER GaMD log 형식이 달라지면
 `prepare.py`의 `read_boost()`에서 component column을 확인합니다.
@@ -85,7 +88,10 @@ removing the REUS umbrella restraints. Weighted, bin-local boost means and
 variances are then used for a second-order cumulant approximation that removes
 the GaMD bias.
 
-Run `./run.sh` to pair distance and dual-boost records for all 20 windows, then
+Only even state counts of at least two are supported; the default has 20 states.
+Preparation and `anal.py` reject zero, one, or odd states before replacing outputs.
+
+Run `./run.sh` to pair distance and dual-boost records for every configured window, then
 run `python3 anal.py`. The outputs include the PMF before and after GaMD
 reweighting, per-frame MBAR weights, the state-overlap matrix, and weight
 diagnostics.

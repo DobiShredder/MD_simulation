@@ -73,3 +73,7 @@ Existing `work/amber-named.pdb`, `tleap.in`, `system.parm7`, `system.rst7`, `sys
 Normal exit, command failure and INT/TERM release only the owned lock after child termination is verified. Locks left by SIGKILL or node failure are retained. Inspect the reported lock and its `owner.json` host, PID, command and scopes; confirm through the scheduler and owning host that all writers and children stopped before manually removing only that lock directory. A PID missing locally is not sufficient. Apply the same checks to `.gate/`.
 
 Supported `--dry-run` and `--help` do not create writer or identity files. Do not move active work trees or edit identities to reuse results. Protection was tested on a local filesystem with local child processes; network filesystems, remote MPI and termination of writers on other nodes remain unverified.
+
+Salt pair 수가 0이면 `prepare_tleap.py`는 bulk-salt 추가 command를 생략합니다. 기존 neutralization은 유지합니다.
+
+When the salt-pair count is zero, `prepare_tleap.py` omits the bulk-salt command and retains neutralization.

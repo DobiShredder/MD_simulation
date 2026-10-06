@@ -28,7 +28,7 @@ case "$1" in
         shift 2
         ;;
     -h|--help)
-        echo "Usage: ./run.sh [--preparation-only | --production-only] [--system complex|solvent] [--stage charge|vdw] [--windows START-END] [--dry-run]"
+        echo "Usage: ./run.sh [--preparation-only | --production-only] [--system complex|solvent] [--windows START-END] [--dry-run]"
         echo
         echo "Run every RBFE environment and lambda window."
         echo

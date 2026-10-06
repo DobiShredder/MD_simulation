@@ -2,7 +2,7 @@
 
 ## 한국어
 
-사용자가 직접 실행하는 파일은 이 directory의 root에 있습니다. `helpers/`는 `build.sh`, `run.sh` 또는 `anal.py`가 자동 호출하는 leaf-local 내부 code이며 직접 실행하지 않습니다.
+사용자가 직접 실행하는 파일은 이 directory의 root에 있습니다. `helpers/`는 `build.sh`와 `run.sh`가 자동 호출하는 leaf-local 내부 code이며 직접 실행하지 않습니다.
 
 중단되거나 marker가 없는 stage output은 자동 삭제하거나 재실행하지 않고 보존한 채 중단합니다.
 
@@ -103,9 +103,21 @@ preparation 값보다 커야 하며, 네 값은 `averaging_interval_steps`의 �
 사용하고, 나머지 800,000 steps에서 statistics를 수집합니다. Parameter preparation의
 전체 길이는 `ntcmd + nteb`인 2,000,000 steps이며 production 길이에는 포함하지 않습니다.
 
+이 leaf에는 analysis entry가 없습니다. Production의 `production.gamd.log`와
+`production.nc`를 segment별로 보존합니다.
+[GaMD reweighting tutorial](../../../2_Analysis/7_Enhanced_Sampling/7.2_GaMD_Reweighting/README.md)은
+지정된 tutorial의 단일 log와 CV 100 records를 소비합니다. 이 template의 여러
+segment를 자동 병합하는 consumer는 제공하지 않습니다.
+
 ## English
 
-User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh`, `run.sh`, or `anal.py`; it is not a separate entry point.
+This leaf has no analysis entry. Preserve each production segment's
+`production.gamd.log` and `production.nc`. The
+[GaMD reweighting tutorial](../../../2_Analysis/7_Enhanced_Sampling/7.2_GaMD_Reweighting/README.md)
+consumes one log and 100 matching CV records from its designated tutorial.
+It does not merge this template's production segments automatically.
+
+User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh` and `run.sh`; it is not a separate entry point.
 
 Interrupted or unmarked stage output is retained and stops the workflow instead of being deleted or rerun automatically.
 

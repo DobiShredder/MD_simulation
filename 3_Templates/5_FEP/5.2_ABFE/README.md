@@ -2,6 +2,8 @@
 
 ## 한국어
 
+Window 생성 전에 ligand anchor 세 개는 `ligand_mask` 안에, protein anchor 세 개는 밖에 있는지 검사합니다. 여섯 mask는 서로 다른 atom을 하나씩 선택해야 합니다. Protein anchor의 화학적 소속과 geometry는 준비한 system에서 검토합니다.
+
 사용자가 직접 실행하는 파일은 이 directory의 root에 있습니다. `helpers/`는 `build.sh`, `run.sh` 또는 `anal.py`가 자동 호출하는 leaf-local 내부 code입니다. `helpers/result_generation.py`는 외부 consumer에서 결과를 읽기 전 별도로 검사할 때도 사용합니다.
 
 중단되거나 marker가 없는 stage output은 자동 삭제하거나 재실행하지 않고 보존한 채 중단합니다.
@@ -11,7 +13,7 @@ Water count를 위한 first-pass LEaP input과 `solvated.pdb`는 `work/.build_tm
 이 directory만 별도로 복사해 사용할 수 있습니다. Python dependency는 복사한
 directory의 `requirements.txt`를 사용해 설치합니다.
 
-Ligand restraint coupling, complex/solvent charge decoupling과 vdW decoupling을
+Ligand restraint removal, complex/solvent charge decoupling과 vdW decoupling을
 포함하는 double-decoupling ABFE window를 만듭니다. `build.sh`에는 ligand가
 포함된 reviewed complex PDB를 전달하며, 같은 residue name과 atom name을 가진
 precharged MOL2와 frcmod를 config에서 지정합니다.
@@ -126,6 +128,8 @@ python3 helpers/result_generation.py work
 
 ## English
 
+Before window generation, the three ligand anchors must belong to `ligand_mask` and the three protein anchors must lie outside it. Each mask must select one of six distinct atoms. Check the protein anchors’ chemical roles and geometry in the prepared system.
+
 User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh`, `run.sh`, or `anal.py`; `helpers/result_generation.py` also supports a separate integrity check before an external consumer reads results.
 
 Interrupted or unmarked stage output is retained and stops the workflow instead of being deleted or rerun automatically.
@@ -154,7 +158,7 @@ creates one window in the corresponding leg and is recorded in
 This directory can be copied and used on its own. Install its Python
 dependencies from the local `requirements.txt` after copying it.
 
-This double-decoupling ABFE template includes restraint coupling and charge/vdW
+This double-decoupling ABFE template includes restraint removal and charge/vdW
 decoupling in complex and solvent environments. Pass a reviewed complex PDB and
 configure a matching precharged ligand MOL2/frcmod plus six distinct one-atom
 anchor masks. The build creates 65 windows: 11 restraint, 22 charge, and 32 vdW

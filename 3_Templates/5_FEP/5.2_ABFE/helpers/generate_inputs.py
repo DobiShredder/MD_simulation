@@ -102,6 +102,7 @@ def atom_from_mask(topology: object, mask: str) -> object:
 def restraint_records(
     topology: object,
     restraints: dict[str, object],
+    ligand_mask: str,
 ) -> list[RestraintRecord]:
     p1, p2, p3 = [
         atom_from_mask(topology, string_value(restraints, f"protein_anchor_{index}"))
@@ -114,6 +115,21 @@ def restraint_records(
     anchors = [p1, p2, p3, l1, l2, l3]
     if len({atom.idx for atom in anchors}) != 6:
         raise ValueError("The six ABFE anchor masks must select six distinct atoms")
+    from parmed.amber.mask import AmberMask
+
+    ligand_atoms = {
+        index for index, selected in enumerate(AmberMask(topology, ligand_mask).Selection())
+        if selected
+    }
+    if not ligand_atoms:
+        raise ValueError(f"Ligand mask selects no atoms: {ligand_mask}")
+    for role, role_atoms in (("protein", (p1, p2, p3)), ("ligand", (l1, l2, l3))):
+        for index, atom in enumerate(role_atoms, 1):
+            if (atom.idx in ligand_atoms) != (role == "ligand"):
+                membership = "outside" if role == "protein" else "inside"
+                raise ValueError(
+                    f"{role}_anchor_{index} must be {membership} ligand_mask {ligand_mask}"
+                )
     distance_force = positive_float(restraints, "distance_force")
     angular_force = positive_float(restraints, "angle_force")
     torsion_force = positive_float(restraints, "torsion_force")
@@ -334,8 +350,8 @@ def main() -> None:
         xyz=str(args.work_dir / "build" / "complex.rst7"),
     )
     try:
+        records = restraint_records(topology, restraints, ligand_mask)
         prepare_alchemical_topologies(args.work_dir, ligand_mask)
-        records = restraint_records(topology, restraints)
     except ValueError as error:
         raise SystemExit(f"Config error: {error}") from None
     write_restraint_metadata(args.work_dir, records)

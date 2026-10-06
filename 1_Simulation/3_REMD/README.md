@@ -55,6 +55,9 @@ python3 prepare.py structure/1UAO.raw.pdb structure/chignolin.pdb
 python3 anal.py
 ```
 
+REST2/REST3는 실행할 때 `./run.sh --cpus N --gpus N`으로 resource를 지정합니다.
+GaREUS는 검증 범위를 읽고 `./run.sh --allow-unverified`로 실행합니다.
+
 공통으로 `download.sh`는 source structure를 받고, `prepare.py`는 첫 NMR model을
 정리합니다. `build.sh`는 topology와 replica별 input을 만들며, `run.sh`는
 pre-production과 replica exchange를 실행합니다. `anal.py`는 exchange log에서
@@ -119,6 +122,8 @@ validation. The standard PLUMED interface and GROMACS 2025 patch do not provide
 the required arbitrary-topology `-hrex` path.
 
 Use `download.sh`, `prepare.py`, `build.sh`, `run.sh`, and `anal.py` in order.
+For REST2/REST3, supply resources with `./run.sh --cpus N --gpus N`.
+For GaREUS, read its validation limits and use `./run.sh --allow-unverified`.
 Production is one 1 ns run per replica. T-REMD, REUS, and GaREUS use one MPI
 rank per state; REST2/REST3 expose only their resource arguments and minimal
 executable settings.

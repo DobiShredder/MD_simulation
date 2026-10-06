@@ -137,7 +137,6 @@ def main() -> None:
         ("bias_max", values["opes.bias"].max(), "kJ/mol"),
         ("deltafs_states", deltafs_states(deltafs), "count"),
     ])
-    hills = None
 
     write_metrics(output_dir / "production_summary.tsv", rows)
     print(f"OPES_EXPANDED diagnostics: {output_dir / 'production_summary.tsv'}")

@@ -157,5 +157,3 @@ for row_index in "${!window_rows[@]}"; do
 done
 
 echo "Created ${#window_rows[@]} umbrella windows: $window_root"
-
-echo "Created ${#window_rows[@]} umbrella windows: $window_root"

@@ -91,29 +91,94 @@ if (( ! dry_run )); then
         --record work/.source.identity.json --stage "run source inputs" \
         "${source_options[@]}" --value="$engine"
     mkdir -p work/inputs
-    cp "$topology" work/system.parm7
-    cp "$coordinates" work/system.rst7
-    cp inputs/*.in work/inputs/
+    for source_input in "$topology" "$coordinates" inputs/*.in; do
+        filename=${source_input##*/}
+        if [[ "$source_input" == inputs/* ]]; then
+            destination="work/inputs/$filename"
+        else
+            destination="work/$filename"
+        fi
+        if [[ -e "$destination" ]]; then
+            if ! cmp -s "$source_input" "$destination"; then
+                die "Run preflight: copied input differs and was retained: $destination. Use a new tutorial copy."
+            fi
+        else
+            cp "$source_input" "$destination"
+        fi
+    done
+    cd work
+elif [[ -d work ]]; then
+    cd work
 fi
-cd work
 
-run_stage "environment minimization" min-environment.out min-environment.rst7 \
-    "$engine" -O -i inputs/min-environment.in -o min-environment.out \
-    -p system.parm7 -c system.rst7 -r min-environment.rst7 -ref system.rst7
+# Water and bulk ions relax before lipids are released.
+run_stage "solvent minimization" min-solvent.out min-solvent.rst7 \
+    "$engine" \
+    -O \
+    -i inputs/min-solvent.in \
+    -o min-solvent.out \
+    -p system.parm7 \
+    -c system.rst7 \
+    -r min-solvent.rst7 \
+    -ref system.rst7
 
-run_stage "whole-system minimization" min-all.out min-all.rst7 \
-    "$engine" -O -i inputs/min-all.in -o min-all.out \
-    -p system.parm7 -c min-environment.rst7 -r min-all.rst7
+run_stage "lipid minimization" min-lipid.out min-lipid.rst7 \
+    "$engine" \
+    -O \
+    -i inputs/min-lipid.in \
+    -o min-lipid.out \
+    -p system.parm7 \
+    -c min-solvent.rst7 \
+    -r min-lipid.rst7 \
+    -ref system.rst7
 
 run_stage "NVT heating" heat.out heat.rst7 \
-    "$engine" -O -i inputs/heat.in -o heat.out \
-    -p system.parm7 -c min-all.rst7 -r heat.rst7 -x heat.nc \
-    -inf heat.info -ref min-all.rst7
+    "$engine" \
+    -O \
+    -i inputs/heat.in \
+    -o heat.out \
+    -p system.parm7 \
+    -c min-lipid.rst7 \
+    -r heat.rst7 \
+    -x heat.nc \
+    -inf heat.info \
+    -ref min-lipid.rst7
 
-run_stage "NPT equilibration" equil.out equil.rst7 \
-    "$engine" -O -i inputs/equil.in -o equil.out \
-    -p system.parm7 -c heat.rst7 -r equil.rst7 -x equil.nc \
-    -inf equil.info -ref heat.rst7
+# Preserve velocities and the heated reference while narrowing the atom mask.
+run_stage "heavy-atom NPT equilibration" equil-heavy.out equil-heavy.rst7 \
+    "$engine" \
+    -O \
+    -i inputs/equil-heavy.in \
+    -o equil-heavy.out \
+    -p system.parm7 \
+    -c heat.rst7 \
+    -r equil-heavy.rst7 \
+    -x equil-heavy.nc \
+    -inf equil-heavy.info \
+    -ref heat.rst7
+
+run_stage "backbone NPT equilibration" equil-backbone.out equil-backbone.rst7 \
+    "$engine" \
+    -O \
+    -i inputs/equil-backbone.in \
+    -o equil-backbone.out \
+    -p system.parm7 \
+    -c equil-heavy.rst7 \
+    -r equil-backbone.rst7 \
+    -x equil-backbone.nc \
+    -inf equil-backbone.info \
+    -ref heat.rst7
+
+run_stage "unrestrained NPT equilibration" equil.out equil.rst7 \
+    "$engine" \
+    -O \
+    -i inputs/equil.in \
+    -o equil.out \
+    -p system.parm7 \
+    -c equil-backbone.rst7 \
+    -r equil.rst7 \
+    -x equil.nc \
+    -inf equil.info
 
 run_stage "1 ns production" production.out production.rst7 \
     "$engine" -O -i inputs/production.in -o production.out \

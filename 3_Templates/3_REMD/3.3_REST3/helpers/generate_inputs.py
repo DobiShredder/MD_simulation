@@ -14,7 +14,6 @@ from apply_config import apply_config  # noqa: E402
 from config_utils import (  # noqa: E402
     load_config,
     nonnegative_float,
-    nonnegative_int,
     positive_float,
     positive_int,
     section,

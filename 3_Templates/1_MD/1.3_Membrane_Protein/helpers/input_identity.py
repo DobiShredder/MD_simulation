@@ -119,7 +119,7 @@ def verify(directory, managed_outputs=False):
         # Its wrapper separately requires an identity for that HDF5 file.
         return
     for path in directory.rglob("*"):
-        runtime_name = path.name.startswith(("min-solvent.", "min-all.", "minimize.", "heat.", "equilibrate.", "production.", "gamd_prepare."))
+        runtime_name = path.name.startswith(("min-solvent.", "min-all.", "min-lipid.", "minimize.", "heat.", "equilibrate-heavy.", "equilibrate-backbone.", "equilibrate.", "production.", "gamd_prepare."))
         result_file = (path.name.endswith(".complete") or path.suffix in (".out", ".nc", ".cpt")
                        or (runtime_name and path.suffix in (".gro", ".log", ".tpr", ".edr", ".rst7", ".info", ".rst"))
                        or path.name in ("mdinfo", "exchange.log", "production.group", "gamd.prepare.log", "gamd-restart.dat", "production_start.rst7",

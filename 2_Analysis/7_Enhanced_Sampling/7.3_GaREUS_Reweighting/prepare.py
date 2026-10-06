@@ -72,8 +72,8 @@ def read_states(path: Path) -> list[dict[str, str]]:
     with path.open(encoding="utf-8", newline="") as handle:
         states = list(csv.DictReader(handle, delimiter="\t"))
 
-    if len(states) != 20:
-        raise ValueError(f"Expected 20 GaREUS states, found {len(states)}")
+    if len(states) < 2 or len(states) % 2:
+        raise ValueError(f"GaREUS requires at least two and an even number of states: {path} ({len(states)} states)")
 
     return states
 
@@ -220,8 +220,8 @@ def copy_prepared_inputs(output_dir: Path, stage: Path) -> None:
 
 
 def prepare_inputs(simulation_work: Path, output_dir: Path) -> int:
+    states = read_states(simulation_work / "states.tsv")
     with result_generation(output_dir) as generation_dir:
-        states = read_states(simulation_work / "states.tsv")
         series_dir = generation_dir / "series"
         series_dir.mkdir(parents=True, exist_ok=True)
 

@@ -1,11 +1,11 @@
-Unrestrained 20 ps membrane equilibration at 310 K and 1 bar
+40 ps membrane equilibration with KcsA heavy-atom and filter K+ restraints
 &cntrl
  imin=0,
  irest=1,
  ntx=5,
  ig=-1,
 
- nstlim=10000,
+ nstlim=20000,
  dt=0.002,
 
  temp0=310.0,
@@ -22,10 +22,15 @@ Unrestrained 20 ps membrane equilibration at 310 K and 1 bar
  ntf=2,
  cut=10.0,
 
- ntr=0,
+ ntr=1,
+ restraint_wt=1.0,
+ restraintmask=':1-415 & !@H=',
 
  ntwx=5000,
  ntwr=50000,
  ntpr=5000,
  ioutfm=1,
+/
+&ewald
+ netfrc=0,
 /

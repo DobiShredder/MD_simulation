@@ -28,7 +28,9 @@ Build는 두 단계로 나눕니다.
 2. [`2_Topology_Build/`](2_Topology_Build/README.md): Lipid21 명명 변환,
    tleap 검증, `parm7`/`rst7` 생성
 
-[`3_Simulation/`](3_Simulation/README.md)은 100 ps equilibration과 1 ns production을 실행합니다.
+[`3_Simulation/`](3_Simulation/README.md)은 solvent → lipid → protein 순서로
+완화합니다. Protein restraint는 heavy atoms → backbone → 전체 해제로 진행하며,
+총 100 ps equilibration과 1 ns production을 실행합니다.
 다른 pH나 channel state를 다루려면 protonation, K+ occupancy와 초기 water 배치를 함께 재검토합니다.
 
 
@@ -55,8 +57,9 @@ the membrane-plane and normal box dimensions can respond separately.
 
 The workflow separates coordinate construction, AMBER topology/restart
 generation, and simulation. A different pH or channel state requires a joint
-review of protonation, K+ occupancy, and initial pore waters. Production is
-1 ns.
+review of protonation, K+ occupancy, and initial pore waters. Simulation relaxes
+solvent, lipids, and protein in order. Protein restraints progress from heavy
+atoms to backbone to none across 100 ps equilibration, followed by 1 ns production.
 
 ## References / 참고 자료
 

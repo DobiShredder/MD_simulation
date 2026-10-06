@@ -122,7 +122,7 @@ if (( dry_run )); then
     echo "+ $python helpers/count_waters.py $work_dir/.build_tmp.XXXXXX/solvated.pdb"
     echo '+ python3 helpers/generate_inputs.py config.toml work/inputs --salt-pairs N'
     printf '+ %q -f %q\n' "$tleap" "$work_dir/inputs/tleap.final.in"
-    echo '+ python3 helpers/make_window_replicas.py gareus config.toml work/system.parm7 work/system.rst7 work'
+    echo '+ python3 helpers/make_window_replicas.py gareus config.toml work/system.parm7 work'
     exit 0
 fi
 
@@ -171,7 +171,7 @@ for output in system.parm7 system.rst7 system.pdb resolved_config.toml; do
 done
 
 echo "Generating window replicas: $config; topology: $work_dir/system.parm7; output: $work_dir"
-"$python" helpers/make_window_replicas.py gareus "$config" "$work_dir/system.parm7" "$work_dir/system.rst7" "$work_dir"
+"$python" helpers/make_window_replicas.py gareus "$config" "$work_dir/system.parm7" "$work_dir"
 
 remove_build_tmp
 

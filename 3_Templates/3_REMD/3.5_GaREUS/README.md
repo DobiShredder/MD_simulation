@@ -96,9 +96,17 @@ SIGKILL 또는 node 장애로 남은 lock은 자동으로 지우지 않습니다
 종료는 로컬 fixture에서 검증하지 않았습니다.
 
 
+`helpers/generate_inputs.py`는 LEaP input과 resolved 설정을 생성합니다.
+Window별 MD input과 restraint는 `helpers/make_window_replicas.py`가
+생성하며 두 helper 모두 `build.sh`가 자동 호출합니다.
+
 ## English
 
 Only even replica counts of at least two are supported. `build.sh` and `run.sh` reject odd schedules without adjusting them. `run.sh --dry-run` checks the actual state-table count too. Prepare a new work directory for results built with an odd schedule.
+
+`helpers/generate_inputs.py` writes LEaP inputs and resolved settings.
+`helpers/make_window_replicas.py` writes per-window MD inputs and
+restraints. Both are called automatically by `build.sh`.
 
 User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh`, `run.sh`, or `anal.py`; it is not a separate entry point.
 

@@ -136,7 +136,7 @@ def main() -> None:
         ])
         hills = work / "HILLS"
         write_metrics(output_dir / "production_summary.tsv", rows)
-        if hills is not None and not args.skip_fes:
+        if not args.skip_fes:
             if not hills.is_file():
                 raise SystemExit(f"HILLS output not found: {hills}")
             plumed = os.environ.get("PLUMED", "plumed")

@@ -63,6 +63,26 @@ def resolve(config_path: Path) -> dict[str, object]:
         isinstance(seed, bool) or not isinstance(seed, int) or seed <= 0
     ):
         raise ValueError("random_seed must be 'random' or a positive integer")
+    equilibration_steps = positive_int(run, "equilibration_steps")
+    stage_run = dict(run)
+    stage_run.setdefault("equilibration_heavy_steps", equilibration_steps * 2 // 5)
+    stage_run.setdefault("equilibration_backbone_steps", equilibration_steps * 2 // 5)
+    heavy_steps = positive_int(stage_run, "equilibration_heavy_steps")
+    backbone_steps = positive_int(stage_run, "equilibration_backbone_steps")
+    unrestrained_steps = equilibration_steps - heavy_steps - backbone_steps
+    if unrestrained_steps <= 0:
+        raise ValueError(
+            "equilibration_steps must exceed equilibration_heavy_steps + "
+            "equilibration_backbone_steps to include an unrestrained stage"
+        )
+    protein_mask = string_value(build, "protein_restraint_mask")
+    lipid_mask = string_value(build, "lipid_restraint_mask")
+    heavy_mask = f"({protein_mask}) & !@H="
+    backbone_mask = f"({protein_mask}) & @N,CA,C,O,OXT"
+    solvent_mask = f"(({protein_mask}) | ({lipid_mask})) & !@H="
+    for mask in (heavy_mask, backbone_mask, solvent_mask):
+        if len(mask) > 256 or any(character in mask for character in "'\"\n\r"):
+            raise ValueError("restraint masks must fit a 256-character AMBER string without quotes or newlines")
     return {
         "protein_force_field": protein_force_field,
         "force_field_profile": force_field_profile,
@@ -76,13 +96,20 @@ def resolve(config_path: Path) -> dict[str, object]:
         "water_padding": positive_float(build, "water_padding"),
         "protein_lipid_distance": positive_float(build, "protein_lipid_distance"),
         "salt_concentration": nonnegative_float(build, "salt_concentration_molar"),
-        "restraint_mask": string_value(build, "protein_restraint_mask"),
+        "protein_mask": protein_mask,
+        "lipid_mask": lipid_mask,
+        "heavy_mask": heavy_mask,
+        "backbone_mask": backbone_mask,
+        "solvent_mask": solvent_mask,
         "engine": string_value(run, "engine"),
         "temperature": positive_float(run, "temperature"),
         "pressure": positive_float(run, "pressure"),
         "timestep": positive_float(run, "timestep"),
         "heating_steps": positive_int(run, "heating_steps"),
-        "equilibration_steps": positive_int(run, "equilibration_steps"),
+        "equilibration_steps": equilibration_steps,
+        "equilibration_heavy_steps": heavy_steps,
+        "equilibration_backbone_steps": backbone_steps,
+        "equilibration_unrestrained_steps": unrestrained_steps,
         "production_steps": production_steps,
         "production_steps_per_segment": production_steps // segments,
         "segments": segments,
@@ -102,22 +129,26 @@ def write_md_inputs(output: Path, values: dict[str, object]) -> None:
     pressure = values["pressure"]
     interval = values["interval"]
     seed = -1 if values["seed"] == "random" else values["seed"]
-    mask = values["restraint_mask"]
+    heavy_mask = values["heavy_mask"]
     (output / "min-solvent.in").write_text(
         render_cntrl(
-            "Minimize membrane environment while restraining the protein",
+            "Minimize solvent while restraining protein and lipid heavy atoms",
             [
                 "imin=1", "maxcyc=10000", "ncyc=5000", "ntmin=2",
                 "dx0=0.0001", "ntb=1", "ntc=1", "ntf=1", "cut=10.0", "ntr=1",
-                "restraint_wt=10.0", f"restraintmask='{mask}'",
+                "restraint_wt=10.0", f"restraintmask='{values['solvent_mask']}'",
             ],
-        ), encoding="utf-8"
+        ) + "&ewald\n  netfrc=0,\n/\n", encoding="utf-8"
     )
-    (output / "min-all.in").write_text(
+    (output / "min-lipid.in").write_text(
         render_cntrl(
-            "Minimize the complete membrane system",
-            ["imin=1", "maxcyc=10000", "ncyc=5000", "ntmin=2", "dx0=0.0001", "ntb=1", "ntc=1", "ntf=1", "cut=10.0", "ntr=0"],
-        ), encoding="utf-8"
+            "Minimize lipids and solvent while restraining protein heavy atoms",
+            [
+                "imin=1", "maxcyc=10000", "ncyc=5000", "ntmin=2", "dx0=0.0001",
+                "ntb=1", "ntc=1", "ntf=1", "cut=10.0", "ntr=1",
+                "restraint_wt=10.0", f"restraintmask='{heavy_mask}'",
+            ],
+        ) + "&ewald\n  netfrc=0,\n/\n", encoding="utf-8"
     )
     (output / "heat.in").write_text(
         render_cntrl(
@@ -127,10 +158,11 @@ def write_md_inputs(output: Path, values: dict[str, object]) -> None:
                 f"dt={dt_ps:.6f}", "tempi=20.0", f"temp0={temperature:.3f}",
                 "ntt=3", "gamma_ln=1.0", f"ig={seed}", "ntb=1", "ntp=0", "ntc=2",
                 "ntf=2", "cut=10.0", "ntr=1", "restraint_wt=5.0",
-                f"restraintmask='{mask}'", f"ntpr={interval}", f"ntwx={interval}",
+                f"restraintmask='{heavy_mask}'", f"ntpr={interval}", f"ntwx={interval}",
                 f"ntwr={interval}", "ioutfm=1", "nmropt=1",
             ],
         )
+        + "&ewald\n  netfrc=0,\n/\n"
         + f"&wt\n type='TEMP0', istep1=0, istep2={values['heating_steps']}, value1=20.0, value2={temperature:.3f},\n/\n&wt type='END' /\n",
         encoding="utf-8",
     )
@@ -141,10 +173,20 @@ def write_md_inputs(output: Path, values: dict[str, object]) -> None:
         "taup=2.0", "ntc=2", "ntf=2", "cut=10.0",
         f"ntpr={interval}", f"ntwx={interval}", f"ntwr={interval}", "ioutfm=1",
     ]
+    for stage, mask in (("heavy", heavy_mask), ("backbone", values["backbone_mask"])):
+        (output / f"equilibrate-{stage}.in").write_text(
+            render_cntrl(
+                f"Anisotropic NPT equilibration with protein {stage} restraints",
+                [
+                    f"nstlim={values[f'equilibration_{stage}_steps']}", *dynamics,
+                    "ntr=1", "restraint_wt=1.0", f"restraintmask='{mask}'",
+                ],
+            ) + "&ewald\n  netfrc=0,\n/\n", encoding="utf-8"
+        )
     (output / "equilibrate.in").write_text(
         render_cntrl(
-            "Anisotropic NPT membrane equilibration",
-            [f"nstlim={values['equilibration_steps']}", *dynamics, "ntr=1", "restraint_wt=1.0", f"restraintmask='{mask}'"],
+            "Unrestrained anisotropic NPT membrane equilibration",
+            [f"nstlim={values['equilibration_unrestrained_steps']}", *dynamics, "ntr=0"],
         ), encoding="utf-8"
     )
     (output / "production.in").write_text(
@@ -157,15 +199,18 @@ def write_md_inputs(output: Path, values: dict[str, object]) -> None:
 
 def read_box_and_waters(path: Path) -> tuple[tuple[float, float, float], int]:
     box = None
-    waters: set[tuple[str, str, str]] = set()
+    water_count = 0
     for line in path.read_text(encoding="ascii").splitlines():
         if line.startswith("CRYST1"):
             box = (float(line[6:15]), float(line[15:24]), float(line[24:33]))
-        if line.startswith(("ATOM  ", "HETATM")) and line[17:20].strip() == "WAT":
-            waters.add((line[21:22], line[22:26], line[26:27]))
-    if box is None or not waters:
-        raise ValueError("packed membrane PDB must contain CRYST1 and WAT residues")
-    return box, len(waters)
+        # The writer emits one O per WAT; residue IDs wrap after 9,999.
+        if (line.startswith(("ATOM  ", "HETATM"))
+                and line[17:20].strip() == "WAT"
+                and line[12:16].strip() == "O"):
+            water_count += 1
+    if box is None or water_count == 0:
+        raise ValueError("packed membrane PDB must contain CRYST1 and WAT oxygen atoms")
+    return box, water_count
 
 
 def write_build_parameters(output: Path, values: dict[str, object]) -> None:
@@ -184,6 +229,9 @@ def write_tleap_and_resolved(output: Path, values: dict[str, object], coordinate
     profile = values["force_field_profile"]
     protein_source = str(profile["protein_leaprc"])
     water_source = str(profile["water_leaprc"])
+    bulk_salt = ""
+    if salt_pairs > 0:
+        bulk_salt = f"addionsrand system K+ {salt_pairs} Cl- {salt_pairs}\n"
     tleap = f"""source {protein_source}
 source leaprc.lipid21
 source {water_source}
@@ -191,8 +239,7 @@ system = loadpdb system-coordinates.pdb
 set system box {{ {box[0]:.3f} {box[1]:.3f} {box[2]:.3f} }}
 addionsrand system K+ 0
 addionsrand system Cl- 0
-addionsrand system K+ {salt_pairs} Cl- {salt_pairs}
-check system
+{bulk_salt}check system
 saveamberparm system system.parm7 system.rst7
 savepdb system system.pdb
 quit
@@ -210,6 +257,8 @@ protein_lipid_distance = {values['protein_lipid_distance']:.3f}
 salt_concentration_molar = {values['salt_concentration']:.6f}
 water_molecules = {water_count}
 salt_pairs = {salt_pairs}
+protein_restraint_mask = "{values['protein_mask']}"
+lipid_restraint_mask = "{values['lipid_mask']}"
 
 [run]
 engine = "{values['engine']}"
@@ -221,6 +270,9 @@ timestep = {values['timestep']:.3f}
 constraint_mode = "h-bonds"
 heating_steps = {values['heating_steps']}
 equilibration_steps = {values['equilibration_steps']}
+equilibration_heavy_steps = {values['equilibration_heavy_steps']}
+equilibration_backbone_steps = {values['equilibration_backbone_steps']}
+equilibration_unrestrained_steps = {values['equilibration_unrestrained_steps']}
 production_steps = {values['production_steps']}
 production_steps_per_segment = {values['production_steps_per_segment']}
 production_segments = {values['segments']}

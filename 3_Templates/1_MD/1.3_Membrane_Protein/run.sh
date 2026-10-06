@@ -12,8 +12,8 @@ show_help() {
     cat <<'EOF'
 Usage: ./run.sh [--preparation-only | --production-only] [--segments START-END] [--dry-run]
 
-Run membrane minimization, heating, anisotropic NPT equilibration, and the
-configured production segments.
+Relax solvent, lipids, and protein in order, then run production segments.
+Protein restraints progress from heavy atoms to backbone to none.
 
 Options:
   --preparation-only  Run through equilibration and stop before production.
@@ -135,6 +135,11 @@ if (( ! dry_run )); then
     if [[ ! -s "$resolved" ]]; then
         die "Run preflight: resolved config missing or empty: $resolved. Run ./build.sh first."
     fi
+    for input_name in min-solvent min-lipid heat equilibrate-heavy equilibrate-backbone equilibrate production; do
+        if [[ ! -s "$work_dir/inputs/$input_name.in" ]]; then
+            die "Run preflight: staged membrane input missing: $work_dir/inputs/$input_name.in. Build in a new WORK_DIR."
+        fi
+    done
 fi
 
 engine=$("${PYTHON:-python3}" helpers/config_utils.py "$resolved" engine AMBER_ENGINE pmemd.cuda pmemd sander)
@@ -163,27 +168,77 @@ if (( ! dry_run )); then
 fi
 
 if (( ! production_only )); then
-run_stage min-solvent "solvent minimization" "$work_dir" \
-    "$engine" -O -i "$work_dir/inputs/min-solvent.in" \
-    -o "$work_dir/min-solvent.out" -p "$topology" -c "$coordinates" \
-    -r "$work_dir/min-solvent.rst7" -inf "$work_dir/min-solvent.info" -ref "$coordinates"
+    # Lipids remain restrained while water and bulk ions relax.
+    run_stage min-solvent "solvent minimization" "$work_dir" \
+        "$engine" \
+        -O \
+        -i "$work_dir/inputs/min-solvent.in" \
+        -o "$work_dir/min-solvent.out" \
+        -p "$topology" \
+        -c "$coordinates" \
+        -r "$work_dir/min-solvent.rst7" \
+        -inf "$work_dir/min-solvent.info" \
+        -ref "$coordinates"
 
-run_stage min-all "whole-system minimization" "$work_dir" \
-    "$engine" -O -i "$work_dir/inputs/min-all.in" \
-    -o "$work_dir/min-all.out" -p "$topology" -c "$work_dir/min-solvent.rst7" \
-    -r "$work_dir/min-all.rst7" -inf "$work_dir/min-all.info"
+    # Release lipids while keeping the protein near the initial structure.
+    run_stage min-lipid "lipid minimization" "$work_dir" \
+        "$engine" \
+        -O \
+        -i "$work_dir/inputs/min-lipid.in" \
+        -o "$work_dir/min-lipid.out" \
+        -p "$topology" \
+        -c "$work_dir/min-solvent.rst7" \
+        -r "$work_dir/min-lipid.rst7" \
+        -inf "$work_dir/min-lipid.info" \
+        -ref "$coordinates"
 
-run_stage heat "NVT heating" "$work_dir" \
-    "$engine" -O -i "$work_dir/inputs/heat.in" \
-    -o "$work_dir/heat.out" -p "$topology" -c "$work_dir/min-all.rst7" \
-    -r "$work_dir/heat.rst7" -x "$work_dir/heat.nc" -inf "$work_dir/heat.info" \
-    -ref "$work_dir/min-all.rst7"
+    run_stage heat "NVT heating" "$work_dir" \
+        "$engine" \
+        -O \
+        -i "$work_dir/inputs/heat.in" \
+        -o "$work_dir/heat.out" \
+        -p "$topology" \
+        -c "$work_dir/min-lipid.rst7" \
+        -r "$work_dir/heat.rst7" \
+        -x "$work_dir/heat.nc" \
+        -inf "$work_dir/heat.info" \
+        -ref "$work_dir/min-lipid.rst7"
 
-run_stage equilibrate "NPT equilibration" "$work_dir" \
-    "$engine" -O -i "$work_dir/inputs/equilibrate.in" \
-    -o "$work_dir/equilibrate.out" -p "$topology" -c "$work_dir/heat.rst7" \
-    -r "$work_dir/equilibrate.rst7" -x "$work_dir/equilibrate.nc" \
-    -inf "$work_dir/equilibrate.info" -ref "$work_dir/heat.rst7"
+    # Both restrained equilibration stages use the same heated reference.
+    run_stage equilibrate-heavy "heavy-atom NPT equilibration" "$work_dir" \
+        "$engine" \
+        -O \
+        -i "$work_dir/inputs/equilibrate-heavy.in" \
+        -o "$work_dir/equilibrate-heavy.out" \
+        -p "$topology" \
+        -c "$work_dir/heat.rst7" \
+        -r "$work_dir/equilibrate-heavy.rst7" \
+        -x "$work_dir/equilibrate-heavy.nc" \
+        -inf "$work_dir/equilibrate-heavy.info" \
+        -ref "$work_dir/heat.rst7"
+
+    run_stage equilibrate-backbone "backbone NPT equilibration" "$work_dir" \
+        "$engine" \
+        -O \
+        -i "$work_dir/inputs/equilibrate-backbone.in" \
+        -o "$work_dir/equilibrate-backbone.out" \
+        -p "$topology" \
+        -c "$work_dir/equilibrate-heavy.rst7" \
+        -r "$work_dir/equilibrate-backbone.rst7" \
+        -x "$work_dir/equilibrate-backbone.nc" \
+        -inf "$work_dir/equilibrate-backbone.info" \
+        -ref "$work_dir/heat.rst7"
+
+    run_stage equilibrate "unrestrained NPT equilibration" "$work_dir" \
+        "$engine" \
+        -O \
+        -i "$work_dir/inputs/equilibrate.in" \
+        -o "$work_dir/equilibrate.out" \
+        -p "$topology" \
+        -c "$work_dir/equilibrate-backbone.rst7" \
+        -r "$work_dir/equilibrate.rst7" \
+        -x "$work_dir/equilibrate.nc" \
+        -inf "$work_dir/equilibrate.info"
 fi
 if (( preparation_only )); then
     if (( ! dry_run )); then
@@ -191,8 +246,12 @@ if (( preparation_only )); then
     fi
     exit 0
 fi
-if (( ! dry_run )) && [[ ! -s "$work_dir/equilibrate.rst7" || ! -f "$work_dir/.equilibrate.complete" ]]; then
-    die "Completed equilibration output is required for production"
+if (( ! dry_run )); then
+    for stage in equilibrate-heavy equilibrate-backbone equilibrate; do
+        if [[ ! -s "$work_dir/$stage.rst7" || ! -f "$work_dir/.$stage.complete" ]]; then
+            die "Production preflight: completed staged equilibration required: $work_dir/$stage.rst7"
+        fi
+    done
 fi
 
 previous_restart="$work_dir/equilibrate.rst7"

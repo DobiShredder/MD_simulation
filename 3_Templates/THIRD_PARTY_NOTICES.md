@@ -2,7 +2,11 @@
 
 ## REMD temperature predictor
 
-`common/temperature_ladder.py` reimplements the algorithm distributed by the
+T-REMD, REST2와 REST3 leaf의 `helpers/temperature_ladder.py`는 아래 MIT source의
+temperature predictor를 구현합니다. 각 leaf는 독립 사본을 유지합니다.
+
+The leaf-local `helpers/temperature_ladder.py` copies in T-REMD, REST2,
+and REST3 reimplement the algorithm distributed by the
 `remd-temperature-generator` project:
 
 - Patriksson, A.; van der Spoel, D. *A temperature predictor for parallel

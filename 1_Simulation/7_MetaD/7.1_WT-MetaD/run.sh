@@ -177,6 +177,6 @@ done
 
 "${PYTHON:-python3}" helpers/input_identity.py \
     --finish-completion "$work_dir/.production.identity.json" --directory "$work_dir" \
-+    --required-output "$work_dir/COLVAR" --required-output "$work_dir/HILLS"
+    --required-output "$work_dir/COLVAR" --required-output "$work_dir/HILLS"
 
 echo "1 ns WT-MetaD production completed: $work_dir/production.nc"
