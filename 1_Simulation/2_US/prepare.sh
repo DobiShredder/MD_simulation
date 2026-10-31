@@ -45,13 +45,13 @@ cp inputs/tleap.in work/tleap.in
 
 if ! (
     cd work
-    "$tleap" -f tleap.in > leap.log 2>&1
+    "$tleap" -f tleap.in > tleap.stdout.log 2>&1
 ); then
-    die "tleap failed. See log: work/leap.log"
+    die "tleap failed. See work/tleap.stdout.log and work/leap.log"
 fi
 
 if [[ ! -s work/system.parm7 || ! -s work/system.rst7 ]]; then
-    die "Topology or restart was not created. See log: work/leap.log"
+    die "Topology or restart was not created. See work/tleap.stdout.log and work/leap.log"
 fi
 
 echo "Shared AMBER topology and restart: work"

@@ -158,8 +158,9 @@ run_preproduction_stage() {
             continue
         fi
         replica_dir="work/$replica"
+        expected_charge=$(replica_expected_charge "$charge_table" "$replica")
 
-        if ! run_grompp "$replica_dir/$stage.grompp.log" \
+        if ! run_grompp "replica $replica" "$replica_dir/$stage.grompp.log" "$expected_charge" \
             "$gmx" grompp \
             -f "$replica_dir/$stage.mdp" \
             -p "$replica_dir/topol.top" \
@@ -239,6 +240,20 @@ if (( dry_run )); then
     exit 0
 fi
 
+# build.sh writes the net charge GROMACS should report for each replica.
+charge_table=work/net_charge.tsv
+if [[ ! -s "$charge_table" ]]; then
+    die "Expected net-charge table not found: $charge_table. Rebuild with ./build.sh."
+fi
+while IFS=$'\t' read -r replica _; do
+    if [[ "$replica" == replica ]]; then
+        continue
+    fi
+    if ! replica_expected_charge "$charge_table" "$replica" > /dev/null; then
+        die "Expected net charge missing for replica $replica: $charge_table"
+    fi
+done < work/states.tsv
+
 "${PYTHON:-python3}" helpers/input_identity.py --verify work
 source_options=(--input work/states.tsv)
 for source_input in work/[0-9][0-9][0-9]/{system.gro,*.mdp,*.top,*.itp,plumed.dat}; do
@@ -288,14 +303,15 @@ while IFS=$'\t' read -r replica _; do
     fi
     replica_dir="work/$replica"
     replica_dirs+=("$replica_dir")
+    expected_charge=$(replica_expected_charge "$charge_table" "$replica")
 
-        if ! run_grompp "$replica_dir/production.grompp.log" \
-            "$gmx" grompp \
-            -f "$replica_dir/production.mdp" \
-            -p "$replica_dir/topol.top" \
-            -c "$replica_dir/equilibrate.gro" \
-            -t "$replica_dir/equilibrate.cpt" \
-            -o "$replica_dir/production.tpr"; then
+    if ! run_grompp "replica $replica" "$replica_dir/production.grompp.log" "$expected_charge" \
+        "$gmx" grompp \
+        -f "$replica_dir/production.mdp" \
+        -p "$replica_dir/topol.top" \
+        -c "$replica_dir/equilibrate.gro" \
+        -t "$replica_dir/equilibrate.cpt" \
+        -o "$replica_dir/production.tpr"; then
         die "Production tpr generation failed: $replica_dir/production.grompp.log"
     fi
 done < work/states.tsv

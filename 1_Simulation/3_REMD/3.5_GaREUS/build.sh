@@ -74,9 +74,9 @@ if ! (
     cd "$work_dir"
     "$tleap" \
         -f tleap.in \
-        > leap.log 2>&1
+        > tleap.stdout.log 2>&1
 ); then
-    die "tleap failed. See log: $work_dir/leap.log"
+    die "tleap failed. See $work_dir/tleap.stdout.log and $work_dir/leap.log"
 fi
 
 for output in system.parm7 system.rst7; do

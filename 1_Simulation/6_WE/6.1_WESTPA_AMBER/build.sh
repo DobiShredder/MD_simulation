@@ -50,7 +50,7 @@ done
     --record "$WORK_DIR/.topology.identity.json" --stage "WE topology build" \
     --input "$input_pdb" --input inputs/leap.in \
     --output "$build_dir/system.parm7" --output "$build_dir/system.rst7" \
-    --output "$build_dir/input.pdb" --output "$build_dir/leap.in" --output "$build_dir/leap.log"
+    --output "$build_dir/input.pdb" --output "$build_dir/leap.in" --output "$build_dir/leap.log" --output "$build_dir/tleap.stdout.log"
 
 mkdir -p "$build_dir" "$basis_dir"
 
@@ -63,12 +63,12 @@ else
     cp "$WEST_SIM_ROOT/inputs/leap.in" "$build_dir/leap.in"
 
     echo "Generating the Chignolin topology."
-    if ! (cd "$build_dir" && "$tleap" -f leap.in > leap.log 2>&1); then
-        die "tleap failed: $build_dir/leap.log"
+    if ! (cd "$build_dir" && "$tleap" -f leap.in > tleap.stdout.log 2>&1); then
+        die "tleap failed. See $build_dir/tleap.stdout.log and $build_dir/leap.log"
     fi
     for output in system.parm7 system.rst7; do
         if [[ ! -s "$build_dir/$output" ]]; then
-            die "Topology build output was not created: $build_dir/$output; log: $build_dir/leap.log"
+            die "Topology build output was not created: $build_dir/$output; see $build_dir/tleap.stdout.log and $build_dir/leap.log"
         fi
     done
     "${PYTHON:-python3}" helpers/input_identity.py \

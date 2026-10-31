@@ -72,9 +72,9 @@ cp inputs/tleap.in "$work_dir/tleap.in"
 echo "Generating the ff19SB/OPC SH3-peptide topology."
 if ! (
     cd "$work_dir"
-    "$tleap" -f tleap.in > leap.log 2>&1
+    "$tleap" -f tleap.in > tleap.stdout.log 2>&1
 ); then
-    die "tleap failed: $work_dir/leap.log"
+    die "tleap failed. See $work_dir/tleap.stdout.log and $work_dir/leap.log"
 fi
 for output in system.parm7 system.rst7 system.pdb; do
     if [[ ! -s "$work_dir/$output" ]]; then

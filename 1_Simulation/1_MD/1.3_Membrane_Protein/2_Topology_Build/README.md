@@ -35,7 +35,7 @@ Coordinate 크기나 water 수가 달라지면 값도 자동으로 바뀌니다.
 ion 초기 위치와 `system.rst7` checksum은 고정되지 않습니다.
 
 주요 output은 `work/system.parm7`, `work/system.rst7`, `work/system.pdb`와 `work/leap.log`입니다.
-`work/tleap.out`에는 tleap의 terminal output이 저장됩니다.
+`work/tleap.stdout.log`에는 tleap의 terminal output이 저장됩니다.
 `leap.log`에서 unknown residue, missing heavy atom, parameter error와 `Errors = 0`을 확인합니다.
 Chain C-terminus의 `OXT`를 tleap이 추가하는 message는 예상된 결과입니다.
 Initial energy에서 `VDWAALS = *************`가 보이면
@@ -51,7 +51,7 @@ Because `addionsrand` selects solvent molecules anew for each tleap invocation,
 the initial ion positions and restart checksum are not fixed.
 
 Outputs are `work/system.parm7`, `work/system.rst7`, `work/system.pdb`, and
-`work/leap.log`; `work/tleap.out` keeps the tleap terminal output. Check for unknown residues, missing heavy atoms, parameter
+`work/leap.log`; `work/tleap.stdout.log` keeps the tleap terminal output. Check for unknown residues, missing heavy atoms, parameter
 errors, and `Errors = 0`. Do not proceed if the initial energy reports an
 overflow such as `VDWAALS = *************`.
 
@@ -59,7 +59,7 @@ overflow such as `VDWAALS = *************`.
 
 Coordinate build, topology build와 simulation은 membrane tutorial root 옆의 `.writers/` registry를 공유합니다. 앞 단계의 work를 읽는 동안 그 directory를 다시 생성하는 작업은 거부합니다.
 
-`work/amber-named.pdb`, `tleap.in`, `system.parm7`, `system.rst7`, `system.pdb`, `leap.log` 또는 `tleap.out`가 있으면 크기가 0인 partial 결과도 보존하고 복사와 LEaP 실행 전에 거부합니다. 새 계산은 생성된 `work/`를 포함하지 않는 새 tutorial copy에서 시작합니다. Simulation의 identity 검사는 이 build 보호를 대신하지 않습니다.
+`work/amber-named.pdb`, `tleap.in`, `system.parm7`, `system.rst7`, `system.pdb`, `leap.log` 또는 `tleap.stdout.log`가 있으면 크기가 0인 partial 결과도 보존하고 복사와 LEaP 실행 전에 거부합니다. 새 계산은 생성된 `work/`를 포함하지 않는 새 tutorial copy에서 시작합니다. Simulation의 identity 검사는 이 build 보호를 대신하지 않습니다.
 
 정상 종료, command 실패와 INT/TERM에서는 자식 process의 종료를 확인한 뒤 자기 lock만 해제합니다. SIGKILL이나 node 장애로 남은 lock은 자동 삭제하지 않습니다. Error에 표시된 lock과 `owner.json`의 host, PID, command, scope를 확인하고 scheduler와 해당 host에서 모든 writer와 자식 process가 종료됐는지 확인한 뒤 그 lock directory만 수동 제거합니다. PID가 로컬에서 보이지 않는다는 이유만으로 제거하지 않습니다. `.gate/`도 같은 확인이 필요합니다.
 
@@ -69,7 +69,7 @@ Coordinate build, topology build와 simulation은 membrane tutorial root 옆의 
 
 Coordinate build, topology build and simulation share the `.writers/` registry beside the membrane tutorial root. A downstream reader prevents a builder from rewriting its input directory.
 
-Existing `work/amber-named.pdb`, `tleap.in`, `system.parm7`, `system.rst7`, `system.pdb`, `leap.log`, or `tleap.out`, including empty partial results, blocks copying and LEaP execution. Start a new tutorial copy without generated `work/` directories for a new calculation. Simulation identity checks do not replace this build protection.
+Existing `work/amber-named.pdb`, `tleap.in`, `system.parm7`, `system.rst7`, `system.pdb`, `leap.log`, or `tleap.stdout.log`, including empty partial results, blocks copying and LEaP execution. Start a new tutorial copy without generated `work/` directories for a new calculation. Simulation identity checks do not replace this build protection.
 
 Normal exit, command failure and INT/TERM release only the owned lock after child termination is verified. Locks left by SIGKILL or node failure are retained. Inspect the reported lock and its `owner.json` host, PID, command and scopes; confirm through the scheduler and owning host that all writers and children stopped before manually removing only that lock directory. A PID missing locally is not sufficient. Apply the same checks to `.gate/`.
 

@@ -215,6 +215,17 @@ if (( dry_run )); then
     exit 0
 fi
 
+# build.sh writes the net charge GROMACS should report for each replica.
+charge_table="$work_dir/net_charge.tsv"
+if [[ ! -s "$charge_table" ]]; then
+    die "Expected net-charge table not found: $charge_table. Rebuild with ./build.sh."
+fi
+for replica_dir in "${replica_dirs[@]}"; do
+    if ! replica_expected_charge "$charge_table" "${replica_dir##*/}" > /dev/null; then
+        die "Expected net charge missing for replica ${replica_dir##*/}: $charge_table"
+    fi
+done
+
 wait_for_batch() {
     local stage=$1
     shift
@@ -325,7 +336,8 @@ run_preproduction_stage() {
         if [[ "$previous" != system && "$previous" != minimize ]]; then
             grompp_command+=(-t "$replica_dir/$previous.cpt")
         fi
-        if ! run_grompp "$replica_dir/$stage.grompp.log" \
+        expected_charge=$(replica_expected_charge "$charge_table" "$replica")
+        if ! run_grompp "replica $replica" "$replica_dir/$stage.grompp.log" "$expected_charge" \
             "${grompp_command[@]}"; then
             echo "Error: $stage tpr generation failed: $replica_dir/$stage.grompp.log" >&2
             wait_for_batch "$stage" "${jobs[@]}"
@@ -432,7 +444,8 @@ for ((segment = segment_start; segment <= segment_end; segment++)); do
             continue
         fi
         replica_dir="$work_dir/$replica"
-        if ! run_grompp "$replica_dir/$segment_name.grompp.log" \
+        expected_charge=$(replica_expected_charge "$charge_table" "$replica")
+        if ! run_grompp "replica $replica" "$replica_dir/$segment_name.grompp.log" "$expected_charge" \
             "$gmx" grompp -f "$replica_dir/$segment_input" -p "$replica_dir/topol.top" \
             -c "$replica_dir/$previous.gro" -t "$replica_dir/$previous.cpt" \
             -o "$replica_dir/$segment_name.tpr"; then

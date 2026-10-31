@@ -152,8 +152,8 @@ salt_pairs=$(awk -v waters="$water_count" -v concentration="$salt_concentration"
 "$python" helpers/generate_inputs.py "$config" "$work_dir/inputs" --salt-pairs "$salt_pairs"
 
 echo "Building the final MetaD system ($water_count waters, $salt_pairs salt formula units)."
-if ! (cd "$work_dir"; "$tleap" -f inputs/tleap.final.in > leap.log 2>&1); then
-    die "Final tleap build failed: $work_dir/leap.log"
+if ! (cd "$work_dir"; "$tleap" -f inputs/tleap.final.in > tleap.stdout.log 2>&1); then
+    die "Final tleap build failed. See $work_dir/tleap.stdout.log and $work_dir/leap.log"
 fi
 for output in system.parm7 system.rst7 system.pdb resolved_config.toml; do
     if [[ ! -s "$work_dir/$output" ]]; then

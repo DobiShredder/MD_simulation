@@ -81,9 +81,9 @@ if ! (
     cd "$work_dir"
     "$tleap" \
         -f tleap.in \
-        > leap.log 2>&1
+        > tleap.stdout.log 2>&1
 ); then
-    die "tleap failed. See log: $work_dir/leap.log"
+    die "tleap failed. See $work_dir/tleap.stdout.log and $work_dir/leap.log"
 fi
 
 echo "Converting AMBER topology to GROMACS: $work_dir/system.parm7"
@@ -126,6 +126,16 @@ if ! "$python_bin" "mark_hot.py" \
     "$work_dir/processed.top" \
     "$work_dir/processed.hot.top"; then
     die "Protein hot-region marker generation failed: $work_dir/processed.top -> $work_dir/processed.hot.top"
+fi
+
+# partial_tempering scales the charges of "_" atom types; ions stay cold.
+# run.sh compares each replica's grompp net charge with this table.
+if ! "$python_bin" "net_charge.py" \
+    "$work_dir/processed.hot.top" \
+    --hot-marked-types \
+    --states "$states_file" \
+    --output "$work_dir/net_charge.tsv"; then
+    die "Expected net-charge table generation failed: $work_dir/processed.hot.top, $states_file -> $work_dir/net_charge.tsv"
 fi
 
 while IFS=$'\t' read -r replica effective_temperature lambda_pp _ seed; do

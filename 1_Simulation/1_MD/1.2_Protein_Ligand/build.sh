@@ -63,17 +63,17 @@ if ! (
     cd "$work_dir"
     tleap \
         -f tleap.in \
-        > tleap.out 2>&1
+        > tleap.stdout.log 2>&1
 ); then
-    die "tleap failed. See $work_dir/tleap.out and $work_dir/leap.log"
+    die "tleap failed. See $work_dir/tleap.stdout.log and $work_dir/leap.log"
 fi
 
 if [[ ! -s "$work_dir/system.parm7" ]]; then
-    die "Topology was not created. See $work_dir/tleap.out and $work_dir/leap.log"
+    die "Topology was not created. See $work_dir/tleap.stdout.log and $work_dir/leap.log"
 fi
 
 if [[ ! -s "$work_dir/system.rst7" ]]; then
-    die "Restart file was not created. See $work_dir/tleap.out and $work_dir/leap.log"
+    die "Restart file was not created. See $work_dir/tleap.stdout.log and $work_dir/leap.log"
 fi
 
 echo "AMBER topology and restart: $work_dir"

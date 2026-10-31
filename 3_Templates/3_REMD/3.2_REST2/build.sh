@@ -215,8 +215,8 @@ salt_pairs=$(awk -v waters="$water_count" -v concentration="$salt_concentration"
 "$python" helpers/generate_inputs.py "$method" "$config" "$candidate_dir/inputs" --salt-pairs "$salt_pairs"
 
 echo "Building the AMBER system ($water_count waters, $salt_pairs salt formula units)."
-if ! (cd "$candidate_dir" && "$tleap" -f inputs/tleap.final.in > leap.log 2>&1); then
-    die "Final tleap build failed. See log: $candidate_dir/leap.log"
+if ! (cd "$candidate_dir" && "$tleap" -f inputs/tleap.final.in > tleap.stdout.log 2>&1); then
+    die "Final tleap build failed. See $candidate_dir/tleap.stdout.log and $candidate_dir/leap.log"
 fi
 log_event final-tleap 0 "input=$candidate_dir/inputs/tleap.final.in outputs=$candidate_dir/system.parm7,$candidate_dir/system.rst7,$candidate_dir/system.pdb"
 
@@ -238,8 +238,10 @@ helper_dir=helpers
 # ParmEd can emit CMAP numbers longer than GROMACS 2024.x can safely parse.
 "$python" "$helper_dir/scale_cmap.py" "$work_dir/topol.top" "$work_dir/topol.top" 1.0
 log_event convert-topology 0 "outputs=$work_dir/topol.top,$work_dir/system.gro"
+# The unscaled topology must report its own total charge (Q_ref, roundoff only).
+reference_charge=$("$python" "$helper_dir/net_charge.py" "$work_dir/topol.top")
 log_command preprocess "$gmx" grompp -f inputs/energy_check.mdp -p "$work_dir/topol.top" -c "$work_dir/system.gro" -pp "$build_tmp/processed.top" -o "$build_tmp/preprocess.tpr"
-if ! run_grompp "$build_tmp/grompp_preprocess.log" \
+if ! run_grompp "base topology" "$build_tmp/grompp_preprocess.log" "$reference_charge" \
     "$gmx" grompp -f "inputs/energy_check.mdp" \
     -p "$work_dir/topol.top" -c "$work_dir/system.gro" \
     -pp "$build_tmp/processed.top" -o "$build_tmp/preprocess.tpr"; then
@@ -248,6 +250,10 @@ fi
 "$python" "$helper_dir/scale_cmap.py" "$work_dir/topol.top" "$build_tmp/processed.top" 1.0
 
 "$python" "$helper_dir/mark_hot.py" "$build_tmp/processed.top" "$build_tmp/processed.hot.top"
+# partial_tempering scales the charges of "_" atom types; ions stay cold.
+# run.sh compares each replica's grompp net charge with this table.
+"$python" "$helper_dir/net_charge.py" "$build_tmp/processed.hot.top" --hot-marked-types \
+    --states "$work_dir/states.tsv" --output "$work_dir/net_charge.tsv"
 while IFS=$'\t' read -r replica _ lambda_pp _ _; do
     if [[ "$replica" == replica ]]; then
         continue
@@ -272,10 +278,12 @@ for variant in unscaled scale_one; do
     log_event energy-check 0 "variant=$variant raw_directory=$energy_dir"
     if [[ "$variant" == unscaled ]]; then
         topology="$work_dir/topol.top"
+        expected_charge=$reference_charge
     else
         topology="$work_dir/000/topol.top"
+        expected_charge=$(replica_expected_charge "$work_dir/net_charge.tsv" 000)
     fi
-    if ! run_grompp "$energy_dir/$variant.grompp.log" \
+    if ! run_grompp "energy check $variant" "$energy_dir/$variant.grompp.log" "$expected_charge" \
         "$gmx" grompp \
         -f "inputs/energy_check.mdp" \
         -p "$topology" \
@@ -315,7 +323,7 @@ while IFS=$'\t' read -r replica _; do
 done < "$work_dir/states.tsv"
 
 for output in "$work_dir/system.gro" "$work_dir/topol.top" "$work_dir/states.tsv" \
-    "$work_dir/resolved_config.toml" "$work_dir/energy_check.tsv"; do
+    "$work_dir/net_charge.tsv" "$work_dir/resolved_config.toml" "$work_dir/energy_check.tsv"; do
     if [[ ! -s "$output" ]]; then
         die "Final build output is missing or empty: $output"
     fi

@@ -174,8 +174,8 @@ PY
     "$python" helpers/generate_inputs.py "$config" "$work_dir/inputs" --salt-pairs "$salt_pairs"
 
     echo "Building the final basis system ($water_count waters, $salt_pairs salt formula units)."
-    if ! (cd "$work_dir"; "$tleap" -f inputs/tleap.final.in > leap.log 2>&1); then
-        die "Final tleap build failed: $work_dir/leap.log"
+    if ! (cd "$work_dir"; "$tleap" -f inputs/tleap.final.in > tleap.stdout.log 2>&1); then
+        die "Final tleap build failed. See $work_dir/tleap.stdout.log and $work_dir/leap.log"
     fi
     for required in "$work_dir/system.parm7" "$work_dir/system.rst7" "$work_dir/system.pdb"; do
         if [[ ! -s "$required" ]]; then

@@ -10,7 +10,7 @@ File schedule은 LEaP 실행 전에 검사합니다. Auto count는 임시 topolo
 
 중단되거나 marker가 없는 stage output은 자동 삭제하거나 재실행하지 않고 보존한 채 중단합니다.
 
-Water count를 위한 first-pass LEaP input과 `solvated.pdb`는 `work/.build_tmp.XXXXXX/`에서 생성합니다. 전체 build가 성공하면 temporary directory를 삭제하고, 실패하면 진단을 위해 경로를 출력하고 보존합니다. Final PDB, topology, restart, resolved config와 LEaP log는 유지합니다. REST build의 preprocessing TPR, processed topology와 energy-check raw file도 같은 temporary directory에 둡니다. 성공 후에는 `work/topol.top`, `work/system.gro`, replica topology, `work/build.log`, `work/build_summary.toml`과 `work/energy_check.tsv`를 남깁니다. `./build.sh --keep-intermediates INPUT.pdb`를 사용하면 성공 후에도 temporary directory를 보존합니다. Replica는 공통 `work/system.gro`를 직접 참조합니다. 실제 minimization, equilibration, production TPR·`*.grompp.log`와 restart는 정리하지 않습니다.
+Water count를 위한 first-pass LEaP input과 `solvated.pdb`는 `work/.build_tmp.XXXXXX/`에서 생성합니다. 전체 build가 성공하면 temporary directory를 삭제하고, 실패하면 진단을 위해 경로를 출력하고 보존합니다. Final PDB, topology, restart, resolved config와 LEaP log는 유지합니다. REST build의 preprocessing TPR, processed topology와 energy-check raw file도 같은 temporary directory에 둡니다. 성공 후에는 `work/topol.top`, `work/system.gro`, replica topology, `work/build.log`, `work/build_summary.toml`, `work/energy_check.tsv`와 `work/net_charge.tsv`를 남깁니다. `./build.sh --keep-intermediates INPUT.pdb`를 사용하면 성공 후에도 temporary directory를 보존합니다. Replica는 공통 `work/system.gro`를 직접 참조합니다. 실제 minimization, equilibration, production TPR·`*.grompp.log`와 restart는 정리하지 않습니다.
 
 이 directory의 runtime code는 별도로 복사해 사용할 수 있습니다. GROMACS를
 build할 때는 상위 `patches/` directory의 correction도 함께 사용합니다. Python
@@ -71,11 +71,26 @@ semicolon, `|`를 구분자로 받고 `#` comment를 허용합니다. Temperatur
 두 mode를 조합할 수 있으며 최종 temperature, λ, κ와 seed는
 `work/states.tsv`에서 확인합니다.
 
-`maxwarn`은 public config option이 아닙니다. `helpers/grompp_utils.bash`는 `grompp`를
-먼저 warning 우회 없이 실행합니다. 변환된 topology의 남은 전하가 ±0.01 e
-이내이고 `System has non-zero total charge` warning 하나만 있을 때만
-내부적으로 `-maxwarn 1`로 다시
-실행합니다. 다른 warning은 해당 `*.grompp.log`를 남기고 계산을 중단합니다.
+REST는 hot solute atom의 charge만 `sqrt(λ)`로 줄이고 water와 ion은 cold로
+둡니다. 따라서 charged solute의 scaled replica에는 `Q_ref + q_hot(sqrt(λ) − 1)`의
+net charge가 생깁니다. `Q_ref`는 unscaled topology의 total charge(변환 roundoff
+수준)이고 `q_hot`은 parser의 hot molecule 0(첫 protein molecule) atom의 원래 charge 합입니다. PME에서 GROMACS는
+균일한 neutralizing background를 더하고 Ewald net-charge warning 하나를
+출력합니다. Solute만 tempering하는 방식은
+[PLUMED HREX tutorial](https://www.plumed.org/doc-v2.9/user-doc/html/hrex.html)과
+[REST3 parser 예제](https://github.com/koreyr/repex_topology_parser)를 따릅니다.
+Background charge artifact가 큰 system(예: membrane)에서는 이 선택을 따로
+검토합니다.
+
+`maxwarn`은 public config option이 아닙니다. `build.sh`는 `helpers/net_charge.py`로
+replica별 예상 charge를 `work/net_charge.tsv`에 기록합니다. `helpers/grompp_utils.bash`의
+`run_grompp`는 `grompp`를 먼저 warning 우회 없이 실행합니다. 실패하면 warning이
+net-charge warning 하나뿐이고 log의 `System has non-zero total charge` 값이 예상값
+±0.01 e일 때만 `-maxwarn 1`로 다시 실행합니다. Build의 preprocessing과 energy
+check, replica 000은 λ=1이므로 `work/topol.top`의 `Q_ref` 주변 roundoff만
+허용합니다. 다른 warning이나 예상과 다른 charge는 replica, 보고된 charge, 예상
+charge와 `*.grompp.log` 경로를 남기고 계산을 중단합니다. 새 gate는 실제
+GROMACS로 실행하지 않았습니다(미검증).
 
 ### Engine 선택과 실행 상태
 
@@ -166,13 +181,29 @@ User-facing entry points remain in this directory root. `helpers/` contains leaf
 
 Interrupted or unmarked stage output is retained and stops the workflow instead of being deleted or rerun automatically.
 
-The first-pass LEaP input and water-count `solvated.pdb` are created under `work/.build_tmp.XXXXXX/`. A successful build removes that temporary directory; a failed build prints and retains it for diagnosis. Final PDB, topology, restart, resolved config, and LEaP logs are retained. REST preprocessing TPRs, processed topologies, and raw energy-check files use the same temporary directory. After success, the build retains `work/topol.top`, `work/system.gro`, replica topologies, `work/build.log`, `work/build_summary.toml`, and `work/energy_check.tsv`. Use `./build.sh --keep-intermediates INPUT.pdb` to retain the temporary directory after success. Replicas reference the shared `work/system.gro` directly. Run-stage minimization, equilibration, production TPRs, `*.grompp.log` files, and restarts are never cleaned.
+The first-pass LEaP input and water-count `solvated.pdb` are created under `work/.build_tmp.XXXXXX/`. A successful build removes that temporary directory; a failed build prints and retains it for diagnosis. Final PDB, topology, restart, resolved config, and LEaP logs are retained. REST preprocessing TPRs, processed topologies, and raw energy-check files use the same temporary directory. After success, the build retains `work/topol.top`, `work/system.gro`, replica topologies, `work/build.log`, `work/build_summary.toml`, `work/energy_check.tsv`, and `work/net_charge.tsv`. Use `./build.sh --keep-intermediates INPUT.pdb` to retain the temporary directory after success. Replicas reference the shared `work/system.gro` directly. Run-stage minimization, equilibration, production TPRs, `*.grompp.log` files, and restarts are never cleaned.
 
-`maxwarn` is not a public configuration option. `helpers/grompp_utils.bash` first runs
-`grompp` without a warning override and retries it with `-maxwarn 1` only when the
-converted topology has a residual charge within ±0.01 e and the log contains
-exactly one `System has non-zero total charge` warning. Any other warning stops
-the workflow and remains in the corresponding `*.grompp.log`.
+REST scales only hot solute charges by `sqrt(lambda)`; water and ions stay
+cold. A scaled replica of a charged solute therefore carries a net charge of
+`Q_ref + q_hot(sqrt(lambda) - 1)`, where `Q_ref` is the total charge of the
+unscaled topology (conversion roundoff) and `q_hot` is the unscaled charge of
+the atoms of parser hot molecule 0 (the first, protein molecule). With PME, GROMACS adds a uniform neutralizing background
+and prints one Ewald net-charge warning. Tempering only the solute follows the
+[PLUMED HREX tutorial](https://www.plumed.org/doc-v2.9/user-doc/html/hrex.html)
+and the [REST3 parser examples](https://github.com/koreyr/repex_topology_parser).
+Review this choice for systems where background-charge artifacts are large,
+such as membranes.
+
+`maxwarn` is not a public configuration option. `build.sh` writes each
+replica's expected charge to `work/net_charge.tsv` with `helpers/net_charge.py`.
+`run_grompp` in `helpers/grompp_utils.bash` first runs `grompp` without a
+warning override. It retries with `-maxwarn 1` only when the single warning is
+the net-charge warning and the reported `System has non-zero total charge` is
+within 0.01 e of the expected value. The build preprocessing, energy check, and
+replica 000 use lambda=1, so they accept only roundoff around `Q_ref` from
+`work/topol.top`. Any other warning or charge stops the workflow and reports
+the replica, reported charge, expected charge, and `*.grompp.log` path. The new
+gate has not been run with real GROMACS (unverified).
 
 ### Config choices
 

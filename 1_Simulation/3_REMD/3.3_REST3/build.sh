@@ -84,9 +84,9 @@ if ! (
     cd "$work_dir"
     "$tleap" \
         -f tleap.in \
-        > leap.log 2>&1
+        > tleap.stdout.log 2>&1
 ); then
-    die "tleap failed. See log: $work_dir/leap.log"
+    die "tleap failed. See $work_dir/tleap.stdout.log and $work_dir/leap.log"
 fi
 
 echo "Converting AMBER topology to GROMACS: $work_dir/system.parm7"
@@ -130,6 +130,16 @@ if ! "$python_bin" "generate_rest3.py" \
     "$states_file" \
     "$work_dir"; then
     die "REST3 topology generation failed: $states_file, $work_dir/processed.top"
+fi
+
+# The parser scales every atom of hot_molecules=[0] in generate_rest3.py;
+# ions stay cold. run.sh compares each replica's grompp net charge with this table.
+if ! "$python_bin" "net_charge.py" \
+    "$work_dir/processed.top" \
+    --hot-molecule-index 0 \
+    --states "$states_file" \
+    --output "$work_dir/net_charge.tsv"; then
+    die "Expected net-charge table generation failed: $work_dir/processed.top, $states_file -> $work_dir/net_charge.tsv"
 fi
 
 while IFS=$'\t' read -r replica _ _ _ _ seed; do

@@ -54,6 +54,8 @@ field에 맞춰 정해야 하는 schedule입니다.
 | `scale_cmap.py` | 외부 parser가 생략하는 ff19SB의 residue별 CMAP section을 복원하고 grid를 `lambda_pp`로 scaling합니다. |
 | `verify_rest3.py` | Base identity, OPC atom type·charge·mass와 water–water/ion–water Lennard-Jones 보존을 검사합니다. |
 | `validate_states.py` | State file의 각 row, λ 관계와 기준 κ를 검사합니다. |
+| `net_charge.py` | hot molecule 0의 charge와 `lambda_pp`로 replica별 예상 net charge를 `work/net_charge.tsv`에 기록합니다. `build.sh`가 자동 호출합니다. |
+| `grompp_utils.bash` | `run.sh`가 source하는 `run_grompp`입니다. 예상 net-charge warning 하나만 `-maxwarn 1`로 허용합니다. |
 | `build.sh` | Conversion, processed topology 생성, replica topology 생성과 검사를 순서대로 호출합니다. Build의 TPR은 processed topology를 만드는 preprocessing용이며, 계산용 TPR은 `run.sh`가 만듭니다. |
 | `run.sh` | 300 K pre-production과 2 ps 간격 HREX를 실행합니다. |
 | `anal.py` | Exchange, occupancy와 state별 Rg/terminal distance를 계산합니다. |
@@ -184,12 +186,6 @@ residue의 Cα distance를 TSV로 저장합니다.
 - [REST3 원 논문](https://pmc.ncbi.nlm.nih.gov/articles/PMC10795075/)
 - [repex-topology-parser](https://github.com/koreyr/repex_topology_parser)
 
-`grompp_utils.bash`는 `grompp`를 먼저 `-maxwarn` 없이 실행합니다.
-AMBER→GROMACS topology 변환 뒤
-남은 전하가 ±0.01 e 이내이고 `System has non-zero total charge` warning 하나만
-있을 때만 내부적으로 `-maxwarn 1`로 다시 실행합니다. 다른 warning은 해당
-`*.grompp.log`를 남기고 계산을 중단합니다.
-
 Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 중단하고 파일을 보존합니다. 새 build 전에는 기존 `work/`를 다른 위치에 보관하거나 별도 tutorial 사본을 사용합니다.
 
 Replica 실행이나 batch 도중 `grompp`가 실패하면 이미 시작한 replica가 모두 종료될 때까지 기다린 뒤 실패로 종료합니다. 후속 stage는 시작하지 않습니다.
@@ -198,6 +194,30 @@ Replica 실행이나 batch 도중 `grompp`가 실패하면 이미 시작한 repl
 
 Parser archive와 추출된 source도 구조 파일과 함께 게시합니다. `.dependencies.download.pending`가 남으면 해당 parser를 읽는 build와 새 download를 거부합니다.
 
+### Scaled replica의 net charge
+
+REST는 hot solute atom의 charge만 `sqrt(λ)`로 줄이고 water와 counter-ion은
+cold로 둡니다. 따라서 scaled replica에는 `Q_ref + q_hot(sqrt(λ) − 1)`의 net
+charge가 생깁니다. `Q_ref`는 unscaled topology의 total charge(변환 roundoff
+수준)이고 `q_hot`은 parser의 hot molecule 0(protein) atom의 원래 charge
+합입니다. Chignolin은 `q_hot = −2 e`이므로 replica 001(λ=0.9437)은 +0.057 e, replica 007
+(λ=0.6667)은 +0.367 e입니다. PME에서 GROMACS는 균일한 neutralizing
+background를 더하고 Ewald net-charge warning 하나를 출력합니다. Solute만
+tempering하는 방식은
+[PLUMED HREX tutorial](https://www.plumed.org/doc-v2.9/user-doc/html/hrex.html)과
+[REST3 parser 예제](https://github.com/koreyr/repex_topology_parser)를
+따릅니다.
+
+`build.sh`는 `net_charge.py`로 replica별 예상 charge를 `work/net_charge.tsv`에
+기록합니다. `run.sh`는 `grompp_utils.bash`의 `run_grompp`로 `grompp`를 먼저
+`-maxwarn` 없이 실행합니다. 실패하면 warning이 net-charge warning 하나뿐이고
+log의 `System has non-zero total charge` 값이 해당 replica 예상값 ±0.01 e일
+때만 `-maxwarn 1`로 다시 실행합니다. λ=1인 replica 000은 기존처럼 roundoff만
+허용합니다. 다른 warning이나 예상과 다른 charge는 replica, 보고된 charge,
+예상 charge와 `*.grompp.log` 경로를 남기고 계산을 중단합니다. Build의
+processed topology 생성 `grompp`는 warning을 허용하지 않습니다. 새 gate는 실제
+GROMACS로 실행하지 않았습니다(미검증).
+
 ### Exchange 진단
 
 `round_trips`는 처음 도달한 endpoint에서 반대 endpoint를 방문한 뒤 처음 endpoint로 돌아온 cycle 수입니다. 편도 이동과 같은 endpoint의 반복 방문은 왕복으로 세지 않습니다.
@@ -205,12 +225,6 @@ Parser archive와 추출된 source도 구조 파일과 함께 게시합니다. `
 ## English
 
 Only even replica counts of at least two are supported. `build.sh` and `run.sh` reject odd schedules without adjusting them. `run.sh --dry-run` checks the actual state-table count too. Prepare a new work directory for results built with an odd schedule.
-
-`grompp_utils.bash` first runs `grompp` without `-maxwarn`. It is retried with
-`-maxwarn 1` only when the AMBER-to-GROMACS topology conversion leaves a charge
-within ±0.01 e and the log contains exactly one `System has non-zero total
-charge` warning. Any other warning stops the workflow and remains in the
-corresponding `*.grompp.log`.
 
 This example runs eight-state solvent-scaled REST3 for ff19SB/OPC Chignolin.
 It uses a geometric 300–450 K effective-temperature ladder and the fixed kappa
@@ -319,6 +333,30 @@ writes `work/states.tsv`; the runner uses its row count as the replica count.
 Build stops before changing inputs when topology/restart files already exist, preserving those files. Preserve the existing `work/` elsewhere or use a separate tutorial copy before a new build.
 
 If a replica or a mid-batch `grompp` command fails, the runner waits for all already-started replicas before returning failure. Subsequent stages do not start.
+
+### Net charge of scaled replicas
+
+REST scales only hot solute charges by `sqrt(lambda)`; water and counter-ions
+stay cold. A scaled replica therefore carries a net charge of
+`Q_ref + q_hot(sqrt(lambda) - 1)`, where `Q_ref` is the total charge of the
+unscaled topology (conversion roundoff) and `q_hot` is the unscaled charge of
+the atoms of parser hot molecule 0 (the protein). Chignolin has
+`q_hot = -2 e`, giving +0.057 e for replica 001 (lambda=0.9437) and +0.367 e
+for replica 007 (lambda=0.6667). With PME, GROMACS adds a uniform neutralizing background and prints one Ewald net-charge
+warning. Tempering only the solute follows the
+[PLUMED HREX tutorial](https://www.plumed.org/doc-v2.9/user-doc/html/hrex.html)
+and the [REST3 parser examples](https://github.com/koreyr/repex_topology_parser).
+
+`build.sh` writes each replica's expected charge to `work/net_charge.tsv` with
+`net_charge.py`. `run.sh` calls `run_grompp` from `grompp_utils.bash`, which
+first runs `grompp` without `-maxwarn`. It retries with `-maxwarn 1` only when
+the single warning is the net-charge warning and the reported `System has
+non-zero total charge` is within 0.01 e of that replica's expected value.
+Replica 000 (lambda=1) still accepts only conversion roundoff. Any other
+warning or charge stops the run and reports the replica, reported charge,
+expected charge, and `*.grompp.log` path. The build-stage `grompp` call that
+writes the processed topology accepts no warning. The new gate has not been run
+with real GROMACS (unverified).
 
 ### 동시 실행과 input 변경
 

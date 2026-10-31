@@ -158,13 +158,13 @@ salt_pairs=$(awk -v waters="$water_count" -v concentration="$salt_concentration"
 "$python" helpers/generate_inputs.py "$method" "$config" "$candidate_dir/inputs" --salt-pairs "$salt_pairs"
 
 echo "Building the AMBER system ($water_count waters, $salt_pairs salt formula units)."
-if ! (cd "$candidate_dir" && "$tleap" -f inputs/tleap.final.in > leap.log 2>&1); then
-    die "Final tleap build failed. See log: $candidate_dir/leap.log"
+if ! (cd "$candidate_dir" && "$tleap" -f inputs/tleap.final.in > tleap.stdout.log 2>&1); then
+    die "Final tleap build failed. See $candidate_dir/tleap.stdout.log and $candidate_dir/leap.log"
 fi
 
 for output in system.parm7 system.rst7 system.pdb; do
     if [[ ! -s "$candidate_dir/$output" ]]; then
-        die "AMBER build output was not created: $candidate_dir/$output; log: $candidate_dir/leap.log"
+        die "AMBER build output was not created: $candidate_dir/$output; see $candidate_dir/tleap.stdout.log and $candidate_dir/leap.log"
     fi
 done
 
