@@ -70,7 +70,9 @@ python3 anal.py
 MPI executable과 launcher는 `AMBER_MPI_ENGINE`과 `MPI_LAUNCHER`로 바꿀 수
 있습니다. GPU mapping은 scheduler 또는 `CUDA_VISIBLE_DEVICES`에서 설정합니다.
 
-각 window는 고유한 positive seed를 사용합니다. `gamd.prepare.log`는 15 Å
+각 window는 고유한 positive seed를 사용합니다. Langevin restart마다 다른 `ig`를
+쓰도록 heating은 seed, equilibration은 seed+1,000,000, GaMD preparation은
+seed+2,000,000, production은 seed+3,000,000을 사용합니다. `gamd.prepare.log`는 15 Å
 reference window에만 생성됩니다. Production은 window별
 `gamd.production.log`를 기록합니다. 완료 marker와 필수 output이 있는 stage만
 건너뜁니다. 불완전하거나 marker가 없는 기존 결과는 보존하고 중단합니다.
@@ -165,7 +167,9 @@ MBAR and then reweights the GaMD boost with a second-order cumulant expansion.
 
 Run the build as `./build.sh structure/chignolin.pdb`. The defaults are
 `igamd=3` and `sigma0P=sigma0D=6.0`. Each window has a
-unique positive seed and separate production GaMD logs. The run uses `pmemd.cuda` for
+unique positive seed and separate production GaMD logs. Langevin dynamics needs
+a different `ig` on each restart, so heating uses the seed, equilibration adds
+1,000,000, GaMD preparation adds 2,000,000, and production adds 3,000,000. The run uses `pmemd.cuda` for
 individual stages and `pmemd.cuda.MPI -rem 3` for replica exchange.
 
 `igamd=3`, `iE=1` select lower-bound dual boost; `sigma0P` and `sigma0D` cap
@@ -217,7 +221,7 @@ Run은 재사용할 결과의 input을 SHA256으로 비교합니다. Topology, �
 
 정상 종료, command 실패와 INT/TERM에서는 자식 process의 종료를 확인한 뒤 자기 lock만 해제합니다. SIGKILL이나 node 장애로 남은 lock은 자동 삭제하지 않습니다. Error에 표시된 lock과 `owner.json`의 host, PID, command, scope를 확인하고 scheduler와 해당 host에서 모든 writer와 자식 process가 종료됐는지 확인한 뒤 그 lock directory만 수동 제거합니다. PID가 로컬에서 보이지 않는다는 이유만으로 제거하지 않습니다. `.gate/`도 같은 확인이 필요합니다.
 
-지원하는 `--dry-run`과 `--help`는 보호나 identity 파일을 생성하지 않습니다. 진행 중인 work를 이동하거나 identity를 수정해 재사용하지 않습니다. 보호는 로컬 filesystem과 로컬 자식 process로 검증했으며 network filesystem, remote MPI와 다른 node의 writer 종료는 미검증입니다.
+`run.sh --dry-run`은 보호나 identity 파일을 생성하지 않습니다. 진행 중인 work를 이동하거나 identity를 수정해 재사용하지 않습니다. 보호는 로컬 filesystem과 로컬 자식 process로 검증했으며 network filesystem, remote MPI와 다른 node의 writer 종료는 미검증입니다.
 
 ### Concurrent runs and input changes
 
@@ -227,7 +231,7 @@ Run compares inputs for result reuse with SHA256. Changed topology, initial coor
 
 Normal exit, command failure and INT/TERM release only the owned lock after child termination is verified. Locks left by SIGKILL or node failure are retained. Inspect the reported lock and its `owner.json` host, PID, command and scopes; confirm through the scheduler and owning host that all writers and children stopped before manually removing only that lock directory. A PID missing locally is not sufficient. Apply the same checks to `.gate/`.
 
-Supported `--dry-run` and `--help` do not create writer or identity files. Do not move active work trees or edit identities to reuse results. Protection was tested on a local filesystem with local child processes; network filesystems, remote MPI and termination of writers on other nodes remain unverified.
+`run.sh --dry-run` creates no writer or identity files. Do not move active work trees or edit identities to reuse results. Protection was tested on a local filesystem with local child processes; network filesystems, remote MPI and termination of writers on other nodes remain unverified.
 
 `download.sh` validates every asset and `SHA256SUMS` in staging before publishing through `helpers/publish_download.py`. Transfer, checksum and ordinary publication failures preserve existing files, including unrelated preparation files. A retained `structure/.download.pending` blocks source readers and new downloads. Inspect the retained staging and marker; deleting only the marker can expose a mixed generation.
 

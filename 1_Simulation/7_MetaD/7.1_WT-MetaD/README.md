@@ -53,6 +53,9 @@ equilibration은 `*.out`과 `*.rst7`이 모두 있고 성공 완료 증거가 �
 `HILLS`는 bias를 복원하는
 기록이며 `COLVAR`를 대신하지 않습니다.
 
+Production 전 PLUMED parse-only 검사는 `plumed.parse.HILLS`와
+`plumed.parse.COLVAR`라는 임시 filename을 사용하고 검사 후 삭제합니다.
+
 1 ns는 workflow 학습용 길이입니다. φ/ψ 공간의 수렴이나 정량 free energy를
 입증하지 않습니다. Keyword는 PLUMED 2.10
 [`METAD`](https://www.plumed.org/doc-v2.10/user-doc/html/_m_e_t_a_d.html)를
@@ -100,7 +103,9 @@ the shortest box dimension before reusing this value.
 ff19SB/OPC system from the supplied PDB. `run.sh` performs
 minimization, 200 ps heating, 100 ps NPT equilibration, and one 1 ns production
 run. Its restart, trajectory, `COLVAR`, and
-`HILLS` files are written directly under `work/`. `anal.py` reports
+`HILLS` files are written directly under `work/`. The PLUMED parse-only check
+before production writes temporary `plumed.parse.HILLS` and
+`plumed.parse.COLVAR` files and removes them afterwards. `anal.py` reports
 sampled torsion and bias ranges. The 1 ns run demonstrates the workflow and is
 not evidence of converged free energies.
 

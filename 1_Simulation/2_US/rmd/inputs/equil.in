@@ -31,3 +31,6 @@ Equilibrate for 100 ps at 300 K and 1 bar
  ntpr=5000,
  ioutfm=1,
 /
+&ewald
+ netfrc=0,
+/

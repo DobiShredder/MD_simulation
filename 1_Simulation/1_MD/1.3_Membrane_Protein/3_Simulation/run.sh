@@ -120,6 +120,7 @@ run_stage "solvent minimization" min-solvent.out min-solvent.rst7 \
     -p system.parm7 \
     -c system.rst7 \
     -r min-solvent.rst7 \
+    -inf min-solvent.info \
     -ref system.rst7
 
 run_stage "lipid minimization" min-lipid.out min-lipid.rst7 \
@@ -130,6 +131,7 @@ run_stage "lipid minimization" min-lipid.out min-lipid.rst7 \
     -p system.parm7 \
     -c min-solvent.rst7 \
     -r min-lipid.rst7 \
+    -inf min-lipid.info \
     -ref system.rst7
 
 run_stage "NVT heating" heat.out heat.rst7 \

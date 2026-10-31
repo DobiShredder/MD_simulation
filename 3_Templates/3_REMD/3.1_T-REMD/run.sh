@@ -227,7 +227,7 @@ write_group_file() {
             continue
         fi
         replica_dir="$work_dir/$replica"
-        echo "-O -i $replica_dir/production.in -o $replica_dir/$segment_name.out -p $work_dir/system.parm7 -c $replica_dir/$input_restart -r $replica_dir/$segment_name.rst7 -x $replica_dir/$segment_name.nc -inf $replica_dir/$segment_name.info" \
+        echo "-O -i $replica_dir/$segment_name.in -o $replica_dir/$segment_name.out -p $work_dir/system.parm7 -c $replica_dir/$input_restart -r $replica_dir/$segment_name.rst7 -x $replica_dir/$segment_name.nc -inf $replica_dir/$segment_name.info" \
             >> "$group_file"
     done < "$states_file"
 }
@@ -316,7 +316,7 @@ for ((segment = segment_start; segment <= segment_end; segment++)); do
     else
         printf -v input_restart 'production.%03d.rst7' "$((segment - 1))"
     fi
-    check_stage_identity "$segment_name" "$input_restart" "production.in"
+    check_stage_identity "$segment_name" "$input_restart" "$segment_name.in"
     status=$(stage_status "$segment_name")
     if [[ "$status" == complete ]]; then
         echo "Skipping completed stage: $segment_name ($work_dir)"

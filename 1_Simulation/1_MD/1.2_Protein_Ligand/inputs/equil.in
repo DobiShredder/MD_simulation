@@ -31,3 +31,6 @@ Equilibrate the complex for 100 ps
  ntpr=5000,
  ioutfm=1,
 /
+&ewald
+ netfrc=0,
+/

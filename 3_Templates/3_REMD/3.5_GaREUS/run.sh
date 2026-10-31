@@ -341,9 +341,11 @@ write_group_file() {
         dump_file="$replica_dir/restraint.$segment_name.dat"
         gamd_log="$replica_dir/gamd.$segment_name.log"
 
+        # The group file runs from this directory, so restraint paths include work_dir.
         sed \
+            -e "s|@DISANG@|$replica_dir/distance.RST|g" \
             -e "s|@DUMPAVE@|$dump_file|g" \
-            "$replica_dir/production.template.in" \
+            "$replica_dir/$segment_name.template.in" \
             > "$replica_dir/$segment_name.in"
 
         group_command="-O -i $replica_dir/$segment_name.in"
@@ -365,10 +367,11 @@ if (( dry_run )); then
     echo "Replica exchange engine: $amber_mpi_engine"
     echo "$replica_count configured windows with one shared GaMD state"
     if (( ! production_only )); then
-        printf '+ %q -O -i %q -o %q -p %q -c %q -r %q\n' \
-            "$amber_engine" "$work_dir/000/minimize.in" \
-            "$work_dir/000/minimize.out" "$work_dir/system.parm7" \
-            "$work_dir/system.rst7" "$work_dir/000/minimize.rst7"
+        # Preproduction runs inside each window directory, as in run_stage.
+        printf '+ cd %q && %q -O -i minimize.in -o minimize.out -p ../system.parm7 -c ../system.rst7 -r minimize.rst7 -x minimize.nc -inf minimize.info\n' \
+            "$work_dir/000" "$amber_engine"
+        printf '+ cd %q && %q -O -i gamd_prepare.in -o gamd_prepare.out -p ../system.parm7 -c equilibrate.rst7 -r gamd_prepare.rst7 -x gamd_prepare.nc -inf gamd_prepare.info -gamd gamd.prepare.log\n' \
+            "$work_dir/$gamd_reference_replica" "$amber_engine"
     fi
     if (( ! preparation_only )); then
         for ((segment = segment_start; segment <= segment_end; segment++)); do
@@ -421,7 +424,7 @@ for segment in $(seq "$segment_start" "$segment_end"); do
     else
         printf -v input_gamd_state 'production.%03d.gamd.rst' "$((segment - 1))"
     fi
-    check_stage_identity "$segment_name" "$input_restart" "production.template.in"
+    check_stage_identity "$segment_name" "$input_restart" "$segment_name.template.in"
     status=$(stage_state "$segment_name" --require-gamd-log)
     if [[ "$status" == complete ]]; then
         echo "Skipping completed stage: $segment_name ($work_dir)"

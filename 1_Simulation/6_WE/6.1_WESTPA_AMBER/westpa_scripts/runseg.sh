@@ -15,17 +15,19 @@ fi
 mkdir -p "$WEST_CURRENT_SEG_DATA_REF"
 cd "$WEST_CURRENT_SEG_DATA_REF"
 
-existing=0
+# WESTPA 2022.15 w_run removes and recreates an incomplete segment directory
+# before calling this script. Leftover output therefore means a standalone
+# callback or a WESTPA version that keeps partial segments; keep it for review.
 for output in segment.in segment.out segment.info seg.rst7; do
     if [[ -e "$output" ]]; then
-        existing=$((existing + 1))
+        echo "Error: Segment output from an earlier propagation attempt was kept: $WEST_CURRENT_SEG_DATA_REF/$output" >&2
+        echo "Inspect the partial segment, move its directory aside, and rerun ./run.sh:" >&2
+        printf '  mv %q %q.failed.<timestamp>\n' "$WEST_CURRENT_SEG_DATA_REF" "$WEST_CURRENT_SEG_DATA_REF" >&2
+        exit 1
     fi
 done
 if [[ -s "$WEST_PCOORD_RETURN" ]]; then
-    existing=$((existing + 1))
-fi
-if [[ "$existing" -ne 0 ]]; then
-    echo "Error: Segment directory is not empty: $WEST_CURRENT_SEG_DATA_REF" >&2
+    echo "Error: Progress-coordinate return file is not empty and was kept: $WEST_PCOORD_RETURN" >&2
     exit 1
 fi
 

@@ -65,7 +65,9 @@ output은 덮어쓰지 않습니다.
 Amber 26의 LiGaMD3 `gamd.log`는 세 물리적 boost를 각각 별도 column으로
 기록하지 않습니다. 기존 형식의 `Boost-Energy-Potential`과
 `Boost-Energy-Dihedral` 두 aggregate column을 기록합니다. `anal.py`는 두 값을
-읽어 각각의 통계와 합계인 frame별 total boost `ΔV`를 저장합니다. 기본
+읽어 각각의 통계와 합계인 frame별 total boost `ΔV`를 저장합니다. TSV의
+`logged_potential_column`과 `logged_dihedral_column`은 이 두 log column을
+가리키며 `ΔV_L`, `ΔV_D`, `ΔV_B`를 각각 분리한 값이 아닙니다. 기본
 production log의 103줄은 header 3줄과 GaMD record 100개입니다.
 
 ### 주요 option
@@ -113,7 +115,9 @@ the receptor range from the final topology, and `run.sh` performs the stages.
 Amber 26 does not write the three physical LiGaMD3 boosts as separate columns
 in `gamd.log`. It retains the legacy aggregate `Boost-Energy-Potential` and
 `Boost-Energy-Dihedral` columns. `anal.py` reports both logged values and their
-sum as the per-frame total boost `ΔV`. The default 103-line production log
+sum as the per-frame total boost `ΔV`. The TSV labels `logged_potential_column`
+and `logged_dihedral_column` name these log columns; they are not separate
+`ΔV_L`, `ΔV_D`, or `ΔV_B` values. The default 103-line production log
 contains three header lines and 100 records.
 The default +1 ligand path first adds one imine-N hydrogen and a formal charge
 to the neutral RCSB SDF, then applies GAFF2/AM1-BCC.

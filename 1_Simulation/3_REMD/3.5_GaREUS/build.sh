@@ -37,6 +37,12 @@ fi
 tleap=${TLEAP:-tleap}
 python_bin=${PYTHON:-python3}
 
+# Langevin dynamics (ntt=3) needs a different ig after each restart
+# (Amber26 manual, ig). Each stage adds a fixed offset to the window seed.
+equilibrate_seed_offset=1000000
+gamd_prepare_seed_offset=2000000
+production_seed_offset=3000000
+
 if find "$work_dir" -type f -name 'production.out' -print -quit 2>/dev/null | grep -q .; then
     die "Production output already exists in $work_dir. Remove it before rebuilding."
 fi
@@ -99,16 +105,22 @@ while IFS=$'\t' read -r replica _ seed; do
     cp "$work_dir/system.rst7" "$replica_dir/system.rst7"
 
     for stage in minimize heat equilibrate gamd_prepare; do
+        case "$stage" in
+            equilibrate) stage_seed=$((seed + equilibrate_seed_offset)) ;;
+            gamd_prepare) stage_seed=$((seed + gamd_prepare_seed_offset)) ;;
+            *) stage_seed=$seed ;;
+        esac
         sed \
-            -e "s|@SEED@|$seed|g" \
+            -e "s|@SEED@|$stage_seed|g" \
             -e "s|@DISANG@|distance.RST|g" \
             -e "s|@DUMPAVE@|restraint.$stage.dat|g" \
             "inputs/$stage.in" \
             > "$replica_dir/$stage.in"
     done
 
+    production_seed=$((seed + production_seed_offset))
     sed \
-        -e "s|@SEED@|$seed|g" \
+        -e "s|@SEED@|$production_seed|g" \
         -e "s|@DISANG@|$replica_dir/distance.RST|g" \
         "inputs/production.in" \
         > "$replica_dir/production.template.in"

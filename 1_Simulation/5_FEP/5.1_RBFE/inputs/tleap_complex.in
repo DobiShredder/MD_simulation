@@ -7,8 +7,12 @@ loadamberparams mbn.frcmod
 BNZ = loadmol2 bnz.mol2
 MBN = loadmol2 mbn.mol2
 protein = loadpdb protein.pdb
+# The crystal pose has heavy atoms only; loadpdb builds the hydrogens
+# from the BNZ/MBN mol2 templates.
+bnz_pose = loadpdb bound_bnz.pdb
+mbn_pose = loadpdb bound_mbn.pdb
 
-system = combine { protein BNZ MBN }
+system = combine { protein bnz_pose mbn_pose }
 solvatebox system OPCBOX 12.0
 addions system Na+ 0
 addions system Cl- 0

@@ -52,6 +52,18 @@ if (( dry_run )); then
     exit 0
 fi
 
+# Only output names change; parse-only must not create the production HILLS/COLVAR.
+render_plumed_input() {
+    local output=$1
+    local hills_file=$2
+    local colvar_file=$3
+    sed \
+        -e 's/@RESTART@//' \
+        -e "s/FILE=HILLS/FILE=$hills_file/" \
+        -e "s/FILE=COLVAR/FILE=$colvar_file/" \
+        inputs/plumed.dat.template > "$output"
+}
+
 "${PYTHON:-python3}" helpers/input_identity.py --verify "$work_dir"
 source_options=(--input "$work_dir/system.parm7" --input "$work_dir/system.rst7")
 for source_input in inputs/*; do
@@ -61,25 +73,34 @@ for source_input in inputs/*; do
 done
 "${PYTHON:-python3}" helpers/input_identity.py \
     --record "$work_dir/.source.identity.json" --stage "run source inputs" \
-    "${source_options[@]}" --value="$engine" --output "$work_dir/COLVAR" --output "$work_dir/HILLS" --output "$work_dir/KERNELS"
+    "${source_options[@]}" --value="$engine" --output "$work_dir/COLVAR" --output "$work_dir/HILLS"
 
 mkdir -p "$work_dir/inputs"
 cp inputs/minimize.in "$work_dir/inputs/minimize.in"
 sed 's/@RANDOM_SEED@/71001/g' inputs/heat.in.template > "$work_dir/inputs/heat.in"
 sed 's/@RANDOM_SEED@/71002/g' inputs/equilibrate.in.template > "$work_dir/inputs/equilibrate.in"
-sed 's/@RESTART@//' inputs/plumed.dat.template > "$work_dir/plumed.parse.dat"
+
+parse_input=plumed.parse.dat
+parse_hills=plumed.parse.HILLS
+parse_colvar=plumed.parse.COLVAR
+render_plumed_input "$work_dir/$parse_input" "$parse_hills" "$parse_colvar"
 atom_count=$(<"$work_dir/atom_count.txt")
-echo "Checking PLUMED input: $work_dir/plumed.parse.dat"
+echo "Checking PLUMED input: $work_dir/$parse_input"
 if (
     cd "$work_dir"
-    "$plumed" driver --plumed plumed.parse.dat --parse-only --natoms "$atom_count"
+    "$plumed" driver --plumed "$parse_input" --parse-only --natoms "$atom_count"
 ); then
     echo "Completed: PLUMED input check"
 else
     status=$?
-    echo "Error: PLUMED input check failed: $work_dir/plumed.parse.dat; inspect terminal diagnostics." >&2
+    echo "Error: PLUMED input check failed: $work_dir/$parse_input; inspect terminal diagnostics." >&2
     exit "$status"
 fi
+for path in "$parse_input" "$parse_hills" "$parse_colvar"; do
+    if [[ -e "$work_dir/$path" ]]; then
+        unlink "$work_dir/$path"
+    fi
+done
 
 run_stage() {
     local stage=$1
@@ -139,15 +160,12 @@ for output in production.out production.rst7 production.info production.nc; do
 done
 
 sed 's/@RANDOM_SEED@/71101/g' inputs/production.in.template > "$work_dir/production.in"
-sed 's/@RESTART@//' inputs/plumed.dat.template > "$work_dir/plumed.dat"
+render_plumed_input "$work_dir/plumed.dat" HILLS COLVAR
 
-production_identity_options=(--input "$work_dir/plumed.dat" --output "$work_dir/COLVAR" --output "$work_dir/HILLS")
-if [[ -s "$work_dir/funnel-reference.pdb" ]]; then
-    production_identity_options+=(--input "$work_dir/funnel-reference.pdb")
-fi
 "${PYTHON:-python3}" helpers/input_identity.py \
     --record "$work_dir/.production.identity.json" --stage production \
-    --directory "$work_dir" "${production_identity_options[@]}" -- \
+    --directory "$work_dir" \
+    --input "$work_dir/plumed.dat" --output "$work_dir/COLVAR" --output "$work_dir/HILLS" -- \
     "$engine" -O -i production.in -o production.out -p system.parm7 \
     -c equilibrate.rst7 -r production.rst7 -x production.nc -inf production.info
 

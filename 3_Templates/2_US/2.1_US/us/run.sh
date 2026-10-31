@@ -149,6 +149,7 @@ run_stage() {
     local prefix="$window_dir/$stage"
     local completion_marker="$window_dir/.$stage.complete"
     local required=("$prefix.out" "$prefix.rst7")
+    # Always name -inf: AMBER otherwise writes mdinfo, which has no input identity.
     local command=(
         "$engine" -O
         -i "../inputs/$input_file"
@@ -156,10 +157,11 @@ run_stage() {
         -p system.parm7
         -c "$input_restart"
         -r "$stage.rst7"
+        -inf "$stage.info"
     )
     if (( write_trajectory )); then
         required+=("$prefix.info" "$prefix.nc")
-        command+=(-x "$stage.nc" -inf "$stage.info")
+        command+=(-x "$stage.nc")
     fi
     if [[ -n "$reference_restart" ]]; then
         command+=(-ref "$reference_restart")

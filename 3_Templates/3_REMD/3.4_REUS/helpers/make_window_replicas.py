@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import secrets
 import shutil
 import sys
 from pathlib import Path
@@ -13,6 +14,14 @@ sys.dont_write_bytecode = True
 sys.path.insert(0, ".")
 from apply_config import apply_config  # noqa: E402
 from config_utils import load_config, positive_float, positive_int, section, string_value  # noqa: E402
+
+# Langevin dynamics (ntt=3) should use a different ig on each restart
+# (Amber26 manual, ig). An integer random_seed gives each restarted stage its
+# own offset; window seeds are 7919 apart, so offsets do not collide below 126 windows.
+STAGE_SEED_OFFSET = 1_000_000
+EQUILIBRATION_SEED_STAGE = 1
+GAMD_PREPARATION_SEED_STAGE = 2
+FIRST_PRODUCTION_SEED_STAGE = 3
 
 
 def arguments() -> argparse.Namespace:
@@ -58,10 +67,39 @@ def read_centers(path: Path) -> list[float]:
     return result
 
 
+def check_reference_replica(gamd: dict[str, object], window_count: int) -> int:
+    value = gamd.get("reference_replica")
+    if isinstance(value, bool) or not isinstance(value, int) or not 0 <= value < window_count:
+        raise SystemExit(
+            f"Config error: gamd.reference_replica must be a window index from 0 to {window_count - 1}"
+        )
+    return value
+
+
+def window_seeds(value: object, count: int) -> list[int]:
+    if value == "random":
+        seeds: set[int] = set()
+        while len(seeds) < count:
+            seeds.add(secrets.randbelow(900_000_000) + 1)
+        return list(seeds)
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        raise SystemExit("Config error: random_seed must be 'random' or a positive integer")
+    return [value + 7919 * index for index in range(count)]
+
+
+def stage_seed(random_seed: object, window_seed: int, seed_stage: int) -> int:
+    """Return ig for a restarted stage: wall-clock seed or an offset integer seed."""
+    if random_seed == "random":
+        return -1
+    return window_seed + STAGE_SEED_OFFSET * seed_stage
+
+
 def render(
     title: str,
     values: list[str],
     dump_frequency: int | None = None,
+    dump_file: str = "",
+    disang_file: str = "distance.RST",
     heating_steps: int | None = None,
     temperature: float | None = None,
 ) -> str:
@@ -80,7 +118,12 @@ def render(
             "DISANG=distance.RST\n"
         )
     elif dump_frequency is not None:
-        tail = f"\n&wt type='DUMPFREQ', istep1={dump_frequency}, /\n&wt type='END' /\nDISANG=@DISANG@\nDUMPAVE=@DUMPAVE@\n"
+        tail = (
+            f"\n&wt type='DUMPFREQ', istep1={dump_frequency}, /\n"
+            "&wt type='END' /\n"
+            f"DISANG={disang_file}\n"
+            f"DUMPAVE={dump_file}\n"
+        )
     return f"{title}\n&cntrl\n{body}\n/\n{tail}"
 
 
@@ -109,12 +152,18 @@ def main() -> None:
     if production_per_segment % exchange != 0:
         raise SystemExit("Production steps per segment must be divisible by exchange_interval_steps")
 
+    if args.method == "gareus":
+        check_reference_replica(section(config, "gamd"), len(state_centers))
+    random_seed = run.get("random_seed")
+    seeds = window_seeds(random_seed, len(state_centers))
+    dump_frequency = positive_int(umbrella, "distance_output_interval_steps")
+
     args.output.mkdir(parents=True, exist_ok=True)
     with (args.output / "states.tsv").open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle, delimiter="\t", lineterminator="\n")
         writer.writerow(("replica", "window_center_A", "seed"))
         for index, center in enumerate(state_centers):
-            writer.writerow((f"{index:03d}", f"{center:.8f}", 510001 + 7919 * index))
+            writer.writerow((f"{index:03d}", f"{center:.8f}", seeds[index]))
 
     dynamics = [
         f"dt={dt:.6f}",
@@ -139,6 +188,7 @@ def main() -> None:
     ]
     for index, center in enumerate(state_centers):
         replica = f"{index:03d}"
+        seed = seeds[index]
         directory = args.output / replica
         directory.mkdir()
         (directory / "distance.RST").write_text(f"&rst\n iat={atom_1},{atom_2},\n r1=0.0, r2={center:.8f}, r3={center:.8f}, r4=999.0,\n rk2={force:.6f}, rk3={force:.6f},\n/\n", encoding="utf-8")
@@ -151,7 +201,7 @@ def main() -> None:
                     "imin=0",
                     "irest=0",
                     "ntx=1",
-                    f"ig={510001 + 7919 * index}",
+                    f"ig={seed}",
                     f"nstlim={heating_steps}",
                     "tempi=20.0",
                     "ntb=1",
@@ -170,25 +220,34 @@ def main() -> None:
                     "imin=0",
                     "irest=1",
                     "ntx=5",
-                    "ig=-1",
+                    f"ig={stage_seed(random_seed, seed, EQUILIBRATION_SEED_STAGE)}",
                     f"nstlim={positive_int(run, 'equilibration_steps')}",
                     *npt,
                     *dynamics,
                 ],
-                positive_int(umbrella, "distance_output_interval_steps"),
-            ).replace("@DISANG@", "distance.RST").replace("@DUMPAVE@", "restraint.equilibrate.dat"),
+                dump_frequency,
+                "restraint.equilibrate.dat",
+            ),
             encoding="utf-8",
         )
         production_ensemble = ["ntb=1", "ntp=0"] if args.method == "gareus" else npt
-        values = ["imin=0", "irest=1", "ntx=5", "ig=-1", f"nstlim={exchange}", f"numexchg={production_per_segment // exchange}", *production_ensemble, *dynamics]
+        values = ["imin=0", "irest=1", "ntx=5", f"nstlim={exchange}", f"numexchg={production_per_segment // exchange}", *production_ensemble, *dynamics]
         if args.method == "gareus":
             gamd = section(config, "gamd")
             values.extend(["igamd=3", "iE=1", "irest_gamd=1", "ntcmdprep=0", "ntcmd=0", "ntebprep=0", "nteb=0", f"ntave={positive_int(gamd, 'averaging_interval_steps')}", f"sigma0P={positive_float(gamd, 'sigma0'):.3f}", f"sigma0D={positive_float(gamd, 'sigma0'):.3f}"])
             conventional = positive_int(gamd, "conventional_statistics_steps")
             boost = positive_int(gamd, "boost_statistics_steps")
-            gamd_prepare = ["imin=0", "irest=1", "ntx=5", "ig=-1", f"nstlim={conventional + boost}", *npt, *dynamics, "igamd=3", "iE=1", "irest_gamd=0", f"ntcmdprep={positive_int(gamd, 'conventional_preparation_steps')}", f"ntcmd={conventional}", f"ntebprep={positive_int(gamd, 'boost_preparation_steps')}", f"nteb={boost}", f"ntave={positive_int(gamd, 'averaging_interval_steps')}", f"sigma0P={positive_float(gamd, 'sigma0'):.3f}", f"sigma0D={positive_float(gamd, 'sigma0'):.3f}"]
-            (directory / "gamd_prepare.in").write_text(render("Shared GaMD parameter preparation", gamd_prepare, positive_int(umbrella, "distance_output_interval_steps")), encoding="utf-8")
-        (directory / "production.template.in").write_text(render("Replica-exchange production", values, positive_int(umbrella, "distance_output_interval_steps")), encoding="utf-8")
+            gamd_prepare = ["imin=0", "irest=1", "ntx=5", f"ig={stage_seed(random_seed, seed, GAMD_PREPARATION_SEED_STAGE)}", f"nstlim={conventional + boost}", *npt, *dynamics, "igamd=3", "iE=1", "irest_gamd=0", f"ntcmdprep={positive_int(gamd, 'conventional_preparation_steps')}", f"ntcmd={conventional}", f"ntebprep={positive_int(gamd, 'boost_preparation_steps')}", f"nteb={boost}", f"ntave={positive_int(gamd, 'averaging_interval_steps')}", f"sigma0P={positive_float(gamd, 'sigma0'):.3f}", f"sigma0D={positive_float(gamd, 'sigma0'):.3f}"]
+            (directory / "gamd_prepare.in").write_text(render("Shared GaMD parameter preparation", gamd_prepare, dump_frequency, "restraint.gamd_prepare.dat"), encoding="utf-8")
+        # Exchange production runs from the tutorial directory through the group file,
+        # so run.sh replaces @DISANG@ and @DUMPAVE@ with work-directory paths.
+        for segment in range(1, segments + 1):
+            segment_seed = stage_seed(random_seed, seed, FIRST_PRODUCTION_SEED_STAGE + segment - 1)
+            segment_values = [*values[:3], f"ig={segment_seed}", *values[3:]]
+            (directory / f"production.{segment:03d}.template.in").write_text(
+                render("Replica-exchange production", segment_values, dump_frequency, "@DUMPAVE@", "@DISANG@"),
+                encoding="utf-8",
+            )
 
     resolved = args.output / "resolved_config.toml"
     shutil.copy2(args.config, resolved)

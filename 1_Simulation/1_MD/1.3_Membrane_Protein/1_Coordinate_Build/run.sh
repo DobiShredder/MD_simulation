@@ -4,7 +4,7 @@ set -euo pipefail
 original_args=("$@")
 
 usage() {
-    echo "Usage: $0 [--dry-run] KCSA.pdb" >&2
+    echo "Usage: $0 [--dry-run] KCSA.pdb"
 }
 
 die() {
@@ -12,13 +12,18 @@ die() {
     exit 1
 }
 
+if [[ "${1:-}" == -h || "${1:-}" == --help ]]; then
+    usage
+    exit 0
+fi
+
 dry_run=0
 if [[ "${1:-}" == "--dry-run" ]]; then
     dry_run=1
     shift
 fi
 if [[ $# -ne 1 ]]; then
-    usage
+    usage >&2
     exit 2
 fi
 

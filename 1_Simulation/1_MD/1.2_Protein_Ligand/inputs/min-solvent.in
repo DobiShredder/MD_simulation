@@ -13,3 +13,6 @@ Minimize solvent and ions with protein and JZ4 restrained
  restraint_wt=10.0,
  restraintmask='!:WAT,Na+,Cl- & !@H=',
 /
+&ewald
+ netfrc=0,
+/

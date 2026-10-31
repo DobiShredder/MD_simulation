@@ -102,7 +102,7 @@ done
 echo "Completed: MMPBSA topology generation ($output_dir)"
 printf '\n'
 
-echo "Calculating MM/GBSA and MM/PBSA for the same 100 frames."
+echo "Calculating MM/GBSA and MM/PBSA for the startframe/endframe/interval range in $input_file."
 if ! "$mmpbsa" \
     -O \
     -i "$input_file" \

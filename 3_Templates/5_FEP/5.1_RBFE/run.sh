@@ -74,12 +74,14 @@ fi
 
 work_dir=${WORK_DIR:-work}
 states_file="$work_dir/states.tsv"
-engine=$("${PYTHON:-python3}" helpers/config_utils.py "$work_dir/resolved_config.toml" engine AMBER_ENGINE pmemd.cuda)
-read -r -a amber_options <<< "${AMBER_OPTIONS:-}"
 
 if [[ ! -s "$states_file" ]]; then
     die "Run build.sh first: $states_file"
 fi
+
+# build.sh writes resolved_config.toml, so read the engine after the build check.
+engine=$("${PYTHON:-python3}" helpers/config_utils.py "$work_dir/resolved_config.toml" engine AMBER_ENGINE pmemd.cuda)
+read -r -a amber_options <<< "${AMBER_OPTIONS:-}"
 if [[ -n "$window_range" ]]; then
     maximum_window=$(awk -F '\t' -v environment="$selected_system" '
         NR > 1 && (environment == "" || $1 == environment) {

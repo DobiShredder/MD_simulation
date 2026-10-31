@@ -8,6 +8,8 @@
 
 Minimization은 replica별 `.out`, `.rst7`, `.info`가 있어야 완료됩니다. Minimization trajectory는 필수 output이 아닙니다. Heating, equilibration과 production에는 `.nc`도 필요합니다. Equilibration의 `DISANG`과 `DUMPAVE`는 각 replica directory의 `distance.RST`와 `restraint.equilibrate.dat`를 가리킵니다.
 
+Build는 production segment마다 `production.NNN.template.in`을 만듭니다. Exchange production은 group file로 이 directory에서 실행되므로 `run.sh`가 segment 시작 직전 `@DISANG@`과 `@DUMPAVE@`를 `work/<replica>/distance.RST`와 `work/<replica>/restraint.production.NNN.dat`로 바꿔 `production.NNN.in`을 씁니다.
+
 사용자가 직접 실행하는 파일은 이 directory의 root에 있습니다. `helpers/`는 `build.sh`, `run.sh` 또는 `anal.py`가 자동 호출하는 leaf-local 내부 code이며 직접 실행하지 않습니다.
 
 중단되거나 marker가 없는 stage output은 자동 삭제하거나 재실행하지 않고 보존한 채 중단합니다.
@@ -49,12 +51,14 @@ interval에서 input은 `nstlim=1000`, `numexchg=100000`으로 생성됩니다.
 | `equilibration_ensemble` | `NPT`만 지원 | `NPT` | Window equilibration에 적용합니다. |
 | `production_ensemble` | `NVT`, `NPT` | `NPT` | Exchange production의 `ntb`와 `ntp`를 설정합니다. |
 | `constraint_mode` | `h-bonds`만 지원 | `h-bonds` | Hydrogen-containing bond에 SHAKE를 적용합니다. |
-| `random_seed` | `"random"` 또는 양의 정수 | `"random"` | Window별 seed를 무작위로 만들거나 정수에서 파생합니다. |
+| `random_seed` | `"random"` 또는 양의 정수 | `"random"` | Window seed와 stage별 `ig`를 정합니다. 아래 seed 규칙을 따릅니다. |
 
 `windows_file`은 항상 명시적인 center 목록을 읽으며 `auto`/`file` mode가
 아닙니다. Blank line과 `#`로 시작하는 comment line을 제외하고 각 행에는 center
 하나만 적습니다. Center 목록은 비어 있지 않고 중복 없이 오름차순이어야 합니다.
 각 행이 한 exchange state가 되고 최종 mapping은 `work/states.tsv`에 기록됩니다.
+
+Seed 규칙: `"random"`이면 window마다 무작위 seed를 만들어 heating `ig`에 쓰고, equilibration과 production segment는 `ig=-1`로 실행 시각에서 seed를 정합니다. 정수이면 window seed는 `정수 + 7919 × window index`입니다. Langevin dynamics(`ntt=3`)는 restart마다 다른 `ig`를 써야 하므로 stage마다 1,000,000을 더합니다. Heating은 +0, equilibration은 +1,000,000, production segment N은 +(2+N)×1,000,000입니다.
 
 ### Engine 선택과 실행 상태
 
@@ -110,6 +114,8 @@ The default has 20 centers including both 6 and 24 Å, spaced by `18/19 ≈ 0.94
 
 Minimization completion requires each replica’s `.out`, `.rst7`, and `.info`; a minimization trajectory is optional. Heating, equilibration, and production also require `.nc`. Equilibration resolves `DISANG` and `DUMPAVE` to `distance.RST` and `restraint.equilibrate.dat` within each replica directory.
 
+The build writes one `production.NNN.template.in` per production segment. Exchange production runs from this directory through the group file, so `run.sh` replaces `@DISANG@` and `@DUMPAVE@` with `work/<replica>/distance.RST` and `work/<replica>/restraint.production.NNN.dat` and writes `production.NNN.in` just before the segment starts.
+
 `helpers/generate_inputs.py` writes LEaP inputs and resolved settings.
 `helpers/make_window_replicas.py` writes per-window MD inputs and
 restraints. Both are called automatically by `build.sh`.
@@ -131,13 +137,15 @@ The first-pass LEaP input and water-count `solvated.pdb` are created under `work
 | `equilibration_ensemble` | `NPT` only | `NPT` | Applies to window equilibration. |
 | `production_ensemble` | `NVT`, `NPT` | `NPT` | Sets exchange-production `ntb` and `ntp`. |
 | `constraint_mode` | `h-bonds` only | `h-bonds` | Applies SHAKE to bonds involving hydrogen. |
-| `random_seed` | `"random"` or a positive integer | `"random"` | Creates random window seeds or derives them from the integer. |
+| `random_seed` | `"random"` or a positive integer | `"random"` | Sets window seeds and per-stage `ig`; see the seed rule below. |
 
 `windows_file` always supplies an explicit center list and is not an
 `auto`/`file` mode. After blank lines and full-line `#` comments are skipped,
 each row must contain exactly one center. The list must be nonempty, unique,
 and increasing. Each row becomes one exchange state, and the final mapping is
 written to `work/states.tsv`.
+
+Seed rule: with `"random"`, each window gets a random seed for heating `ig`, and equilibration and production segments use `ig=-1` (wall-clock seed). With an integer, the window seed is `integer + 7919 × window index`. Langevin dynamics (`ntt=3`) needs a different `ig` on each restart, so each stage adds 1,000,000: heating +0, equilibration +1,000,000, and production segment N +(2+N)×1,000,000.
 
 This directory can be copied and used on its own. Install its Python
 dependencies from the local `requirements.txt` after copying it.

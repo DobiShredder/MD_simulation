@@ -11,8 +11,9 @@
 독립적으로 build합니다. 4 ns 동안 boost 통계를 준비한 뒤 1 ns production을
 실행합니다. Parameter preparation에서 만든 GaMD state를 production이 이어받습니다.
 
-Minimization, heating과 conventional equilibration은 main output과 restart가
-모두 있으면 건너뜁니다. 둘 중 일부만 있으면 해당 stage를 다시 실행합니다.
+Minimization, heating과 conventional equilibration은 main output, restart와
+성공 완료 기록이 모두 있으면 건너뜁니다. 일부만 있으면 기존 파일을 보존하고
+중단합니다.
 GaMD parameter preparation은 GaMD state도 함께 확인하며, production output은
 덮어쓰지 않습니다.
 
@@ -39,8 +40,9 @@ SH3–peptide complex. Each prepares boost statistics for 4 ns and runs one 1 ns
 production calculation. Production continues from the saved GaMD preparation
 state.
 
-Minimization, heating, and conventional equilibration are skipped when both the
-main output and restart exist. Incomplete pairs are rerun. GaMD parameter
+Minimization, heating, and conventional equilibration are skipped when the main
+output, restart, and successful completion record all exist. Partial results are
+preserved and the run stops. GaMD parameter
 preparation also checks its GaMD state, and existing production output is never
 overwritten.
 

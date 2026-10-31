@@ -32,7 +32,7 @@ amber_named_pdb="$work_dir/amber-named.pdb"
 generated_tleap="$work_dir/tleap.in"
 
 if (( ! dry_run )); then
-    for output_name in amber-named.pdb tleap.in system.parm7 system.rst7 system.pdb leap.log; do
+    for output_name in amber-named.pdb tleap.in system.parm7 system.rst7 system.pdb leap.log tleap.out; do
         output_path="$work_dir/$output_name"
         if [[ -e "$output_path" || -L "$output_path" ]]; then
             die "Topology build output already exists: $output_path. Files were preserved. Start a new tutorial copy without generated work directories."
@@ -85,17 +85,17 @@ if ! (
     cd "$work_dir"
     tleap \
         -f tleap.in \
-        > leap.log 2>&1
+        > tleap.out 2>&1
 ); then
-    die "tleap failed. See log: $work_dir/leap.log"
+    die "tleap failed. See $work_dir/tleap.out and $work_dir/leap.log"
 fi
 
 if [[ ! -s "$work_dir/system.parm7" ]]; then
-    die "Topology was not created. See log: $work_dir/leap.log"
+    die "Topology was not created. See $work_dir/tleap.out and $work_dir/leap.log"
 fi
 
 if [[ ! -s "$work_dir/system.rst7" ]]; then
-    die "Restart file was not created. See log: $work_dir/leap.log"
+    die "Restart file was not created. See $work_dir/tleap.out and $work_dir/leap.log"
 fi
 
 echo "AMBER topology and restart: $work_dir"

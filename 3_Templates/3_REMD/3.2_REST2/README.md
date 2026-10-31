@@ -35,7 +35,7 @@ Production에는 PLUMED 2.10이 patch된 GROMACS 2024.3/2024.6 external-MPI buil
 probability는 실제 HREX acceptance를 보장하지 않으므로 짧은 pilot run에서
 `Repl average probabilities`를 확인합니다.
 각 replica는 tutorial과 같이 minimization 뒤 300 K velocity를 생성하는 NPT
-equilibration을 실행합니다. 별도 heating stage는 두지 않습니다. Build는
+equilibration을 실행합니다. 별도 heating stage는 두지 않습니다. `config.toml`의 `minimization_steepest_steps`와 `heating_initial_temperature`는 모든 template가 공유하는 config 검사 helper가 요구해 남겨 두지만 REST GROMACS input에는 적용되지 않습니다. Build는
 scale 1 topology와 원본 topology의 single-frame potential energy 차이가
 0.1 kJ/mol 이하인지도 검사합니다. 첫 `grompp` 전에는 ParmEd가 출력한 긴
 CMAP 실수를 GROMACS 2024.x가 읽을 수 있는 정밀도로 정규화합니다.
@@ -48,7 +48,7 @@ CMAP 실수를 GROMACS 2024.x가 읽을 수 있는 정밀도로 정규화합니�
 | `water_model` | `TIP3P` (`ff99SB-ILDN`, `ff14SB`), `OPC` (`ff19SB`) | `OPC` | LEaP water와 일치하는 ion parameter를 선택합니다. |
 | `box_shape` | `rectangular`, `octahedral` | `rectangular` | 각각 `solvatebox`, `solvateoct`를 사용합니다. |
 | `salt_type` | `NaCl`, `KCl`, `MgCl2`, `CaCl2` | `NaCl` | Neutralization 뒤 추가할 bulk salt를 선택합니다. |
-| `tempered_region` | `solute`만 지원 | `solute` | Water와 ion을 제외한 전체 solute를 tempering합니다. |
+| `tempered_region` | `solute`만 지원 | `solute` | Water와 ion을 제외한 solute를 tempering합니다. 다른 값은 build 시작 전에 error로 중단합니다. |
 | `equilibration_ensemble` | `NPT`만 지원 | `NPT` | Replica equilibration에 적용합니다. |
 | `production_ensemble` | `NVT`, `NPT` | `NPT` | GROMACS production pressure coupling을 설정합니다. |
 | `constraint_mode` | `h-bonds`만 지원 | `h-bonds` | Hydrogen-containing bond에 LINCS를 적용합니다. |
@@ -171,7 +171,7 @@ the workflow and remains in the corresponding `*.grompp.log`.
 | `water_model` | `TIP3P` (`ff99SB-ILDN`, `ff14SB`), `OPC` (`ff19SB`) | `OPC` | Selects matching LEaP water and ion parameters. |
 | `box_shape` | `rectangular`, `octahedral` | `rectangular` | Uses `solvatebox` or `solvateoct`, respectively. |
 | `salt_type` | `NaCl`, `KCl`, `MgCl2`, `CaCl2` | `NaCl` | Selects bulk salt added after neutralization. |
-| `tempered_region` | `solute` only | `solute` | Tempers the complete non-water, non-ion solute. |
+| `tempered_region` | `solute` only | `solute` | Tempers the non-water, non-ion solute. Other values stop the build before it starts. |
 | `equilibration_ensemble` | `NPT` only | `NPT` | Applies to replica equilibration. |
 | `production_ensemble` | `NVT`, `NPT` | `NPT` | Selects GROMACS production pressure coupling. |
 | `constraint_mode` | `h-bonds` only | `h-bonds` | Applies LINCS to bonds involving hydrogen. |
@@ -199,7 +199,7 @@ temperature. Production requires the patched PLUMED 2.10 HREX integration and
 the [`HREX_WORKLOAD_FIX_1` correction](../patches/gromacs-2024.3-plumed-2.10-hrex-energy.patch).
 See the [parent README](../README.md) for application steps and validation
 scope. Preproduction follows the
-tutorial's minimization-to-NPT-equilibration sequence, and the build checks
+tutorial's minimization-to-NPT-equilibration sequence. `minimization_steepest_steps` and `heating_initial_temperature` remain in `config.toml` because the shared config checker requires them; REST GROMACS inputs do not use them. The build checks
 scale-one energy identity with a 0.1 kJ/mol tolerance. Before the first
 `grompp`, it normalizes long ParmEd-formatted CMAP numbers to a precision
 accepted by GROMACS 2024.x.

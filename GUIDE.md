@@ -102,7 +102,7 @@ structure and scientific choices
 
 
 
-### 1 conventional MD
+### 1.1 conventional MD
 
 일반 MD는 별도의 bias 없이 선택한 Hamiltonian과 ensemble에서 시간에 따른 구조 변화를 계산합니다.
 Enhanced-sampling 결과를 비교하기 위한 기준 trajectory이며 대부분의 후속 분석을 배우는 출발점입니다.
@@ -142,7 +142,7 @@ Side chain 좌표가 불완전한 terminal H124는 제외합니다.
 
 
 
-### 2 Umbrella sampling
+### 1.2 Umbrella sampling
 
 Umbrella sampling은 선택한 reaction coordinate를 여러 window로 나누고
 각 window에 harmonic restraint를 적용하여 일반 MD에서 충분히 방문하기 어려운 영역을 sampling합니다.
@@ -167,7 +167,7 @@ Ratchet MD trajectory와 모든 umbrella window는 동일한 topology를 사용�
 
 
 
-### 3 Replica exchange
+### 1.3 Replica exchange
 
 Replica exchange는 temperature 또는 Hamiltonian이 다른 replica 사이에서 상태를 교환합니다.
 Analysis에는 exchange acceptance, round trip, ensemble별 sampling과 관심 observable을 사용합니다.
@@ -183,7 +183,7 @@ Analysis에는 exchange acceptance, round trip, ensemble별 sampling과 관심 o
 
 
 
-### 4 Gaussian accelerated MD
+### 1.4 Gaussian accelerated MD
 
 GaMD는 potential-energy surface에 smooth boost를 추가합니다.
 reaction coordinate를 고정하지 않는 대신 boost distribution과 reweighting quality를 함께 봅니다.
@@ -197,7 +197,7 @@ reaction coordinate를 고정하지 않는 대신 boost distribution과 reweight
 
 
 
-### 5 Free-energy perturbation
+### 1.5 Free-energy perturbation
 
 FEP는 직접적인 물리적 transition 대신 alchemical intermediate를 정의해 두 state의 자유에너지 차이를 계산합니다.
 
@@ -214,7 +214,7 @@ State overlap과 bootstrap uncertainty를 함께 확인합니다.
 
 
 
-### 6 Weighted ensemble
+### 1.6 Weighted ensemble
 
 Weighted ensemble은 여러 weighted trajectory segment를 전파하고 WESTPA가 binning과 resampling을 수행하는 path-sampling 방법입니다.
 물리적 dynamics를 변경하는 bias potential을 추가하지 않지만, progress coordinate와 초기·최종 상태 정의가 효율과 해석을 좌우합니다.
@@ -227,7 +227,7 @@ Flux와 rate estimator는 포함하지 않습니다. Resampling과 weight는 WES
 
 
 
-### 7 Metadynamics와 OPES
+### 1.7 Metadynamics와 OPES
 
 Metadynamics는 선택한 collective variable 공간에 history-dependent bias를 누적하여 이미 방문한 영역에서 벗어나도록 합니다.
 Well-Tempered MetaD는 bias 증가를 완화하고, OPES는 목표 distribution에 접근하도록 bias를 구성합니다.

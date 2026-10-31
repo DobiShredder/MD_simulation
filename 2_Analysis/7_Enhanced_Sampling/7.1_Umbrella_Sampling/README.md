@@ -15,9 +15,16 @@ python3 anal.py
 ```
 
 `run.sh`는 `us/work/NNN/distance.dat`에서 처음 100 ps를 제외하고
-window별 series를 `output/series/`에 만듭니다. DUMPAVE의 1열을 time, 8열을
-distance로 읽습니다. Column이나 discard 구간이 다르면 `prepare.py` 상단의
-값을 수정합니다.
+window별 series를 `output/series/`에 만듭니다. Distance restraint 하나를
+기록한 AMBER DUMPAVE는 2열입니다. 1열은 run 시작부터 센 MD step, 2열은
+distance(Å)입니다. `prepare.py`는 step에 `PRODUCTION_TIMESTEP_PS`(기본
+0.002 ps, `us/inputs/production.in`의 `dt`)를 곱해 ps로 바꾼 뒤
+`DISCARD_PS`(100 ps)를 적용합니다. `dt`, column 또는 discard 구간이 다르면
+`prepare.py` 상단의 값을 수정합니다.
+
+`prepare.py`는 production의 `distance.dat`만 읽습니다. `continue.in`으로
+만든 `distance-cont.dat`은 읽지 않으므로 continuation을 포함하려면 parser를
+따로 수정합니다.
 
 Input과 output 경로는 `prepare.py`의 `WINDOWS_DIR`과 `OUTPUT_DIR`에서
 설정합니다. `run.sh`는 이 script를 호출하며 input 검사와 결과 경로 출력도
@@ -71,6 +78,15 @@ external WHAM executable.
 Run `./run.sh` to discard the first 100 ps and prepare each distance series,
 then run `python3 anal.py` to calculate and plot the PMF and neighboring-window
 overlap. The default grid covers 5–25 Å with 100 bins at 300 K.
+
+An AMBER DUMPAVE file for one distance restraint has two columns: the MD step
+counted from the start of the run and the distance in Å. `prepare.py`
+multiplies the step by `PRODUCTION_TIMESTEP_PS` (0.002 ps, the `dt` in
+`us/inputs/production.in`) before applying `DISCARD_PS` (100 ps). Edit these
+constants at the top of `prepare.py` if `dt`, the column layout, or the discard
+interval changes. Only the production `distance.dat` is read; the
+`distance-cont.dat` written by `continue.in` is ignored unless the parser is
+extended.
 
 Set input and output paths with `WINDOWS_DIR` and `OUTPUT_DIR` in `prepare.py`.
 `run.sh` calls this script, which also checks inputs and reports output paths.

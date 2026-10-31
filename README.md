@@ -150,6 +150,13 @@ The tutorials utilize the following software packages. Please ensure they are in
 | ![PLUMED](https://img.shields.io/badge/PLUMED-2.10+-lightgrey)                            | Plugin for enhanced sampling algorithms | [plumed.org](https://www.plumed.org/)      |
 | ![Python](https://img.shields.io/badge/Python-3.10%2B-yellow?logo=python&logoColor=white) | Analysis & plotting                     | [python.org](https://www.python.org/)      |
 
+Shell script는 Bash 4.4 이상이 필요합니다. macOS 기본 `/bin/bash` 3.2에서는
+`set -u`와 빈 array 확장 때문에 실패하므로 Homebrew 또는 conda의 `bash`를
+`PATH` 앞에 둡니다.
+
+Shell scripts require Bash 4.4 or newer. macOS `/bin/bash` 3.2 fails on empty
+array expansion under `set -u`; put a Homebrew or conda `bash` first in `PATH`.
+
 ### AmberTools 26 installation / 설치
 
 AmberTools 26은 conda-forge에서 Linux와 macOS용 binary package로 제공됩니다.
@@ -241,6 +248,9 @@ Copyright © 2026 DobiShredder.
 `GPL-3.0-only`로 배포합니다. 개인적으로 사용하거나 수정한 사본을 공개하지
 않는 경우 source 공개 의무가 발생하지 않습니다. 원본 또는 수정본을
 재배포할 때는 GPLv3의 source 제공과 license 고지 조건을 따라야 합니다.
+`3_Templates`에서 재사용한 third-party 알고리즘의 출처와 license는
+[3_Templates/THIRD_PARTY_NOTICES.md](3_Templates/THIRD_PARTY_NOTICES.md)에
+있습니다.
 
 Original code, documentation, and figures authored by DobiShredder in this
 repository are distributed under the [GNU General Public License version 3
@@ -250,7 +260,9 @@ modified copies must comply with GPLv3 source-availability and license-notice
 requirements.
 
 Downloaded structures, external software, and third-party dependencies remain
-subject to their respective licenses and terms.
+subject to their respective licenses and terms. Third-party algorithms reused in
+`3_Templates` are listed in
+[3_Templates/THIRD_PARTY_NOTICES.md](3_Templates/THIRD_PARTY_NOTICES.md).
 
 
 

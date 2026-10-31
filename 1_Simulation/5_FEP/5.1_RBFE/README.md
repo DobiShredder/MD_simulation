@@ -16,8 +16,8 @@ protein complex와 물에서 각각 계산하고 두 값의 차이로 `ΔΔG_bin
 | 파일 | 역할 | 주요 output |
 | --- | --- | --- |
 | `download.sh` | 4W53 PDB/mmCIF와 ligand SDF download | `structure/` |
-| `prepare.py` | Protein과 bound BNZ/MBN coordinate 분리 | `protein.pdb`, `bound_*.pdb` |
-| `build.sh` | GAFF2/AM1-BCC parameter와 complex 및 solvent topology 생성 | `work/build/`, `states.tsv` |
+| `prepare.py` | Protein과 bound BNZ/MBN heavy atom 분리, ligand atom name을 SDF template 이름으로 변경 | `protein.pdb`, `bound_*.pdb` |
+| `build.sh` | Ideal SDF에서 GAFF2/AM1-BCC parameter 생성, complex 및 solvent topology 생성 | `work/build/`, `states.tsv` |
 | `generate_inputs.py` | 22개 window input 생성; `build.sh`가 호출 | `work/complex/`, `work/solvent/` |
 | `run.sh` | Minimization, heating, equilibration, production 실행 | Window별 restart, trajectory, log |
 | `anal.py` | Cross-state energy 추출, FE-ToolKit MBAR/BAR 실행과 두 environment 조합 | `free_energy.tsv`, `overlap_matrix.tsv` |
@@ -29,6 +29,18 @@ python3 prepare.py structure/4W53.raw.pdb structure/protein.pdb
 ./run.sh
 python3 anal.py
 ```
+
+### Ligand 준비
+
+4W53의 MBN에는 hydrogen이 없습니다. `build.sh`는 `structure/BNZ_ideal.sdf`와
+`structure/MBN_ideal.sdf`(RCSB ideal coordinate, hydrogen 포함)에
+`antechamber -at gaff2 -c bcc -nc 0`을 실행해 `bnz.mol2`와 `mbn.mol2`를 만듭니다.
+`prepare.py`는 crystal MBN heavy atom 7개를 `bound_mbn.pdb`로, methyl carbon을
+뺀 ring 6개를 `bound_bnz.pdb`로 저장하고 atom name을 mol2 template 이름
+(`C1`–`C7`, `C1`–`C6`)으로 바꿉니다. tleap의 `loadpdb`는 crystal pose의 heavy
+atom 위치를 사용하고 빠진 hydrogen은 mol2 template의 internal coordinate로
+만듭니다. `build.sh`는 생성된 `complex.pdb`와 `solvent.pdb`에서 BNZ 12개,
+MBN 15개 atom을 확인하고 다르면 중단합니다.
 
 ### 주요 option
 
@@ -115,7 +127,19 @@ binding free energy. Both ligands are neutral, so no net-charge correction is
 needed.
 
 Run `download.sh`, `prepare.py`, `build.sh`, `run.sh`, and `anal.py` in that
-order. The complex and solvent environments each contain eleven lambda windows. AMBER
+order.
+
+The 4W53 MBN ligand has no hydrogens. `build.sh` runs
+`antechamber -at gaff2 -c bcc -nc 0` on `structure/BNZ_ideal.sdf` and
+`structure/MBN_ideal.sdf` (RCSB ideal coordinates with hydrogens) to create
+`bnz.mol2` and `mbn.mol2`. `prepare.py` writes the seven crystal MBN heavy atoms
+to `bound_mbn.pdb` and the six ring atoms to `bound_bnz.pdb`, renaming them to
+the mol2 template names (`C1`–`C7` and `C1`–`C6`). tleap `loadpdb` keeps the
+crystal heavy-atom pose and builds the missing hydrogens from the template
+internal coordinates. `build.sh` stops unless `complex.pdb` and `solvent.pdb`
+contain 12 BNZ and 15 MBN atoms.
+
+The complex and solvent environments each contain eleven lambda windows. AMBER
 soft-core masks define the two ligand end states. Every window uses 200 ps of
 heating, 100 ps of NPT equilibration, and one 1 ns production run.
 Minimization, heating, and equilibration are skipped when input identities match

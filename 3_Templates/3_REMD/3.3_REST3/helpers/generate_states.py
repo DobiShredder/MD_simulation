@@ -10,8 +10,6 @@ import secrets
 import sys
 from pathlib import Path
 
-import parmed
-
 sys.dont_write_bytecode = True
 sys.path.insert(0, ".")
 from config_utils import (  # noqa: E402
@@ -47,6 +45,9 @@ def parse_arguments() -> argparse.Namespace:
 
 
 def count_system(topology_path: Path) -> dict[str, int]:
+    # Imported here so build.sh --dry-run can validate config without ParmEd.
+    import parmed
+
     topology = parmed.load_file(str(topology_path))
     counts = {
         "total_atoms": len(topology.atoms),

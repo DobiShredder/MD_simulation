@@ -32,7 +32,7 @@ seed_dir=../rmd/work/seeds
 seed_metadata="$seed_dir/seeds.tsv"
 topology=../work/system.parm7
 config=../work/resolved_config.toml
-window_root=work
+window_root=${WORK_DIR:-work}
 if [[ ! -s "$config" ]]; then
     die "Resolved config not found: $config. Run the root build.sh first."
 fi
@@ -88,7 +88,7 @@ fi
 
 if (( dry_run )); then
     echo "Dry run: umbrella-window build from $window_file"
-    echo '+ (cd .. && python3 helpers/generate_inputs.py us work/resolved_config.toml us/work --topology work/system.parm7)'
+    echo "+ $python -B ../helpers/generate_inputs.py us $config $window_root --topology $topology"
     echo "Umbrella windows: ${#window_rows[@]}"
     exit 0
 fi
@@ -136,11 +136,8 @@ for row_index in "${!window_rows[@]}"; do
 done
 
 echo "Generating umbrella inputs from: $config"
-(
-    cd ..
-    "$python" -B helpers/generate_inputs.py us work/resolved_config.toml us/work \
-        --topology work/system.parm7
-)
+"$python" -B ../helpers/generate_inputs.py us "$config" "$window_root" \
+    --topology "$topology"
 
 for row_index in "${!window_rows[@]}"; do
     read -r center force <<< "${window_rows[$row_index]}"

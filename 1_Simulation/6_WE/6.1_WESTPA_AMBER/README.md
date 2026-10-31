@@ -62,15 +62,17 @@ Segment input의 `irest=1`, `ntx=5`는 parent coordinate와 velocity를 이어�
 `WEST_RAND32`에서 positive Langevin seed를 만들어 split된 walker가 같은
 random-number stream을 반복하지 않게 합니다. 기존 `work/west.h5`를 이어서
 실행할 때는 `./run.sh`을 다시 실행합니다. 새 run을 시작할 때만
-`./init.sh --reset`을 사용합니다.
+`./init.sh --reset`을 사용합니다. Reset은 `west.h5`, `west.log`, `traj_segs/`,
+`seg_logs/`, `istates/`와 `anal.py`가 만든 `work/*.tsv`를 삭제합니다.
 
 기본 engine은 한 GPU에서 serial work manager로 실행하는 `pmemd.cuda`입니다.
 Executable만 `AMBER_ENGINE`으로 바꿀 수 있습니다. CPU worker 수와 system별
 WESTPA 설정은 `3_Templates/6_WE/6.1_WESTPA_AMBER`에서 구성합니다.
 
-`iteration_summary.tsv`의 total weight는 1에 가까워야 합니다.
-`bin_occupancy.tsv`는 iteration별 segment 수와 weight를 보여주며,
-`target_events.tsv`는 RMSD 3.0 Å 이상에 도달한 segment를 기록합니다.
+`work/iteration_summary.tsv`의 total weight는 1에 가까워야 합니다.
+`work/bin_occupancy.tsv`는 iteration별 segment 수와 weight를 보여주며,
+`work/target_events.tsv`는 RMSD 3.0 Å 이상에 도달한 segment를 기록합니다.
+Initial-state progress coordinate callback의 log는 `work/get_pcoord.log`입니다.
 
 Weight diagnostics는 finite이며 음수가 아닌 weight와 segment별 1차원 finite pcoord를 요구합니다. Total weight는 유한한 양수여야 합니다. 합을 1로 강제 보정하지 않고 실제 합을 출력합니다. 잘못된 HDF5를 읽으면 기존 TSV를 보존합니다. `calc_pcoord.sh`는 cpptraj output의 numeric RMSD와 column 수를 확인하고 잘못된 값을 반환하지 않습니다.
 
@@ -81,6 +83,10 @@ Weight diagnostics는 finite이며 음수가 아닌 weight와 segment별 1차원
 ### 중단 상태와 완료 iteration
 
 `run.sh`는 `west.cfg`의 requested iteration 수와 HDF5의 `west_current_iteration-1`을 비교합니다. Wall-clock 제한으로 정상 중단되면 `paused`와 완료한 iteration 수를 출력합니다. 같은 input에서 `./run.sh`를 다시 실행해 이어갑니다.
+
+Kill, node 장애나 scheduler time limit로 iteration 도중 `w_run`이 끊기면 `west.h5`에 미완료 segment가 남습니다. 같은 input으로 `./run.sh`를 다시 실행하면 WESTPA가 그 iteration을 이어서 미완료 segment만 다시 전파합니다. WESTPA 2022.15 executable propagator는 `runseg.sh`를 호출하기 전에 미완료 segment의 `work/traj_segs/<iteration>/<segment>/`를 삭제하고 다시 만듭니다. 중단된 segment의 partial AMBER output이 진단에 필요하면 재실행 전에 다른 위치로 복사합니다. SIGKILL이나 node 장애로 writer lock이 남았다면 아래 lock 확인 절차를 먼저 따릅니다.
+
+`runseg.sh`가 `Segment output from an earlier propagation attempt was kept`로 멈추면 segment directory에 이전 시도의 output이 있습니다. Callback을 `w_run` 밖에서 실행했거나 partial segment를 지우지 않는 WESTPA version을 쓰면 발생합니다. Script는 이 파일을 지우지 않습니다. 내용을 확인한 뒤 error에 출력된 `mv` command로 directory를 `<segment>.failed.<timestamp>`로 옮기고 `./run.sh`를 다시 실행합니다. 실제 AMBER/WESTPA run을 중단한 뒤 재개하는 과정은 검증하지 않았습니다.
 
 `anal.py`는 current iteration보다 작은 iteration만 읽으며 모든 segment의 status가 완료인지 검사합니다. 다음 propagation을 위해 미리 만든 pending group은 diagnostics에 넣지 않습니다. 완료 metadata가 없거나 완료 iteration에 미완료 segment가 있으면 기존 TSV를 쓰기 전에 중단합니다.
 
@@ -115,12 +121,16 @@ and weight-handling exercise.
 Segments continue parent coordinates and velocities with `irest=1` and
 `ntx=5`. A positive Langevin seed derived from `WEST_RAND32` gives split walkers
 independent random streams. Re-run `run.sh` to continue an initialized WESTPA
-run; use `init.sh --reset` only to discard it and start again.
+run; use `init.sh --reset` only to discard it and start again. Reset removes
+`west.h5`, `west.log`, `traj_segs/`, `seg_logs/`, `istates/`, and the
+`work/*.tsv` files written by `anal.py`.
 
 The default is serial `pmemd.cuda` on one GPU, with only the executable exposed
 through `AMBER_ENGINE`. Configure CPU workers and system-specific WESTPA options
-in `3_Templates/6_WE/6.1_WESTPA_AMBER`. Analysis reports total weight, effective
-walker count, RMSD range, bin occupancy, and target arrivals.
+in `3_Templates/6_WE/6.1_WESTPA_AMBER`. Analysis writes total weight, effective
+walker count and RMSD range to `work/iteration_summary.tsv`, bin occupancy to
+`work/bin_occupancy.tsv`, and target arrivals to `work/target_events.tsv`. The
+initial-state progress-coordinate callback logs to `work/get_pcoord.log`.
 
 ### 동시 실행과 input 변경
 
@@ -175,5 +185,9 @@ Public analysis entries automatically use `helpers/writer_guard.py` to reject co
 ### Paused runs and completed iterations
 
 `run.sh` compares the requested iteration count in `west.cfg` with `west_current_iteration-1` in HDF5. A normal wall-clock stop is reported as `paused`, with the completed count. Run `./run.sh` again with the same inputs to continue.
+
+If a kill, node failure or scheduler time limit stops `w_run` mid-iteration, `west.h5` keeps the incomplete segments. Re-running `./run.sh` with the same inputs continues that iteration and propagates only those segments again. Before calling `runseg.sh`, the WESTPA 2022.15 executable propagator removes and recreates each incomplete `work/traj_segs/<iteration>/<segment>/` directory. Copy partial AMBER output elsewhere before the rerun if you need it for diagnosis. If SIGKILL or a node failure left a writer lock, follow the lock checks below first.
+
+`runseg.sh` stops with `Segment output from an earlier propagation attempt was kept` when a segment directory already holds output from an earlier attempt. This happens when the callback runs outside `w_run` or under a WESTPA version that keeps partial segments. The script does not delete those files. Inspect them, move the directory to `<segment>.failed.<timestamp>` with the `mv` command printed in the error, and rerun `./run.sh`. Interrupting and resuming a real AMBER/WESTPA run has not been tested.
 
 `anal.py` reads only iterations below the current iteration and checks that every segment has completed status. Pending groups prepared for the next propagation are excluded. Missing completion metadata or incomplete segments in a completed iteration stop analysis before replacing existing TSV files.

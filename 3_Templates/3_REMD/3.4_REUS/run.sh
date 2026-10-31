@@ -208,9 +208,11 @@ write_group_file() {
         replica_dir="$work_dir/$replica"
         dump_file="$replica_dir/restraint.$segment_name.dat"
 
+        # The group file runs from this directory, so restraint paths include work_dir.
         sed \
+            -e "s|@DISANG@|$replica_dir/distance.RST|g" \
             -e "s|@DUMPAVE@|$dump_file|g" \
-            "$replica_dir/production.template.in" \
+            "$replica_dir/$segment_name.template.in" \
             > "$replica_dir/$segment_name.in"
 
         printf '%s\n' \
@@ -225,10 +227,9 @@ if (( dry_run )); then
     echo "Replica exchange engine: $amber_mpi_engine"
     echo "$replica_count configured windows"
     if (( ! production_only )); then
-        printf '+ %q -O -i %q -o %q -p %q -c %q -r %q\n' \
-            "$amber_engine" "$work_dir/000/minimize.in" \
-            "$work_dir/000/minimize.out" "$work_dir/system.parm7" \
-            "$work_dir/system.rst7" "$work_dir/000/minimize.rst7"
+        # Preproduction runs inside each window directory, as in run_stage.
+        printf '+ cd %q && %q -O -i minimize.in -o minimize.out -p ../system.parm7 -c ../system.rst7 -r minimize.rst7 -x minimize.nc -inf minimize.info\n' \
+            "$work_dir/000" "$amber_engine"
     fi
     if (( ! preparation_only )); then
         for ((segment = segment_start; segment <= segment_end; segment++)); do
@@ -267,7 +268,7 @@ for segment in $(seq "$segment_start" "$segment_end"); do
     else
         input_restart=$(printf 'production.%03d.rst7' "$((segment - 1))")
     fi
-    check_stage_identity "$segment_name" "$input_restart" "production.template.in"
+    check_stage_identity "$segment_name" "$input_restart" "$segment_name.template.in"
     state=$(stage_state "$segment_name")
     if [[ "$state" == complete ]]; then
         echo "Skipping completed stage: $segment_name ($work_dir)"

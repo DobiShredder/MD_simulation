@@ -15,8 +15,8 @@ try:
     from sklearn.preprocessing import StandardScaler
 except ModuleNotFoundError as error:
     raise SystemExit(
-        "required Python package is missing. ambertools26 environment "
-        "Install scikit-learn and matplotlib."
+        "A required Python package is missing. "
+        "Install scikit-learn and matplotlib in the ambertools26 environment."
     ) from error
 
 

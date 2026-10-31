@@ -20,7 +20,14 @@ from config_utils import (  # noqa: E402
     string_value,
 )
 from force_field_profiles import resolve_force_field_profile  # noqa: E402
-from generate_states import read_temperatures
+from generate_states import read_temperatures  # noqa: E402
+
+# Langevin dynamics (ntt=3) should use a different ig on each restart
+# (Amber26 manual, ig). An integer random_seed gives each restarted stage its
+# own offset; replica seeds are 7919 apart, so offsets do not collide below 126 replicas.
+STAGE_SEED_OFFSET = 1_000_000
+EQUILIBRATION_SEED_STAGE = 1
+FIRST_PRODUCTION_SEED_STAGE = 3
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -199,6 +206,13 @@ compressibility         = 4.5e-5
 """
 
 
+def stage_seed(random_seed: object, replica_seed: int, seed_stage: int) -> int:
+    """Return ig for a restarted stage: wall-clock seed or an offset integer seed."""
+    if random_seed == "random":
+        return -1
+    return replica_seed + STAGE_SEED_OFFSET * seed_stage
+
+
 def render_amber_input(title: str, values: list[str], extra: str = "") -> str:
     body = "\n".join(f" {value}," for value in values)
     return f"{title}\n&cntrl\n{body}\n/\n{extra}"
@@ -284,7 +298,6 @@ def write_amber_replica_inputs(
             "imin=0",
             "irest=1",
             "ntx=5",
-            "ig=-1",
             f"dt={dt_ps:.6f}",
             f"temp0={temperature:.8f}",
             "ntt=3",
@@ -306,22 +319,32 @@ def write_amber_replica_inputs(
         (directory / "equilibrate.in").write_text(
             render_amber_input(
                 f"NPT equilibration at {temperature:.8f} K",
-                [f"nstlim={values['equilibration_steps']}", *dynamics],
-            ),
-            encoding="utf-8",
-        )
-        (directory / "production.in").write_text(
-            render_amber_input(
-                f"T-REMD production segment at {temperature:.8f} K",
                 [
-                    f"nstlim={exchange}",
-                    f"numexchg={production_steps // exchange}",
-                    "iwrap=1",
+                    f"nstlim={values['equilibration_steps']}",
+                    f"ig={stage_seed(values['random_seed'], seed, EQUILIBRATION_SEED_STAGE)}",
                     *dynamics,
                 ],
             ),
             encoding="utf-8",
         )
+        # One input per segment lets each production restart use its own ig.
+        for segment in range(1, int(values["segments"]) + 1):
+            segment_seed = stage_seed(
+                values["random_seed"], seed, FIRST_PRODUCTION_SEED_STAGE + segment - 1
+            )
+            (directory / f"production.{segment:03d}.in").write_text(
+                render_amber_input(
+                    f"T-REMD production segment {segment} at {temperature:.8f} K",
+                    [
+                        f"nstlim={exchange}",
+                        f"numexchg={production_steps // exchange}",
+                        f"ig={segment_seed}",
+                        "iwrap=1",
+                        *dynamics,
+                    ],
+                ),
+                encoding="utf-8",
+            )
 
 
 def write_gromacs_replica_inputs(

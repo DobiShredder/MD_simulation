@@ -28,12 +28,13 @@ if ! command -v python3 >/dev/null 2>&1; then
     die "Python executable not found: python3"
 fi
 
-echo "Downloading the Chignolin structure (PDB 1UAO)."
 if [[ "${MD_WRITER_PARENT:-}" != "$PPID" || "${MD_WRITER_ENTRY:-}" != "$0" ]]; then
     exec python3 helpers/writer_guard.py \
         --registry work --write "$structure_dir" \
         -- "$0" "$@"
 fi
+
+echo "Downloading the Chignolin structure (PDB 1UAO)."
 if [[ -e "$structure_dir/.download.pending" || -L "$structure_dir/.download.pending" ]]; then
     die "Download publication is incomplete; inspect $structure_dir/.download.pending."
 fi

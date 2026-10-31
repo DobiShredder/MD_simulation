@@ -106,6 +106,7 @@ run_stage() {
     local prefix="work/$stage"
     local marker="work/.$stage.complete"
     local required=("$prefix.out" "$prefix.rst7")
+    # Always name -inf: AMBER otherwise writes mdinfo, which has no input identity.
     local command=(
         "$engine" -O
         -i "inputs/$stage.in"
@@ -113,10 +114,11 @@ run_stage() {
         -p system.parm7
         -c "$input_restart"
         -r "$stage.rst7"
+        -inf "$stage.info"
     )
     if (( trajectory )); then
         required+=("$prefix.info" "$prefix.nc")
-        command+=(-x "$stage.nc" -inf "$stage.info")
+        command+=(-x "$stage.nc")
     fi
     if [[ -n "$reference_restart" ]]; then
         command+=(-ref "$reference_restart")
@@ -222,32 +224,43 @@ if (( ! preparation_only )); then
         die "Completed equilibration output is required: work/equil.rst7"
     fi
     if (( ! dry_run )); then
-        read -r density_minimum density_maximum < <(
-            "$python" -B - "$config" <<'PY'
+        # config_utils provides the tomli fallback for Python 3.10.
+        density_settings=$("$python" -B - "$config" <<'PY'
 import sys
-import tomllib
-with open(sys.argv[1], "rb") as handle:
-    values = tomllib.load(handle)["ratchet_md"]
-print(values["minimum_density"], values["maximum_density"])
+from pathlib import Path
+sys.path.insert(0, "../helpers")
+from config_utils import load_config
+
+config = load_config(Path(sys.argv[1]))
+ratchet = config["ratchet_md"]
+print(str(config["run"]["equilibration_ensemble"]).upper(),
+      ratchet["minimum_density"], ratchet["maximum_density"])
 PY
         )
-        final_density=$(awk '
-            /A V E R A G E S/ { exit }
-            /Density/ { density = $3 }
-            END { print density }
-        ' work/equil.out)
-        if [[ -z "$final_density" ]] || ! awk \
-            -v density="$final_density" \
-            -v minimum="$density_minimum" \
-            -v maximum="$density_maximum" \
-            'BEGIN { exit !(density >= minimum && density <= maximum) }'; then
-            die "Equilibration density is outside ${density_minimum}-${density_maximum} g/cm^3: ${final_density:-missing}; check work/equil.out"
+        read -r equilibration_ensemble density_minimum density_maximum <<< "$density_settings"
+
+        # AMBER prints Density only under constant pressure.
+        if [[ "$equilibration_ensemble" == NVT ]]; then
+            echo "Equilibration ensemble is NVT; density check skipped."
+        else
+            final_density=$(awk '
+                /A V E R A G E S/ { exit }
+                /Density/ { density = $3 }
+                END { print density }
+            ' work/equil.out)
+            if [[ -z "$final_density" ]] || ! awk \
+                -v density="$final_density" \
+                -v minimum="$density_minimum" \
+                -v maximum="$density_maximum" \
+                'BEGIN { exit !(density >= minimum && density <= maximum) }'; then
+                die "Equilibration density is outside ${density_minimum}-${density_maximum} g/cm^3: ${final_density:-missing}; check work/equil.out"
+            fi
+            echo "Equilibration final density: ${final_density} g/cm^3"
         fi
-        echo "Equilibration final density: ${final_density} g/cm^3"
     fi
     run_stage ratchet "ratchet MD" equil.rst7 --trajectory
 fi
 
-if (( ! dry_run )); then
+if (( ! dry_run && ! preparation_only )); then
     echo "Ratchet-MD trajectory: work/ratchet.nc"
 fi

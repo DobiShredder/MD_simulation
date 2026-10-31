@@ -63,6 +63,9 @@ def acquire(registry, reads, writes, command):
         for existing in registry.iterdir():
             if existing == gate:
                 continue
+            if existing.is_file() and not existing.is_symlink():
+                # Writer locks are directories; ignore stray files such as macOS .DS_Store.
+                continue
             try:
                 other = json.loads((existing / "owner.json").read_text())
             except (OSError, ValueError) as error:
@@ -145,7 +148,8 @@ def supervise(args):
         if child is not None:
             signal_group(child.pid, signum)
 
-    for signum in (signal.SIGINT, signal.SIGTERM):
+    # SIGHUP covers a closed terminal or SSH session; the child has its own session.
+    for signum in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
         signal.signal(signum, forward)
     lock, token = acquire(registry, reads, writes, command)
     env = os.environ.copy()

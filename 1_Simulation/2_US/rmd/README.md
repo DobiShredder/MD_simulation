@@ -3,7 +3,7 @@
 ## 한국어
 
 PDB 1UAO의 첫 NMR model에서 residue 1–10 Cα distance를 증가시킵니다.
-기본 index는 terminal Cα atom 2·132와 protein atom 1–138입니다. PLUMED는
+기본 index는 terminal Cα atom 5·133과 protein atom 1–138입니다. PLUMED는
 `WHOLEMOLECULES` 적용 후 `NOPBC` distance를 계산합니다. Topology가 바뀌면
 index도 바꿉니다.
 
@@ -46,10 +46,11 @@ box, `min-all.out`과 `heat.out`을 먼저 확인합니다.
 
 | Option | 의미 |
 | --- | --- |
-| `DISTANCE ATOMS=2,132 NOPBC` | 현재 topology의 terminal Cα atom index입니다. `WHOLEMOLECULES` 뒤에 계산합니다. |
+| `DISTANCE ATOMS=5,133 NOPBC` | 현재 topology의 terminal Cα atom index입니다. `WHOLEMOLECULES` 뒤에 계산합니다. |
 | `ABMD TO=3.0` | End-to-end distance target이며 PLUMED 기본 length unit인 nm를 사용합니다. |
 | `KAPPA=100` | Target 반대 방향의 ρ 증가를 억제하는 ratchet strength입니다. Harmonic distance force constant와 직접 비교하지 않습니다. |
 | `plumed=1`, `plumedfile='plumed.dat'` | AMBER에서 PLUMED bias를 활성화합니다. |
+| `&ewald netfrc=0` | Positional restraint(`ntr=1`)를 쓰는 `min-solvent.in`, `heat.in`, `equil.in`에서 PME net-force 제거를 끕니다. AMBER manual이 `ntr=1`과 함께 권장합니다. |
 | `max_error_angstrom=0.75` | `anal.py`가 target center와 seed frame 사이에 허용하는 고정 distance 차이(Å)입니다. |
 
 `anal.py`는 cpptraj으로 `:1@CA`–`:10@CA` distance를 계산하고 각 window
@@ -65,7 +66,7 @@ ABMD trajectory는 seed 생성에만 사용합니다. Equilibrium PMF와 kinetic
 ## English
 
 Ratchet MD increases the terminal Cα distance of the first 1UAO model. The
-default indices are Cα atoms 2 and 132 and protein atoms 1–138.
+default indices are Cα atoms 5 and 133 and protein atoms 1–138.
 `WHOLEMOLECULES` is applied before the `NOPBC` distance. Update these indices
 when the topology changes.
 
@@ -77,10 +78,14 @@ component is the PLUMED ρ minimum, not a minimum distance.
 
 `run.sh` handles the AMBER stages and activates `inputs/plumed.dat` through
 `plumed=1`. The PLUMED file reconstructs the protein, evaluates
-`DISTANCE ATOMS=2,132 NOPBC`, and applies `ABMD TO=3.0 KAPPA=100` in PLUMED
+`DISTANCE ATOMS=5,133 NOPBC`, and applies `ABMD TO=3.0 KAPPA=100` in PLUMED
 units. `anal.py` uses a fixed 0.75 Å tolerance when selecting first-crossing
 seeds. `AMBER_ENGINE` selects the PLUMED-enabled executable when the default
 `pmemd.cuda` command is not used.
+
+`min-solvent.in`, `heat.in`, and `equil.in` use positional restraints
+(`ntr=1`) and set `netfrc=0` in `&ewald`, as the AMBER manual recommends, to
+turn off PME net-force removal.
 
 `run.sh` performs minimization, 200 ps NVT heating, 100 ps NPT equilibration,
 and 1 ns ratchet MD with a PLUMED-enabled `pmemd.cuda`. It stops before ratchet

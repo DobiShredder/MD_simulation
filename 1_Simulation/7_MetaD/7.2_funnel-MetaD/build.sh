@@ -33,8 +33,7 @@ disulfides="$input_dir/disulfides.leap"
 residue_map="$input_dir/funnel_residues.tsv"
 work_dir=work
 
-if (( ! ${dry_run:-0} )) &&
-        [[ ${original_args[0]:-} != -h && ${original_args[0]:-} != --help && ${original_args[0]:-} != --dry-run ]] &&
+if [[ ${original_args[0]:-} != -h && ${original_args[0]:-} != --help ]] &&
         [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
     exec "${PYTHON:-python3}" helpers/writer_guard.py \
         --registry "work" --read "$1" --read "$input_dir" --read "$disulfides" --read "$ligand_sdf" --read "inputs" --write "work" -- "$0" "${original_args[@]}"

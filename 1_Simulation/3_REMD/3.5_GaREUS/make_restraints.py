@@ -47,8 +47,8 @@ def main() -> None:
         text = (
             "&rst\n"
             f" iat={first[0]},{last[0]},\n"
-            f" r1={center - 2.0:.1f}, r2={center:.1f}, "
-            f"r3={center:.1f}, r4={center + 2.0:.1f},\n"
+            f" r1={center - 2.0:.8f}, r2={center:.8f}, "
+            f"r3={center:.8f}, r4={center + 2.0:.8f},\n"
             " rk2=10.0, rk3=10.0,\n"
             "/\n"
         )

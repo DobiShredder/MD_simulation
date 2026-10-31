@@ -97,8 +97,8 @@ def read_boosts(directory: Path, components: int) -> np.ndarray:
             f"{path.name}: malformed GaMD record at line {line_number}: {line.strip()}"
         )
 
-    if len(values) != 100:
-        raise SystemExit(f"{path.name}: 100 GaMD records is required: {len(values)}")
+    if not values:
+        raise SystemExit(f"{path.name}: no GaMD boost records were found.")
     return np.asarray(values, dtype=float)
 
 
@@ -116,7 +116,10 @@ def main() -> None:
     cv = read_cv(args.cv)
     boosts = read_boosts(args.log_directory, args.components)
     if len(cv) != len(boosts):
-        raise SystemExit(f"CV and GaMD frame counts differ: {len(cv)} != {len(boosts)}")
+        raise SystemExit(
+            "Each CV frame needs one GaMD boost record: "
+            f"{len(cv)} CV records != {len(boosts)} boost records"
+        )
     if not np.all(np.isfinite(cv)) or not np.all(np.isfinite(boosts)):
         raise SystemExit("CV or boost data contains non-finite values.")
 

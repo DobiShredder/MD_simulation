@@ -5,6 +5,9 @@
 `windows.tsv`의 각 row는 distance center(Å)와 AMBER restraint force
 constant(kcal mol⁻¹ Å⁻²)를 지정합니다. `build.sh`는 rMD seed,
 공통 topology와 restraint를 `work/001`, `work/002`, ...에 배치합니다.
+`build.sh`와 `run.sh`는 `WORK_DIR`(기본 `work`)을 같은 window root로
+사용합니다. Heating input은 heavy-atom positional restraint(`ntr=1`)와 함께
+AMBER manual 권장에 따라 `&ewald netfrc=0`을 씁니다.
 
 ```bash
 ./build.sh
@@ -23,5 +26,8 @@ Each `windows.tsv` row gives a distance center in Å and an AMBER restraint
 force constant in kcal mol⁻¹ Å⁻². `build.sh` combines each rMD seed with
 the shared topology and a generated restraint. `run.sh` supports single-window,
 range, preparation-only, production-only, and dry-run selection.
+Both scripts use `WORK_DIR` (default `work`) as the window root. The heating
+input uses heavy-atom positional restraints (`ntr=1`) and sets
+`&ewald netfrc=0`, as the AMBER manual recommends.
 
 Empty outputs also count as existing files. A stage is skipped only when its completion marker and all required nonempty outputs exist; partial outputs are not overwritten automatically.

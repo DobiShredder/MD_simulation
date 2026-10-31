@@ -52,9 +52,14 @@ if (( reset )); then
     rm -rf \
         "$WORK_DIR/traj_segs" \
         "$WORK_DIR/seg_logs" \
-        "$WORK_DIR/istates" \
-        "$WORK_DIR/analysis"
-    rm -f "$WORK_DIR/west.h5" "$WORK_DIR/west.log"
+        "$WORK_DIR/istates"
+    # anal.py writes these diagnostics directly under WORK_DIR.
+    rm -f \
+        "$WORK_DIR/west.h5" \
+        "$WORK_DIR/west.log" \
+        "$WORK_DIR/iteration_summary.tsv" \
+        "$WORK_DIR/bin_occupancy.tsv" \
+        "$WORK_DIR/target_events.tsv"
 fi
 
 mkdir -p "$WORK_DIR/traj_segs" "$WORK_DIR/seg_logs" "$WORK_DIR/istates"

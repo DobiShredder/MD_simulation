@@ -42,8 +42,9 @@ PDB입니다. Funnel MetaD는 ligand SDF도 두 번째 argument로 받습니다.
 Production은 나누지 않고 1 ns를 한 번에 실행하며 output과 PLUMED state를
 각 tutorial의 `work/`에 직접 저장합니다.
 
-Minimization, heating과 equilibration은 `*.out`과 `*.rst7`이 모두 있으면
-건너뜁니다. 둘 중 일부만 있으면 해당 stage를 다시 실행합니다. Production
+Minimization, heating과 equilibration은 `*.out`과 `*.rst7`이 모두 있고 성공
+완료 기록이 있으면 건너뜁니다. 둘 중 일부만 있거나 완료 기록이 없으면 기존
+파일을 보존하고 중단합니다. Production
 output이 하나라도 있으면 AMBER restart와 `HILLS`, `opes.state` 같은 bias state를
 덮어쓰지 않도록 중단합니다.
 
@@ -88,5 +89,6 @@ engine is a PLUMED-enabled `pmemd.cuda`; a PLUMED-enabled `sander` can be select
 with `AMBER_ENGINE=sander`.
 
 Minimization, heating, and equilibration are skipped when both their `*.out`
-and `*.rst7` files exist; incomplete pairs are rerun. Existing production output
+and `*.rst7` files exist with successful completion evidence. Incomplete pairs
+or outputs without that evidence are preserved and the workflow stops. Existing production output
 stops the workflow before the AMBER restart or bias state can be overwritten.

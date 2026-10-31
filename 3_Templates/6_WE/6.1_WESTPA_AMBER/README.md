@@ -2,7 +2,7 @@
 
 ## 한국어
 
-Basis-state heating과 equilibration은 `ntwx=0`이므로 `.nc`를 생성하지 않습니다. 완료와 재사용에는 stage별 `.out`, `.info`와 restart file이 필요하며, restart는 heating의 `heat.rst7`과 equilibration의 `bstates/basis.rst7`입니다. Minimization diagnostic은 `minimize.info`에 저장합니다. 완료된 stage의 필수 output이 없거나 비어 있으면 기존 파일을 보존하고 중단합니다.
+Basis-state heating과 equilibration은 `config.toml`의 `trajectory_interval_steps`(기본 5000 steps)를 `ntwx`로 사용해 `heat.nc`와 `equilibrate.nc`를 씁니다. 이 값은 `heating_steps`와 `equilibration_steps`보다 클 수 없습니다. 완료와 재사용에는 stage별 `.out`, `.info`, `.nc`와 restart file이 필요하며, restart는 heating의 `heat.rst7`과 equilibration의 `bstates/basis.rst7`입니다. Minimization diagnostic은 `minimize.info`에 저장합니다. 완료된 stage의 필수 output이 없거나 비어 있으면 기존 파일을 보존하고 중단합니다.
 
 사용자가 직접 실행하는 파일은 이 directory의 root에 있습니다. `helpers/`는 `build.sh`, `run.sh` 또는 `anal.py`가 자동 호출하는 leaf-local 내부 code이며 직접 실행하지 않습니다.
 
@@ -55,6 +55,12 @@ config의 `max_total_iterations`는 1000, 2000, …, 10000처럼 누적됩니다
 `walkers_per_bin=4`는 occupied bin의 목표 walker 수이고 `initial_walkers=4`는
 basis state에서 시작하는 walker 수입니다.
 
+WESTPA segment input도 `trajectory_interval_steps`를 `ntwx`로 사용해
+`work/traj_segs/<iteration>/<segment>/seg.nc`를 씁니다. 이 값은 `tau_steps`를
+나누어떨어지게 해야 합니다. 기본값에서는 segment마다 마지막 step의 frame 1개가
+저장됩니다. Progress coordinate는 `seg.nc`가 아니라 parent restart와 `seg.rst7`에서
+계산합니다.
+
 `bstates/bstates.txt`는 basis restart의 label, probability와 filename을 기록합니다.
 `tstate.file`의 값은 target bin 안의 representative progress coordinate입니다.
 WESTPA는 그 값이 속한 bin을 target으로 사용합니다. 따라서 target boundary는
@@ -72,6 +78,21 @@ restrained NVT heating과 NPT equilibration 순서입니다.
 `run.sh`는 완료된 block을 건너뛰며 `--block N`으로 한 block만 선택할 수
 있습니다. `init.sh`는 기존 `west.h5`나 segment data를 삭제하지 않습니다.
 새 run은 다른 `WORK_DIR`에서 초기화합니다.
+
+Kill, node 장애나 scheduler time limit로 block 도중 `w_run`이 끊기면 block
+marker가 생기지 않고 `west.h5`에 미완료 segment가 남습니다. 같은 input으로
+`./run.sh`를 다시 실행하면 WESTPA가 그 iteration을 이어서 미완료 segment만 다시
+전파합니다. WESTPA 2022.15 executable propagator는 `runseg.sh`를 호출하기 전에
+미완료 segment의 `traj_segs/<iteration>/<segment>/`를 삭제하고 다시 만듭니다.
+Partial AMBER output이 진단에 필요하면 재실행 전에 다른 위치로 복사합니다.
+SIGKILL이나 node 장애로 writer lock이 남았다면 아래 lock 확인 절차를 먼저 따릅니다.
+
+`runseg.sh`가 `Segment output from an earlier propagation attempt was kept`로
+멈추면 segment directory에 이전 시도의 output이 있습니다. Callback을 `w_run` 밖에서
+실행했거나 partial segment를 지우지 않는 WESTPA version을 쓰면 발생합니다. Script는
+이 파일을 지우지 않습니다. 내용을 확인한 뒤 error에 출력된 `mv` command로
+directory를 `<segment>.failed.<timestamp>`로 옮기고 `./run.sh`를 다시 실행합니다.
+실제 AMBER/WESTPA run을 중단한 뒤 재개하는 과정은 검증하지 않았습니다.
 
 기본값은 한 GPU에서 `pmemd.cuda`를 serial로 실행합니다. CPU engine에서는
 process work manager를 선택할 수 있습니다.
@@ -161,7 +182,7 @@ Weight diagnostics는 finite이며 음수가 아닌 weight와 segment별 1차원
 
 ## English
 
-Basis-state heating and equilibration use `ntwx=0` and do not generate `.nc`. Completion and reuse require each stage’s `.out`, `.info`, and restart: `heat.rst7` for heating and `bstates/basis.rst7` for equilibration. Minimization diagnostics go to `minimize.info`. Missing or empty required output stops the build and preserves existing files.
+Basis-state heating and equilibration write `heat.nc` and `equilibrate.nc` with `ntwx` set to `trajectory_interval_steps` in `config.toml` (default 5000 steps). The interval may not exceed `heating_steps` or `equilibration_steps`. Completion and reuse require each stage’s `.out`, `.info`, `.nc`, and restart: `heat.rst7` for heating and `bstates/basis.rst7` for equilibration. Minimization diagnostics go to `minimize.info`. Missing or empty required output stops the build and preserves existing files.
 
 User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh`, `run.sh`, or `anal.py`; it is not a separate entry point.
 
@@ -204,6 +225,11 @@ Run `build.sh` with a reviewed PDB, initialize `west.h5` with `init.sh`, and use
 iteration. The default 10,000 iterations are divided into ten cumulative
 1,000-iteration block configs. The default target count is four walkers per
 occupied bin, with four initial walkers at the basis state.
+Segments also use `trajectory_interval_steps` as `ntwx` and write
+`work/traj_segs/<iteration>/<segment>/seg.nc`. The interval must divide
+`tau_steps`; the defaults store one frame, at the last step, per segment. The
+progress coordinate still comes from the parent restart and `seg.rst7`, not from
+`seg.nc`.
 WESTPA 2 commands and Python `h5py` must be available in the execution
 environment.
 
@@ -221,6 +247,23 @@ Once `west.h5` exists, `build.sh` refuses to overwrite production state.
 Completed WESTPA blocks are skipped; `--block N` selects one block.
 `init.sh` never deletes an existing `west.h5` or segment data. Initialize a
 new run in a different `WORK_DIR`.
+
+If a kill, node failure or scheduler time limit stops `w_run` inside a block, no
+block marker is written and `west.h5` keeps the incomplete segments. Re-running
+`./run.sh` with the same inputs continues that iteration and propagates only those
+segments again. Before calling `runseg.sh`, the WESTPA 2022.15 executable
+propagator removes and recreates each incomplete
+`traj_segs/<iteration>/<segment>/` directory. Copy partial AMBER output elsewhere
+before the rerun if you need it for diagnosis. If SIGKILL or a node failure left a
+writer lock, follow the lock checks below first.
+
+`runseg.sh` stops with `Segment output from an earlier propagation attempt was
+kept` when a segment directory already holds output from an earlier attempt. This
+happens when the callback runs outside `w_run` or under a WESTPA version that
+keeps partial segments. The script does not delete those files. Inspect them,
+move the directory to `<segment>.failed.<timestamp>` with the `mv` command printed
+in the error, and rerun `./run.sh`. Interrupting and resuming a real AMBER/WESTPA
+run has not been tested.
 
 The default is serial `pmemd.cuda` on one GPU. A CPU engine may use the
 `processes` work manager and multiple workers. GPU worker placement remains an

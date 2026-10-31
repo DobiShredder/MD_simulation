@@ -70,7 +70,7 @@ def check(record, stage, inputs, values, outputs, config_path=None):
                 context = f"{config_path} (consumed settings)"
             raise RuntimeError(f"{stage}: input changed: {context}. Existing results and identity were preserved. Use a new work directory.")
         return
-    existing = [name for name in outputs if Path(name).exists()]
+    existing = [name for name in outputs if Path(name).exists() or Path(name).is_symlink()]
     if existing:
         raise RuntimeError(f"{stage}: results have no input identity: {existing[0]}. Files were preserved. Use a new work directory.")
     record.parent.mkdir(parents=True, exist_ok=True)

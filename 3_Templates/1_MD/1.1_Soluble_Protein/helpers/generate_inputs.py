@@ -148,7 +148,7 @@ def write_md_inputs(output: Path, values: dict[str, object]) -> None:
                 "ntr=1", "restraint_wt=10.0",
                 f"restraintmask='!:WAT,{values['cation']},{values['anion']} & !@H='",
             ],
-        ),
+        ) + "&ewald\n  netfrc=0,\n/\n",
         encoding="utf-8",
     )
     (output / "min-all.in").write_text(
@@ -173,6 +173,7 @@ def write_md_inputs(output: Path, values: dict[str, object]) -> None:
             ],
         )
     heating_input += (
+        "&ewald\n  netfrc=0,\n/\n"
         "&wt\n"
         "  type='TEMP0',\n"
         "  istep1=0,\n"
@@ -199,7 +200,7 @@ def write_md_inputs(output: Path, values: dict[str, object]) -> None:
                 "restraint_wt=1.0",
                 f"restraintmask='!:WAT,{values['cation']},{values['anion']} & !@H='",
             ],
-        ),
+        ) + "&ewald\n  netfrc=0,\n/\n",
         encoding="utf-8",
     )
     (output / "production.in").write_text(

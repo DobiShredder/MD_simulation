@@ -49,7 +49,7 @@ input과 적용값은 `work/resolved_config.toml`에 기록됩니다.
 | `equilibration_ensemble` | `NPT`만 지원 | `NPT` | 각 physical-temperature replica의 equilibration에 적용합니다. |
 | `production_ensemble` | `NVT`, `NPT` | `NPT` | Replica production의 `ntb`와 `ntp`를 설정합니다. |
 | `constraint_mode` | `h-bonds`만 지원 | `h-bonds` | Hydrogen-containing bond에 SHAKE를 적용합니다. |
-| `random_seed` | `"random"` 또는 양의 정수 | `"random"` | State별 seed를 무작위로 만들거나 정수에서 재현성 있게 파생합니다. |
+| `random_seed` | `"random"` 또는 양의 정수 | `"random"` | Replica seed와 stage별 `ig`를 정합니다. 아래 seed 규칙을 따릅니다. |
 
 | `temperature_mode` | 사용하는 설정 | 무시하는 설정 | 생성 결과 |
 | --- | --- | --- | --- |
@@ -60,6 +60,8 @@ Temperature file은 사용자가 생성해야 합니다. 공백, comma, semicolo
 구분자로 사용할 수 있고 `#` 뒤는 comment입니다. 값은 양수이고 중복 없이
 오름차순이어야 하며, 둘 이상이어야 하고 첫 값은 `run.temperature`와 같아야
 합니다. `work/states.tsv`가 실제 replica schedule입니다.
+
+Seed 규칙: `"random"`이면 replica마다 무작위 seed를 만들어 heating `ig`에 쓰고, equilibration과 production segment는 `ig=-1`로 실행 시각에서 seed를 정합니다. 정수이면 replica seed는 `정수 + 7919 × replica index`입니다. Langevin dynamics(`ntt=3`)는 restart마다 다른 `ig`를 써야 하므로 stage마다 1,000,000을 더합니다. Heating은 +0, equilibration은 +1,000,000, production segment N은 +(2+N)×1,000,000입니다. 이를 위해 build는 segment마다 `work/<replica>/production.NNN.in`을 만듭니다.
 
 ### Engine 선택과 실행 상태
 
@@ -128,7 +130,7 @@ The first-pass LEaP input and water-count `solvated.pdb` are created under `work
 | `equilibration_ensemble` | `NPT` only | `NPT` | Applies to equilibration at each physical temperature. |
 | `production_ensemble` | `NVT`, `NPT` | `NPT` | Sets replica-production `ntb` and `ntp`. |
 | `constraint_mode` | `h-bonds` only | `h-bonds` | Applies SHAKE to bonds involving hydrogen. |
-| `random_seed` | `"random"` or a positive integer | `"random"` | Creates random state seeds or derives reproducible seeds from the integer. |
+| `random_seed` | `"random"` or a positive integer | `"random"` | Sets replica seeds and per-stage `ig`; see the seed rule below. |
 
 | `temperature_mode` | Settings used | Settings ignored | Result |
 | --- | --- | --- | --- |
@@ -139,6 +141,8 @@ The user must create the temperature file. It accepts whitespace, commas,
 semicolons, and `|` as separators; text after `#` is a comment. It must contain
 at least two unique, increasing positive values, and its first value must equal
 `run.temperature`. `work/states.tsv` is the applied replica schedule.
+
+Seed rule: with `"random"`, each replica gets a random seed for heating `ig`, and equilibration and production segments use `ig=-1` (wall-clock seed). With an integer, the replica seed is `integer + 7919 × replica index`. Langevin dynamics (`ntt=3`) needs a different `ig` on each restart, so each stage adds 1,000,000: heating +0, equilibration +1,000,000, and production segment N +(2+N)×1,000,000. The build therefore writes one `work/<replica>/production.NNN.in` per segment.
 
 This directory can be copied and used on its own. Install its Python
 dependencies from the local `requirements.txt` after copying it.

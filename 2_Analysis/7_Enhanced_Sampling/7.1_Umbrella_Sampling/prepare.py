@@ -19,8 +19,13 @@ TUTORIAL_DIR = Path.cwd()
 WINDOWS_DIR = TUTORIAL_DIR / "../../../1_Simulation/2_US/us/work"
 OUTPUT_DIR = TUTORIAL_DIR / "output"
 
-TIME_COLUMN = 1
-DISTANCE_COLUMN = 8
+# AMBER DUMPAVE for one simple distance restraint (DUMPFREQ, no outxyz):
+# column 1 is the MD step counted from the start of the run, column 2 the
+# instantaneous distance in Angstrom.
+STEP_COLUMN = 1
+DISTANCE_COLUMN = 2
+# Must match dt in 1_Simulation/2_US/us/inputs/production.in.
+PRODUCTION_TIMESTEP_PS = 0.002
 DISCARD_PS = 100.0
 
 
@@ -69,7 +74,7 @@ def discover_windows(root: Path) -> list[Window]:
 
 
 def read_dumpave(path: Path) -> list[tuple[float, float]]:
-    required_columns = max(TIME_COLUMN, DISTANCE_COLUMN)
+    required_columns = max(STEP_COLUMN, DISTANCE_COLUMN)
     values = []
 
     with path.open(encoding="utf-8") as handle:
@@ -83,10 +88,12 @@ def read_dumpave(path: Path) -> list[tuple[float, float]]:
                 continue
 
             try:
-                time_ps = float(fields[TIME_COLUMN - 1])
+                step = float(fields[STEP_COLUMN - 1])
                 distance_angstrom = float(fields[DISTANCE_COLUMN - 1])
             except ValueError:
                 continue
+
+            time_ps = step * PRODUCTION_TIMESTEP_PS
 
             values.append((time_ps, distance_angstrom))
 

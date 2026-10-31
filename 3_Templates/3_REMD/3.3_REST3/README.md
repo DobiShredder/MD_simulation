@@ -40,7 +40,7 @@ GROMACS/PLUMED HREX build와 상위 directory의
 replica 사이에서 보존되는지 검사합니다. `water_model = "TIP3P"` compatibility
 option도 유지합니다.
 각 replica의 preproduction은 tutorial과 같은 minimization과 NPT equilibration
-순서이며 별도 heating stage는 사용하지 않습니다. 첫 `grompp` 전에는 ParmEd가
+순서이며 별도 heating stage는 사용하지 않습니다. `config.toml`의 `minimization_steepest_steps`와 `heating_initial_temperature`는 모든 template가 공유하는 config 검사 helper가 요구해 남겨 두지만 REST GROMACS input에는 적용되지 않습니다. 첫 `grompp` 전에는 ParmEd가
 출력한 긴 CMAP 실수를 GROMACS 2024.x가 읽을 수 있는 정밀도로 정규화합니다.
 
 ### Config 선택값
@@ -51,7 +51,7 @@ option도 유지합니다.
 | `water_model` | `TIP3P` (`ff99SB-ILDN`, `ff14SB`), `OPC` (`ff19SB`) | `OPC` | LEaP water와 REST3 water atom type을 함께 결정합니다. |
 | `box_shape` | `rectangular`, `octahedral` | `rectangular` | 각각 `solvatebox`, `solvateoct`를 사용합니다. |
 | `salt_type` | `NaCl`, `KCl`, `MgCl2`, `CaCl2` | `NaCl` | Neutralization 뒤 추가할 bulk salt를 선택합니다. |
-| `tempered_region` | `solute`만 지원 | `solute` | Water와 ion을 제외한 전체 solute를 tempering합니다. |
+| `tempered_region` | `solute`만 지원 | `solute` | Water와 ion을 제외한 solute를 tempering합니다. 다른 값은 build 시작 전에 error로 중단합니다. |
 | `equilibration_ensemble` | `NPT`만 지원 | `NPT` | Replica equilibration에 적용합니다. |
 | `production_ensemble` | `NVT`, `NPT` | `NPT` | GROMACS production pressure coupling을 설정합니다. |
 | `constraint_mode` | `h-bonds`만 지원 | `h-bonds` | Hydrogen-containing bond에 LINCS를 적용합니다. |
@@ -182,7 +182,7 @@ the workflow and remains in the corresponding `*.grompp.log`.
 | `water_model` | `TIP3P` (`ff99SB-ILDN`, `ff14SB`), `OPC` (`ff19SB`) | `OPC` | Selects both LEaP water and REST3 water atom types. |
 | `box_shape` | `rectangular`, `octahedral` | `rectangular` | Uses `solvatebox` or `solvateoct`, respectively. |
 | `salt_type` | `NaCl`, `KCl`, `MgCl2`, `CaCl2` | `NaCl` | Selects bulk salt added after neutralization. |
-| `tempered_region` | `solute` only | `solute` | Tempers the complete non-water, non-ion solute. |
+| `tempered_region` | `solute` only | `solute` | Tempers the non-water, non-ion solute. Other values stop the build before it starts. |
 | `equilibration_ensemble` | `NPT` only | `NPT` | Applies to replica equilibration. |
 | `production_ensemble` | `NVT`, `NPT` | `NPT` | Selects GROMACS production pressure coupling. |
 | `constraint_mode` | `h-bonds` only | `h-bonds` | Applies LINCS to bonds involving hydrogen. |
@@ -217,6 +217,7 @@ compactness and exchange in a system- and force-field-specific pilot run. The
 temperature predictor does not model the κ correction. File mode accepts an
 explicit κ list with one value per state. Replica preproduction uses the same
 minimization-to-NPT-equilibration sequence as the fixed tutorial.
+`minimization_steepest_steps` and `heating_initial_temperature` remain in `config.toml` because the shared config checker requires them; REST GROMACS inputs do not use them.
 With the default OPC model, `kappa_atom_names=['OW']` selects the water oxygen
 type. `helpers/verify_rest3.py` checks preservation of O/H1/H2/EP atom records and
 solvent interactions across replicas. The optional `water_model = "TIP3P"`

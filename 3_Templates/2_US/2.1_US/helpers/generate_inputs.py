@@ -42,6 +42,10 @@ def render_cntrl(title: str, values: list[str]) -> str:
     return f"{title}\n&cntrl\n{body}\n/\n"
 
 
+# AMBER manual (ntr, netfrc): stages with ntr=1 should also set netfrc=0.
+RESTRAINED_EWALD = "&ewald\n  netfrc=0,\n/\n"
+
+
 def resolve(config_path: Path) -> dict[str, object]:
     config = load_config(config_path)
     build = section(config, "build")
@@ -205,7 +209,7 @@ def heating_text(values: dict[str, object], title: str) -> str:
             "nmropt=1",
         ],
     )
-    return text + (
+    return text + RESTRAINED_EWALD + (
         "&wt\n"
         "  type='TEMP0',\n"
         "  istep1=0,\n"
@@ -241,7 +245,8 @@ def write_rmd_inputs(output: Path, values: dict[str, object]) -> None:
                 "restraint_wt=10.0",
                 f"restraintmask='{solute_mask}'",
             ],
-        ),
+        )
+        + RESTRAINED_EWALD,
         encoding="utf-8",
     )
     (input_dir / "min-all.in").write_text(
@@ -273,7 +278,8 @@ def write_rmd_inputs(output: Path, values: dict[str, object]) -> None:
                 "restraint_wt=1.0",
                 f"restraintmask='{solute_mask}'",
             ],
-        ),
+        )
+        + RESTRAINED_EWALD,
         encoding="utf-8",
     )
     (input_dir / "ratchet.in").write_text(

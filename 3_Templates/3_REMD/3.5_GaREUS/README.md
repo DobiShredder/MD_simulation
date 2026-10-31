@@ -35,6 +35,9 @@ GaMD input을 생성합니다.
 기본 production은 window당 200 ns입니다. 2 fs timestep과 1000-step exchange
 interval에서 `nstlim=1000`, `numexchg=100000`으로 생성됩니다.
 기본 20개 window는 6–25 Å이며 replica 009에서 공통 GaMD state를 준비합니다.
+`[gamd] reference_replica`는 0부터 window 수−1 사이의 정수여야 하며 build가 범위를 검사합니다.
+
+Equilibration과 GaMD preparation은 replica directory 안에서 실행되므로 `DISANG=distance.RST`와 `DUMPAVE=restraint.equilibrate.dat` 또는 `restraint.gamd_prepare.dat`를 씁니다. Build는 production segment마다 `production.NNN.template.in`을 만듭니다. Exchange production은 group file로 이 directory에서 실행되므로 `run.sh`가 segment 시작 직전 `@DISANG@`과 `@DUMPAVE@`를 `work/<replica>/distance.RST`와 `work/<replica>/restraint.production.NNN.dat`로 바꿔 `production.NNN.in`을 씁니다.
 
 ### Config 선택값
 
@@ -47,12 +50,14 @@ interval에서 `nstlim=1000`, `numexchg=100000`으로 생성됩니다.
 | `equilibration_ensemble` | `NPT`만 지원 | `NPT` | Window equilibration에 적용합니다. |
 | `production_ensemble` | `NVT`, `NPT` | `NVT` | GaMD exchange production의 `ntb`와 `ntp`를 설정합니다. |
 | `constraint_mode` | `h-bonds`만 지원 | `h-bonds` | Hydrogen-containing bond에 SHAKE를 적용합니다. |
-| `random_seed` | `"random"` 또는 양의 정수 | `"random"` | Window별 seed를 무작위로 만들거나 정수에서 파생합니다. |
+| `random_seed` | `"random"` 또는 양의 정수 | `"random"` | Window seed와 stage별 `ig`를 정합니다. 아래 seed 규칙을 따릅니다. |
 
 `windows_file`은 항상 명시적인 center 목록을 읽으며 `auto`/`file` mode가
 아닙니다. Blank line과 `#`로 시작하는 comment line을 제외하고 각 행에는 center
 하나만 적습니다. Center 목록은 비어 있지 않고 중복 없이 오름차순이어야 합니다.
 각 행이 한 exchange state가 되고 최종 mapping은 `work/states.tsv`에 기록됩니다.
+
+Seed 규칙: `"random"`이면 window마다 무작위 seed를 만들어 heating `ig`에 쓰고, equilibration, GaMD preparation과 production segment는 `ig=-1`로 실행 시각에서 seed를 정합니다. 정수이면 window seed는 `정수 + 7919 × window index`입니다. Langevin dynamics(`ntt=3`)는 restart마다 다른 `ig`를 써야 하므로 stage마다 1,000,000을 더합니다. Heating은 +0, equilibration은 +1,000,000, GaMD preparation은 +2,000,000, production segment N은 +(2+N)×1,000,000입니다.
 
 ### Engine 선택과 실행 상태
 
@@ -125,13 +130,15 @@ The first-pass LEaP input and water-count `solvated.pdb` are created under `work
 | `equilibration_ensemble` | `NPT` only | `NPT` | Applies to window equilibration. |
 | `production_ensemble` | `NVT`, `NPT` | `NVT` | Sets GaMD exchange-production `ntb` and `ntp`. |
 | `constraint_mode` | `h-bonds` only | `h-bonds` | Applies SHAKE to bonds involving hydrogen. |
-| `random_seed` | `"random"` or a positive integer | `"random"` | Creates random window seeds or derives them from the integer. |
+| `random_seed` | `"random"` or a positive integer | `"random"` | Sets window seeds and per-stage `ig`; see the seed rule below. |
 
 `windows_file` always supplies an explicit center list and is not an
 `auto`/`file` mode. After blank lines and full-line `#` comments are skipped,
 each row must contain exactly one center. The list must be nonempty, unique,
 and increasing. Each row becomes one exchange state, and the final mapping is
 written to `work/states.tsv`.
+
+Seed rule: with `"random"`, each window gets a random seed for heating `ig`, and equilibration, GaMD preparation, and production segments use `ig=-1` (wall-clock seed). With an integer, the window seed is `integer + 7919 × window index`. Langevin dynamics (`ntt=3`) needs a different `ig` on each restart, so each stage adds 1,000,000: heating +0, equilibration +1,000,000, GaMD preparation +2,000,000, and production segment N +(2+N)×1,000,000.
 
 This directory can be copied and used on its own. Install its Python
 dependencies from the local `requirements.txt` after copying it.
@@ -146,7 +153,17 @@ retrieves a source PDB and `build.sh` creates the topology, windows, and GaMD
 inputs. The default is 200 ns
 per window, rendered as `nstlim=1000` and `numexchg=100000` at 2 fs. The
 default has 20 windows from 6 to 25 Å and prepares the shared GaMD state in
-replica 009.
+replica 009. The build rejects a `[gamd] reference_replica` outside 0 to
+the window count minus one.
+
+Equilibration and GaMD preparation run inside each replica directory, so they
+use `DISANG=distance.RST` and `DUMPAVE=restraint.equilibrate.dat` or
+`restraint.gamd_prepare.dat`. The build writes one
+`production.NNN.template.in` per production segment. Exchange production runs
+from this directory through the group file, so `run.sh` replaces `@DISANG@` and
+`@DUMPAVE@` with `work/<replica>/distance.RST` and
+`work/<replica>/restraint.production.NNN.dat` and writes `production.NNN.in`
+just before the segment starts.
 
 ### Engine selection and run state
 

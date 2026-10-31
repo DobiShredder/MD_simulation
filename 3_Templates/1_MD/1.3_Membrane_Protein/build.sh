@@ -113,8 +113,8 @@ echo "Packing the oriented protein into the configured bilayer: $work_dir/input.
 "$python" helpers/generate_inputs.py "$config" "$work_dir/inputs" --coordinate "$work_dir/system-coordinates.pdb"
 
 echo "Building the membrane AMBER topology; log: $work_dir/leap.log"
-if ! (cd "$work_dir" && "$tleap" -f inputs/tleap.in > leap.log 2>&1); then
-    die "tleap failed. See log: $work_dir/leap.log"
+if ! (cd "$work_dir" && "$tleap" -f inputs/tleap.in > tleap.out 2>&1); then
+    die "tleap failed. See $work_dir/tleap.out and $work_dir/leap.log"
 fi
 "$python" helpers/apply_config.py "$config" "$work_dir"
 for output in system.parm7 system.rst7 system.pdb resolved_config.toml; do

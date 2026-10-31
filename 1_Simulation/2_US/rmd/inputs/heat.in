@@ -29,6 +29,9 @@ Heat from 20 K to 300 K over 200 ps at constant volume
  ioutfm=1,
  nmropt=1,
 /
+&ewald
+ netfrc=0,
+/
 &wt
  type='TEMP0',
  istep1=0,

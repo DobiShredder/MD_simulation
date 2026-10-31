@@ -28,8 +28,7 @@ refuse_existing_results() {
 
 work_dir=work
 
-if (( ! ${dry_run:-0} )) &&
-        [[ ${original_args[0]:-} != -h && ${original_args[0]:-} != --help && ${original_args[0]:-} != --dry-run ]] &&
+if [[ ${original_args[0]:-} != -h && ${original_args[0]:-} != --help ]] &&
         [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
     exec "${PYTHON:-python3}" helpers/writer_guard.py \
         --registry "work" --read "$1" --read "inputs" --write "work" -- "$0" "${original_args[@]}"
@@ -54,8 +53,11 @@ if [[ ! -s "$input_pdb" ]]; then
     die "Input PDB not found: $input_pdb"
 fi
 
-command -v "$tleap" >/dev/null 2>&1 || die "tleap not found: $tleap"
-command -v python3 >/dev/null 2>&1 || die "python3 not found."
+for executable in "$tleap" python3; do
+    if ! command -v "$executable" >/dev/null 2>&1; then
+        die "Executable not found: $executable"
+    fi
+done
 mkdir -p "$work_dir"
 cp "$input_pdb" "$work_dir/input.pdb"
 cp inputs/tleap.in "$work_dir/tleap.in"
@@ -68,7 +70,9 @@ if ! (
     die "tleap failed: $work_dir/leap.log"
 fi
 for output in system.parm7 system.rst7 system.pdb; do
-    [[ -s "$work_dir/$output" ]] || die "build Output not found: $work_dir/$output"
+    if [[ ! -s "$work_dir/$output" ]]; then
+        die "build Output not found: $work_dir/$output"
+    fi
 done
 echo "Checking topology and recording CV atoms: $work_dir/system.parm7"
 python3 "check_topology.py" "$work_dir/system.parm7" "$work_dir/cv_atoms.tsv"

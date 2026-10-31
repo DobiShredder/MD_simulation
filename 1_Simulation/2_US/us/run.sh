@@ -88,7 +88,7 @@ run_window() {
 
     run_stage "$window_dir" min minimization \
         "$engine" -O -i ../../inputs/min.in -o min.out \
-        -p system.parm7 -c seed.rst7 -r min.rst7
+        -p system.parm7 -c seed.rst7 -r min.rst7 -inf min.info
 
     run_stage "$window_dir" heat heating \
         "$engine" -O -i ../../inputs/heat.in -o heat.out \

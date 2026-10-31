@@ -13,8 +13,9 @@ cd 2_Analysis/7_Enhanced_Sampling/7.2_GaMD_Reweighting
 ~~~
 
 Profile별 CV는 Chignolin terminal Cα distance, BEN–Asp189 side-chain COM
-distance와 receptor alignment 후 peptide backbone RMSD입니다. `cv.dat`과
-GaMD log는 각각 100 frames여야 합니다.
+distance와 receptor alignment 후 peptide backbone RMSD입니다. `cv.dat` frame
+수와 GaMD log의 boost record 수가 같아야 합니다. 기본 1 ns example은 둘 다
+100입니다.
 
 ### Script 역할
 
@@ -61,7 +62,8 @@ Marker가 남아 있는 동안 재실행은 거부합니다.
 
 cpptraj calculates one profile-specific CV from the production run.
 `prepare.py` creates the profile-specific cpptraj input. `reweight.py` checks
-the one-to-one correspondence between 100 CV and boost records and applies
+that the CV and boost record counts match (100 each in the default 1 ns
+example) and applies
 second-order cumulant expansion to produce a one-dimensional PMF. `run.sh` executes these steps in order.
 
 `pmf.tsv` reports biased and reweighted probabilities and PMFs, per-bin boost

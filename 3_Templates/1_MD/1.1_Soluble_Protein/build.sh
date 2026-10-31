@@ -156,9 +156,9 @@ salt_pairs=$(awk -v waters="$water_count" -v concentration="$salt_concentration"
 echo "Building the final solvated system ($water_count waters, $salt_pairs salt formula units)."
 if ! (
     cd "$work_dir"
-    "$tleap" -f inputs/tleap.final.in > leap.log 2>&1
+    "$tleap" -f inputs/tleap.final.in > tleap.out 2>&1
 ); then
-    die "Final tleap build failed. See log: $work_dir/leap.log"
+    die "Final tleap build failed. See $work_dir/tleap.out and $work_dir/leap.log"
 fi
 
 for output in system.parm7 system.rst7 system.pdb resolved_config.toml; do

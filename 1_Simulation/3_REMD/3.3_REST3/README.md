@@ -54,7 +54,7 @@ field에 맞춰 정해야 하는 schedule입니다.
 | `scale_cmap.py` | 외부 parser가 생략하는 ff19SB의 residue별 CMAP section을 복원하고 grid를 `lambda_pp`로 scaling합니다. |
 | `verify_rest3.py` | Base identity, OPC atom type·charge·mass와 water–water/ion–water Lennard-Jones 보존을 검사합니다. |
 | `validate_states.py` | State file의 각 row, λ 관계와 기준 κ를 검사합니다. |
-| `build.sh` | Conversion, topology generation, TPR build와 검사를 순서대로 호출합니다. |
+| `build.sh` | Conversion, processed topology 생성, replica topology 생성과 검사를 순서대로 호출합니다. Build의 TPR은 processed topology를 만드는 preprocessing용이며, 계산용 TPR은 `run.sh`가 만듭니다. |
 | `run.sh` | 300 K pre-production과 2 ps 간격 HREX를 실행합니다. |
 | `anal.py` | Exchange, occupancy와 state별 Rg/terminal distance를 계산합니다. |
 
@@ -237,7 +237,9 @@ force-field-dependent schedule, not a solvent temperature or universal value.
 
 The build uses `repex-topology-parser==0.2.2`, verifies byte identity of the
 base topology, and checks that OPC water atom types, charges, and masses as well
-as water–water and ion–water Lennard-Jones interactions are preserved.
+as water–water and ion–water Lennard-Jones interactions are preserved. Its only
+TPR is the preprocessing file used to write the processed topology; `run.sh`
+creates the run-stage TPRs.
 Equilibration is 100 ps; production is one 1 ns
 segment with exchanges every 2 ps.
 
@@ -326,7 +328,7 @@ Run은 재사용할 결과의 input을 SHA256으로 비교합니다. Topology, �
 
 정상 종료, command 실패와 INT/TERM에서는 자식 process의 종료를 확인한 뒤 자기 lock만 해제합니다. SIGKILL이나 node 장애로 남은 lock은 자동 삭제하지 않습니다. Error에 표시된 lock과 `owner.json`의 host, PID, command, scope를 확인하고 scheduler와 해당 host에서 모든 writer와 자식 process가 종료됐는지 확인한 뒤 그 lock directory만 수동 제거합니다. PID가 로컬에서 보이지 않는다는 이유만으로 제거하지 않습니다. `.gate/`도 같은 확인이 필요합니다.
 
-지원하는 `--dry-run`과 `--help`는 보호나 identity 파일을 생성하지 않습니다. 진행 중인 work를 이동하거나 identity를 수정해 재사용하지 않습니다. 보호는 로컬 filesystem과 로컬 자식 process로 검증했으며 network filesystem, remote MPI와 다른 node의 writer 종료는 미검증입니다.
+`run.sh --dry-run`은 보호나 identity 파일을 생성하지 않습니다. 진행 중인 work를 이동하거나 identity를 수정해 재사용하지 않습니다. 보호는 로컬 filesystem과 로컬 자식 process로 검증했으며 network filesystem, remote MPI와 다른 node의 writer 종료는 미검증입니다.
 
 ### Concurrent runs and input changes
 
@@ -336,7 +338,7 @@ Run compares inputs for result reuse with SHA256. Changed topology, initial coor
 
 Normal exit, command failure and INT/TERM release only the owned lock after child termination is verified. Locks left by SIGKILL or node failure are retained. Inspect the reported lock and its `owner.json` host, PID, command and scopes; confirm through the scheduler and owning host that all writers and children stopped before manually removing only that lock directory. A PID missing locally is not sufficient. Apply the same checks to `.gate/`.
 
-Supported `--dry-run` and `--help` do not create writer or identity files. Do not move active work trees or edit identities to reuse results. Protection was tested on a local filesystem with local child processes; network filesystems, remote MPI and termination of writers on other nodes remain unverified.
+`run.sh --dry-run` creates no writer or identity files. Do not move active work trees or edit identities to reuse results. Protection was tested on a local filesystem with local child processes; network filesystems, remote MPI and termination of writers on other nodes remain unverified.
 
 ### Stage 완료 판정 / Stage completion
 

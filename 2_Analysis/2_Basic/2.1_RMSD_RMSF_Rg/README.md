@@ -17,9 +17,9 @@ python3 anal.py
 `rmsd_average.dat`, `rmsf_byres.dat`과 `rg.dat`을 만듭니다. `anal.py`는 세
 지표를 각각 Å 단위로 표시합니다.
 
-다른 system은 `run.sh` 상단의 두 경로를 수정합니다. RMSD와 RMSF mask는
-`:1-10@CA,C,N`이고 Rg는 protein heavy atom에 질량을
-적용합니다. Reference와 mask가 바뀌면 값의 의미도 바뀌므로 서로 다른 계산을
+다른 system은 `run.sh` 상단의 두 경로를 수정합니다. RMSD와 fitting mask는
+backbone `:1-10@CA,C,N`이고, RMSF는 residue별 Cα `:1-10@CA`에서 계산합니다.
+Rg는 protein heavy atom에 질량을 적용합니다. Reference와 mask가 바뀌면 값의 의미도 바뀌므로 서로 다른 계산을
 비교할 때 같은 definition을 사용합니다. 짧은 trajectory의 안정된 RMSD만으로
 구조 ensemble의 수렴을 판단하지 않습니다.
 
@@ -44,7 +44,8 @@ directory를 함께 보존하고 검사합니다. 파일을 개별적으로 섞�
 ## English
 
 This example calculates backbone RMSD against the first frame and the average
-structure, residue-level RMSF after fitting, and mass-weighted heavy-atom Rg.
+structure, per-residue Cα RMSF (`:1-10@CA`) after backbone fitting, and mass-weighted
+heavy-atom Rg.
 `run.sh` reads the default Chignolin output, uses two cpptraj passes, and writes
 the average structure plus four
 numeric tables. `anal.py` displays all observables in Å. Keep reference and

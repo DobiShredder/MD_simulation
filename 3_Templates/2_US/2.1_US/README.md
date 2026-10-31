@@ -79,8 +79,9 @@ Parent build, rMD, seed analysis와 US build/run은 parent `work.writers`를 공
 완료 stage는 재사용하지만, topology, 최초 coordinate file, generated engine input
 또는 해당 stage가 소비하는 predecessor restart가 바뀌면 실행 전에 거부합니다.
 기록이 없는 기존 완료·partial 결과도 보존하고 거부합니다. Identity를 새 input으로
-덮어쓰거나 과거 결과에 소급 생성하지 않습니다. 변경된 계산은 새 `WORK_DIR`에서
-build부터 시작합니다. 고정 경로를 쓰는 parent build/rMD/US build는 leaf를 별도 directory에 복사해 새 계산을 시작합니다. 완료 marker는 engine 성공과 필요한 output 확인 뒤에
+덮어쓰거나 과거 결과에 소급 생성하지 않습니다. Window table이나 restraint만 바꾼
+US 계산은 `us/build.sh`와 `us/run.sh`에 같은 새 `WORK_DIR`(기본 `work`)을 지정해
+window build부터 시작합니다. Parent build와 rMD는 `work/`, `rmd/work/` 고정 경로를 쓰므로 leaf를 별도 directory에 복사해 새 계산을 시작합니다. 완료 marker는 engine 성공과 필요한 output 확인 뒤에
 생성합니다. Output으로 갱신되는 bias/replica state와 완료한 predecessor input을
 구분하며, 기존 input을 바꾸지 않는 후속 segment 추가는 허용합니다.
 
@@ -170,8 +171,10 @@ stages can reuse identical inputs. Changes to topology, initial coordinates,
 generated engine inputs, or the predecessor restart consumed by a stage cause
 rejection before execution. Existing complete or partial results without an
 identity are also retained and rejected. Records are never replaced or created
-retroactively for old results. Start a changed calculation with a fresh
-`WORK_DIR`, beginning with the build. For the fixed-path parent build, rMD, and US build, start from a separate copy of the leaf. Completion markers are written
+retroactively for old results. For a changed window table or restraint, set the
+same fresh `WORK_DIR` (default `work`) for `us/build.sh` and `us/run.sh` and start
+from the window build. The parent build and rMD use the fixed `work/` and
+`rmd/work/` paths; start those changes from a separate copy of the leaf. Completion markers are written
 after engine success and required-output checks. Mutable bias/replica outputs are
 distinguished from completed predecessor inputs; additional segments that leave
 existing inputs intact are allowed.

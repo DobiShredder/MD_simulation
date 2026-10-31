@@ -60,6 +60,11 @@ for input_file in "$protein_pdb" "$structure_dir/bound_bnz.pdb" "$structure_dir/
         die "prepare.py output not found: $input_file"
     fi
 done
+for input_file in "$structure_dir/BNZ_ideal.sdf" "$structure_dir/MBN_ideal.sdf"; do
+    if [[ ! -s "$input_file" ]]; then
+        die "download.sh output not found: $input_file"
+    fi
+done
 for executable in "$antechamber" "$parmchk2" "$tleap" python3; do
     if ! command -v "$executable" >/dev/null 2>&1; then
         die "Executable not found: $executable"
@@ -68,14 +73,17 @@ done
 
 mkdir -p "$build_dir"
 cp "$protein_pdb" "$build_dir/protein.pdb"
-bound_bnz=$(cd "$structure_dir" && pwd -P)/bound_bnz.pdb
-bound_mbn=$(cd "$structure_dir" && pwd -P)/bound_mbn.pdb
+cp "$structure_dir/bound_bnz.pdb" "$structure_dir/bound_mbn.pdb" "$build_dir/"
+cp "$structure_dir/BNZ_ideal.sdf" "$structure_dir/MBN_ideal.sdf" "$build_dir/"
 
+# The 4W53 ligand has no hydrogens. GAFF2 types and AM1-BCC charges are
+# assigned from the RCSB ideal SDF files, which include all hydrogens. tleap
+# later places these templates on the crystal heavy atoms in bound_*.pdb.
 echo "Parameterizing benzene and toluene with GAFF2/AM1-BCC."
 (
     cd "$build_dir"
     if "$antechamber" \
-        -i "$bound_bnz" -fi pdb \
+        -i BNZ_ideal.sdf -fi sdf \
         -o bnz.mol2 -fo mol2 \
         -at gaff2 -c bcc -nc 0 -rn BNZ -s 2 \
         > antechamber-bnz.log 2>&1; then
@@ -101,7 +109,7 @@ echo "Parameterizing benzene and toluene with GAFF2/AM1-BCC."
     fi
 
     if "$antechamber" \
-        -i "$bound_mbn" -fi pdb \
+        -i MBN_ideal.sdf -fi sdf \
         -o mbn.mol2 -fo mol2 \
         -at gaff2 -c bcc -nc 0 -rn MBN -s 2 \
         > antechamber-mbn.log 2>&1; then
@@ -141,6 +149,13 @@ for environment in complex solvent; do
             die "$environment build Output not found: $build_dir/$environment.$suffix"
         fi
     done
+
+    # Benzene is C6H6 and toluene is C7H8 after tleap adds the hydrogens.
+    bnz_atom_count=$(awk '/^(ATOM|HETATM)/ && substr($0, 18, 3) == "BNZ" {count++} END {print count + 0}' "$build_dir/$environment.pdb")
+    mbn_atom_count=$(awk '/^(ATOM|HETATM)/ && substr($0, 18, 3) == "MBN" {count++} END {print count + 0}' "$build_dir/$environment.pdb")
+    if (( bnz_atom_count != 12 || mbn_atom_count != 15 )); then
+        die "$environment ligand atom counts are BNZ=$bnz_atom_count, MBN=$mbn_atom_count (expected 12 and 15): $build_dir/tleap_${environment}.log"
+    fi
 done
 
 echo "Generating FEP window inputs: $build_dir -> $work_dir/states.tsv"

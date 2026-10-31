@@ -92,6 +92,9 @@ Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 
 새 `fes.dat`이 없거나 비어 있으면 실패로 처리하고 이전 결과를 유지합니다.
 `--skip-fes`의 새 결과에는 과거 FES를 포함하지 않습니다.
 
+Cone–cylinder crossing은 production에 사용한 `work/plumed.dat`의 `ZCC` 값(nm)을
+기준으로 셉니다.
+
 자동 호출되는 `helpers/result_generation.py`가 완료한 output hash를
 `analysis/.generation.json`에 기록합니다. 게시가 중단되어
 `work/.analysis.pending`이 남으면 재실행을 거부합니다. 실행 process가 종료됐는지
@@ -105,7 +108,7 @@ Analysis는 COLVAR의 column 수, field name과 finite 값을 확인합니다. �
 
 ### Funnel setup 재사용
 
-PLUMED parse가 만든 `work/FUNNEL_GRID`는 `.plumed-setup.identity.json`과 `.plumed-setup.success.json`으로 관리합니다. 완료된 setup은 grid를 다시 생성하지 않습니다. `plumed.dat`, reference PDB, atom count 또는 PLUMED executable이 바뀌거나 grid가 누락되면 보존한 채 중단합니다. Parse가 grid를 만든 뒤 실패한 상태와 완료 기록이 없는 기존 grid도 재사용하지 않습니다. Setup 완료와 heating·production 완료는 별도로 확인합니다.
+PLUMED parse가 만든 `work/FUNNEL_GRID`는 `.plumed-setup.identity.json`과 `.plumed-setup.success.json`으로 관리합니다. 완료된 setup은 grid를 다시 생성하지 않습니다. `plumed.dat`, reference PDB, atom count 또는 PLUMED executable이 바뀌거나 grid가 누락되면 보존한 채 중단합니다. Parse-only 검사에서 `HILLS`와 `COLVAR`는 `plumed.parse.HILLS`, `plumed.parse.COLVAR`라는 임시 filename으로 바꾸고 검사 후 삭제합니다. Parse가 grid를 만든 뒤 실패한 상태와 완료 기록이 없는 기존 grid도 재사용하지 않습니다. Setup 완료와 heating·production 완료는 별도로 확인합니다.
 
 ## English
 
@@ -142,6 +145,9 @@ uncertainty analysis, and the funnel-volume standard-state correction.
 generation before replacing `work/analysis/`. An exit-zero `sum_hills` that
 creates no nonempty `fes.dat` is a failure and preserves previous results.
 A new `--skip-fes` generation does not retain the old FES.
+
+Cone–cylinder crossings use the `ZCC` value (nm) from the production
+`work/plumed.dat`.
 
 The automatically called `helpers/result_generation.py` records output hashes
 in `analysis/.generation.json`. Interrupted publication leaves
@@ -203,4 +209,4 @@ Public analysis entries automatically use `helpers/writer_guard.py` to reject co
 
 ### Reusing Funnel setup
 
-The `work/FUNNEL_GRID` produced by PLUMED parsing is tracked by `.plumed-setup.identity.json` and `.plumed-setup.success.json`. Completed setup reuses the grid without regenerating it. Changed `plumed.dat`, reference PDB, atom count, or PLUMED executable, and a missing grid, stop the run while retaining results. A failed parse that left a grid, or a legacy grid without completion evidence, cannot be reused. Setup completion is separate from heating and production completion.
+The `work/FUNNEL_GRID` produced by PLUMED parsing is tracked by `.plumed-setup.identity.json` and `.plumed-setup.success.json`. Completed setup reuses the grid without regenerating it. Changed `plumed.dat`, reference PDB, atom count, or PLUMED executable, and a missing grid, stop the run while retaining results. The parse-only check renames `HILLS` and `COLVAR` to temporary `plumed.parse.HILLS` and `plumed.parse.COLVAR` files and removes them afterwards. A failed parse that left a grid, or a legacy grid without completion evidence, cannot be reused. Setup completion is separate from heating and production completion.

@@ -118,9 +118,12 @@ def main() -> None:
         if not path.is_file():
             raise SystemExit(f"GaMD log not found: {path}")
         records = parse_log(path)
+        # LiGaMD3 logs three physical boosts in two legacy aggregate columns
+        # (Boost-Energy-Potential, Boost-Energy-Dihedral). The labels name the
+        # logged columns, not individual Delta V_L, Delta V_D or Delta V_B terms.
         series = {
-            "potential_boost": [components[0] for _, components in records],
-            "dihedral_boost": [components[1] for _, components in records],
+            "logged_potential_column": [components[0] for _, components in records],
+            "logged_dihedral_column": [components[1] for _, components in records],
         }
         series["total"] = [sum(components) for _, components in records]
         for component, values in series.items():
@@ -137,8 +140,8 @@ def main() -> None:
             "segment",
             "frame",
             "step",
-            "potential_boost_kcal_mol",
-            "dihedral_boost_kcal_mol",
+            "logged_potential_column_boost_kcal_mol",
+            "logged_dihedral_column_boost_kcal_mol",
             "total_boost_kcal_mol",
         ])
         writer.writerows([[*row[:3], *[f"{value:.6f}" for value in row[3:]]] for row in frame_rows])

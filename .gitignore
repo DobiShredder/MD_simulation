@@ -21,6 +21,21 @@
 # Local preparation inputs/outputs
 1_Simulation/1_MD/*/input/
 2_Analysis/**/output/
+2_Analysis/**/.output.generation[.-]*/
+2_Analysis/**/.output.pending
+
+# Downloaded source structures and download staging
+**/structure/*.pdb
+**/structure/*.cif
+**/structure/*.mol2
+**/structure/*.sdf
+**/structure/SHA256SUMS
+**/structure/.download.pending
+**/structure/.*.download.*
+**/structure.download.*/
+**/.dependencies.download.pending
+# Small tracked alanine-dipeptide inputs for MetaD/OPES examples
+!1_Simulation/7_MetaD/*/structure/alanine-dipeptide.pdb
 
 # WESTPA runtime products
 **/west.h5

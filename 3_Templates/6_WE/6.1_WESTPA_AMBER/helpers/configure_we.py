@@ -102,6 +102,10 @@ def main() -> None:
         if not basis.is_file() or not target.is_file():
             raise ValueError("basis_state_file and target_state_file must exist")
         tau_steps = positive_int(we, "tau_steps")
+        trajectory_interval = positive_int(run, "trajectory_interval_steps")
+        # Frames must land on the segment end so seg.nc ends at the seg.rst7 point.
+        if tau_steps % trajectory_interval != 0:
+            raise ValueError("trajectory_interval_steps must divide tau_steps")
         total_iterations = positive_int(we, "total_iterations")
         blocks = positive_int(we, "run_blocks")
         per_block = positive_int(we, "iterations_per_block")
@@ -139,7 +143,7 @@ def main() -> None:
             f"temp0={temperature:.3f}", "ntt=3", "gamma_ln=1.0",
             "ntb=2", "ntp=1", "barostat=2", f"pres0={pressure:.3f}",
             "taup=2.0", "ntc=2", "ntf=2", "cut=10.0", "ntr=0",
-            f"ntpr={tau_steps}", "ntwx=0", f"ntwr={tau_steps}",
+            f"ntpr={tau_steps}", f"ntwx={trajectory_interval}", f"ntwr={tau_steps}",
         ],
     )
     (args.output / "inputs/segment.in.template").write_text(segment, encoding="utf-8")

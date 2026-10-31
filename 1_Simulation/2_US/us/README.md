@@ -41,16 +41,29 @@ Minimization, heating 또는 equilibration의 `*.out`과 `*.rst7`이 모두 있�
 해당 stage를 건너뜁니다. 완료 증거가 없거나 필수 output이 누락되면 기존 결과를 보존하고 중단합니다.
 기존 `production.out`이 있는 window는 덮어쓰지 않고 시작 전에 중단합니다.
 `inputs/continue.in`은 production restart에서 좌표와 velocity를 이어받는
-1 ns continuation input입니다.
+1 ns continuation input입니다. `run.sh`는 이 input을 실행하지 않습니다.
+완료된 window directory에서 직접 실행합니다.
+
+```bash
+cd work/001
+pmemd.cuda -O -i ../../inputs/continue.in -o continue.out \
+    -p system.parm7 -c production.rst7 -r continue.rst7 \
+    -x continue.nc -inf continue.info
+```
+
+이 수동 실행은 writer lock과 input identity 기록을 사용하지 않습니다.
+Distance는 `distance-cont.dat`에 기록되며 `2_Analysis/7_Enhanced_Sampling/7.1_Umbrella_Sampling`은
+이 파일을 읽지 않습니다.
 
 ### 주요 option
 
 | Option | 의미 |
 | --- | --- |
-| `iat=2,132` | Terminal Cα pair입니다. Topology가 바뀌면 atom index를 다시 계산합니다. |
+| `iat=5,133` | Terminal Cα pair입니다. Topology가 바뀌면 atom index를 다시 계산합니다. |
 | `r2=r3=CENTER` | Flat-bottom 폭이 없는 harmonic center이며 `build.sh`가 `windows.tsv` 값으로 치환합니다. |
 | `rk2=rk3=FORCE` | 중심 양쪽의 force constant이며 기본값은 10 kcal mol⁻¹ Å⁻²입니다. |
 | `DISANG=restraint.RST` | 모든 minimization·heating·equilibration·production stage에서 window restraint를 읽습니다. |
+| `&ewald netfrc=0` | Heavy-atom positional restraint(`ntr=1`)를 쓰는 `heat.in`에서 PME net-force 제거를 끕니다. AMBER manual이 `ntr=1`과 함께 권장합니다. |
 | `--window N` | 하나의 window만 실행합니다. 생략하면 모든 window를 순서대로 처리합니다. |
 
 Production distance는 `distance.dat`에 1 ps 간격으로 기록됩니다. PMF 계산은
@@ -70,9 +83,11 @@ histogram overlap before the PMF offsets can be connected.
 
 `windows.tsv` defines centers and strengths. `build.sh` combines the shared
 topology, ordered seeds, and `restraint.RST.template`; `run.sh` executes the
-four restrained stages. `iat=2,132` selects the terminal Cα pair,
+four restrained stages. `iat=5,133` selects the terminal Cα pair,
 `r2=r3` sets the center, `rk2=rk3` sets its strength, and `DISANG` keeps the
 restraint active. `--window N` limits execution to one window.
+`heat.in` also uses heavy-atom positional restraints (`ntr=1`) and sets
+`netfrc=0` in `&ewald`, as the AMBER manual recommends.
 
 `build.sh` creates `work/NNN/` only after validating every seed and
 refuses to overwrite an existing build. Each window runs restrained
@@ -81,7 +96,21 @@ production. A preparation stage is skipped only with successful completion evide
 is rejected before any production output is overwritten.
 
 `inputs/continue.in` inherits coordinates and velocities from a production
-restart. Production distances are written to `distance.dat` every 1 ps. PMF
+restart. `run.sh` does not run it; start it manually in a completed window
+directory:
+
+```bash
+cd work/001
+pmemd.cuda -O -i ../../inputs/continue.in -o continue.out \
+    -p system.parm7 -c production.rst7 -r continue.rst7 \
+    -x continue.nc -inf continue.info
+```
+
+This manual run has no writer lock or input-identity record. It writes
+distances to `distance-cont.dat`, which the
+`2_Analysis/7_Enhanced_Sampling/7.1_Umbrella_Sampling` analysis does not read.
+
+Production distances are written to `distance.dat` every 1 ps. PMF
 analysis covers equilibration removal, time correlation, neighboring overlap,
 endpoint coverage, and replicate uncertainty. Production is 1 ns per window.
 

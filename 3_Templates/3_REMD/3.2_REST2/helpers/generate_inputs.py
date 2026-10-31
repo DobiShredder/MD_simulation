@@ -95,7 +95,6 @@ def resolve(config_path: Path, method: str) -> dict[str, object]:
         "ensemble": "NPT",
         "timestep": positive_float(run, "timestep"),
         "constraint_mode": "h-bonds",
-        "heating_steps": positive_int(run, "heating_steps"),
         "equilibration_steps": positive_int(run, "equilibration_steps"),
         "production_steps": production_steps,
         "production_steps_per_segment": production_steps // segments,
@@ -105,9 +104,14 @@ def resolve(config_path: Path, method: str) -> dict[str, object]:
         "random_seed": random_seed,
     }
     if method == "remd":
+        values["heating_steps"] = positive_int(run, "heating_steps")
         values["engine"] = string_value(run, "engine")
         values["mpi_engine"] = string_value(run, "mpi_engine")
     else:
+        # The hot-region helpers implement only the solute choice; reject other
+        # values instead of silently tempering the solute.
+        if string_value(build, "tempered_region") != "solute":
+            raise ValueError("tempered_region currently supports only solute")
         values["equilibration_engine"] = string_value(run, "equilibration_engine")
         values["production_engine"] = string_value(run, "production_engine")
         values["threads_per_replica"] = positive_int(
@@ -373,6 +377,7 @@ def write_resolved(output: Path, method: str, values: dict[str, object], replica
             f'mpi_engine = "{values["mpi_engine"]}"'
         )
         resource_text = ""
+        heating_text = f"heating_steps = {values['heating_steps']}\n"
     else:
         engine_text = (
             f'equilibration_engine = "{values["equilibration_engine"]}"\n'
@@ -382,6 +387,7 @@ def write_resolved(output: Path, method: str, values: dict[str, object], replica
             f"cpu_threads_per_replica = {values['threads_per_replica']}\n"
             f"gpu_count = {values['gpu_count']}\n"
         )
+        heating_text = ""
     text = f"""[build]
 method = \"{method}\"
 protein_force_field = \"{values['force_field']}\"
@@ -397,8 +403,7 @@ pressure = {values['pressure']:.6f}
 ensemble = "{values['ensemble']}"
 timestep = {values['timestep']:.6f}
 constraint_mode = "{values['constraint_mode']}"
-heating_steps = {values['heating_steps']}
-equilibration_steps = {values['equilibration_steps']}
+{heating_text}equilibration_steps = {values['equilibration_steps']}
 production_steps = {values['production_steps']}
 production_steps_per_segment = {values['production_steps_per_segment']}
 production_segments = {values['segments']}

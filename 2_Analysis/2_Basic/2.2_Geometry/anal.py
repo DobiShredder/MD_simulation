@@ -51,7 +51,7 @@ def main() -> int:
 
     figure, axes = plt.subplots(3, 1, figsize=(8, 10))
     axes[0].plot(geometry[:, 0], geometry[:, 1], label="Terminal Cα distance")
-    axes[0].plot(geometry[:, 0], geometry[:, 2], label="Minimum heavy-atom distance")
+    axes[0].plot(geometry[:, 0], geometry[:, 2], label="Strand minimum heavy-atom distance (residues 1-4 vs 7-10)")
     axes[0].set_ylabel("Distance (Å)")
     axes[0].legend()
 

@@ -13,3 +13,6 @@ Minimize solvent and ions with protein heavy atoms restrained
  restraint_wt=10.0,
  restraintmask='!:WAT,Na+,Cl- & !@H=',
 /
+&ewald
+ netfrc=0,
+/

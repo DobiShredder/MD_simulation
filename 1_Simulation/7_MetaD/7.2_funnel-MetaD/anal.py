@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 from pathlib import Path
 
 from helpers.result_generation import result_generation
@@ -45,6 +46,14 @@ def read_colvar(path: Path) -> dict[str, np.ndarray]:
     return {name: data[:, index] for index, name in enumerate(fields)}
 
 
+def read_zcc(path: Path) -> float:
+    """Read the cone-cylinder switch (nm) from the PLUMED input used in production."""
+    match = re.search(r"(?:^|\s)ZCC=(\S+)", path.read_text(encoding="utf-8"))
+    if match is None:
+        raise ValueError(f"FUNNEL ZCC not found in PLUMED input: {path}")
+    return float(match.group(1))
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--skip-fes", action="store_true")
@@ -54,7 +63,7 @@ def main() -> int:
     from helpers.writer_guard import protect_python_entry
     protect_python_entry(work_dir, reads=(work_dir,), writes=(work_dir / "analysis",))
     print(f"Reading bias-analysis inputs: {work_dir}", flush=True)
-    for filename in ("COLVAR", "HILLS", "FUNNEL_GRID"):
+    for filename in ("COLVAR", "HILLS", "FUNNEL_GRID", "plumed.dat"):
         path = work_dir / filename
         if not path.is_file():
             raise ValueError(f"Production output not found: {path}")
@@ -79,6 +88,7 @@ def main() -> int:
     ld = values["fps.ld"]
     funnel_bias = values["funnel.bias"]
     metad_bias = values["metad.bias"]
+    zcc_nm = read_zcc(work_dir / "plumed.dat")
 
     output_dir = work_dir / "analysis"
     completed_output_dir = output_dir
@@ -101,7 +111,7 @@ def main() -> int:
             )
             handle.write("\t".join(map(str, row)) + "\n")
 
-        cylinder = lp >= 1.8
+        cylinder = lp >= zcc_nm
         cone_cylinder_crossings = int(np.count_nonzero(cylinder[1:] != cylinder[:-1]))
         boundary_frames = int(np.count_nonzero(funnel_bias > 0.0))
 

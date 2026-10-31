@@ -56,6 +56,12 @@ def resolve(config_path: Path) -> dict[str, object]:
     timestep = positive_float(run, "timestep")
     heating_steps = positive_int(run, "heating_steps")
     equilibration_steps = positive_int(run, "equilibration_steps")
+    trajectory_interval = positive_int(run, "trajectory_interval_steps")
+    # Each basis stage must write at least one frame to heat.nc/equilibrate.nc.
+    if trajectory_interval > min(heating_steps, equilibration_steps):
+        raise ValueError(
+            "trajectory_interval_steps must not exceed heating_steps or equilibration_steps"
+        )
 
     seed = run.get("random_seed")
     if seed != "random" and (
@@ -77,7 +83,7 @@ def resolve(config_path: Path) -> dict[str, object]:
         "constraint_mode": "h-bonds",
         "heating_steps": heating_steps,
         "equilibration_steps": equilibration_steps,
-        "trajectory_interval": positive_int(run, "trajectory_interval_steps"),
+        "trajectory_interval": trajectory_interval,
         "seed": seed,
     }
 
@@ -139,7 +145,7 @@ def write_md_inputs(output: Path, values: dict[str, object]) -> None:
                 "ntt=3", "gamma_ln=1.0", f"ig={seed}", "ntb=1", "ntp=0", "ntc=2",
                 "ntf=2", "cut=10.0", "ntr=1", "restraint_wt=5.0",
                 "restraintmask='!:WAT,Na+,Cl- & !@H='", f"ntpr={interval}",
-                "ntwx=0", f"ntwr={values['heating_steps']}", "nmropt=1",
+                f"ntwx={interval}", f"ntwr={values['heating_steps']}", "nmropt=1",
             ],
         )
     heating_input += (
@@ -158,7 +164,7 @@ def write_md_inputs(output: Path, values: dict[str, object]) -> None:
         f"temp0={temperature:.3f}", "ntt=3", "gamma_ln=1.0", "ig=-1",
         "ntb=2", "ntp=1", "barostat=2", f"pres0={pressure:.3f}",
         "taup=2.0", "ntc=2", "ntf=2", "cut=10.0", "ntr=0",
-        f"ntpr={interval}", "ntwx=0", f"ntwr={values['equilibration_steps']}",
+        f"ntpr={interval}", f"ntwx={interval}", f"ntwr={values['equilibration_steps']}",
     ]
     (output / "equilibrate.in").write_text(
         render_cntrl(

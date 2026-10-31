@@ -30,7 +30,7 @@ effective-temperature ladder를 구성할 수 있습니다.
 | `scale_cmap.py` | ff19SB의 residue별 CMAP section을 복원하고 energy grid를 `lambda`로 scaling합니다. |
 | `generate_states.py` | Effective-temperature 목록에서 `lambda_pp`, `lambda_pw`와 seed를 포함한 state table을 생성합니다. `build.sh`가 자동 호출합니다. |
 | `validate_states.py` | 생성된 state table의 각 row와 λ 관계를 검사하고 잘못된 column을 표시합니다. |
-| `build.sh` | Temperature file을 state table로 변환하고 row 수만큼 topology/TPR를 만들며 scale-one energy를 검사합니다. |
+| `build.sh` | Temperature file을 state table로 변환하고 row마다 scaled topology와 MDP input을 만듭니다. TPR은 scale-one energy 검사용으로만 만들며, 계산용 TPR은 `run.sh`가 만듭니다. |
 | `compare_energy.py` | 원본과 scale 1.0 rerun potential 차이를 허용 오차와 비교합니다. |
 | `run.sh` | 300 K pre-production과 PLUMED-patched GROMACS HREX를 실행합니다. |
 | `anal.py` | Exchange, occupancy와 effective-temperature별 구조 지표를 계산합니다. |
@@ -198,8 +198,9 @@ grid. Before the first `grompp`, the same helper also normalizes long
 ParmEd-formatted CMAP numbers to a precision accepted by GROMACS 2024.x. The
 `_` marker is limited to nonbonded atom types in `[ atoms ]`; CMAP
 lookup continues to use the original bonded types. `generate_states.py`
-converts the temperature input into a state table, and `build.sh` generates and
-verifies the corresponding scaled topologies.
+converts the temperature input into a state table, and `build.sh` writes the
+scaled topology and MDP inputs for each row. The build creates TPR files only for
+the scale-one energy check; `run.sh` creates the run-stage TPRs.
 `validate_states.py` reports the row and column of an invalid schedule.
 `run.sh` uses `-multidir -replex 1000`, and `anal.py` summarizes exchange and
 structure. All thermostats remain at `ref-t=300`; hydrogen bonds are constrained
@@ -249,7 +250,7 @@ Run은 재사용할 결과의 input을 SHA256으로 비교합니다. Topology, �
 
 정상 종료, command 실패와 INT/TERM에서는 자식 process의 종료를 확인한 뒤 자기 lock만 해제합니다. SIGKILL이나 node 장애로 남은 lock은 자동 삭제하지 않습니다. Error에 표시된 lock과 `owner.json`의 host, PID, command, scope를 확인하고 scheduler와 해당 host에서 모든 writer와 자식 process가 종료됐는지 확인한 뒤 그 lock directory만 수동 제거합니다. PID가 로컬에서 보이지 않는다는 이유만으로 제거하지 않습니다. `.gate/`도 같은 확인이 필요합니다.
 
-지원하는 `--dry-run`과 `--help`는 보호나 identity 파일을 생성하지 않습니다. 진행 중인 work를 이동하거나 identity를 수정해 재사용하지 않습니다. 보호는 로컬 filesystem과 로컬 자식 process로 검증했으며 network filesystem, remote MPI와 다른 node의 writer 종료는 미검증입니다.
+`run.sh --dry-run`은 보호나 identity 파일을 생성하지 않습니다. 진행 중인 work를 이동하거나 identity를 수정해 재사용하지 않습니다. 보호는 로컬 filesystem과 로컬 자식 process로 검증했으며 network filesystem, remote MPI와 다른 node의 writer 종료는 미검증입니다.
 
 ### Concurrent runs and input changes
 
@@ -259,7 +260,7 @@ Run compares inputs for result reuse with SHA256. Changed topology, initial coor
 
 Normal exit, command failure and INT/TERM release only the owned lock after child termination is verified. Locks left by SIGKILL or node failure are retained. Inspect the reported lock and its `owner.json` host, PID, command and scopes; confirm through the scheduler and owning host that all writers and children stopped before manually removing only that lock directory. A PID missing locally is not sufficient. Apply the same checks to `.gate/`.
 
-Supported `--dry-run` and `--help` do not create writer or identity files. Do not move active work trees or edit identities to reuse results. Protection was tested on a local filesystem with local child processes; network filesystems, remote MPI and termination of writers on other nodes remain unverified.
+`run.sh --dry-run` creates no writer or identity files. Do not move active work trees or edit identities to reuse results. Protection was tested on a local filesystem with local child processes; network filesystems, remote MPI and termination of writers on other nodes remain unverified.
 
 ### Stage 완료 판정 / Stage completion
 

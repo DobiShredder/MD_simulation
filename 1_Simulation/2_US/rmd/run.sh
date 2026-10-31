@@ -108,11 +108,13 @@ fi
 
 run_stage "solvent minimization" min-solvent.out min-solvent.rst7 \
     "$engine" -O -i inputs/min-solvent.in -o min-solvent.out \
-    -p system.parm7 -c system.rst7 -r min-solvent.rst7 -ref system.rst7
+    -p system.parm7 -c system.rst7 -r min-solvent.rst7 \
+    -inf min-solvent.info -ref system.rst7
 
 run_stage "whole-system minimization" min-all.out min-all.rst7 \
     "$engine" -O -i inputs/min-all.in -o min-all.out \
-    -p system.parm7 -c min-solvent.rst7 -r min-all.rst7
+    -p system.parm7 -c min-solvent.rst7 -r min-all.rst7 \
+    -inf min-all.info
 
 run_stage "NVT heating" heat.out heat.rst7 \
     "$engine" -O -i inputs/heat.in -o heat.out \

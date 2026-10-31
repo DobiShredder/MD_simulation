@@ -25,6 +25,11 @@ fi
 states_file=inputs/states.tsv
 tleap=${TLEAP:-tleap}
 
+# Langevin dynamics (ntt=3) needs a different ig after each restart
+# (Amber26 manual, ig). Each stage adds a fixed offset to the replica seed.
+equilibrate_seed_offset=1000000
+production_seed_offset=3000000
+
 if [[ ! -s "$input_pdb" ]]; then
     die "Prepared PDB not found: $input_pdb"
 fi
@@ -97,9 +102,14 @@ while IFS=$'\t' read -r replica temperature_kelvin seed; do
     cp inputs/minimize.in "$replica_dir/minimize.in"
 
     for stage in heat equilibrate production; do
+        case "$stage" in
+            equilibrate) stage_seed=$((seed + equilibrate_seed_offset)) ;;
+            production) stage_seed=$((seed + production_seed_offset)) ;;
+            *) stage_seed=$seed ;;
+        esac
         sed \
             -e "s/@TEMP@/$temperature_kelvin/g" \
-            -e "s/@SEED@/$seed/g" \
+            -e "s/@SEED@/$stage_seed/g" \
             "inputs/$stage.in" \
             > "$replica_dir/$stage.in"
     done

@@ -10,8 +10,8 @@
 각 leaf directory는 독립적으로 복사할 수 있는 self-contained template입니다.
 사용자가 실행하는 script와 config는 leaf root에, 자동 호출되는 내부 code는
 `helpers/`에 있습니다. `requirements.txt`도 같은 leaf에 있으며 family 상위
-directory나 `3_Templates/common`의 code를 호출하지 않습니다. 복사한 leaf
-directory 안에서 script를 실행합니다.
+directory의 code를 호출하지 않습니다. 복사한 leaf directory 안에서 script를
+실행합니다.
 
 각 leaf의 `requirements.txt`로 필요한 Python dependency를 설치합니다.
 상위 `requirements.txt`는 모든 leaf의 dependency를 합친 목록입니다.
@@ -134,8 +134,8 @@ with pilot simulations.
 Each leaf is a self-contained template that can be copied independently.
 User-facing scripts and config remain in the leaf root, while automatically
 called internal code is stored in `helpers/`. `requirements.txt` also remains
-inside the leaf; scripts do not call code from the family directory or
-`3_Templates/common`. Run every template from its leaf directory. `download.sh` retrieves only a
+inside the leaf; scripts do not call code from the family directory. Run every
+template from its leaf directory. `download.sh` retrieves only a
 source structure and does not decide protonation, missing atoms, alternate
 locations, biological assemblies, ligands, bound ions, or crystallographic
 waters. Pass a reviewed, build-ready PDB to `build.sh`.
@@ -155,7 +155,7 @@ Common build controls are `box_shape`, `salt_type`, `salt_concentration`, and
 `solvatebox` and `solvateoct`; membrane protein and Funnel-MetaD require a
 rectangular box. Supported salts are NaCl, KCl, MgCl2, and CaCl2. The system is
 neutralized before bulk salt is added, and `salt_concentration` uses the mM unit
-shown next to the value in `config.toml`. Disulfides use PDB chain and residue
+shown next to the value in `config.toml` (default `150.0`). Disulfides use PDB chain and residue
 references such as `[["A:23", "A:88"]]` and are created before solvation after
 both SG atoms are checked. The leaf README defines whether shape and salt
 values are configurable or fixed for that builder.

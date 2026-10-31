@@ -80,7 +80,7 @@ for source_input in inputs/*; do
 done
 "${PYTHON:-python3}" helpers/input_identity.py \
     --record "$work_dir/.source.identity.json" --stage "run source inputs" \
-    "${source_options[@]}" --value="$engine" --output "$work_dir/COLVAR" --output "$work_dir/HILLS" --output "$work_dir/KERNELS"
+    "${source_options[@]}" --value="$engine" --output "$work_dir/COLVAR" --output "$work_dir/DELTAFS" --output "$work_dir/opes.state"
 
 mkdir -p "$work_dir/inputs"
 cp inputs/minimize.in "$work_dir/inputs/minimize.in"
@@ -170,13 +170,10 @@ done
 sed 's/@RANDOM_SEED@/74101/g' inputs/production.in.template > "$work_dir/production.in"
 render_plumed_input "$work_dir/plumed.dat" "DELTAFS" opes.state COLVAR
 
-production_identity_options=(--input "$work_dir/plumed.dat" --output "$work_dir/COLVAR" --output "$work_dir/DELTAFS" --output "$work_dir/opes.state")
-if [[ -s "$work_dir/funnel-reference.pdb" ]]; then
-    production_identity_options+=(--input "$work_dir/funnel-reference.pdb")
-fi
 "${PYTHON:-python3}" helpers/input_identity.py \
     --record "$work_dir/.production.identity.json" --stage production \
-    --directory "$work_dir" "${production_identity_options[@]}" -- \
+    --directory "$work_dir" \
+    --input "$work_dir/plumed.dat" --output "$work_dir/COLVAR" --output "$work_dir/DELTAFS" --output "$work_dir/opes.state" -- \
     "$engine" -O -i production.in -o production.out -p system.parm7 \
     -c equilibrate.rst7 -r production.rst7 -x production.nc -inf production.info
 

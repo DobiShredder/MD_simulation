@@ -32,12 +32,13 @@ if ! command -v python3 >/dev/null 2>&1; then
     die "Python executable not found: python3"
 fi
 
-echo "Downloading membrane-oriented KcsA from OPM (PDB 1K4C)."
 if [[ "${MD_WRITER_PARENT:-}" != "$PPID" || "${MD_WRITER_ENTRY:-}" != "$0" ]]; then
     exec python3 helpers/writer_guard.py \
         --registry .. --write "$structure_dir" \
         -- "$0" "$@"
 fi
+
+echo "Downloading membrane-oriented KcsA from OPM (PDB 1K4C)."
 if [[ -e "$structure_dir/.download.pending" || -L "$structure_dir/.download.pending" ]]; then
     die "Download publication is incomplete; inspect $structure_dir/.download.pending."
 fi

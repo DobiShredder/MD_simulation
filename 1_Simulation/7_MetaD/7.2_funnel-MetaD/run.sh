@@ -68,7 +68,7 @@ for source_input in inputs/*; do
 done
 "${PYTHON:-python3}" helpers/input_identity.py \
     --record "$work_dir/.source.identity.json" --stage "run source inputs" \
-    "${source_options[@]}" --value="$engine" --output "$work_dir/COLVAR" --output "$work_dir/HILLS" --output "$work_dir/KERNELS" --output "$work_dir/FUNNEL_GRID"
+    "${source_options[@]}" --value="$engine" --output "$work_dir/COLVAR" --output "$work_dir/HILLS" --output "$work_dir/FUNNEL_GRID"
 
 mkdir -p "$work_dir/inputs"
 cp inputs/minimize-solvent.in "$work_dir/inputs/minimize-solvent.in"
@@ -87,17 +87,31 @@ setup_state=$("${PYTHON:-python3}" helpers/input_identity.py --check-completion 
 if [[ "$setup_state" == complete ]]; then
     echo "Using completed PLUMED setup: $work_dir/FUNNEL_GRID"
 else
-    echo "Checking PLUMED input: $work_dir/plumed.dat"
+    # Parse-only constructs METAD and PRINT, which open their output files.
+    # Rename only HILLS/COLVAR; FUNNEL writes FUNNEL_GRID for production reuse.
+    parse_input=plumed.parse.dat
+    parse_hills=plumed.parse.HILLS
+    parse_colvar=plumed.parse.COLVAR
+    sed \
+        -e "s/FILE=HILLS/FILE=$parse_hills/" \
+        -e "s/FILE=COLVAR/FILE=$parse_colvar/" \
+        "$work_dir/plumed.dat" > "$work_dir/$parse_input"
+    echo "Checking PLUMED input: $work_dir/$parse_input"
     if (
         cd "$work_dir"
-        "$plumed" driver --plumed plumed.dat --parse-only --natoms "$atom_count"
+        "$plumed" driver --plumed "$parse_input" --parse-only --natoms "$atom_count"
     ); then
         echo "Completed: PLUMED input check"
     else
         status=$?
-        echo "Error: PLUMED input check failed: $work_dir/plumed.dat; inspect terminal diagnostics." >&2
+        echo "Error: PLUMED input check failed: $work_dir/$parse_input; inspect terminal diagnostics." >&2
         exit "$status"
     fi
+    for path in "$parse_input" "$parse_hills" "$parse_colvar"; do
+        if [[ -e "$work_dir/$path" ]]; then
+            unlink "$work_dir/$path"
+        fi
+    done
     if [[ ! -s "$work_dir/FUNNEL_GRID" ]]; then
         die "PLUMED setup did not create the funnel grid: $work_dir/FUNNEL_GRID"
     fi
@@ -165,13 +179,12 @@ done
 
 sed 's/@RANDOM_SEED@/72101/g' inputs/production.in.template > "$work_dir/production.in"
 
-production_identity_options=(--input "$work_dir/plumed.dat" --output "$work_dir/COLVAR" --output "$work_dir/HILLS")
-if [[ -s "$work_dir/funnel-reference.pdb" ]]; then
-    production_identity_options+=(--input "$work_dir/funnel-reference.pdb")
-fi
+# FUNNEL_GRID is a setup output; production reads it through plumed.dat.
 "${PYTHON:-python3}" helpers/input_identity.py \
     --record "$work_dir/.production.identity.json" --stage production \
-    --directory "$work_dir" "${production_identity_options[@]}" -- \
+    --directory "$work_dir" \
+    --input "$work_dir/plumed.dat" --input "$work_dir/funnel-reference.pdb" \
+    --output "$work_dir/COLVAR" --output "$work_dir/HILLS" -- \
     "$engine" -O -i production.in -o production.out -p system.parm7 \
     -c equilibrate.rst7 -r production.rst7 -x production.nc -inf production.info
 

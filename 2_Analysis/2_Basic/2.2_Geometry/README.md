@@ -12,8 +12,10 @@ angle은 전체 fold의 간단한 collective variable로 사용합니다.
 python3 anal.py
 ```
 
-`geometry.dat`에는 `:1@CA`–`:10@CA` distance, residue 1–5와 6–10 heavy atom
-사이의 minimum distance, Cα angle이 기록됩니다. `phi_psi.dat`에는 residue
+`geometry.dat`에는 `:1@CA`–`:10@CA` distance, 두 β-strand인 residue 1–4와
+7–10 heavy atom 사이의 minimum distance(`MinStrandDistance`), Cα angle이
+기록됩니다. Residue 5–6은 mask에서 뺍니다. 두 group이 붙어 있으면 공유 결합한
+C(5)–N(6) 쌍이 항상 약 1.3 Å의 minimum distance가 됩니다. `phi_psi.dat`에는 residue
 2–9의 φ/ψ가 들어갑니다. `anal.py`는 distance와 angle time series 및 residue
 5 Ramachandran scatter를 표시합니다. Distance는 Å, angle과 dihedral은 degree
 단위입니다.
@@ -43,8 +45,10 @@ directory를 함께 보존하고 검사합니다. 파일을 개별적으로 섞�
 
 ## English
 
-The example calculates terminal Cα distance, minimum heavy-atom distance
-between two residue groups, a three-Cα angle, and backbone φ/ψ. `anal.py`
+The example calculates terminal Cα distance, the minimum heavy-atom distance
+between the two β-strands (residues 1–4 and 7–10, `MinStrandDistance`), a
+three-Cα angle, and backbone φ/ψ. Residues 5–6 are excluded because adjacent
+groups would always report the covalent C(5)–N(6) bond (about 1.3 Å). `anal.py`
 shows the time series and a residue-5 Ramachandran scatter. Distances use Å;
 angles and dihedrals use degrees. Edit the two paths and redesign the atom masks
 rather than copying the Chignolin residue numbers to another protein.

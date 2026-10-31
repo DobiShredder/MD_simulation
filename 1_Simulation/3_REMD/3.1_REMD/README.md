@@ -56,8 +56,8 @@ file입니다. 마지막 373 K state는 상한을 정확히 포함하므로 바�
 
 ```text
 replica<TAB>temperature_K<TAB>seed
-000<TAB>300.00<TAB>104729
-001<TAB>303.65<TAB>112648
+000<TAB>300.00000000<TAB>104729
+001<TAB>304.15429688<TAB>112648
 ```
 
 Replica ID는 `000`부터 시작하는 세 자리 고유 값이고 temperature는 행 순서대로
@@ -75,7 +75,7 @@ Heating은 200 ps, NPT equilibration은 100 ps, production은 1 ns입니다.
 | `-rem 1` | AMBER temperature REMD mode를 선택합니다. |
 | `temp0=@TEMP@` | `states.tsv`의 replica별 target temperature로 치환됩니다. |
 | `nstlim=500`, `numexchg=1000` | REMD에서 `nstlim`은 교환 사이의 step 수입니다. 500 steps마다 1,000회 교환하여 총 1 ns가 됩니다. |
-| `ig=@SEED@` | Replica마다 다른 positive random seed를 사용합니다. |
+| `ig=@SEED@` | `states.tsv`의 replica seed로 치환됩니다. Langevin restart마다 다른 `ig`를 쓰도록 heating은 seed, equilibration은 seed+1,000,000, production은 seed+3,000,000을 사용합니다. |
 | `build.sh INPUT.pdb` | 첫 argument의 PDB와 Chignolin용 `inputs/states.tsv`로 replica를 만듭니다. |
 | `AMBER_MPI_ENGINE`, `MPI_LAUNCHER` | MPI executable과 launcher command를 바꿉니다. |
 
@@ -127,7 +127,9 @@ through the ladder. `build.sh` expands `states.tsv`; `run.sh` uses
 `pmemd.cuda.MPI -rem 1`; `anal.py` measures acceptance, visits, round trips,
 and occupancy.
 
-`temp0` and `ig` are replica-specific. In AMBER REMD, `nstlim=500` is the step
+`temp0` and `ig` are replica-specific. Langevin dynamics needs a different `ig`
+on each restart, so heating uses the `states.tsv` seed, equilibration adds
+1,000,000, and production adds 3,000,000. In AMBER REMD, `nstlim=500` is the step
 count between attempts and `numexchg=1000` gives a 1 ns run. The runner launches
 one MPI process for each of the 18 bundled states.
 
@@ -180,7 +182,7 @@ Run은 재사용할 결과의 input을 SHA256으로 비교합니다. Topology, �
 
 정상 종료, command 실패와 INT/TERM에서는 자식 process의 종료를 확인한 뒤 자기 lock만 해제합니다. SIGKILL이나 node 장애로 남은 lock은 자동 삭제하지 않습니다. Error에 표시된 lock과 `owner.json`의 host, PID, command, scope를 확인하고 scheduler와 해당 host에서 모든 writer와 자식 process가 종료됐는지 확인한 뒤 그 lock directory만 수동 제거합니다. PID가 로컬에서 보이지 않는다는 이유만으로 제거하지 않습니다. `.gate/`도 같은 확인이 필요합니다.
 
-지원하는 `--dry-run`과 `--help`는 보호나 identity 파일을 생성하지 않습니다. 진행 중인 work를 이동하거나 identity를 수정해 재사용하지 않습니다. 보호는 로컬 filesystem과 로컬 자식 process로 검증했으며 network filesystem, remote MPI와 다른 node의 writer 종료는 미검증입니다.
+`run.sh --dry-run`은 보호나 identity 파일을 생성하지 않습니다. 진행 중인 work를 이동하거나 identity를 수정해 재사용하지 않습니다. 보호는 로컬 filesystem과 로컬 자식 process로 검증했으며 network filesystem, remote MPI와 다른 node의 writer 종료는 미검증입니다.
 
 ### Concurrent runs and input changes
 
@@ -190,7 +192,7 @@ Run compares inputs for result reuse with SHA256. Changed topology, initial coor
 
 Normal exit, command failure and INT/TERM release only the owned lock after child termination is verified. Locks left by SIGKILL or node failure are retained. Inspect the reported lock and its `owner.json` host, PID, command and scopes; confirm through the scheduler and owning host that all writers and children stopped before manually removing only that lock directory. A PID missing locally is not sufficient. Apply the same checks to `.gate/`.
 
-Supported `--dry-run` and `--help` do not create writer or identity files. Do not move active work trees or edit identities to reuse results. Protection was tested on a local filesystem with local child processes; network filesystems, remote MPI and termination of writers on other nodes remain unverified.
+`run.sh --dry-run` creates no writer or identity files. Do not move active work trees or edit identities to reuse results. Protection was tested on a local filesystem with local child processes; network filesystems, remote MPI and termination of writers on other nodes remain unverified.
 
 `download.sh` validates every asset and `SHA256SUMS` in staging before publishing through `helpers/publish_download.py`. Transfer, checksum and ordinary publication failures preserve existing files, including unrelated preparation files. A retained `structure/.download.pending` blocks source readers and new downloads. Inspect the retained staging and marker; deleting only the marker can expose a mixed generation.
 

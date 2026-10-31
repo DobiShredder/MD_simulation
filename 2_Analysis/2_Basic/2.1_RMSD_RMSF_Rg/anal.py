@@ -37,7 +37,7 @@ def main() -> int:
 
     axes[1].plot(rmsf[:, 0], rmsf[:, 1], marker="o")
     axes[1].set_xlabel("Residue")
-    axes[1].set_ylabel("Backbone RMSF (Å)")
+    axes[1].set_ylabel("Cα RMSF (Å)")
 
     axes[2].plot(rg[:, 0], rg[:, 1])
     axes[2].set_xlabel("Frame")
