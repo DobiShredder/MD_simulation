@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate ABFE restraints and inputs for 65 alchemical windows."""
+"""Generate ABFE restraint, charge and vdW inputs for the configured lambda windows."""
 
 from __future__ import annotations
 
@@ -19,6 +19,7 @@ from config_utils import load_config, positive_float, positive_int, section, str
 
 
 RestraintRecord = tuple[str, list[object], float, float]
+RESTRAINT_DUMP_FILE = "production.restraint.dat"
 
 
 def window_directory(
@@ -144,6 +145,12 @@ def restraint_records(
     ]
 
 
+def restraint_bounds(kind: str, reference: float) -> tuple[float, float]:
+    """Return AMBER r1/r4; the potential is harmonic between them and linear outside."""
+    width = 2.0 if kind == "distance" else 180.0
+    return reference - width, reference + width
+
+
 def write_restraints(
     path: Path,
     records: list[RestraintRecord],
@@ -152,10 +159,10 @@ def write_restraints(
     lines: list[str] = []
     for kind, atoms, reference, force in records:
         indices = ",".join(str(atom.idx + 1) for atom in atoms)
-        width = 2.0 if kind == "distance" else 180.0
+        lower, upper = restraint_bounds(kind, reference)
         lines.append(
-            f"&rst iat={indices}, r1={reference-width:.6f}, r2={reference:.6f}, "
-            f"r3={reference:.6f}, r4={reference+width:.6f}, "
+            f"&rst iat={indices}, r1={lower:.6f}, r2={reference:.6f}, "
+            f"r3={reference:.6f}, r4={upper:.6f}, "
             f"rk2={force*scale:.6f}, rk3={force*scale:.6f}, /"
         )
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -188,6 +195,76 @@ def write_uncharged_topology(source: Path, destination: Path, ligand_mask: str) 
     topology.save(str(destination), overwrite=True)
 
 
+def residue_mask(residues: list[object]) -> str:
+    return ":" + ",".join(str(residue.idx + 1) for residue in residues)
+
+
+def check_charge_topology(
+    work_dir: Path,
+    environment: str,
+    ligand_mask: str,
+    records: list[RestraintRecord],
+) -> tuple[str, str]:
+    """Check the two-copy charge topology and return the two copy masks.
+
+    LEaP appends the second ligand copy after the whole solute, so every solute
+    atom, including the restraint anchors, keeps its index from the single-copy
+    build. The copy is the block where the two residue sequences first differ.
+    """
+    from parmed.amber.mask import AmberMask
+
+    build_dir = work_dir / "build"
+    single = parmed.load_file(str(build_dir / f"{environment}.parm7"))
+    double = parmed.load_file(
+        str(build_dir / f"{environment}_charge.parm7"),
+        xyz=str(build_dir / f"{environment}_charge.rst7"),
+    )
+    selection = AmberMask(single, ligand_mask).Selection()
+    first_copy = sorted(
+        {single.atoms[index].residue.idx for index, value in enumerate(selection) if value}
+    )
+    if not first_copy:
+        raise ValueError(f"Ligand mask selects no atoms in {environment}.parm7: {ligand_mask}")
+
+    copy_start = next(
+        (
+            index
+            for index, (left, right) in enumerate(zip(single.residues, double.residues))
+            if left.name != right.name or len(left.atoms) != len(right.atoms)
+        ),
+        len(single.residues),
+    )
+    if copy_start <= first_copy[-1]:
+        raise ValueError(f"The solute before the ligand copy changed in {environment}_charge.parm7")
+    first_residues = [double.residues[index] for index in first_copy]
+    second_residues = list(double.residues[copy_start:copy_start + len(first_copy)])
+    first_atoms = [atom for residue in first_residues for atom in residue.atoms]
+    second_atoms = [atom for residue in second_residues for atom in residue.atoms]
+    if len(first_atoms) != len(second_atoms):
+        raise ValueError(f"The two ligand copies differ in size in {environment}_charge.parm7")
+    for first, second in zip(first_atoms, second_atoms):
+        same_coordinates = all(
+            abs(double.coordinates[first.idx][axis] - double.coordinates[second.idx][axis]) < 1.0e-3
+            for axis in range(3)
+        )
+        if (first.name, first.residue.name, first.charge) != (
+            second.name, second.residue.name, second.charge
+        ) or not same_coordinates:
+            raise ValueError(
+                f"The two ligand copies differ in {environment}_charge.parm7 at atom {first.name}"
+            )
+
+    if environment == "complex":
+        for kind, atoms, _, _ in records:
+            for atom in atoms:
+                copied = double.atoms[atom.idx]
+                if (copied.name, copied.residue.name, copied.residue.idx) != (
+                    atom.name, atom.residue.name, atom.residue.idx
+                ):
+                    raise ValueError(f"Restraint {kind} atom {atom.idx + 1} differs in complex_charge.parm7")
+    return residue_mask(first_residues), residue_mask(second_residues)
+
+
 def alchemical_options(
     stage: str,
     lambda_value: float,
@@ -195,15 +272,14 @@ def alchemical_options(
     collect_mbar: bool,
     ligand_mask: str,
     mbar_interval: int,
+    charge_masks: tuple[str, str] | None = None,
 ) -> str:
-    common = f"icfe=1, clambda={lambda_value:.6f}, "
     if stage == "restraint":
-        common += (
-            f" timask1='{ligand_mask}', timask2='{ligand_mask}',"
-            " ifsc=0, aces26=1, gti_nmropt=1,"
-            " gti_sc_cc_energy_terms='', gti_sc_sc_energy_terms='',"
-        )
-    elif stage.endswith("vdw"):
+        # Ordinary MD with lambda-scaled DISANG force constants; anal.py
+        # rebuilds the MBAR energies from the DUMPAVE restraint values.
+        return ""
+    common = f"icfe=1, clambda={lambda_value:.6f}, "
+    if stage.endswith("vdw"):
         common += (
             f" timask1='{ligand_mask}', timask2='',"
             f" ifsc=1, scmask1='{ligand_mask}', scmask2='', scalpha=0.5, scbeta=12.0,"
@@ -211,9 +287,12 @@ def alchemical_options(
             " gti_sc_sc_energy_terms='', gti_nmropt=0,"
         )
     else:
+        # Linear TI between two identical ligand copies (Amber manual 27.1.8.1):
+        # V0 keeps the charged first copy, V1 the second copy uncharged by crgmask.
+        first_copy, second_copy = charge_masks
         common += (
-            f" timask1='{ligand_mask}', timask2='{ligand_mask}',"
-            f" crgmask='{ligand_mask}', ifsc=0,"
+            f" timask1='{first_copy}', timask2='{second_copy}',"
+            f" crgmask='{second_copy}', ifsc=0,"
         )
     if collect_mbar:
         mbar_lambda = ",".join(f"{value:.6f}" for value in schedule)
@@ -235,11 +314,14 @@ def prepare_alchemical_topologies(work_dir: Path, ligand_mask: str) -> None:
 
 
 def write_restraint_metadata(work_dir: Path, records: list[RestraintRecord]) -> None:
-    """Record the six Boresch restraints next to the generated windows."""
-    lines = ["restraint\treference\tforce_constant\tatom_indices"]
+    """Record the six Boresch restraints in DISANG order for anal.py."""
+    lines = ["restraint\treference\tforce_constant\tr1\tr4\tatom_indices"]
     for kind, atoms, reference, force in records:
         atom_indices = ",".join(str(atom.idx + 1) for atom in atoms)
-        lines.append(f"{kind}\t{reference:.8f}\t{force:.8f}\t{atom_indices}")
+        lower, upper = restraint_bounds(kind, reference)
+        lines.append(
+            f"{kind}\t{reference:.8f}\t{force:.8f}\t{lower:.8f}\t{upper:.8f}\t{atom_indices}"
+        )
     (work_dir / "restraints.tsv").write_text(
         "\n".join(lines) + "\n",
         encoding="utf-8",
@@ -259,24 +341,31 @@ def write_window(
     ligand_mask: str,
     common_replacements: dict[str, str],
     mbar_interval: int,
+    charge_masks: dict[str, tuple[str, str]],
 ) -> str:
     """Generate links, restraints, and AMBER inputs for one ABFE window."""
     window = f"{window_index:03d}"
     directory = window_directory(work_dir, stage, environment, window)
     directory.mkdir(parents=True, exist_ok=True)
 
-    topology_name = (
-        f"{environment}_uncharged.parm7"
-        if stage.endswith("vdw")
-        else f"{environment}.parm7"
-    )
+    topology_name = f"{environment}.parm7"
+    coordinate_name = f"{environment}.rst7"
+    if stage.endswith("vdw"):
+        topology_name = f"{environment}_uncharged.parm7"
+    elif stage.endswith("charge"):
+        topology_name = f"{environment}_charge.parm7"
+        coordinate_name = f"{environment}_charge.rst7"
     relative_link(work_dir / "build" / topology_name, directory / "system.parm7")
-    relative_link(
-        work_dir / "build" / f"{environment}.rst7",
-        directory / "system.rst7",
-    )
+    relative_link(work_dir / "build" / coordinate_name, directory / "system.rst7")
 
-    restraint_scale = 1.0 if environment == "complex" else 0.0
+    # The restraint stage is fully restrained at lambda 0 and unrestrained at
+    # lambda 1. Charge and vdW complex windows keep the full restraint.
+    if environment == "solvent":
+        restraint_scale = 0.0
+    elif stage == "restraint":
+        restraint_scale = 1.0 - lambda_value
+    else:
+        restraint_scale = 1.0
     write_restraints(directory / "disang.rest", records, restraint_scale)
 
     replacements = {
@@ -296,7 +385,15 @@ def write_window(
             collect_mbar=name == "production",
             ligand_mask=ligand_mask,
             mbar_interval=mbar_interval,
+            charge_masks=charge_masks.get(environment),
         )
+        if stage == "restraint" and name == "production":
+            # Restraint values are written at the MBAR sampling interval.
+            replacements["@WT_END@"] = (
+                f"&wt type='DUMPFREQ', istep1={mbar_interval}, /\n"
+                "&wt type='END', /"
+            )
+            replacements["@DISANG@"] = f"DISANG=disang.rest\nDUMPAVE={RESTRAINT_DUMP_FILE}"
         render(
             input_dir / f"{name}.in.template",
             directory / f"{name}.in",
@@ -352,6 +449,10 @@ def main() -> None:
     try:
         records = restraint_records(topology, restraints, ligand_mask)
         prepare_alchemical_topologies(args.work_dir, ligand_mask)
+        charge_masks = {
+            environment: check_charge_topology(args.work_dir, environment, ligand_mask, records)
+            for environment in ("complex", "solvent")
+        }
     except ValueError as error:
         raise SystemExit(f"Config error: {error}") from None
     write_restraint_metadata(args.work_dir, records)
@@ -375,6 +476,7 @@ def main() -> None:
                     ligand_mask,
                     common_replacements,
                     mbar_interval,
+                    charge_masks,
                 )
             )
     (args.work_dir / "states.tsv").write_text("\n".join(states) + "\n", encoding="utf-8")

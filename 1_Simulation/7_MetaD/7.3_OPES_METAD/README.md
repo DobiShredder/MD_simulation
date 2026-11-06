@@ -13,6 +13,9 @@ distribution `P_n(s)`를 먼저 추정합니다. 이어서 well-tempered target
 distribution을 sampling하는 데 필요한 bias를 계산합니다. 여기서는 alanine
 dipeptide의 φ와 ψ를 bias합니다.
 
+φ는 atom 5,7,9,15(ACE C, ALA N, CA, C), ψ는 atom 7,9,15,17(ALA N, CA, C,
+NME N)입니다. `check_topology.py`가 build 직후 이 번호를 확인합니다.
+
 ```bash
 cd 1_Simulation/7_MetaD/7.3_OPES_METAD
 ./build.sh structure/alanine-dipeptide.pdb
@@ -76,6 +79,8 @@ supplied PDB. Unlike MetaD, which directly accumulates bias at visited CV
 positions, OPES_METAD reweights the visited data and uses a kernel-density
 estimate of the unbiased `P_n(s)`. It then calculates the bias required for a
 well-tempered target distribution, bounded here by `BARRIER=50` kJ/mol.
+φ uses atoms 5,7,9,15 (ACE C, ALA N, CA, C) and ψ uses atoms 7,9,15,17
+(ALA N, CA, C, NME N); `check_topology.py` checks them after the build.
 `PACE=500` updates the estimate and bias every 1 ps, and the initial
 kernel widths are 0.15 rad. The 1 ns production writes its restart,
 trajectory, `COLVAR`, `KERNELS`, and final `opes.state` directly under `work/`.

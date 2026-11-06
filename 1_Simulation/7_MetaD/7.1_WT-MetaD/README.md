@@ -12,6 +12,9 @@ Alanine dipeptide의 φ와 ψ torsion에 well-tempered MetaD bias를 적용합�
 `V(s(t),t)`가 클수록 새 hill의 height를 지수적으로 낮춥니다. 따라서 hill이
 simulation time에 따라 모든 위치에서 일률적으로 작아지는 것이 아닙니다.
 
+φ는 atom 5,7,9,15(ACE C, ALA N, CA, C), ψ는 atom 7,9,15,17(ALA N, CA, C,
+NME N)입니다. `check_topology.py`가 build 직후 이 번호를 확인합니다.
+
 ### 실행
 
 ```bash
@@ -88,7 +91,10 @@ Analysis는 COLVAR의 column 수, field name과 finite 값을 확인합니다. �
 This example biases the φ and ψ torsions of alanine dipeptide with
 well-tempered metadynamics. The next hill is exponentially tempered by the
 accumulated bias at the current position `s(t)`; hill height does not decrease
-uniformly everywhere as a function of simulation time. `PACE=500` deposits a Gaussian every 1 ps,
+uniformly everywhere as a function of simulation time.
+φ uses atoms 5,7,9,15 (ACE C, ALA N, CA, C) and ψ uses atoms 7,9,15,17
+(ALA N, CA, C, NME N); `check_topology.py` checks them after the build.
+`PACE=500` deposits a Gaussian every 1 ps,
 `HEIGHT=1.2` is in kJ/mol, `SIGMA=0.2` is in radians, and `BIASFACTOR=10`
 controls tempering. The -π to π grid supports `CALC_RCT`.
 

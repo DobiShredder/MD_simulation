@@ -1,5 +1,7 @@
 # MD simulation tutorials: integrated guide
 
+한국어 · [English](#english)
+
 저장소의 학습 순서와 method 선택 기준을 정리한 문서입니다.
 실행 command와 input 설명은 각 폴더의 `README.md`에 있습니다.
 
@@ -207,7 +209,7 @@ FEP는 직접적인 물리적 transition 대신 alchemical intermediate를 정�
 FEP input에는 lambda schedule, atom mapping, charge change, soft-core 설정과 window별 equilibration이 들어갑니다.
 ABFE는 ligand position/orientation restraint와 standard-state correction도 포함합니다.
 RBFE는 T4 lysozyme L99A의 benzene→toluene transformation, ABFE는 3HTB T4 lysozyme–JZ4를 사용합니다.
-두 예제는 AMBER가 기록한 cross-state energy matrix를 FE-ToolKit MBAR로 분석하며 production은 2 ns/window입니다.
+두 예제는 AMBER가 기록한 cross-state energy matrix를 FE-ToolKit MBAR로 분석하며 production은 1 ns/window입니다.
 State overlap과 bootstrap uncertainty를 함께 확인합니다.
 
 - [FEP 튜토리얼](1_Simulation/5_FEP/README.md)
@@ -283,6 +285,291 @@ MM/GBSA·MM/PBSA는 `1_MD/1.2_Protein_Ligand`에서 생성 된 T4 Lysozyme-JZ4 �
 
 
 ## 3. 참고 자료
+
+- [AMBER](https://ambermd.org/)
+- [GROMACS documentation](https://manual.gromacs.org/)
+- [GROMACS tutorials](http://www.mdtutorials.com/gmx/)
+- [PLUMED 2.10 user documentation](https://www.plumed.org/doc-v2.10/user-doc/html/index.html)
+- [WESTPA documentation](https://westpa.readthedocs.io/)
+- [REMD temperature generator](https://virtualchemistry.org/remd-temperature-generator/)
+- [GaMD analysis resources](https://www.med.unc.edu/pharm/miaolab/resources/gamd/analysis/)
+- [LiGaMD3](https://doi.org/10.1021/acs.jctc.4c00502)
+- [Pep-GaMD](https://doi.org/10.1063/5.0021399)
+- [Boresch restraint formulation](https://doi.org/10.1021/jp0217839)
+- [Lipid21](https://doi.org/10.1021/acs.jctc.1c01217)
+- [ff19SB](https://doi.org/10.1021/acs.jctc.9b00591)
+
+
+
+## English
+
+This guide covers the learning order and how to choose a method. Commands and
+input details live in each folder's `README.md`.
+
+Every input is a teaching template. Production lengths differ by method and are
+listed in each README. The default values are not simulation conditions for
+judging convergence.
+
+### Contents
+
+0. [Before you start](#0-before-you-start)
+1. [Simulation](#1-simulation)
+   - [Conventional MD](#11-conventional-md-1)
+   - [Umbrella sampling](#12-umbrella-sampling-1)
+   - [Replica exchange](#13-replica-exchange-1)
+   - [Gaussian accelerated MD](#14-gaussian-accelerated-md-1)
+   - [Free-energy perturbation](#15-free-energy-perturbation-1)
+   - [Weighted ensemble](#16-weighted-ensemble-1)
+   - [Metadynamics and OPES](#17-metadynamics-and-opes)
+2. [Trajectory analysis](#2-trajectory-analysis)
+3. [References](#3-references)
+
+### 0. Before you start
+
+#### Background you need
+
+The tutorials assume the following background and do not teach it:
+
+- basic programming
+- the Linux shell and working with files and directories
+- installing Python packages and managing virtual environments
+- the basic physics of MD, such as force fields
+- protein structure
+- running AMBER, GROMACS, and PLUMED
+- what analyses such as RMSD, clustering, and dimensionality reduction are for
+
+#### Define the question first
+
+Decide the following before running any MD:
+
+1. Which structural change or thermodynamic/kinetic quantity do you want to observe?
+2. Is it reachable on the time scale of ordinary MD?
+3. Can you define a suitable reaction coordinate or collective variable?
+4. Do you need an equilibrium ensemble, or a transition pathway and rate?
+5. Do the force field, protonation, membrane composition, and ligand state match the question?
+6. Which independent measures will you use to judge convergence and uncertainty?
+
+A different question or observable usually calls for a different simulation and
+analysis method.
+
+#### The two parts of the repository
+
+```text
+structure and scientific choices
+              ↓
+1_Simulation: system build → minimization → equilibration → trajectory
+              ↓
+2_Analysis: preprocessing → features → statistics → interpretation
+```
+
+- [Simulation tutorials](1_Simulation/README.md)
+- [Analysis tutorials](2_Analysis/README.md)
+- [Config templates for your own structure](3_Templates/README.md)
+
+Learn the method and engine inputs in `1_Simulation/`, then use `3_Templates/`
+to apply the same calculation to your own structure. A template takes a
+build-ready PDB and a `config.toml`. It does not decide protonation, missing
+atoms, or atom selections for your system.
+
+### 1. Simulation
+
+| No. | Method | Main purpose | Key prerequisite |
+| --- | --- | --- | --- |
+| 1 | Conventional MD | Dynamics over time | The pathway of interest is reachable on a conventional-MD time scale |
+| 2 | US | PMF along a chosen coordinate | A suitable reaction coordinate and window overlap |
+| 3 | REMD family | Better sampling through replica exchange | Design of the exchange variable and replica spacing |
+| 4 | GaMD family | Barrier lowering without a reaction coordinate | Boost statistics and validated reweighting |
+| 5 | FEP | Free-energy difference between two alchemical states | A stable mapping and lambda overlap |
+| 6 | WE | Pathways, flux, and rates of rare events | Progress coordinate and state definitions |
+| 7 | MetaD/OPES | Barrier lowering and free-energy exploration in CV space | Physically meaningful CVs and bias settings |
+
+#### Common workflow
+
+1. Record the source structure and where it came from
+2. Review residues, ligands, ions, protonation, and missing atoms
+3. Choose the force field and solvent model
+4. Build the topology and initial coordinates
+5. Minimize and equilibrate in stages
+6. Keep the initial run separate from continuation/restart
+7. Run a short teaching production
+8. Check that outputs, restarts, and trajectories are consistent
+
+#### 1.1 Conventional MD
+
+Conventional MD follows structural change over time under the chosen
+Hamiltonian and ensemble, with no added bias. It is the reference trajectory
+for enhanced-sampling results and the starting point for most later analyses.
+
+Each of the three systems has its own learning goal.
+
+| System | Starting structure | Learning goal | Default AMBER model |
+| --- | --- | --- | --- |
+| Chignolin | PDB 1UAO | Protein build and basic structure/ensemble analysis | ff19SB + OPC |
+| T4 lysozyme–JZ4 | PDB 3HTB | Ligand parameterization, interactions, ABFE, and end-state energies | ff19SB + GAFF2 + OPC |
+| KcsA | PDB 1K4C | Membrane-protein coordinate/topology build and membrane analysis | ff19SB + Lipid21 + OPC |
+
+The ff19SB tutorials use OPC, the water model the Amber 26 manual recommends
+with ff19SB. OPC is a 4-site model with O, H1, H2, and a massless extra point
+(EP). `leaprc.water.opc` loads the OPC water together with the matching Li/Merz
+12-6 ion parameters. Changing the water model can change density, solvation
+thermodynamics, and other results.
+
+- [Conventional MD overview](1_Simulation/1_MD/README.md)
+- [Chignolin](1_Simulation/1_MD/1.1_Soluble_Protein/README.md)
+- [T4 lysozyme–JZ4](1_Simulation/1_MD/1.2_Protein_Ligand/README.md)
+- [KcsA](1_Simulation/1_MD/1.3_Membrane_Protein/README.md)
+
+The KcsA membrane is built by tiling a published Lipid21 POPC bilayer 2×2 and
+removing lipids that overlap the protein, giving 90% POPC, 5% POPE, and 5%
+cholesterol. The tleap build is a separate step. Detergent and bulk water are
+removed; the seven selectivity-filter K+ ions and 16 filter and cavity waters
+are kept. The neutral-pH baseline is E71=`GLH`, D80=`ASP`, H25=`HIE`, and
+E118/E120=`GLU`. Terminal H124, whose side-chain coordinates are incomplete, is
+excluded.
+
+- CHARMM lipid force fields with CHARMM-GUI have long been used for membrane
+  simulations, so they are widely validated.
+- AMBER Lipid21 is convenient to combine with AMBER protein and ligand force
+  fields.
+- These tutorials build the membrane-protein system locally without CHARMM-GUI.
+
+> Basic GROMACS usage and conventional MD with GROMACS are not covered. See
+> the Lysozyme in Water and KALP15 in DPPC tutorials in Lemkul's MD tutorials
+> (GROMACS tutorials under References).
+
+#### 1.2 Umbrella sampling
+
+Umbrella sampling splits a chosen reaction coordinate into windows and applies
+a harmonic restraint in each, so regions that conventional MD rarely visits are
+sampled. The analysis checks window overlap and then recovers the unbiased PMF
+with WHAM or MBAR.
+
+The example first builds an ordered seed pathway with PLUMED ratchet MD (ABMD).
+Ratchet MD is target-directed but is not constant-velocity pulling: it allows
+thermal fluctuations toward the target and suppresses those moving back. The
+ratchet trajectory and all umbrella windows share one topology.
+
+Check these points:
+
+- Does the reaction coordinate separate the transition of interest?
+- Do the seed structures physically connect the full coordinate range?
+- Do neighboring windows overlap?
+- Are the restraint force-constant units and cross-program conversions correct?
+- Have you discarded equilibration and accounted for statistical correlation?
+
+- [Umbrella-sampling tutorial](1_Simulation/2_US/README.md)
+- [US PMF and overlap analysis](2_Analysis/7_Enhanced_Sampling/7.1_Umbrella_Sampling/README.md)
+
+#### 1.3 Replica exchange
+
+Replica exchange swaps states between replicas that differ in temperature or
+Hamiltonian. The analysis uses exchange acceptance, round trips, per-ensemble
+sampling, and the observables of interest.
+
+- T-REMD: a different temperature for each replica
+- REST2: scales solute interactions to avoid the cost of heating all solvent
+- REST3: adds κ scaling of solute–solvent interactions to REST2
+- REUS: exchanges umbrella windows as Hamiltonian replicas
+- GaREUS: an extended example combining GaMD and REUS
+
+- [Replica-exchange tutorials](1_Simulation/3_REMD/README.md)
+- [GaREUS reweighting](2_Analysis/7_Enhanced_Sampling/7.3_GaREUS_Reweighting/README.md)
+
+#### 1.4 Gaussian accelerated MD
+
+GaMD adds a smooth boost to the potential-energy surface. It does not fix a
+reaction coordinate, so the boost distribution and reweighting quality must be
+checked together.
+
+- GaMD: a general potential boost
+- LiGaMD3: a triple boost of the ligand, remaining nonbonded, and bonded potentials
+- Pep-GaMD: a selective dual boost for SH3–peptide binding
+
+- [GaMD-family tutorials](1_Simulation/4_GaMD/README.md)
+- [GaMD reweighting](2_Analysis/7_Enhanced_Sampling/7.2_GaMD_Reweighting/README.md)
+
+#### 1.5 Free-energy perturbation
+
+FEP computes the free-energy difference between two states through alchemical
+intermediates instead of a physical transition.
+
+- RBFE: relative free energy between two similar ligands or a mutation
+- ABFE: absolute binding free energy using restraints and decoupling
+
+FEP inputs contain the lambda schedule, atom mapping, charge changes, soft-core
+settings, and per-window equilibration. ABFE also includes ligand
+position/orientation restraints and a standard-state correction. RBFE uses the
+benzene→toluene transformation in T4 lysozyme L99A, and ABFE uses 3HTB T4
+lysozyme–JZ4. Both analyze the cross-state energy matrix written by AMBER with
+FE-ToolKit MBAR; production is 1 ns per window. Check state overlap and the
+bootstrap uncertainty together.
+
+- [FEP tutorials](1_Simulation/5_FEP/README.md)
+
+#### 1.6 Weighted ensemble
+
+Weighted ensemble is a path-sampling method that propagates many weighted
+trajectory segments while WESTPA handles binning and resampling. It adds no
+bias potential to the physical dynamics, but efficiency and interpretation
+depend on the progress coordinate and the initial and target state definitions.
+
+The chignolin example uses the Cα RMSD of residues 2–9 as the progress
+coordinate. It checks total weight, restart, random seeds, bin occupancy, and
+arrival at a partially unfolded target. Flux and rate estimators are not
+included. WESTPA manages resampling and weights.
+
+- [WESTPA + AMBER WE tutorial](1_Simulation/6_WE/README.md)
+
+#### 1.7 Metadynamics and OPES
+
+Metadynamics builds up a history-dependent bias in a chosen collective-variable
+space, pushing the system out of regions it has already visited. Well-Tempered
+MetaD tempers the bias growth; OPES builds the bias toward a target
+distribution. Funnel MetaD confines the trypsin–benzamidine binding path inside
+a cone and cylinder and biases the ligand's projection on the funnel axis.
+
+Record the CVs, Gaussian width and height, bias factor, pace, walls, grid, and
+units in the input. On restart, continue the AMBER restart together with the
+method's `HILLS` file or OPES state.
+
+- [MetaD and OPES tutorials](1_Simulation/7_MetaD/README.md)
+
+### 2. Trajectory analysis
+
+This part covers analysis after the MD run. Analysis matters as much as running
+the simulation, if not more. Run the basic tutorial in
+`1_MD/1.1_Soluble_Protein` first to get the example trajectory.
+
+Suggested order:
+
+1. [Trajectory preprocessing](2_Analysis/1_Preprocessing/README.md): imaging,
+   alignment, stripping, conversion, and sampling
+2. [Basic structural analysis](2_Analysis/2_Basic/README.md): RMSD, RMSF, Rg,
+   distances, angles, and dihedrals
+3. [Interactions and structure](2_Analysis/3_Interactions/README.md): hydrogen
+   bonds, contacts, SASA, and secondary structure
+4. [Dimensionality reduction](2_Analysis/4_Dimension_Reduction/README.md): PCA, t-SNE, and UMAP
+5. [Clustering](2_Analysis/5_Clustering/README.md): K-means, DBSCAN, HDBSCAN, and GMM
+6. [Binding energy](2_Analysis/6_Binding_Energy/README.md): MM/GBSA and MM/PBSA
+7. [Enhanced-sampling analysis](2_Analysis/7_Enhanced_Sampling/README.md):
+   umbrella-sampling PMF, histogram overlap, and GaMD and GaREUS reweighting
+
+Cpptraj handles imaging, alignment, and basic features. Dimensionality
+reduction and clustering use Python. Matplotlib's pyplot is recommended for
+plots. t-SNE and HDBSCAN use scikit-learn; UMAP uses umap-learn.
+
+```bash
+conda activate ambertools26
+conda install -c conda-forge \
+    "scikit-learn>=1.5,<2" \
+    "umap-learn>=0.5.7,<0.6"
+```
+
+Analyses 1–5 use the chignolin trajectory from `1_MD/1.1_Soluble_Protein`.
+MM/GBSA and MM/PBSA use the T4 lysozyme–JZ4 trajectory from
+`1_MD/1.2_Protein_Ligand`.
+
+### 3. References
 
 - [AMBER](https://ambermd.org/)
 - [GROMACS documentation](https://manual.gromacs.org/)

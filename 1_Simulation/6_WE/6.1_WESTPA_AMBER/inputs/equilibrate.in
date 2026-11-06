@@ -25,6 +25,6 @@ Equilibrate the Chignolin basis state for 100 ps at 300 K and 1 bar
   ntr=0,
 
   ntpr=5000,
-  ntwx=0,
+  ntwx=5000,
   ntwr=50000,
 /

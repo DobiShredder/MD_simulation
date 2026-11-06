@@ -38,6 +38,31 @@ double-decoupling system과 65개 window를 만들고, `run.sh`는 stage를 실�
 `anal.py`는 FE-ToolKit의 `edgembar-amber2dats.py`와 `edgembar`를 사용해
 restraint correction과 각 alchemical contribution을 합산합니다.
 
+Stage별 계산 방식은 다음과 같습니다. Mask 번호는 build가 topology에서 읽습니다.
+
+| Stage | Topology | 주요 설정 |
+| --- | --- | --- |
+| Restraint | `complex.parm7` | TI 없음. `DISANG` force constant를 `(1-λ)`배로 줄이고 `production.restraint.dat`에 restraint 값을 기록 |
+| Charge | `{complex,solvent}_charge.parm7` (ligand 두 copy) | `timask1`=첫 copy, `timask2`=`crgmask`=두 번째 copy, `ifsc=0` |
+| vdW | `{complex,solvent}_uncharged.parm7` | `timask1=scmask1=ligand_mask`, `timask2=''`, `ifsc=1`, `aces26=1` |
+
+Charge stage는 Amber manual 27.1.8.1의 linear-scaling TI입니다. `build.sh`가 같은
+좌표의 ligand를 solute 뒤에 하나 더 붙인 `complex_charge`/`solvent_charge`
+system을 LEaP로 만들고, 같은 salt 수를 사용합니다. 원래 solute의 atom 번호는
+그대로라 restraint anchor도 바뀌지 않습니다. `helpers/generate_inputs.py`는 두
+copy의 atom 이름, charge, 좌표와 restraint atom을 확인한 뒤 residue 번호로 mask를
+만듭니다. Pmemd의 `crgmask`는 두 endpoint 모두에 적용되므로 같은 ligand를
+`timask1`과 `timask2`에 함께 두면 charge leg가 0이 됩니다.
+
+Restraint stage는 일반 MD입니다. ACES26에서는 SC/CC `ele,vdw`가 항상 λ로
+scaling되어(manual 27.1.7.4) soft-core TI로는 restraint만 바꿀 수 없습니다.
+`anal.py`는 DUMPAVE 값으로 full-strength restraint energy `U`를 계산하고 state j의
+energy를 `(1-λj)U`로 넣어 MBAR를 계산합니다. 이 restraint energy 식은 AmberTools 26
+sander 값과 0.02 kcal/mol 이내로 일치했습니다. `pmemd.cuda` 실행으로는
+확인하지 않았습니다(미검증). 특히 두 copy charge stage에서 첫 copy의 restraint가
+`DV/DL`에 섞이지 않는지, `rk=0`인 λ=1 restraint window도 DUMPAVE를 쓰는지 짧은
+run으로 먼저 확인합니다.
+
 Neutral ligand만 지원합니다. `build.ligand_net_charge`는 정수 0이어야 하며,
 MOL2 charge 합은 이 값과 0.01 e 이내로 일치해야 합니다. Build와 dry-run은
 output을 복사하거나 생성하기 전에 ParmEd로 이를 확인합니다. 과거 charged config도
@@ -168,6 +193,29 @@ creates the double-decoupling systems and windows, `run.sh` executes them, and
 `anal.py` combines the alchemical terms and restraint correction. Partial
 production is preserved. FE-ToolKit `edgembar-amber2dats.py` and `edgembar`
 must be available on `PATH` for analysis.
+
+| Stage | Topology | Key settings |
+| --- | --- | --- |
+| Restraint | `complex.parm7` | No TI; `DISANG` force constants scaled by `(1-λ)`; restraint values written to `production.restraint.dat` |
+| Charge | `{complex,solvent}_charge.parm7` (two ligand copies) | `timask1`=first copy, `timask2`=`crgmask`=second copy, `ifsc=0` |
+| vdW | `{complex,solvent}_uncharged.parm7` | `timask1=scmask1=ligand_mask`, `timask2=''`, `ifsc=1`, `aces26=1` |
+
+The charge stage is linear-scaling TI (Amber manual 27.1.8.1). `build.sh` uses
+LEaP to append an identical ligand copy after the solute in `complex_charge` and
+`solvent_charge`, with the same salt counts. Original solute atom indices, and
+therefore the restraint anchors, are unchanged. `helpers/generate_inputs.py`
+checks names, charges, coordinates, and restraint atoms of both copies, then
+writes residue-number masks. Because pmemd applies `crgmask` to both endpoints,
+the same ligand in both `timask1` and `timask2` would give a zero charge leg.
+
+The restraint stage is ordinary MD. ACES26 always scales SC/CC `ele,vdw` with
+lambda (manual 27.1.7.4), so soft-core TI cannot change only the restraint.
+`anal.py` recomputes the full-strength restraint energy `U` from DUMPAVE and
+uses `(1-λj)U` for state j in MBAR. This restraint energy matched AmberTools 26
+sander within 0.02 kcal/mol; `pmemd.cuda` runs are unverified. In a short run,
+first check that the restraint on the first copy does not enter `DV/DL` in the
+two-copy charge stage and that the λ=1 restraint window (`rk=0`) still writes
+DUMPAVE.
 
 Only neutral ligands are supported. `build.ligand_net_charge` must be integer
 zero, and the MOL2 charge sum must match within 0.01 e. Build and dry-run check

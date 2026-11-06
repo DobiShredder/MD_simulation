@@ -123,7 +123,8 @@ run_basis_stage() {
 run_basis_stage minimize "$build_dir/system.rst7" "$build_dir/minimize.rst7"
 cp "$build_dir/minimize.rst7" "$build_dir/reference.rst7"
 run_basis_stage heat "$build_dir/minimize.rst7" "$build_dir/heat.rst7" \
-    -ref "$build_dir/minimize.rst7"
+    -ref "$build_dir/minimize.rst7" \
+    -x "$build_dir/heat.nc"
 run_basis_stage equilibrate "$build_dir/heat.rst7" "$basis_dir/basis.rst7" \
     -x "$build_dir/equilibrate.nc"
 

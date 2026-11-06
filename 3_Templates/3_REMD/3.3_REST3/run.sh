@@ -167,8 +167,24 @@ if (( ! dry_run )); then
     if [[ ! -f "$option_log" || "$(< "$option_log")" != "$option_output" ]]; then
         echo "$option_output" > "$option_log"
     fi
-    if [[ "$option_output" != *HREX_WORKLOAD_FIX_1* ]]; then
-        die "The GROMACS build lacks the required HREX swapped-energy fix: $option_log"
+    # The PLUMED patch appends "plumed_X.Y.Z" to the GROMACS version. The GROMACS
+    # 2024 patch computes the HREX swapped-coordinate energy correctly only from
+    # PLUMED 2.10.2 (PLUMED PR #1505); older builds give near-zero acceptance.
+    version_log="$work_dir/gromacs_version.log"
+    if ! version_output=$("$gmx_mpi" --version 2>&1); then
+        echo "$version_output" > "$version_log"
+        die "Cannot read the GROMACS version: $version_log"
+    fi
+    # Rewrite only on change so a rerun of completed stages leaves work unchanged.
+    if [[ ! -f "$version_log" || "$(< "$version_log")" != "$version_output" ]]; then
+        echo "$version_output" > "$version_log"
+    fi
+    if [[ ! "$version_output" =~ plumed_([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
+        die "The GROMACS build is not patched with PLUMED: $version_log"
+    fi
+    plumed_version="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}"
+    if (( BASH_REMATCH[1] * 10000 + BASH_REMATCH[2] * 100 + BASH_REMATCH[3] < 21002 )); then
+        die "The GROMACS build was patched with PLUMED $plumed_version; REST HREX needs PLUMED 2.10.2 or later: $version_log"
     fi
 fi
 

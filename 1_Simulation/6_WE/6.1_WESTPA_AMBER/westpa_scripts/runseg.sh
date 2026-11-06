@@ -18,7 +18,7 @@ cd "$WEST_CURRENT_SEG_DATA_REF"
 # WESTPA 2022.15 w_run removes and recreates an incomplete segment directory
 # before calling this script. Leftover output therefore means a standalone
 # callback or a WESTPA version that keeps partial segments; keep it for review.
-for output in segment.in segment.out segment.info seg.rst7; do
+for output in segment.in segment.out segment.info seg.rst7 seg.nc; do
     if [[ -e "$output" ]]; then
         echo "Error: Segment output from an earlier propagation attempt was kept: $WEST_CURRENT_SEG_DATA_REF/$output" >&2
         echo "Inspect the partial segment, move its directory aside, and rerun ./run.sh:" >&2
@@ -61,13 +61,16 @@ if ! "$AMBER_ENGINE" \
     -p "$WORK_DIR/common_files/system.parm7" \
     -c "$parent_restart" \
     -r seg.rst7 \
+    -x seg.nc \
     -inf segment.info; then
     echo "Error: AMBER propagation failed: $WEST_CURRENT_SEG_DATA_REF/segment.out" >&2
     exit 1
 fi
-if [[ ! -s seg.rst7 || ! -s segment.out || ! -s segment.info ]]; then
-    echo "Error: Segment output is incomplete: $WEST_CURRENT_SEG_DATA_REF" >&2
-    exit 1
-fi
+for output in seg.rst7 seg.nc segment.out segment.info; do
+    if [[ ! -s "$output" ]]; then
+        echo "Error: Segment output is incomplete: $WEST_CURRENT_SEG_DATA_REF/$output" >&2
+        exit 1
+    fi
+done
 end_pcoord=$("$WEST_SIM_ROOT/westpa_scripts/calc_pcoord.sh" seg.rst7)
 printf '%s\n%s\n' "$start_pcoord" "$end_pcoord" > "$WEST_PCOORD_RETURN"

@@ -15,8 +15,13 @@
 
 Chignolin의 residue 1과 10 Cα distance를 CV로 사용하는 REUS 예제입니다.
 6–24 Å 양 끝을 포함하는 20개 window를 같은 온도에서 교환합니다.
-`rk2=rk3=10 kcal mol⁻¹ Å⁻²`이며, heating 200 ps, equilibration 100 ps,
+`rk2=rk3=1.0 kcal mol⁻¹ Å⁻²`이며, heating 200 ps, equilibration 100 ps,
 production은 window당 1 ns입니다. 교환은 1 ps마다 시도합니다.
+
+AMBER restraint energy는 `rk(r − r₀)²`입니다. 300 K에서 window 분포 폭은 약 0.55 Å이고,
+0.95 Å 간격에서 예상되는 인접 window 교환 확률은 약 0.22입니다. 이 값은 분포를
+Gaussian으로 가정한 예측이며 실제 run으로 확인하지 않았습니다(미검증). 이전 값
+`rk=10`은 분포 폭 약 0.17 Å로 인접 window가 거의 겹치지 않았습니다.
 
 REUS는 umbrella restraint가 다른 Hamiltonian 사이에서 configuration을
 교환합니다. 일반 US가 각 window 안에서만 움직이는 것과 달리, accepted
@@ -74,7 +79,8 @@ stage를 건너뛰고, 실패하거나 일부만 있으면 기존 결과를 보�
 | --- | --- |
 | `-rem 3` | AMBER Hamiltonian REMD mode로 window restraint state를 교환합니다. |
 | `iat`, `r2=r3` | Terminal Cα atom pair와 window center를 정의합니다. |
-| `rk2=rk3=10.0` | 각 harmonic window의 force constant(kcal mol⁻¹ Å⁻²)입니다. |
+| `rk2=rk3=1.0` | 각 harmonic window의 force constant(kcal mol⁻¹ Å⁻²)입니다. `make_restraints.py`의 `RESTRAINT_FORCE_KCAL_MOL_A2`에서 바꿉니다. |
+| `r1=0`, `r4=99` | Restraint가 선형으로 바뀌는 경계입니다. 표본 범위 전체에서 harmonic으로 유지되어 WHAM의 bias 식과 맞습니다. |
 | `nmropt=1`, `DISANG` | AMBER NMR-style restraint input을 활성화합니다. |
 | `nstlim=500`, `numexchg=1000` | AMBER REMD 의미에 따라 500 steps마다 1,000회 교환하여 총 1 ns를 계산합니다. |
 | `DUMPFREQ=500`, `DUMPAVE` | 2 fs timestep 기준 1 ps마다 restraint coordinate를 기록합니다. |
@@ -111,9 +117,14 @@ The default has 20 centers including both 6 and 24 Å, spaced by `18/19 ≈ 0.94
 
 This REUS example exchanges 20 windows along the Chignolin residue 1–10 Cα
 distance. Centers span 6–24 Å at 18/19 Å spacing, with
-`rk2=rk3=10 kcal mol⁻¹ Å⁻²`. Heating is 200 ps, equilibration is 100 ps,
+`rk2=rk3=1.0 kcal mol⁻¹ Å⁻²`. Heating is 200 ps, equilibration is 100 ps,
 production is 1 ns per window, and exchanges are attempted every
 1 ps.
+
+AMBER restraint energy is `rk(r − r₀)²`. At 300 K each window is about 0.55 Å
+wide, and the predicted neighbor exchange acceptance at 0.95 Å spacing is about
+0.22. This is a Gaussian estimate, not a measured rate (unverified). The
+previous `rk=10` gave about 0.17 Å windows with almost no neighbor overlap.
 
 REUS exchanges configurations among Hamiltonians with different umbrella
 centers. Accepted swaps allow a walker to visit multiple CV regions, but PMF
@@ -135,7 +146,8 @@ stages and `pmemd.cuda.MPI -rem 3` for exchange. Complete preparation stages
 are skipped; partial window sets are preserved and rejected. Production is not overwritten.
 
 `make_restraints.py` resolves `iat` and writes `r2=r3` centers with
-`rk2=rk3=10.0`. `nmropt=1`/`DISANG` activate the restraint; `nstlim=500` and
+`rk2=rk3=1.0` (`RESTRAINT_FORCE_KCAL_MOL_A2`). `r1=0` and `r4=99` keep the
+sampled range harmonic, as the WHAM bias assumes. `nmropt=1`/`DISANG` activate the restraint; `nstlim=500` and
 `numexchg=1000` attempt exchange every 1 ps for a 1 ns run. `DUMPAVE` records the restraint coordinate at
 the same interval. The runner launches 20 MPI processes. `ig` uses the
 `states.tsv` window seed for heating; equilibration adds 1,000,000 and

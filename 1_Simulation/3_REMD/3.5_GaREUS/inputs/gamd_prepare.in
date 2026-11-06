@@ -1,4 +1,4 @@
-GaMD parameter preparation for 4 ns
+NVT GaMD parameter preparation for 4 ns in the shared box
 &cntrl
  imin=0,
  irest=1,
@@ -9,11 +9,7 @@ GaMD parameter preparation for 4 ns
  temp0=300.0,
  ntt=3,
  gamma_ln=1.0,
- ntb=2,
- ntp=1,
- barostat=2,
- pres0=1.0,
- taup=2.0,
+ ntb=1,
  ntc=2,
  ntf=2,
  cut=10.0,

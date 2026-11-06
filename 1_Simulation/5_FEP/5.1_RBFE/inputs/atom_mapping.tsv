@@ -1,0 +1,16 @@
+# Common core for benzene (BNZ) -> toluene (MBN): ring carbons and ring hydrogens.
+# Unmapped atoms become soft-core: BNZ H1 (replaced by the methyl group) and
+# MBN C1, H1, H2, H3 (the methyl group).
+# Keep the rows in BNZ atom order; pmemd pairs common atoms by order.
+# ligand_a_atom ligand_b_atom
+C1 C2
+C2 C3
+C3 C4
+C4 C5
+C5 C6
+C6 C7
+H2 H4
+H3 H5
+H4 H6
+H5 H7
+H6 H8

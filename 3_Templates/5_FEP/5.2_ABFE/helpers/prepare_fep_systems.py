@@ -68,13 +68,28 @@ def validate_mol2(path: Path, residue_name: str, expected_charge: int) -> None:
         raise ValueError(f"{path} charge {charge:.6f} does not match expected {expected_charge}")
 
 
+def write_ligand_copy(structure: Path, residue_name: str, destination: Path) -> None:
+    """Write the ligand atoms that LEaP loads as the second charge-stage copy."""
+    lines = [
+        line
+        for line in structure.read_text(encoding="utf-8").splitlines()
+        if line.startswith(("ATOM  ", "HETATM")) and line[17:20].strip() == residue_name
+    ]
+    if not lines:
+        raise SystemExit(f"Ligand residue {residue_name} was not found in {structure}")
+    destination.write_text("\n".join(lines + ["END"]) + "\n", encoding="utf-8")
+
+
 def leap_text(
     environment: str,
     build: dict[str, object],
     force_field_profile: dict[str, object],
     salt_pairs: int | None,
 ) -> str:
-    if environment == "complex":
+    # complex_charge/solvent_charge add a second, identical ligand copy for the
+    # linear-TI charge stage; LEaP appends it after the solute.
+    base_environment, _, variant = environment.partition("_")
+    if base_environment == "complex":
         distance = positive_float(build, "complex_box_distance")
     else:
         distance = positive_float(build, "solvent_box_distance")
@@ -83,13 +98,17 @@ def leap_text(
     water_source = str(force_field_profile["water_leaprc"])
     water_box = str(force_field_profile["water_box"])
     lines = ["source leaprc.gaff2", f"source {water_source}"]
-    if environment == "complex":
+    if base_environment == "complex":
         lines.insert(0, f"source {protein_source}")
 
     name = string_value(build, "ligand_residue_name")
     lines.extend(["loadamberparams ligand.frcmod", f"{name} = loadmol2 ligand.mol2"])
-    if environment == "complex":
+    if base_environment == "complex":
         lines.append("system = loadpdb input.pdb")
+        if variant == "charge":
+            lines.extend(["ligand_copy = loadpdb ligand_copy.pdb", "system = combine { system ligand_copy }"])
+    elif variant == "charge":
+        lines.append(f"system = combine {{ {name} {name} }}")
     else:
         lines.append(f"system = combine {{ {name} }}")
 
@@ -150,12 +169,26 @@ def main() -> None:
     copy_input(Path(string_value(build, "ligand_mol2")), args.output / "ligand.mol2")
     copy_input(Path(string_value(build, "ligand_frcmod")), args.output / "ligand.frcmod")
 
-    for environment, salt_pairs in (
+    environments = [
         ("complex", args.complex_salt_pairs),
         ("solvent", args.solvent_salt_pairs),
-    ):
+    ]
+    if args.complex_salt_pairs is not None:
+        # The charge-stage systems reuse the salt counts of the single-copy systems.
+        write_ligand_copy(
+            args.structure,
+            string_value(build, "ligand_residue_name"),
+            args.output / "ligand_copy.pdb",
+        )
+        environments += [
+            ("complex_charge", args.complex_salt_pairs),
+            ("solvent_charge", args.solvent_salt_pairs),
+        ]
+    for environment, salt_pairs in environments:
         phase = "solvate" if salt_pairs is None else "final"
-        path = args.output / f"tleap.{environment}.{phase}.in"
+        # tleap.solvent.charge.final.in keeps ".solvent." so apply_config skips
+        # protein disulfide bonds for both solvent systems.
+        path = args.output / f"tleap.{environment.replace('_', '.')}.{phase}.in"
         path.write_text(
             leap_text(environment, build, force_field_profile, salt_pairs),
             encoding="utf-8",

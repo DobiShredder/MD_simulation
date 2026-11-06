@@ -15,8 +15,10 @@ HDBSCAN은 여러 density scale의 hierarchy에서 안정적인 cluster를 선�
 python3 anal.py
 ```
 
-기본값은 `min_cluster_size=50`, `min_samples=10`,
-`cluster_selection_method="eom"`입니다. Frame별 membership probability와
+기본값은 `min_cluster_size=10`, `min_samples=5`,
+`cluster_selection_method="eom"`입니다. 1 ns 예제 trajectory는 100 frame
+(`ntwx=5000`)이므로 10 frame(100 ps 분량) 이상 모인 state를 cluster로 봅니다. Frame 수가
+달라지면 두 값을 frame 수에 비례해 조정합니다. Frame별 membership probability와
 cluster별 평균 probability를 기록합니다. Scikit-learn 1.9는 별도 `hdbscan`
 package의 `cluster_persistence_`를 제공하지 않으므로 persistence를 임의로
 계산하지 않습니다.
@@ -41,8 +43,10 @@ directory를 함께 보존하고 검사합니다. 파일을 개별적으로 섞�
 
 ## English
 
-Scikit-learn HDBSCAN selects clusters across density scales with a minimum
-cluster size of 50. Frame and cluster summaries report membership probability.
+Scikit-learn HDBSCAN selects clusters across density scales with
+`min_cluster_size=10`, `min_samples=5` and `cluster_selection_method="eom"`.
+The 1 ns example has 100 frames (`ntwx=5000`), so a cluster needs at least
+10 frames (100 ps of sampling). Scale both values with the frame count for other trajectories. Frame and cluster summaries report membership probability.
 Scikit-learn does not expose the separate `hdbscan` package's
 `cluster_persistence_`, so this tutorial does not fabricate that quantity.
 

@@ -17,8 +17,10 @@ TUTORIAL_DIR = Path.cwd()
 OUTPUT_DIR = TUTORIAL_DIR / "output"
 
 TEMPERATURE_KELVIN = 300.0
-PMF_MIN_ANGSTROM = 5.0
-PMF_MAX_ANGSTROM = 26.0
+# rk = 1.0 windows are about 0.55 A wide, so the grid extends about 5 sigma past
+# the outer centers (6 and 25 A). Frames outside the grid stop the analysis.
+PMF_MIN_ANGSTROM = 3.0
+PMF_MAX_ANGSTROM = 28.0
 BIN_WIDTH_ANGSTROM = 0.2
 
 GAS_CONSTANT_KCAL_MOL_K = 0.00198720425864083

@@ -2,9 +2,9 @@
 
 ## 한국어
 
-최소 2개·짝수 replica만 지원합니다. `build.sh`와 `run.sh`는 홀수 schedule을 자동 조정하지 않고 거부합니다. `run.sh --dry-run`도 실제 state table의 count를 검사합니다. 기존 홀수 결과는 새 work directory에서 다시 준비합니다.
+최소 2개·짝수 replica만 지원합니다. Auto mode에서 predictor가 홀수 N개 state를 내면 온도 범위는 그대로 두고 target exchange probability를 올려 N+1개로 맞춥니다. N+1개가 되는 값 중 가장 큰 값을 쓰므로 모든 인접 pair의 예상 교환 확률이 거의 같아집니다. 실제로 쓴 값은 build 출력과 `work/system_counts.tsv`의 `used_target_exchange_probability`에 남습니다. File mode의 홀수 schedule은 자동으로 바꾸지 않고 거부합니다. `run.sh --dry-run`도 실제 state table의 count를 검사합니다. 기존 홀수 결과는 새 work directory에서 다시 준비합니다.
 
-File schedule은 LEaP 실행 전에 검사합니다. Auto count는 임시 topology에서 predictor를 실행한 뒤 검사하고, 통과한 preparation만 work directory에 복사합니다. 홀수이면 기존 input/state/log를 보존하고 진단용 temporary directory를 남깁니다. `build.sh --dry-run`은 file을 검사하지만 auto predictor를 실행하지 않으므로 auto count 검증은 실제 build까지 보류됩니다. Predictor 계산식과 temperature/target probability는 자동 변경하지 않습니다.
+File schedule은 LEaP 실행 전에 검사합니다. Auto ladder는 임시 topology에서 predictor를 실행해 만들고, 통과한 preparation만 work directory에 복사합니다. State 생성이 실패하면 기존 input/state/log를 보존하고 진단용 temporary directory를 남깁니다. `build.sh --dry-run`은 auto predictor를 실행하지 않으므로 auto replica 수는 실제 build에서 정해집니다. Predictor 계산식과 온도 범위는 바꾸지 않습니다.
 
 Heating은 각 replica의 `minimize.rst7`을 `-c`와 positional restraint의 `-ref` input으로 함께 사용합니다. Reference의 변경과 누락은 기존 heating 결과의 재사용을 거부합니다.
 
@@ -47,13 +47,13 @@ input과 적용값은 `work/resolved_config.toml`에 기록됩니다.
 | `box_shape` | `rectangular`, `octahedral` | `rectangular` | 각각 `solvatebox`, `solvateoct`를 사용합니다. |
 | `salt_type` | `NaCl`, `KCl`, `MgCl2`, `CaCl2` | `NaCl` | Neutralization 뒤 추가할 bulk salt를 선택합니다. |
 | `equilibration_ensemble` | `NPT`만 지원 | `NPT` | 각 physical-temperature replica의 equilibration에 적용합니다. |
-| `production_ensemble` | `NVT`, `NPT` | `NPT` | Replica production의 `ntb`와 `ntp`를 설정합니다. |
+| `production_ensemble` | `NVT`, `NPT` | `NPT` | Replica production의 `ntb`와 `ntp`를 설정합니다. `NVT`이면 아래 공통 NPT stage를 먼저 실행합니다. |
 | `constraint_mode` | `h-bonds`만 지원 | `h-bonds` | Hydrogen-containing bond에 SHAKE를 적용합니다. |
 | `random_seed` | `"random"` 또는 양의 정수 | `"random"` | Replica seed와 stage별 `ig`를 정합니다. 아래 seed 규칙을 따릅니다. |
 
 | `temperature_mode` | 사용하는 설정 | 무시하는 설정 | 생성 결과 |
 | --- | --- | --- | --- |
-| `auto` (기본값) | `minimum_temperature`, `maximum_temperature`, `target_exchange_probability`, `generator_tolerance` | `temperature_file` | 전체 solvated system을 predictor에 넣어 `work/states.tsv`를 생성합니다. |
+| `auto` (기본값) | `minimum_temperature`, `maximum_temperature`, `target_exchange_probability`, `generator_tolerance` | `temperature_file` | 전체 solvated system을 predictor에 넣어 `work/states.tsv`를 생성합니다. 1UBQ 기본값(300–450 K, p=0.20)은 67 state가 나와 p≈0.210, 68 state로 조정됩니다(AmberTools build 확인). |
 | `file` | `temperature_file` | Auto ladder 설정 | File 값을 순서대로 `work/states.tsv`에 기록합니다. |
 
 Temperature file은 사용자가 생성해야 합니다. 공백, comma, semicolon, `|`를
@@ -62,6 +62,25 @@ Temperature file은 사용자가 생성해야 합니다. 공백, comma, semicolo
 합니다. `work/states.tsv`가 실제 replica schedule입니다.
 
 Seed 규칙: `"random"`이면 replica마다 무작위 seed를 만들어 heating `ig`에 쓰고, equilibration과 production segment는 `ig=-1`로 실행 시각에서 seed를 정합니다. 정수이면 replica seed는 `정수 + 7919 × replica index`입니다. Langevin dynamics(`ntt=3`)는 restart마다 다른 `ig`를 써야 하므로 stage마다 1,000,000을 더합니다. Heating은 +0, equilibration은 +1,000,000, production segment N은 +(2+N)×1,000,000입니다. 이를 위해 build는 segment마다 `work/<replica>/production.NNN.in`을 만듭니다.
+
+### `production_ensemble = "NVT"`
+
+NVT replica exchange는 모든 replica의 부피가 같아야 합니다(AMBER manual, REMD
+절). 기본 `NPT`에서는 replica마다 minimization, heating, NPT equilibration을
+따로 실행합니다. `NVT`를 고르면 순서가 다음처럼 바뀝니다.
+
+| 순서 | Stage | 위치 | 온도 | Ensemble | 길이 |
+| --- | --- | --- | --- | --- | --- |
+| 1 | minimization | `work/shared` | — | 고정 box | 5,000 cycles |
+| 2 | heating | `work/shared` | 20 K → 첫 replica 온도 | NVT | `heating_steps` |
+| 3 | equilibration | `work/shared` | 첫 replica 온도 | NPT | `equilibration_steps` |
+| 4 | equilibration | `work/NNN` | replica 온도 | NVT | `equilibration_steps` |
+| 5 | production | `work/NNN` | replica 온도 | NVT | `production_steps` |
+
+모든 replica는 `work/shared/equilibrate.rst7`의 box에서 4를 시작합니다. 4는
+replica 온도에서 처음 equilibration하는 단계라 3과 같은 길이를 씁니다. 따라서
+NVT mode는 NPT mode보다 공통 heating과 NPT equilibration을 한 번 더
+실행합니다. 공통 seed는 `"random"`이면 무작위, 정수이면 `정수 + 7919 × replica 수`입니다.
 
 ### Engine 선택과 실행 상태
 
@@ -107,9 +126,9 @@ SIGKILL 또는 node 장애로 남은 lock은 자동으로 지우지 않습니다
 
 ## English
 
-Only even replica counts of at least two are supported. `build.sh` and `run.sh` reject odd schedules without adjusting them. `run.sh --dry-run` checks the actual state-table count too. Prepare a new work directory for results built with an odd schedule.
+Only even replica counts of at least two are supported. When the auto predictor returns an odd count N, the temperature range is kept and the target exchange probability is raised to give N+1 states. The largest target that still gives N+1 is used, so every neighbor pair has nearly the same predicted probability. The value used is printed by the build and stored as `used_target_exchange_probability` in `work/system_counts.tsv`. Odd file schedules are rejected, not adjusted. `run.sh --dry-run` checks the actual state-table count too. Prepare a new work directory for results built with an odd schedule.
 
-File schedules are checked before LEaP. Auto counts are checked after running the predictor on a temporary topology; only preparation with a valid count is copied to the work directory. Odd results preserve existing inputs, states and logs and retain temporary diagnostics. `build.sh --dry-run` validates files but defers auto-count validation until an actual build. The predictor algorithm, temperature range and target probability are not adjusted automatically.
+File schedules are checked before LEaP. The auto ladder is predicted on a temporary topology, and only preparation that passes is copied to the work directory. If state generation fails, existing inputs, states and logs are preserved and temporary diagnostics are retained. `build.sh --dry-run` does not run the auto predictor, so the auto replica count is set by the actual build. The predictor algorithm and temperature range are not changed.
 
 Heating uses each replica’s `minimize.rst7` for both `-c` and the positional-restraint `-ref` input. A changed or missing reference prevents reuse of existing heating results.
 
@@ -128,13 +147,13 @@ The first-pass LEaP input and water-count `solvated.pdb` are created under `work
 | `box_shape` | `rectangular`, `octahedral` | `rectangular` | Uses `solvatebox` or `solvateoct`, respectively. |
 | `salt_type` | `NaCl`, `KCl`, `MgCl2`, `CaCl2` | `NaCl` | Selects bulk salt added after neutralization. |
 | `equilibration_ensemble` | `NPT` only | `NPT` | Applies to equilibration at each physical temperature. |
-| `production_ensemble` | `NVT`, `NPT` | `NPT` | Sets replica-production `ntb` and `ntp`. |
+| `production_ensemble` | `NVT`, `NPT` | `NPT` | Sets replica-production `ntb` and `ntp`. `NVT` adds the shared NPT stage below. |
 | `constraint_mode` | `h-bonds` only | `h-bonds` | Applies SHAKE to bonds involving hydrogen. |
 | `random_seed` | `"random"` or a positive integer | `"random"` | Sets replica seeds and per-stage `ig`; see the seed rule below. |
 
 | `temperature_mode` | Settings used | Settings ignored | Result |
 | --- | --- | --- | --- |
-| `auto` (default) | `minimum_temperature`, `maximum_temperature`, `target_exchange_probability`, `generator_tolerance` | `temperature_file` | Runs the predictor on the full solvated system and writes `work/states.tsv`. |
+| `auto` (default) | `minimum_temperature`, `maximum_temperature`, `target_exchange_probability`, `generator_tolerance` | `temperature_file` | Runs the predictor on the full solvated system and writes `work/states.tsv`. For 1UBQ the defaults (300–450 K, p=0.20) give 67 states, adjusted to 68 at p≈0.210 (checked with an AmberTools build). |
 | `file` | `temperature_file` | Auto-ladder settings | Copies the file values in order into `work/states.tsv`. |
 
 The user must create the temperature file. It accepts whitespace, commas,
@@ -143,6 +162,26 @@ at least two unique, increasing positive values, and its first value must equal
 `run.temperature`. `work/states.tsv` is the applied replica schedule.
 
 Seed rule: with `"random"`, each replica gets a random seed for heating `ig`, and equilibration and production segments use `ig=-1` (wall-clock seed). With an integer, the replica seed is `integer + 7919 × replica index`. Langevin dynamics (`ntt=3`) needs a different `ig` on each restart, so each stage adds 1,000,000: heating +0, equilibration +1,000,000, and production segment N +(2+N)×1,000,000. The build therefore writes one `work/<replica>/production.NNN.in` per segment.
+
+### `production_ensemble = "NVT"`
+
+NVT replica exchange needs every replica at the same volume (AMBER manual,
+REMD section). The default `NPT` mode minimizes, heats, and NPT-equilibrates each
+replica separately. With `NVT` the order becomes:
+
+| Order | Stage | Location | Temperature | Ensemble | Length |
+| --- | --- | --- | --- | --- | --- |
+| 1 | minimization | `work/shared` | — | fixed box | 5,000 cycles |
+| 2 | heating | `work/shared` | 20 K → first replica | NVT | `heating_steps` |
+| 3 | equilibration | `work/shared` | first replica | NPT | `equilibration_steps` |
+| 4 | equilibration | `work/NNN` | replica | NVT | `equilibration_steps` |
+| 5 | production | `work/NNN` | replica | NVT | `production_steps` |
+
+Every replica starts stage 4 from the box in `work/shared/equilibrate.rst7`.
+Stage 4 is the first equilibration at the replica temperature, so it uses the
+same length as stage 3. NVT mode therefore adds one shared heating and NPT
+equilibration to the NPT-mode cost. The shared seed is random for `"random"`
+and `integer + 7919 × replica count` for an integer.
 
 This directory can be copied and used on its own. Install its Python
 dependencies from the local `requirements.txt` after copying it.

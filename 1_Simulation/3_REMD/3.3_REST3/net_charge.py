@@ -91,19 +91,23 @@ def read_topology(path: Path) -> tuple[list[Definition], list[tuple[str, int]]]:
     return definitions, molecule_rows
 
 
-def charge_totals(path: Path, hot_molecule_index: int | None = None) -> tuple[float, float, int]:
+def charge_totals(
+    path: Path,
+    hot_molecule_indices: list[int] | None = None,
+) -> tuple[float, float, int]:
     """Return Q_ref, q_hot and the hot-atom count over every molecule copy.
 
     Hot atoms are the marked REST2 types, or every atom of the REST3 molecule
-    definition at hot_molecule_index.
+    definitions listed in hot_molecule_indices.
     """
     definitions, molecule_rows = read_topology(path)
 
     names = [name for name, _ in definitions]
     if len(set(names)) != len(names):
         raise ValueError(f"{path}: duplicate [ moleculetype ] names")
-    if hot_molecule_index is not None and not 0 <= hot_molecule_index < len(definitions):
-        raise ValueError(f"{path}: hot molecule index {hot_molecule_index} is out of range")
+    for hot_molecule_index in hot_molecule_indices or []:
+        if not 0 <= hot_molecule_index < len(definitions):
+            raise ValueError(f"{path}: hot molecule index {hot_molecule_index} is out of range")
 
     reference_charge = 0.0
     hot_charge = 0.0
@@ -114,10 +118,10 @@ def charge_totals(path: Path, hot_molecule_index: int | None = None) -> tuple[fl
         definition_index = names.index(name)
         for atom_type, charge in definitions[definition_index][1]:
             reference_charge += count * charge
-            if hot_molecule_index is None:
+            if hot_molecule_indices is None:
                 is_hot = atom_type.endswith(HOT_TYPE_SUFFIX)
             else:
-                is_hot = definition_index == hot_molecule_index
+                is_hot = definition_index in hot_molecule_indices
             if is_hot:
                 hot_charge += count * charge
                 hot_atom_count += count
@@ -164,7 +168,9 @@ def parse_arguments() -> argparse.Namespace:
     hot.add_argument(
         "--hot-molecule-index",
         type=int,
-        help="REST3: 0-based [ moleculetype ] index passed to the parser as hot_molecules",
+        nargs="+",
+        metavar="INDEX",
+        help="REST3: 0-based [ moleculetype ] indices passed to the parser as hot_molecules",
     )
     args = parser.parse_args()
 

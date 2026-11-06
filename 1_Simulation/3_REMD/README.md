@@ -25,25 +25,24 @@ Replica exchange는 서로 다른 thermodynamic state 또는 Hamiltonian을 병�
 | 3.4 | [REUS](3.4_REUS/README.md) | 20 distance windows | `pmemd.cuda.MPI -rem 3` |
 | 3.5 | [GaREUS](3.5_GaREUS/README.md) | 20 distance windows | `pmemd.cuda.MPI -rem 3` |
 
-REST2와 REST3는 `GROMACS 2024.3` 또는 `2024.6`에 PLUMED 2.10의
-GROMACS 2024.3 patch와 이 repository의 HREX energy correction을 차례로
-적용하고 외부 MPI로 build합니다. PLUMED 2.10.0, 2.10.1과 현재 v2.10
-branch의 원본 patch는 swapped coordinate의 energy workload를 준비하지 않아
-exchange energy를 잘못 계산합니다. 일반 PLUMED interface와 GROMACS 2025
-patch에는 서로 다른 scaled topology를 교차 평가하는 `-hrex` 경로가 없습니다.
+REST2와 REST3는 PLUMED 2.10.2 이상으로 patch한 `GROMACS 2024.3`
+external-MPI build가 필요합니다. 서로 다른 scaled topology를 `-hrex`로 교차
+평가하는 경로는 PLUMED의 GROMACS 2024 patch에만 있습니다. GROMACS 2025/2026
+patch와 built-in PLUMED interface에는 이 경로가 없습니다. PLUMED 2.10.0과
+2.10.1의 GROMACS 2024 patch는 swapped coordinate의 energy를 잘못 계산해
+exchange가 거의 accept되지 않습니다. 이 문제는 2.10.2에서 수정되었습니다
+([PLUMED issue #1326](https://github.com/plumed/plumed2/issues/1326)).
 
-PLUMED patch를 적용한 GROMACS source root에서 correction을 적용합니다.
+GROMACS source root에서 PLUMED patch를 적용한 뒤 external MPI로 build합니다.
 
 ```bash
-plumed patch -p
-patch -p1 < /path/to/MD_simulation/1_Simulation/3_REMD/patches/gromacs-2024.3-plumed-2.10-hrex-energy.patch
+plumed patch -p -e gromacs-2024.3
 ```
 
-수정된 `mdrun -h`에는 `HREX_WORKLOAD_FIX_1`이 표시됩니다. REST2와 REST3
-`run.sh`는 이 marker가 없는 executable을 계산 전에 거부합니다. Patch는
-GROMACS 2024.3과 2024.6 source에 적용되며 GROMACS 2024.6 CPU source
-compilation까지 확인했습니다. Corrected HREX의 실제 GPU/external-MPI 실행
-결과는 별도로 확인해야 합니다.
+REST2와 REST3 `run.sh`는 `gmx_mpi --version`에 들어 있는 `plumed_X.Y.Z`를
+읽고 2.10.2보다 낮으면 계산 전에 중단합니다. GROMACS 2024.6처럼 다른 2024
+bugfix release에 2024.3 patch를 적용하는 조합과, 2.10.2 build의 실제
+GPU/external-MPI HREX 실행은 미검증입니다.
 
 각 폴더에서 다음 순서로 실행합니다.
 
@@ -109,17 +108,18 @@ periodically proposes state swaps using a Metropolis criterion. Useful mixing
 depends on state spacing, exchange acceptance, state visits, and round trips,
 not on exchange attempts alone.
 
-REST2 and REST3 require an external-MPI build of GROMACS 2024.3 or 2024.6 with
-both the PLUMED 2.10 GROMACS 2024.3 patch and the repository correction shown
-above. The unmodified patch in PLUMED 2.10.0, 2.10.1, and the current v2.10
-branch does not prepare the swapped-coordinate energy workload, so it computes
-an invalid exchange energy. The corrected `mdrun -h` output contains
-`HREX_WORKLOAD_FIX_1`; both REST runners reject an executable without this
-marker. Patch application has been checked against GROMACS 2024.3 and 2024.6
-source, including CPU compilation of the corrected GROMACS 2024.6 `md.cpp`.
-The corrected GPU/external-MPI HREX run still requires external runtime
-validation. The standard PLUMED interface and GROMACS 2025 patch do not provide
-the required arbitrary-topology `-hrex` path.
+REST2 and REST3 require an external-MPI build of GROMACS 2024.3 patched with
+PLUMED 2.10.2 or later. Only the PLUMED patch for GROMACS 2024 provides the
+`-hrex` path that cross-evaluates differently scaled topologies; the GROMACS
+2025/2026 patches and the built-in PLUMED interface do not. The GROMACS 2024
+patch in PLUMED 2.10.0 and 2.10.1 computes a wrong swapped-coordinate energy,
+so exchanges are almost never accepted; PLUMED 2.10.2 fixes this
+([PLUMED issue #1326](https://github.com/plumed/plumed2/issues/1326)). Patch
+GROMACS with `plumed patch -p -e gromacs-2024.3` (command above). Both REST
+runners read `plumed_X.Y.Z` from `gmx_mpi --version` and stop before the
+simulation if it is older than 2.10.2. Applying the 2024.3 patch to another
+2024 bugfix release such as 2024.6, and an actual GPU/external-MPI HREX run
+with a 2.10.2 build, are unverified.
 
 Use `download.sh`, `prepare.py`, `build.sh`, `run.sh`, and `anal.py` in order.
 For REST2/REST3, supply resources with `./run.sh --cpus N --gpus N`.

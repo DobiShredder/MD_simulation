@@ -70,6 +70,12 @@ for executable in "$antechamber" "$parmchk2" "$tleap" python3; do
         die "Executable not found: $executable"
     fi
 done
+if ! python3 -c 'import parmed' >/dev/null 2>&1; then
+    die "ParmEd Python module is required by generate_inputs.py."
+fi
+if [[ ! -s inputs/atom_mapping.tsv ]]; then
+    die "Common-core atom mapping not found: inputs/atom_mapping.tsv"
+fi
 
 mkdir -p "$build_dir"
 cp "$protein_pdb" "$build_dir/protein.pdb"
@@ -158,6 +164,8 @@ for environment in complex solvent; do
     fi
 done
 
+# generate_inputs.py reads inputs/atom_mapping.tsv, checks the common-core order,
+# copies the MBN core coordinates onto BNZ and writes build/*_core.rst7.
 echo "Generating FEP window inputs: $build_dir -> $work_dir/states.tsv"
 python3 "generate_inputs.py" "$work_dir" "inputs"
 if [[ ! -s "$work_dir/states.tsv" ]]; then

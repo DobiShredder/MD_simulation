@@ -24,7 +24,7 @@ event 수나 target weight를 folding/unfolding rate로 해석하지 않습니�
 | `env.sh` | 자동 호출 | WESTPA root, work directory, AMBER/cpptraj executable 설정 |
 | `init.sh` | 직접 실행 | Basis/target state → `work/west.h5` |
 | `run.sh` | 직접 실행 | WESTPA iterations → segment restart, log와 갱신된 `west.h5` |
-| `westpa_scripts/runseg.sh` | WESTPA가 호출 | Parent restart → 1 ps AMBER segment와 두 pcoord 값 |
+| `westpa_scripts/runseg.sh` | WESTPA가 호출 | Parent restart → 1 ps AMBER segment(`seg.rst7`, `seg.nc`)와 두 pcoord 값 |
 | `anal.py` | 직접 실행 | Weight, effective walker, RMSD 범위, bin occupancy와 target 진단 TSV |
 
 ```bash
@@ -40,8 +40,13 @@ python3 anal.py
 
 `build.sh`는 ff19SB/OPC 12 Å box를 만들고 minimization, 100 ps heating과
 100 ps NPT equilibration을 거쳐 `work/bstates/basis.rst7`을 생성합니다.
-각 preparation stage의 `*.out`과 restart가 모두 있으면 건너뛰고, 둘 중 완료 증거가 없거나 필수 output이 누락되면 기존 결과를 보존하고 중단합니다. `west.h5`나 segment output이 있으면
+각 preparation stage의 `*.out`, restart와 trajectory가 모두 있으면 건너뛰고, 완료 증거가 없거나 필수 output이 누락되면 기존 결과를 보존하고 중단합니다. `west.h5`나 segment output이 있으면
 기존 WESTPA state를 보호하기 위해 build를 중단합니다.
+Heating과 equilibration은 `ntwx=5000`으로 `heat.nc`와 `equilibrate.nc`에 10 ps마다
+frame을 저장합니다. Segment는 500 steps(1 ps)라 5000 steps 간격으로는 frame이
+남지 않으므로 `ntwx=500`으로 segment 끝 frame 하나를 `seg.nc`에 저장합니다.
+Progress coordinate는 trajectory가 아니라 `seg.rst7`에서 계산합니다.
+
 Minimized structure인 `work/common_files/reference.rst7`에 residue 2–9 Cα를
 least-squares fit한 RMSD를 Å 단위로 계산합니다. Terminal residue를 제외하면
 말단 움직임이 progress coordinate를 지배하는 현상을 줄일 수 있습니다.
@@ -102,7 +107,11 @@ Run `download.sh`, `prepare.py`, `build.sh`, `init.sh`, `run.sh`, and `anal.py`
 in order. The build uses ff19SB, a 12 Å OPC box, minimization, 100 ps heating,
 and 100 ps NPT equilibration. RMSD is least-squares fitted to the minimized
 reference using the Cα atoms of residues 2–9. A preparation stage is skipped
-only with successful completion evidence and all required outputs; partial results are preserved and rejected. Existing
+only with successful completion evidence and all required outputs; partial results are preserved and rejected. Heating and
+equilibration save a frame every 10 ps (`ntwx=5000`) to `heat.nc` and
+`equilibrate.nc`. A 500-step (1 ps) segment would write no frame at that
+interval, so segments use `ntwx=500` and save their final frame to `seg.nc`.
+Progress coordinates are still read from `seg.rst7`. Existing
 `west.h5` or segment output protects the initialized WESTPA state from rebuilds.
 
 The default configuration maintains four walkers per bin for 20 iterations.
@@ -159,7 +168,7 @@ Runner가 engine의 성공 종료와 필수 output을 확인한 뒤 만든 완�
 stage를 재사용합니다. Output이 남았지만 완료 증거가 없거나 필수 output이
 누락·비어 있으면 기존 결과를 보존하고 중단합니다. 기존 결과를 소급 인증하지
 않습니다. 새 계산은 생성된 `work/`를 포함하지 않는 새 tutorial copy에서 시작합니다.
-`ntwx=0`인 AMBER stage는 trajectory를 완료 조건으로 요구하지 않습니다.
+`ntwx`가 0보다 큰 stage는 trajectory(`*.nc`)도 완료 조건으로 요구합니다.
 지원되는 continuation은 기존 restart/state 전달 방식을 따릅니다.
 
 Input identity checks unchanged inputs; it does not prove a successful engine exit.
@@ -167,8 +176,8 @@ A stage is reused only with completion evidence written after a successful engin
 exit and required-output checks. Outputs without that evidence, or missing/empty
 required outputs, are preserved and rejected. Existing results are not certified
 retroactively. Start a new tutorial copy without generated `work/` directories for
-a new calculation. AMBER stages with `ntwx=0` do not require a trajectory for
-completion. Supported continuation retains its existing restart/state handoff.
+a new calculation. Stages with `ntwx` above 0 also require their trajectory
+(`*.nc`) for completion. Supported continuation retains its existing restart/state handoff.
 
 이 완료 판정은 `build.sh`의 topology와 basis preparation에 적용합니다.
 Walker continuation과 weight/resampling은 기존 WESTPA state와 manager가 담당합니다.

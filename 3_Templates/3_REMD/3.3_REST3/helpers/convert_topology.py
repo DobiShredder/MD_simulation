@@ -9,7 +9,14 @@ from pathlib import Path
 
 import parmed
 
-PARSER_PROTEIN_NAME = "Protein_chain_A"
+# Parser 0.2.2 finds topology sections with substring tests such as
+# `"system" in line`. ParmEd names multi-residue molecules system1, system2, ...,
+# so every molecule whose name contains a section word is renamed.
+PARSER_SECTION_WORDS = (
+    "defaults", "atomtypes", "nonbond_params", "bondtypes", "constrainttypes",
+    "angletypes", "dihedraltypes", "system", "molecules", "moleculetype",
+)
+PARSER_SOLUTE_PREFIX = "Solute_"
 
 
 def preserve_residue_specific_cmaps(structure: parmed.Structure) -> dict[str, str]:
@@ -35,50 +42,41 @@ def preserve_residue_specific_cmaps(structure: parmed.Structure) -> dict[str, st
     return {name: residue for (_, residue), name in cmap_names.items()}
 
 
-def rename_primary_molecule(topology: Path) -> None:
-    """Give the first molecule a name accepted by parser 0.2.2."""
+def rename_parser_unsafe_molecules(topology: Path) -> dict[str, str]:
+    """Rename molecules that parser 0.2.2 would read as section headers."""
     lines = topology.read_text(encoding="utf-8").splitlines(keepends=True)
     section = ""
-    original_name = ""
-    definition_renamed = False
-    reference_renamed = False
+    expect_definition_name = False
+    definition_names: list[str] = []
+    renamed: dict[str, str] = {}
 
     for line_number, line in enumerate(lines):
         stripped = line.strip()
 
         if stripped.startswith("[") and "]" in stripped:
             section = stripped[1 : stripped.index("]")].strip()
+            expect_definition_name = section == "moleculetype"
             continue
 
         if not stripped or stripped.startswith((";", "#")):
             continue
 
-        fields = stripped.split()
-        if section == "moleculetype" and not definition_renamed:
-            original_name = fields[0]
-            lines[line_number] = line.replace(
-                original_name, PARSER_PROTEIN_NAME, 1
-            )
-            definition_renamed = True
-            continue
+        name = stripped.split()[0]
+        if section == "moleculetype" and expect_definition_name:
+            expect_definition_name = False
+            definition_names.append(name)
+            if any(word in name for word in PARSER_SECTION_WORDS):
+                renamed[name] = f"{PARSER_SOLUTE_PREFIX}{len(renamed) + 1}"
+                lines[line_number] = line.replace(name, renamed[name], 1)
+        elif section == "molecules" and name in renamed:
+            lines[line_number] = line.replace(name, renamed[name], 1)
 
-        if (
-            section == "molecules"
-            and definition_renamed
-            and fields[0] == original_name
-        ):
-            lines[line_number] = line.replace(
-                original_name, PARSER_PROTEIN_NAME, 1
-            )
-            reference_renamed = True
-
-    if not definition_renamed or not reference_renamed:
-        raise SystemExit(
-            "Could not rename the primary GROMACS molecule in both "
-            "[ moleculetype ] and [ molecules ]."
-        )
+    collisions = set(renamed.values()) & set(definition_names)
+    if collisions:
+        raise SystemExit(f"Renamed molecule names already exist: {sorted(collisions)}")
 
     topology.write_text("".join(lines), encoding="utf-8")
+    return renamed
 
 
 def main() -> None:
@@ -103,11 +101,11 @@ def main() -> None:
     cmap_types = preserve_residue_specific_cmaps(structure)
     structure.save(str(args.output_topology), overwrite=True)
     structure.save(str(args.output_coordinates), overwrite=True)
-    rename_primary_molecule(args.output_topology)
+    renamed = rename_parser_unsafe_molecules(args.output_topology)
     print(
         "GROMACS Conversion output: "
         f"{args.output_topology}, {args.output_coordinates} "
-        f"(protein molecule: {PARSER_PROTEIN_NAME}, "
+        f"(renamed molecules: {len(renamed)}, "
         f"residue-specific CMAP types: {len(cmap_types)})"
     )
 

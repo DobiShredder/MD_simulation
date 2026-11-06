@@ -47,6 +47,45 @@ def use_molecule_definition_indices(module: ModuleType) -> ModuleType:
     return module
 
 
+def use_hot_molecule_atom_types(module: ModuleType) -> ModuleType:
+    """Look up each hot molecule's dihedral types with its own atom types.
+
+    Parser 0.2.2 maps dihedral atom indices through molecule 0 for every hot
+    molecule, which is wrong when more than one molecule is tempered.
+    """
+    def scale_dihedrals(converter: object, lambda_on: bool = True) -> None:
+        sections = converter._sections
+        dihedral_types = [
+            line for line in sections["dihedraltypes"]
+            if len(line[:line.find(";")].split()) > 4
+        ]
+        for hot in converter.hot_molecules:
+            source = sections["moleculetype"][hot]["dihedrals"]
+            if not lambda_on:
+                converter._scaled_dihedrals[hot] = {value: source for value in converter.lambdai}
+                continue
+            dihedrals = module.dihedral_array(
+                module.dihedraltype_array(dihedral_types),
+                source,
+                converter.molecule_atoms[hot],
+            )
+            unscaled_k = module.deepcopy(dihedrals["K"])
+            converter._scaled_dihedrals[hot] = {}
+            for value in converter.lambdai:
+                dihedrals["K"] = unscaled_k * module.float32(value)
+                converter._scaled_dihedrals[hot][value] = module.dihedrals_strings_list(dihedrals)
+
+    module.topo2rest._get_scale_dehedrals = scale_dihedrals
+    return module
+
+
+def patch_parser(module: ModuleType) -> ModuleType:
+    """Apply every compatibility fix used by this template."""
+    module = use_full_precision_nonbonded_output(module)
+    module = use_molecule_definition_indices(module)
+    return use_hot_molecule_atom_types(module)
+
+
 def run_parser(converter: object, **options: object) -> None:
     """Run the parser while suppressing its unconditional empty-list output."""
     captured = io.StringIO()
@@ -65,7 +104,7 @@ def load_parser_module() -> ModuleType:
     for name in ("repex_topology_parser", "src.repex_topology_parser"):
         try:
             module = importlib.import_module(name)
-            return use_molecule_definition_indices(use_full_precision_nonbonded_output(module))
+            return patch_parser(module)
         except ModuleNotFoundError:
             continue
 
@@ -91,7 +130,7 @@ def load_parser_module() -> ModuleType:
 
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
-        return use_molecule_definition_indices(use_full_precision_nonbonded_output(module))
+        return patch_parser(module)
 
     raise SystemExit(
         "repex-topology-parser 0.2.2 module not found. "

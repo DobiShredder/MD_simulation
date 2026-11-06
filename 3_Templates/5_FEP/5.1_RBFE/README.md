@@ -29,6 +29,29 @@ python3 anal.py
 Build는 두 ligand mask가 비어 있지 않고 겹치지 않는지, mapping atom 이름이
 각 ligand에 존재하며 one-to-one인지 검사합니다.
 
+### Common core와 `atom_mapping.tsv`
+
+`atom_mapping.tsv`의 atom pair는 common core입니다. 대응된 atom은 두 end state의
+parameter를 lambda에 따라 linear mixing하고, 대응되지 않은 atom만 soft-core가
+됩니다. `helpers/generate_inputs.py`는 environment마다 다음을 수행합니다.
+
+- Ligand mask가 residue 하나 전체를 고르는지, residue 이름이 topology에서
+  유일한지 확인합니다.
+- Mapping된 ligand B atom이 ligand A partner와 같은 순서로 놓였는지 확인합니다.
+  Amber manual은 common atom의 같은 순서와 같은 시작 좌표를 요구합니다
+  (Amber26 §27.1.6, p.555, sander 기준; pmemd 준비 예시 §27.1.8.1, p.568).
+  순서가 다르면 MOL2 atom 순서나 mapping을 고쳐야 합니다.
+- 대응 atom 좌표 차이가 0.1 Å 이하인지 확인하고, ligand B core 좌표를 ligand A
+  대응 atom에 복사해 `work/build/{complex,solvent}_core.rst7`을 만듭니다.
+  Window는 이 restart에서 시작합니다.
+- 대응되지 않은 atom으로 `scmask1=':LGA@...'`, `scmask2=':LGB@...'`를 만듭니다.
+
+함께 제공하는 `atom_mapping.tsv`는 benzene→toluene 예시입니다. 다른 ligand에서는
+이 파일을 해당 MOL2 atom 이름으로 바꿉니다. Common core가 계속 결합 상태를
+유지하므로 별도 ligand restraint는 두지 않습니다. Common core와 soft-core 사이의
+SHAKE bond는 `pmemd.cuda` 기본값(`tishake=0`, 자동 `gti_syn_mass=3`)을 사용합니다
+(§27.1.7.5, p.567). 실제 `pmemd.cuda` parsing과 DV/DL은 미검증입니다.
+
 Production 일부만 존재하면 자동으로 덮어쓰지 않습니다. `anal.py`는 완료 marker가
 있는 모든 production output을 사용하며 FE-ToolKit의
 `edgembar-amber2dats.py`와 `edgembar`가 필요합니다.
@@ -150,7 +173,20 @@ dependencies from the local `requirements.txt` after copying it.
 This dual-topology Amber RBFE template creates complex and solvent windows for
 ligand A to ligand B. Pass a ligand-free reviewed protein PDB to `build.sh` and
 configure aligned precharged MOL2 files, matching frcmod files, two ligand
-masks, and a one-to-one atom-name map. The default schedule contains 11 states;
+masks, and a one-to-one atom-name map. The map defines the common core: mapped
+atoms are mixed linearly with lambda and only unmapped atoms become soft-core.
+For each environment, `helpers/generate_inputs.py` requires each ligand mask to
+select one whole, uniquely named residue, checks that mapped ligand B atoms
+follow the order of their ligand A partners (Amber26 §27.1.6, p.555, stated for
+sander; pmemd preparation example §27.1.8.1, p.568), refuses core gaps above
+0.1 Å, copies the ligand B core coordinates onto ligand A in
+`work/build/{complex,solvent}_core.rst7`, and derives `scmask1`/`scmask2` from
+the unmapped atoms. The shipped `atom_mapping.tsv` is a benzene→toluene example;
+replace it with the atom names of your MOL2 files. Because the core stays
+coupled, no ligand restraint is added. SHAKE bonds between core and soft-core
+atoms use the `pmemd.cuda` defaults (`tishake=0`, automatic `gti_syn_mass=3`;
+§27.1.7.5, p. 567). Actual `pmemd.cuda` parsing and DV/DL remain unverified.
+The default schedule contains 11 states;
 each window runs 10,000,000 production steps and records cross-state energies
 with `ifmbar`. `download.sh` can retrieve a source protein PDB, `build.sh`
 creates both environments and their windows, `run.sh` executes them, and

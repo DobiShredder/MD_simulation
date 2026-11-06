@@ -34,7 +34,10 @@ restart_interval_steps = 5000
 
 [replica_exchange]
 # Config unit: temperature K
-temperature_mode = "auto"
+# "file" reads temperature_file (12 geometric states, 300-450 K by default).
+# "auto" predicts the ladder from the tempered-solute atom count; an odd count is raised to
+# the next even count by increasing the target probability (range unchanged).
+temperature_mode = "file"
 minimum_temperature = 300.0
 maximum_temperature = 450.0
 target_exchange_probability = 0.20

@@ -21,8 +21,10 @@ except (ImportError, ModuleNotFoundError) as error:
     ) from error
 
 
-MIN_CLUSTER_SIZE = 50
-MIN_SAMPLES = 10
+# The 1 ns example writes 100 frames (ntwx=5000). A cluster needs at least
+# 10 frames (100 ps of sampling); scale both values with the number of frames.
+MIN_CLUSTER_SIZE = 10
+MIN_SAMPLES = 5
 
 
 def pca_features(path: Path) -> tuple[np.ndarray, np.ndarray, np.ndarray]:

@@ -23,7 +23,7 @@ production 시작 시 같은 boost parameter를 사용합니다.
 ./run.sh
 ```
 
-Reaction-coordinate mask, center, force와 exchange interval은 REUS와 같습니다.
+Reaction-coordinate mask, center, force와 exchange interval은 REUS와 같습니다. 기본 `force_constant = 1.0`(AMBER `rk`)은 1 Å 간격에서 예상 인접 교환 확률 약 0.2입니다(미검증).
 GaMD statistics 길이와 `sigma0=6 kcal/mol`은 `[gamd]`에 기록됩니다. Build는
 REUS와 같은 window/restraint generator에 GaMD parameter-preparation input을
 추가합니다. Run은 GaMD state continuation과 AMBER `-rem 3` exchange command를
@@ -37,7 +37,26 @@ interval에서 `nstlim=1000`, `numexchg=100000`으로 생성됩니다.
 기본 20개 window는 6–25 Å이며 replica 009에서 공통 GaMD state를 준비합니다.
 `[gamd] reference_replica`는 0부터 window 수−1 사이의 정수여야 하며 build가 범위를 검사합니다.
 
-Equilibration과 GaMD preparation은 replica directory 안에서 실행되므로 `DISANG=distance.RST`와 `DUMPAVE=restraint.equilibrate.dat` 또는 `restraint.gamd_prepare.dat`를 씁니다. Build는 production segment마다 `production.NNN.template.in`을 만듭니다. Exchange production은 group file로 이 directory에서 실행되므로 `run.sh`가 segment 시작 직전 `@DISANG@`과 `@DUMPAVE@`를 `work/<replica>/distance.RST`와 `work/<replica>/restraint.production.NNN.dat`로 바꿔 `production.NNN.in`을 씁니다.
+### 공통 NPT stage와 window NVT stage
+
+Production이 NVT이면 모든 window의 부피가 같아야 합니다. AMBER manual(REMD 절)에
+따라 원래 system을 한 번 constant pressure로 안정화한 뒤 window equilibration을
+시작합니다.
+
+| 순서 | Stage | 위치 | Ensemble | 길이 config |
+| --- | --- | --- | --- | --- |
+| 1 | minimization | `work/shared` | 고정 box | `minimization_steps` |
+| 2 | heating | `work/shared` | NVT | `heating_steps` |
+| 3 | equilibration | `work/shared` | `equilibration_ensemble`(NPT) | `equilibration_steps` (기본 250,000) |
+| 4 | window equilibration | `work/NNN` | NVT, window restraint | `window_equilibration_steps` (기본 250,000) |
+| 5 | GaMD preparation | reference window | `production_ensemble` | `[gamd]` |
+
+1–3은 window restraint 없이 한 번 실행합니다. 모든 window는
+`work/shared/equilibrate.rst7`의 box와 velocity에서 4를 시작합니다. 기본값의
+합은 이전 window equilibration 500,000 steps와 같습니다. 4는 config와 관계없이
+NVT입니다. Build는 `equilibration_ensemble`이 `NPT`가 아니면 거부합니다.
+
+Window equilibration과 GaMD preparation은 replica directory 안에서 실행되므로 `DISANG=distance.RST`와 `DUMPAVE=restraint.equilibrate.dat` 또는 `restraint.gamd_prepare.dat`를 씁니다. Build는 production segment마다 `production.NNN.template.in`을 만듭니다. Exchange production은 group file로 이 directory에서 실행되므로 `run.sh`가 segment 시작 직전 `@DISANG@`과 `@DUMPAVE@`를 `work/<replica>/distance.RST`와 `work/<replica>/restraint.production.NNN.dat`로 바꿔 `production.NNN.in`을 씁니다.
 
 ### Config 선택값
 
@@ -47,7 +66,7 @@ Equilibration과 GaMD preparation은 replica directory 안에서 실행되므로
 | `water_model` | `TIP3P` (`ff99SB-ILDN`, `ff14SB`), `OPC` (`ff19SB`) | `OPC` | LEaP water와 일치하는 ion parameter를 선택합니다. |
 | `box_shape` | `rectangular`, `octahedral` | `rectangular` | 각각 `solvatebox`, `solvateoct`를 사용합니다. |
 | `salt_type` | `NaCl`, `KCl`, `MgCl2`, `CaCl2` | `NaCl` | Neutralization 뒤 추가할 bulk salt를 선택합니다. |
-| `equilibration_ensemble` | `NPT`만 지원 | `NPT` | Window equilibration에 적용합니다. |
+| `equilibration_ensemble` | `NPT`만 지원 | `NPT` | 공통 equilibration(`work/shared/equilibrate.in`)에 적용합니다. Window equilibration은 항상 NVT입니다. |
 | `production_ensemble` | `NVT`, `NPT` | `NVT` | GaMD exchange production의 `ntb`와 `ntp`를 설정합니다. |
 | `constraint_mode` | `h-bonds`만 지원 | `h-bonds` | Hydrogen-containing bond에 SHAKE를 적용합니다. |
 | `random_seed` | `"random"` 또는 양의 정수 | `"random"` | Window seed와 stage별 `ig`를 정합니다. 아래 seed 규칙을 따릅니다. |
@@ -57,13 +76,13 @@ Equilibration과 GaMD preparation은 replica directory 안에서 실행되므로
 하나만 적습니다. Center 목록은 비어 있지 않고 중복 없이 오름차순이어야 합니다.
 각 행이 한 exchange state가 되고 최종 mapping은 `work/states.tsv`에 기록됩니다.
 
-Seed 규칙: `"random"`이면 window마다 무작위 seed를 만들어 heating `ig`에 쓰고, equilibration, GaMD preparation과 production segment는 `ig=-1`로 실행 시각에서 seed를 정합니다. 정수이면 window seed는 `정수 + 7919 × window index`입니다. Langevin dynamics(`ntt=3`)는 restart마다 다른 `ig`를 써야 하므로 stage마다 1,000,000을 더합니다. Heating은 +0, equilibration은 +1,000,000, GaMD preparation은 +2,000,000, production segment N은 +(2+N)×1,000,000입니다.
+Seed 규칙: `"random"`이면 공통 heating에 무작위 seed를 쓰고, 나머지 stage는 `ig=-1`로 실행 시각에서 seed를 정합니다. 정수이면 window seed는 `정수 + 7919 × window index`이고 공통 seed는 `정수 + 7919 × window 수`입니다. Langevin dynamics(`ntt=3`)는 restart마다 다른 `ig`를 써야 하므로 stage마다 1,000,000을 더합니다. 공통 heating은 +0, 공통 equilibration과 window equilibration은 각 seed에 +1,000,000, GaMD preparation은 +2,000,000, production segment N은 +(2+N)×1,000,000입니다.
 
 ### Engine 선택과 실행 상태
 
 `AMBER_ENGINE`이 설정되어 있으면 이를 사용하며, 없으면 build가 기록한 `work/resolved_config.toml`의 `run.engine`을 읽습니다. 허용하는 executable 이름은 `pmemd.cuda`이며 설치 경로를 지정할 수 있습니다. Exchange production에는 `AMBER_MPI_ENGINE` 또는 resolved config의 `run.mpi_engine`을 사용하며 executable 이름은 `pmemd.cuda.MPI`입니다. 기존 resolved config에 `run.mpi_engine`이 없으면 `AMBER_MPI_ENGINE`을 지정하거나 새 `WORK_DIR`에서 build합니다. 빈 override, 누락된 engine 설정과 지원하지 않는 executable은 기본값으로 대체하지 않고 error로 중단합니다. Runner가 `helpers/config_utils.py`를 자동 호출해 이 설정을 읽습니다.
 
-Engine이 성공하고 모든 replica의 stage별 필수 output이 존재할 때만 `.STAGE.complete`를 기록합니다. Minimization은 `.out`, `.rst7`, `.info`를 요구하며 MD stage는 `.nc`도 요구합니다. Exchange production은 `exchange.NNN.log`도 확인합니다. GaREUS production은 GaMD log와 restraint 기록도 확인합니다. Marker만 있거나 marker 없는 output이 남아 있으면 파일을 보존하고 중단합니다. 새 `WORK_DIR`를 사용하거나 남은 파일을 검토한 뒤 재실행합니다. 기존 결과를 자동으로 완료 처리하지 않습니다.
+Engine이 성공하고 모든 replica의 stage별 필수 output이 존재할 때만 `.STAGE.complete`를 기록합니다. 공통 stage는 `work/shared/` output을 확인한 뒤 `.shared_STAGE.complete`를 기록합니다. Minimization은 `.out`, `.rst7`, `.info`를 요구하며 MD stage는 `.nc`도 요구합니다. Exchange production은 `exchange.NNN.log`도 확인합니다. GaREUS production은 GaMD log와 restraint 기록도 확인합니다. Marker만 있거나 marker 없는 output이 남아 있으면 파일을 보존하고 중단합니다. 새 `WORK_DIR`를 사용하거나 남은 파일을 검토한 뒤 재실행합니다. 기존 결과를 자동으로 완료 처리하지 않습니다.
 
 Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 중단하고 파일을 보존합니다. 새 build에는 별도 `WORK_DIR`을 지정합니다.
 
@@ -109,6 +128,8 @@ Window별 MD input과 restraint는 `helpers/make_window_replicas.py`가
 
 Only even replica counts of at least two are supported. `build.sh` and `run.sh` reject odd schedules without adjusting them. `run.sh --dry-run` checks the actual state-table count too. Prepare a new work directory for results built with an odd schedule.
 
+Reaction-coordinate masks, centers, force, and exchange interval follow REUS. The default `force_constant = 1.0` (AMBER `rk`) gives a predicted neighbor acceptance of about 0.2 at 1 Å spacing (unverified).
+
 `helpers/generate_inputs.py` writes LEaP inputs and resolved settings.
 `helpers/make_window_replicas.py` writes per-window MD inputs and
 restraints. Both are called automatically by `build.sh`.
@@ -127,7 +148,7 @@ The first-pass LEaP input and water-count `solvated.pdb` are created under `work
 | `water_model` | `TIP3P` (`ff99SB-ILDN`, `ff14SB`), `OPC` (`ff19SB`) | `OPC` | Selects matching LEaP water and ion parameters. |
 | `box_shape` | `rectangular`, `octahedral` | `rectangular` | Uses `solvatebox` or `solvateoct`, respectively. |
 | `salt_type` | `NaCl`, `KCl`, `MgCl2`, `CaCl2` | `NaCl` | Selects bulk salt added after neutralization. |
-| `equilibration_ensemble` | `NPT` only | `NPT` | Applies to window equilibration. |
+| `equilibration_ensemble` | `NPT` only | `NPT` | Applies to the shared equilibration (`work/shared/equilibrate.in`). Window equilibration is always NVT. |
 | `production_ensemble` | `NVT`, `NPT` | `NVT` | Sets GaMD exchange-production `ntb` and `ntp`. |
 | `constraint_mode` | `h-bonds` only | `h-bonds` | Applies SHAKE to bonds involving hydrogen. |
 | `random_seed` | `"random"` or a positive integer | `"random"` | Sets window seeds and per-stage `ig`; see the seed rule below. |
@@ -138,7 +159,26 @@ each row must contain exactly one center. The list must be nonempty, unique,
 and increasing. Each row becomes one exchange state, and the final mapping is
 written to `work/states.tsv`.
 
-Seed rule: with `"random"`, each window gets a random seed for heating `ig`, and equilibration, GaMD preparation, and production segments use `ig=-1` (wall-clock seed). With an integer, the window seed is `integer + 7919 × window index`. Langevin dynamics (`ntt=3`) needs a different `ig` on each restart, so each stage adds 1,000,000: heating +0, equilibration +1,000,000, GaMD preparation +2,000,000, and production segment N +(2+N)×1,000,000.
+Seed rule: with `"random"`, shared heating gets a random seed and every other stage uses `ig=-1` (wall-clock seed). With an integer, the window seed is `integer + 7919 × window index` and the shared seed is `integer + 7919 × window count`. Langevin dynamics (`ntt=3`) needs a different `ig` on each restart, so each stage adds 1,000,000: shared heating +0, shared and window equilibration +1,000,000 on their own seed, GaMD preparation +2,000,000, and production segment N +(2+N)×1,000,000.
+
+### Shared NPT stage and window NVT stage
+
+With NVT production every window must share one volume. Following the AMBER
+manual (REMD section), the original system is stabilized once at constant
+pressure before window equilibration starts.
+
+| Order | Stage | Location | Ensemble | Length key |
+| --- | --- | --- | --- | --- |
+| 1 | minimization | `work/shared` | fixed box | `minimization_steps` |
+| 2 | heating | `work/shared` | NVT | `heating_steps` |
+| 3 | equilibration | `work/shared` | `equilibration_ensemble` (NPT) | `equilibration_steps` (default 250,000) |
+| 4 | window equilibration | `work/NNN` | NVT, window restraint | `window_equilibration_steps` (default 250,000) |
+| 5 | GaMD preparation | reference window | `production_ensemble` | `[gamd]` |
+
+Stages 1–3 run once without window restraints. Every window starts stage 4 from
+the box and velocities in `work/shared/equilibrate.rst7`. The defaults add up to
+the previous 500,000-step window equilibration. Stage 4 is NVT regardless of the
+config, and the build rejects an `equilibration_ensemble` other than `NPT`.
 
 This directory can be copied and used on its own. Install its Python
 dependencies from the local `requirements.txt` after copying it.
@@ -169,7 +209,7 @@ just before the segment starts.
 
 `AMBER_ENGINE` overrides `run.engine` in the build-generated `work/resolved_config.toml`. Accepted executable names are `pmemd.cuda`; installation paths are accepted. Exchange production uses `AMBER_MPI_ENGINE` or resolved `run.mpi_engine`, with executable name `pmemd.cuda.MPI`. If an older resolved config lacks `run.mpi_engine`, set `AMBER_MPI_ENGINE` or build in a new `WORK_DIR`. Empty overrides, missing engine settings and unsupported executables fail instead of falling back to a default. The runner invokes `helpers/config_utils.py` automatically to read this setting.
 
-A `.STAGE.complete` marker is written only after engine success and all required replica outputs are present. Minimization requires `.out`, `.rst7` and `.info`; MD stages also require `.nc`. Exchange production also requires `exchange.NNN.log`. GaREUS production also requires its GaMD log and restraint records. A marker without required outputs, or outputs without a marker, causes an error while preserving files. Use a new `WORK_DIR` or inspect the retained files before retrying. Legacy outputs are never marked complete automatically.
+A `.STAGE.complete` marker is written only after engine success and all required replica outputs are present. Shared stages write `.shared_STAGE.complete` after checking `work/shared/`. Minimization requires `.out`, `.rst7` and `.info`; MD stages also require `.nc`. Exchange production also requires `exchange.NNN.log`. GaREUS production also requires its GaMD log and restraint records. A marker without required outputs, or outputs without a marker, causes an error while preserving files. Use a new `WORK_DIR` or inspect the retained files before retrying. Legacy outputs are never marked complete automatically.
 
 Build stops before changing inputs when topology/restart files already exist, preserving those files. Use a separate `WORK_DIR` for a new build.
 

@@ -19,7 +19,8 @@ SIMULATION_WORK = TUTORIAL_DIR / "../../../1_Simulation/3_REMD/3.5_GaREUS/work"
 OUTPUT_DIR = TUTORIAL_DIR / "output"
 
 GAMD_COMPONENTS = 2
-RESTRAINT_FORCE_KCAL_MOL_A2 = 10.0
+# Must match RESTRAINT_FORCE_KCAL_MOL_A2 in the GaREUS make_restraints.py (AMBER rk).
+RESTRAINT_FORCE_KCAL_MOL_A2 = 1.0
 
 
 def read_last_column(path: Path) -> list[float]:

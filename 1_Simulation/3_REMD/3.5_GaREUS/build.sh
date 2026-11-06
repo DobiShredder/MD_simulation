@@ -39,6 +39,8 @@ python_bin=${PYTHON:-python3}
 
 # Langevin dynamics (ntt=3) needs a different ig after each restart
 # (Amber26 manual, ig). Each stage adds a fixed offset to the window seed.
+# The shared stages run once before the windows and use their own seed.
+shared_seed=600001
 equilibrate_seed_offset=1000000
 gamd_prepare_seed_offset=2000000
 production_seed_offset=3000000
@@ -85,6 +87,22 @@ for output in system.parm7 system.rst7; do
     fi
 done
 
+# NVT replica exchange needs one common volume (Amber26 manual, REMD).
+# The unbiased system is heated and NPT-equilibrated once in work/shared;
+# every window then starts from that box and stays at constant volume.
+shared_dir="$work_dir/shared"
+mkdir -p "$shared_dir"
+for stage in minimize heat equilibrate; do
+    case "$stage" in
+        equilibrate) stage_seed=$((shared_seed + equilibrate_seed_offset)) ;;
+        *) stage_seed=$shared_seed ;;
+    esac
+    sed \
+        -e "s|@SEED@|$stage_seed|g" \
+        "inputs/shared/$stage.in" \
+        > "$shared_dir/$stage.in"
+done
+
 echo "Generating window restraints: $work_dir/system.parm7; states: $states_file"
 "$python_bin" "make_restraints.py" \
     "$work_dir/system.parm7" \
@@ -102,13 +120,11 @@ while IFS=$'\t' read -r replica _ seed; do
         die "Window restraint generation did not create: $replica_dir/distance.RST"
     fi
     cp "$work_dir/system.parm7" "$replica_dir/system.parm7"
-    cp "$work_dir/system.rst7" "$replica_dir/system.rst7"
 
-    for stage in minimize heat equilibrate gamd_prepare; do
+    for stage in equilibrate gamd_prepare; do
         case "$stage" in
             equilibrate) stage_seed=$((seed + equilibrate_seed_offset)) ;;
             gamd_prepare) stage_seed=$((seed + gamd_prepare_seed_offset)) ;;
-            *) stage_seed=$seed ;;
         esac
         sed \
             -e "s|@SEED@|$stage_seed|g" \

@@ -114,6 +114,8 @@ if (( dry_run )); then
     echo "+ count waters and calculate salt formula units"
     echo "+ $tleap -f tleap.complex.final.in"
     echo "+ $tleap -f tleap.solvent.final.in"
+    echo "+ $tleap -f tleap.complex.charge.final.in"
+    echo "+ $tleap -f tleap.solvent.charge.final.in"
     echo "+ $python helpers/generate_inputs.py $config $work_dir inputs"
     exit 0
 fi
@@ -153,10 +155,12 @@ solvent_pairs=$(awk -v waters="$solvent_waters" -v concentration="$salt_concentr
     --complex-salt-pairs "$complex_pairs" \
     --solvent-salt-pairs "$solvent_pairs"
 
-for environment in complex solvent; do
+# complex_charge and solvent_charge add the second ligand copy for linear-TI charge windows.
+for environment in complex solvent complex_charge solvent_charge; do
     echo "Building the final $environment system."
-    if ! (cd "$build_dir"; "$tleap" -f "tleap.$environment.final.in" > "tleap.$environment.log" 2>&1); then
-        die "$environment topology build failed: $build_dir/tleap.$environment.log"
+    leap_name=${environment/_/.}
+    if ! (cd "$build_dir"; "$tleap" -f "tleap.$leap_name.final.in" > "tleap.$leap_name.log" 2>&1); then
+        die "$environment topology build failed: $build_dir/tleap.$leap_name.log"
     fi
     for suffix in parm7 rst7; do
         if [[ ! -s "$build_dir/$environment.$suffix" ]]; then

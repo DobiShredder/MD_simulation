@@ -1,0 +1,19 @@
+source leaprc.protein.ff19SB
+source leaprc.gaff2
+source leaprc.water.opc
+
+loadamberparams jz4.frcmod
+JZ4 = loadmol2 jz4.mol2
+system = loadpdb complex.pdb
+
+# The charge stage uses linear TI between two identical JZ4 copies.
+# Appending the copy after the solute keeps every protein and first-copy atom
+# index from complex.parm7, including the Boresch restraint anchors.
+jz4_copy = loadpdb jz4_copy.pdb
+system = combine { system jz4_copy }
+
+solvatebox system OPCBOX 12.0
+addionsrand system Cl- 0
+
+saveamberparm system complex_charge.parm7 complex_charge.rst7
+quit

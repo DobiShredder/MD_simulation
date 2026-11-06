@@ -117,7 +117,13 @@ echo "Completed: ligand parameterization ($build_dir)"
 printf '\n'
 
 echo "Generating complex and solvent topologies."
-for environment in complex solvent; do
+# The charge-stage topologies add a second JZ4 copy taken from the same PDB coordinates.
+awk 'substr($0, 1, 6) == "HETATM" && substr($0, 18, 3) == "JZ4"' \
+    "$build_dir/complex.pdb" > "$build_dir/jz4_copy.pdb"
+if [[ ! -s "$build_dir/jz4_copy.pdb" ]]; then
+    die "JZ4 coordinates for the charge-stage copy were not found: $build_dir/complex.pdb"
+fi
+for environment in complex solvent complex_charge solvent_charge; do
     cp "inputs/tleap_${environment}.in" "$build_dir/tleap_${environment}.in"
     if ! (cd "$build_dir" && "$tleap" -f "tleap_${environment}.in" > "tleap_${environment}.log" 2>&1); then
         die "$environment topology build failed: $build_dir/tleap_${environment}.log"

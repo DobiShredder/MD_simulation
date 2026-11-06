@@ -214,6 +214,88 @@ run_replica_stage() {
     mark_stage_complete "$stage"
 }
 
+shared_outputs_complete() {
+    local stage=$1 suffix
+    local require_complete=${2:-}
+    local required=(out rst7 info)
+    if [[ "$stage" != minimize ]]; then
+        required+=(nc)
+    fi
+    for suffix in "${required[@]}"; do
+        if [[ ! -s "$work_dir/shared/$stage.$suffix" ]]; then
+            if [[ "$require_complete" == --require-complete ]]; then
+                die "shared $stage output is incomplete: $work_dir/shared/$stage.$suffix; existing files were preserved."
+            fi
+            return 1
+        fi
+    done
+}
+
+shared_stage_status() {
+    local stage=$1 output
+    local marker="$work_dir/.shared_$stage.complete"
+    if [[ -f "$marker" ]] && shared_outputs_complete "$stage"; then
+        echo complete
+        return
+    fi
+    if [[ -e "$marker" ]]; then
+        echo partial
+        return
+    fi
+    for output in "$work_dir/shared/$stage."{out,rst7,nc,info}; do
+        if [[ -e "$output" ]]; then
+            echo partial
+            return
+        fi
+    done
+    echo missing
+}
+
+# NVT production only: the system runs once at constant pressure at the lowest
+# temperature, and every replica starts from that box (Amber26 manual, REMD).
+run_shared_stage() {
+    local stage=$1
+    local input_coordinates=$2
+    local shared_dir="$work_dir/shared"
+    local status
+    local reference=()
+    if [[ "$stage" == heat ]]; then
+        reference=(-ref "$input_coordinates")
+    fi
+    "${PYTHON:-python3}" helpers/input_identity.py \
+        --record "$shared_dir/.$stage.identity.json" --stage "shared $stage" \
+        --marker "$work_dir/.shared_$stage.complete" --value "${AMBER_OPTIONS:-}" -- "$amber_engine" \
+        -O -i "$shared_dir/$stage.in" -o "$shared_dir/$stage.out" -p "$work_dir/system.parm7" \
+        -c "$input_coordinates" -r "$shared_dir/$stage.rst7" -x "$shared_dir/$stage.nc" \
+        -inf "$shared_dir/$stage.info" "${reference[@]}"
+
+    status=$(shared_stage_status "$stage")
+    if [[ "$status" == complete ]]; then
+        echo "Skipping completed stage: shared $stage"
+        return
+    fi
+    if [[ "$status" == partial ]]; then
+        die "Incomplete shared $stage outputs found in $shared_dir; existing files were preserved. Use a new WORK_DIR or resolve the partial stage."
+    fi
+
+    echo "Running: shared $stage"
+    if ! "$amber_engine" \
+        "${amber_options[@]}" \
+        -O \
+        -i "$shared_dir/$stage.in" \
+        -o "$shared_dir/$stage.out" \
+        -p "$work_dir/system.parm7" \
+        -c "$input_coordinates" \
+        -r "$shared_dir/$stage.rst7" \
+        -x "$shared_dir/$stage.nc" \
+        -inf "$shared_dir/$stage.info" "${reference[@]}"; then
+        die "shared $stage failed: $shared_dir/$stage.out"
+    fi
+    shared_outputs_complete "$stage" --require-complete
+    touch "$work_dir/.shared_$stage.complete"
+    echo "Completed: shared $stage ($work_dir)"
+}
+
 write_group_file() {
     local segment_name=$1
     local input_restart=$2
@@ -240,6 +322,7 @@ amber_engine=$("${PYTHON:-python3}" helpers/config_utils.py "$resolved_config" e
 amber_mpi_engine=$("${PYTHON:-python3}" helpers/config_utils.py "$resolved_config" mpi_engine AMBER_MPI_ENGINE pmemd.cuda.MPI)
 mpi_launcher=${MPI_LAUNCHER:-mpirun}
 production_segments=$(read_value production_segments)
+production_ensemble=$(read_value production_ensemble)
 segment_start=1
 segment_end=$production_segments
 if [[ -n "$segment_range" ]]; then
@@ -265,7 +348,18 @@ fi
 
 if (( dry_run )); then
     echo "Dry run: planned replica commands; no engine execution"
-    if (( ! production_only )); then
+    if (( ! production_only )) && [[ "$production_ensemble" == NVT ]]; then
+        printf '+ %q -O -i %q -o %q -p %q -c %q -r %q -x %q -inf %q\n' \
+            "$amber_engine" "$work_dir/shared/minimize.in" "$work_dir/shared/minimize.out" \
+            "$work_dir/system.parm7" "$work_dir/system.rst7" \
+            "$work_dir/shared/minimize.rst7" "$work_dir/shared/minimize.nc" \
+            "$work_dir/shared/minimize.info"
+        printf '+ %q -O -i %q -o %q -p %q -c %q -r %q -x %q -inf %q\n' \
+            "$amber_engine" "$work_dir/000/equilibrate.in" "$work_dir/000/equilibrate.out" \
+            "$work_dir/system.parm7" "$work_dir/shared/equilibrate.rst7" \
+            "$work_dir/000/equilibrate.rst7" "$work_dir/000/equilibrate.nc" \
+            "$work_dir/000/equilibrate.info"
+    elif (( ! production_only )); then
         printf '+ %q -O -i %q -o %q -p %q -c %q -r %q -x %q -inf %q\n' \
             "$amber_engine" "$work_dir/000/minimize.in" "$work_dir/000/minimize.out" \
             "$work_dir/system.parm7" "$work_dir/system.rst7" \
@@ -290,7 +384,13 @@ for executable in "$amber_engine" "$amber_mpi_engine" "$mpi_launcher"; do
     fi
 done
 
-if (( ! production_only )); then
+if (( ! production_only )) && [[ "$production_ensemble" == NVT ]]; then
+    run_shared_stage minimize "$work_dir/system.rst7"
+    run_shared_stage heat "$work_dir/shared/minimize.rst7"
+    run_shared_stage equilibrate "$work_dir/shared/heat.rst7"
+
+    run_replica_stage equilibrate ../shared/equilibrate.rst7
+elif (( ! production_only )); then
     run_replica_stage minimize system.rst7
     run_replica_stage heat minimize.rst7
     run_replica_stage equilibrate heat.rst7

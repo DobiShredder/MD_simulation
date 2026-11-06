@@ -25,6 +25,6 @@ One weighted-ensemble segment
   ntr=0,
 
   ntpr=500,
-  ntwx=0,
+  ntwx=500,
   ntwr=500,
 /

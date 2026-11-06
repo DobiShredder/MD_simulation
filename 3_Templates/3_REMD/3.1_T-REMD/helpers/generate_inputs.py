@@ -5,13 +5,15 @@ from __future__ import annotations
 
 import argparse
 import csv
+import secrets
 import sys
 from pathlib import Path
 
 sys.dont_write_bytecode = True
 sys.path.insert(0, ".")
-from apply_config import apply_config  # noqa: E402
+from apply_config import apply_amber_ensemble, apply_config  # noqa: E402
 from config_utils import (  # noqa: E402
+    choice_value,
     load_config,
     nonnegative_float,
     positive_float,
@@ -108,6 +110,7 @@ def resolve(config_path: Path, method: str) -> dict[str, object]:
         "exchange_interval": positive_int(exchange, "exchange_interval_steps"),
         "random_seed": random_seed,
         "temperature_mode": temperature_mode,
+        "production_ensemble": choice_value(run, "production_ensemble", {"NVT", "NPT"}),
     }
     if method == "remd":
         values["engine"] = string_value(run, "engine")
@@ -218,115 +221,149 @@ def render_amber_input(title: str, values: list[str], extra: str = "") -> str:
     return f"{title}\n&cntrl\n{body}\n/\n{extra}"
 
 
+def minimize_input() -> str:
+    return render_amber_input(
+        "Energy minimization",
+        ["imin=1", "maxcyc=5000", "ncyc=2500", "ntb=1", "cut=10.0", "ntpr=100"],
+    )
+
+
+def heat_input(values: dict[str, object], temperature: float, seed: int) -> str:
+    dt_ps = float(values["timestep"]) / 1000.0
+    interval = int(values["trajectory_interval"])
+    heat_extra = (
+        "&wt\n"
+        " type='TEMP0',\n"
+        " istep1=0,\n"
+        f" istep2={values['heating_steps']},\n"
+        " value1=20.0,\n"
+        f" value2={temperature:.8f},\n"
+        "/\n"
+        "&wt type='END' /\n"
+    )
+    return render_amber_input(
+        f"Heat to {temperature:.8f} K",
+        [
+            "imin=0",
+            "irest=0",
+            "ntx=1",
+            f"ig={seed}",
+            f"nstlim={values['heating_steps']}",
+            f"dt={dt_ps:.6f}",
+            "tempi=20.0",
+            f"temp0={temperature:.8f}",
+            "ntt=3",
+            "gamma_ln=1.0",
+            "ntb=1",
+            "ntc=2",
+            "ntf=2",
+            "cut=10.0",
+            "ntr=1",
+            "restraint_wt=5.0",
+            "restraintmask='!:WAT,Na+,Cl- & !@H='",
+            f"ntwx={interval}",
+            f"ntwr={interval}",
+            f"ntpr={interval}",
+            "ioutfm=1",
+            "nmropt=1",
+        ],
+        heat_extra,
+    )
+
+
+def dynamics_values(values: dict[str, object], temperature: float) -> list[str]:
+    dt_ps = float(values["timestep"]) / 1000.0
+    interval = int(values["trajectory_interval"])
+    return [
+        "imin=0",
+        "irest=1",
+        "ntx=5",
+        f"dt={dt_ps:.6f}",
+        f"temp0={temperature:.8f}",
+        "ntt=3",
+        "gamma_ln=1.0",
+        "ntb=2",
+        "ntp=1",
+        "barostat=2",
+        f"pres0={values['pressure']:.6f}",
+        "taup=2.0",
+        "ntc=2",
+        "ntf=2",
+        "cut=10.0",
+        "ntr=0",
+        f"ntwx={interval}",
+        f"ntwr={interval}",
+        f"ntpr={interval}",
+        "ioutfm=1",
+    ]
+
+
+def equilibrate_input(values: dict[str, object], temperature: float, seed: int, title: str) -> str:
+    return render_amber_input(
+        f"{title} at {temperature:.8f} K",
+        [
+            f"nstlim={values['equilibration_steps']}",
+            f"ig={stage_seed(values['random_seed'], seed, EQUILIBRATION_SEED_STAGE)}",
+            *dynamics_values(values, temperature),
+        ],
+    )
+
+
+def shared_seed(random_seed: object, replica_count: int) -> int:
+    """Seed for the shared heating stage that runs once before the replicas."""
+    if random_seed == "random":
+        return secrets.randbelow(900_000_000) + 1
+    # The next value in the replica seed sequence, so it never repeats a replica seed.
+    return int(random_seed) + 7919 * replica_count
+
+
 def write_amber_replica_inputs(
     output: Path, states_path: Path, values: dict[str, object]
 ) -> None:
-    dt_ps = float(values["timestep"]) / 1000.0
-    interval = int(values["trajectory_interval"])
     exchange = int(values["exchange_interval"])
     production_steps = int(values["production_steps_per_segment"])
     if production_steps % exchange != 0:
         raise ValueError(
             "production steps per segment must be divisible by exchange_interval_steps"
         )
+    rows = read_states(states_path, "remd")
+    nvt_production = values["production_ensemble"] == "NVT"
 
-    for row in read_states(states_path, "remd"):
+    if nvt_production:
+        # NVT replica exchange needs one common volume (Amber26 manual, REMD):
+        # heat and NPT-equilibrate once at the lowest temperature, then start
+        # every replica from that box at constant volume.
+        shared = output / "shared"
+        shared.mkdir(parents=True, exist_ok=True)
+        base_temperature = float(rows[0]["temperature_K"])
+        seed = shared_seed(values["random_seed"], len(rows))
+        (shared / "minimize.in").write_text(minimize_input(), encoding="utf-8")
+        (shared / "heat.in").write_text(heat_input(values, base_temperature, seed), encoding="utf-8")
+        (shared / "equilibrate.in").write_text(
+            equilibrate_input(values, base_temperature, seed, "Shared NPT equilibration"),
+            encoding="utf-8",
+        )
+
+    for row in rows:
         replica = row["replica"]
         temperature = float(row["temperature_K"])
         seed = int(row["seed"])
         directory = output / replica
         directory.mkdir(parents=True, exist_ok=True)
 
-        (directory / "minimize.in").write_text(
-            render_amber_input(
-                "Energy minimization",
-                [
-                    "imin=1",
-                    "maxcyc=5000",
-                    "ncyc=2500",
-                    "ntb=1",
-                    "cut=10.0",
-                    "ntpr=100",
-                ],
-            ),
-            encoding="utf-8",
-        )
-
-        heat_extra = (
-            "&wt\n"
-            " type='TEMP0',\n"
-            " istep1=0,\n"
-            f" istep2={values['heating_steps']},\n"
-            " value1=20.0,\n"
-            f" value2={temperature:.8f},\n"
-            "/\n"
-            "&wt type='END' /\n"
-        )
-        (directory / "heat.in").write_text(
-            render_amber_input(
-                f"Heat to {temperature:.8f} K",
-                [
-                    "imin=0",
-                    "irest=0",
-                    "ntx=1",
-                    f"ig={seed}",
-                    f"nstlim={values['heating_steps']}",
-                    f"dt={dt_ps:.6f}",
-                    "tempi=20.0",
-                    f"temp0={temperature:.8f}",
-                    "ntt=3",
-                    "gamma_ln=1.0",
-                    "ntb=1",
-                    "ntc=2",
-                    "ntf=2",
-                    "cut=10.0",
-                    "ntr=1",
-                    "restraint_wt=5.0",
-                    "restraintmask='!:WAT,Na+,Cl- & !@H='",
-                    f"ntwx={interval}",
-                    f"ntwr={interval}",
-                    f"ntpr={interval}",
-                    "ioutfm=1",
-                    "nmropt=1",
-                ],
-                heat_extra,
-            ),
-            encoding="utf-8",
-        )
-
-        dynamics = [
-            "imin=0",
-            "irest=1",
-            "ntx=5",
-            f"dt={dt_ps:.6f}",
-            f"temp0={temperature:.8f}",
-            "ntt=3",
-            "gamma_ln=1.0",
-            "ntb=2",
-            "ntp=1",
-            "barostat=2",
-            f"pres0={values['pressure']:.6f}",
-            "taup=2.0",
-            "ntc=2",
-            "ntf=2",
-            "cut=10.0",
-            "ntr=0",
-            f"ntwx={interval}",
-            f"ntwr={interval}",
-            f"ntpr={interval}",
-            "ioutfm=1",
-        ]
-        (directory / "equilibrate.in").write_text(
-            render_amber_input(
-                f"NPT equilibration at {temperature:.8f} K",
-                [
-                    f"nstlim={values['equilibration_steps']}",
-                    f"ig={stage_seed(values['random_seed'], seed, EQUILIBRATION_SEED_STAGE)}",
-                    *dynamics,
-                ],
-            ),
-            encoding="utf-8",
-        )
+        if nvt_production:
+            # apply_config sets the ensemble; main() switches this stage to NVT.
+            (directory / "equilibrate.in").write_text(
+                equilibrate_input(values, temperature, seed, "NVT equilibration in the shared box"),
+                encoding="utf-8",
+            )
+        else:
+            (directory / "minimize.in").write_text(minimize_input(), encoding="utf-8")
+            (directory / "heat.in").write_text(heat_input(values, temperature, seed), encoding="utf-8")
+            (directory / "equilibrate.in").write_text(
+                equilibrate_input(values, temperature, seed, "NPT equilibration"),
+                encoding="utf-8",
+            )
         # One input per segment lets each production restart use its own ig.
         for segment in range(1, int(values["segments"]) + 1):
             segment_seed = stage_seed(
@@ -340,11 +377,23 @@ def write_amber_replica_inputs(
                         f"numexchg={production_steps // exchange}",
                         f"ig={segment_seed}",
                         "iwrap=1",
-                        *dynamics,
+                        *dynamics_values(values, temperature),
                     ],
                 ),
                 encoding="utf-8",
             )
+
+
+def keep_replica_equilibration_nvt(output: Path, states_path: Path, values: dict[str, object]) -> None:
+    """Undo the NPT that apply_config gives every equilibrate.in by filename.
+
+    equilibration_ensemble applies to the shared stage. With NVT production every
+    replica equilibration must keep the shared volume.
+    """
+    for row in read_states(states_path, "remd"):
+        path = output / row["replica"] / "equilibrate.in"
+        text = apply_amber_ensemble(path.read_text(encoding="utf-8"), "NVT", float(values["pressure"]), "isotropic")
+        path.write_text(text, encoding="utf-8")
 
 
 def write_gromacs_replica_inputs(
@@ -455,6 +504,13 @@ def main() -> None:
         write_replica_inputs(args.output.parent, args.method, args.states, values)
         write_resolved(args.output.parent, args.method, values, len(rows), args.salt_pairs)
     apply_config(args.config, args.output.parent)
+    if (
+        args.method == "remd"
+        and args.states is not None
+        and args.salt_pairs is not None
+        and values["production_ensemble"] == "NVT"
+    ):
+        keep_replica_equilibration_nvt(args.output.parent, args.states, values)
 
 
 if __name__ == "__main__":

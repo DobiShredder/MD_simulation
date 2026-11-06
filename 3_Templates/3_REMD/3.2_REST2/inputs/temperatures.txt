@@ -1,0 +1,6 @@
+# Default 12-replica effective-temperature ladder in K.
+# Geometric spacing: T_i = 300 * (450 / 300)^(i / 11), i = 0..11.
+# The first value must equal run.temperature.
+300.000000, 311.264471, 322.951902, 335.078177
+347.659771, 360.713782, 374.257948, 388.310674
+402.891055, 418.018903, 433.714775, 450.000000

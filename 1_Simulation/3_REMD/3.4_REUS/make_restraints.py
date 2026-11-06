@@ -9,6 +9,15 @@ from pathlib import Path
 
 import parmed
 
+# AMBER restraint energy is E = rk (r - r0)^2, so the harmonic constant is 2 rk.
+# rk = 1.0 with the ~1 A window spacing gives a predicted neighbor exchange
+# acceptance of about 0.2 and a window width of about 0.55 A at 300 K.
+RESTRAINT_FORCE_KCAL_MOL_A2 = 1.0
+# r1 = 0 and r4 = 99 A keep sampled distances in the harmonic region,
+# which the WHAM analysis assumes.
+LOWER_LINEAR_BOUND_A = 0.0
+UPPER_LINEAR_BOUND_A = 99.0
+
 
 def main() -> None:
     parser = argparse.ArgumentParser()
@@ -47,9 +56,9 @@ def main() -> None:
         text = (
             "&rst\n"
             f" iat={first[0]},{last[0]},\n"
-            f" r1={center - 2.0:.8f}, r2={center:.8f}, "
-            f"r3={center:.8f}, r4={center + 2.0:.8f},\n"
-            " rk2=10.0, rk3=10.0,\n"
+            f" r1={LOWER_LINEAR_BOUND_A:.8f}, r2={center:.8f}, "
+            f"r3={center:.8f}, r4={UPPER_LINEAR_BOUND_A:.8f},\n"
+            f" rk2={RESTRAINT_FORCE_KCAL_MOL_A2:.1f}, rk3={RESTRAINT_FORCE_KCAL_MOL_A2:.1f},\n"
             "/\n"
         )
         path = args.output_directory / state["replica"] / "distance.RST"

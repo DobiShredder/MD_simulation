@@ -249,10 +249,19 @@ if ! run_grompp "base topology" "$build_tmp/grompp_preprocess.log" "$reference_c
 fi
 "$python" "$helper_dir/scale_cmap.py" "$work_dir/topol.top" "$build_tmp/processed.top" 1.0
 
+# Every non-water, non-ion molecule is hot; the selection is written to hot_molecules.tsv.
 "$python" helpers/generate_rest3_topologies.py "$build_tmp/processed.top" "$work_dir/states.tsv" "$work_dir"
-# The parser scales every atom of hot_molecules=[0] in generate_rest3_topologies.py;
-# ions stay cold. run.sh compares each replica's grompp net charge with this table.
-"$python" "$helper_dir/net_charge.py" "$build_tmp/processed.top" --hot-molecule-index 0 \
+hot_molecule_indices=()
+while IFS=$'\t' read -r molecule_index _; do
+    if [[ "$molecule_index" == molecule_index ]]; then
+        continue
+    fi
+    hot_molecule_indices+=("$molecule_index")
+done < "$work_dir/hot_molecules.tsv"
+# The parser scales every atom of the hot molecules; ions stay cold.
+# run.sh compares each replica's grompp net charge with this table.
+"$python" "$helper_dir/net_charge.py" "$build_tmp/processed.top" \
+    --hot-molecule-index "${hot_molecule_indices[@]}" \
     --states "$work_dir/states.tsv" --output "$work_dir/net_charge.tsv"
 while IFS=$'\t' read -r replica _; do
     if [[ "$replica" == replica ]]; then
@@ -315,7 +324,8 @@ while IFS=$'\t' read -r replica _; do
 done < "$work_dir/states.tsv"
 
 for output in "$work_dir/system.gro" "$work_dir/topol.top" "$work_dir/states.tsv" \
-    "$work_dir/net_charge.tsv" "$work_dir/resolved_config.toml" "$work_dir/energy_check.tsv"; do
+    "$work_dir/net_charge.tsv" "$work_dir/hot_molecules.tsv" "$work_dir/resolved_config.toml" \
+    "$work_dir/energy_check.tsv"; do
     if [[ ! -s "$output" ]]; then
         die "Final build output is missing or empty: $output"
     fi

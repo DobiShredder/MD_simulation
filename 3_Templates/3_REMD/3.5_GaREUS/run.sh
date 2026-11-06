@@ -212,6 +212,87 @@ run_stage_if_needed() {
     echo "Completed: $stage ($work_dir)"
 }
 
+shared_outputs_complete() {
+    local stage=$1 suffix
+    local require_complete=${2:-}
+    local required=(out rst7 info)
+    if [[ "$stage" != minimize ]]; then
+        required+=(nc)
+    fi
+    for suffix in "${required[@]}"; do
+        if [[ ! -s "$work_dir/shared/$stage.$suffix" ]]; then
+            if [[ "$require_complete" == --require-complete ]]; then
+                die "shared $stage output is incomplete: $work_dir/shared/$stage.$suffix; existing files were preserved."
+            fi
+            return 1
+        fi
+    done
+}
+
+shared_stage_state() {
+    local stage=$1 output
+    local marker="$work_dir/.shared_$stage.complete"
+    if [[ -f "$marker" ]] && shared_outputs_complete "$stage"; then
+        echo complete
+        return
+    fi
+    if [[ -e "$marker" ]]; then
+        echo partial
+        return
+    fi
+    for output in "$work_dir/shared/$stage."{out,rst7,nc,info}; do
+        if [[ -e "$output" ]]; then
+            echo partial
+            return
+        fi
+    done
+    echo missing
+}
+
+# The unbiased system runs once at constant pressure; every window starts
+# from this box, so NVT exchange uses one volume (Amber26 manual, REMD).
+run_shared_stage_if_needed() {
+    local stage=$1
+    local input_restart=$2
+    local shared_dir="$work_dir/shared"
+    local status
+    "${PYTHON:-python3}" helpers/input_identity.py \
+        --record "$shared_dir/.$stage.identity.json" --stage "shared $stage" \
+        --directory "$shared_dir" --marker "$work_dir/.shared_$stage.complete" \
+        --value "${AMBER_OPTIONS:-}" -- "$amber_engine" \
+        -O -i "$stage.in" -o "$stage.out" -p ../system.parm7 -c "$input_restart" \
+        -r "$stage.rst7" -x "$stage.nc" -inf "$stage.info"
+
+    status=$(shared_stage_state "$stage")
+    if [[ "$status" == complete ]]; then
+        echo "Skipping completed stage: shared $stage ($work_dir)"
+        return
+    fi
+    if [[ "$status" == partial ]]; then
+        die "Partial shared $stage output detected and retained in $shared_dir. Use a new WORK_DIR or resolve the partial stage."
+    fi
+
+    echo "Running shared $stage stage."
+    if ! (
+        cd "$shared_dir"
+        "$amber_engine" \
+            "${amber_options[@]}" \
+            -O \
+            -i "$stage.in" \
+            -o "$stage.out" \
+            -p ../system.parm7 \
+            -c "$input_restart" \
+            -r "$stage.rst7" \
+            -x "$stage.nc" \
+            -inf "$stage.info"
+    ); then
+        die "shared $stage Calculation failed: $shared_dir/$stage.out"
+    fi
+    shared_outputs_complete "$stage" --require-complete
+    touch "$work_dir/.shared_$stage.complete"
+    echo "Completed: shared $stage ($work_dir)"
+}
+
 prepare_common_gamd_state() {
     local reference_dir="$work_dir/$gamd_reference_replica"
     local output replica replica_dir
@@ -367,8 +448,10 @@ if (( dry_run )); then
     echo "Replica exchange engine: $amber_mpi_engine"
     echo "$replica_count configured windows with one shared GaMD state"
     if (( ! production_only )); then
-        # Preproduction runs inside each window directory, as in run_stage.
+        # Shared stages run once in work/shared; windows then start from its NPT box.
         printf '+ cd %q && %q -O -i minimize.in -o minimize.out -p ../system.parm7 -c ../system.rst7 -r minimize.rst7 -x minimize.nc -inf minimize.info\n' \
+            "$work_dir/shared" "$amber_engine"
+        printf '+ cd %q && %q -O -i equilibrate.in -o equilibrate.out -p ../system.parm7 -c ../shared/equilibrate.rst7 -r equilibrate.rst7 -x equilibrate.nc -inf equilibrate.info\n' \
             "$work_dir/000" "$amber_engine"
         printf '+ cd %q && %q -O -i gamd_prepare.in -o gamd_prepare.out -p ../system.parm7 -c equilibrate.rst7 -r gamd_prepare.rst7 -x gamd_prepare.nc -inf gamd_prepare.info -gamd gamd.prepare.log\n' \
             "$work_dir/$gamd_reference_replica" "$amber_engine"
@@ -393,9 +476,11 @@ if (( dry_run )); then
 fi
 
 if (( ! production_only )); then
-    run_stage_if_needed minimize system.rst7
-    run_stage_if_needed heat minimize.rst7
-    run_stage_if_needed equilibrate heat.rst7
+    run_shared_stage_if_needed minimize ../system.rst7
+    run_shared_stage_if_needed heat minimize.rst7
+    run_shared_stage_if_needed equilibrate heat.rst7
+
+    run_stage_if_needed equilibrate ../shared/equilibrate.rst7
 fi
 prepare_common_gamd_state
 if (( preparation_only )); then

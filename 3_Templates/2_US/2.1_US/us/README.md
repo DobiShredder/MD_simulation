@@ -3,7 +3,8 @@
 ## 한국어
 
 `windows.tsv`의 각 row는 distance center(Å)와 AMBER restraint force
-constant(kcal mol⁻¹ Å⁻²)를 지정합니다. `build.sh`는 rMD seed,
+constant(kcal mol⁻¹ Å⁻²)를 지정합니다. 기본값 1.0은 1 Å 간격에서 300 K window 폭
+약 0.55 Å로 인접 histogram이 겹치게 합니다. `build.sh`는 rMD seed,
 공통 topology와 restraint를 `work/001`, `work/002`, ...에 배치합니다.
 `build.sh`와 `run.sh`는 `WORK_DIR`(기본 `work`)을 같은 window root로
 사용합니다. Heating input은 heavy-atom positional restraint(`ntr=1`)와 함께
@@ -23,7 +24,8 @@ partial output을 발견하면 기존 파일을 보존하고 중단합니다.
 ## English
 
 Each `windows.tsv` row gives a distance center in Å and an AMBER restraint
-force constant in kcal mol⁻¹ Å⁻². `build.sh` combines each rMD seed with
+force constant in kcal mol⁻¹ Å⁻². The default 1.0 gives about 0.55 Å wide 300 K
+windows at 1 Å spacing, so neighboring histograms overlap. `build.sh` combines each rMD seed with
 the shared topology and a generated restraint. `run.sh` supports single-window,
 range, preparation-only, production-only, and dry-run selection.
 Both scripts use `WORK_DIR` (default `work`) as the window root. The heating

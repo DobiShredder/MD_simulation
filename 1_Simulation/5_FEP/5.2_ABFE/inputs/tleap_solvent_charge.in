@@ -1,0 +1,11 @@
+source leaprc.gaff2
+source leaprc.water.opc
+
+loadamberparams jz4.frcmod
+JZ4 = loadmol2 jz4.mol2
+# Two identical JZ4 copies for the linear-TI charge stage.
+system = combine { JZ4 JZ4 }
+solvatebox system OPCBOX 20.0
+
+saveamberparm system solvent_charge.parm7 solvent_charge.rst7
+quit

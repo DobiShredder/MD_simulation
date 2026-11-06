@@ -2,24 +2,29 @@
 
 ## 한국어
 
-최소 2개·짝수 replica만 지원합니다. `build.sh`와 `run.sh`는 홀수 schedule을 자동 조정하지 않고 거부합니다. `run.sh --dry-run`도 실제 state table의 count를 검사합니다. 기존 홀수 결과는 새 work directory에서 다시 준비합니다.
+최소 2개·짝수 replica만 지원합니다. Auto mode에서 predictor가 홀수 N개 state를 내면 온도 범위는 그대로 두고 target exchange probability를 올려 N+1개로 맞춥니다. N+1개가 되는 값 중 가장 큰 값을 쓰므로 모든 인접 pair의 예상 교환 확률이 거의 같아집니다. 실제로 쓴 값은 build 출력과 `work/system_counts.tsv`의 `used_target_exchange_probability`에 남습니다. File mode의 홀수 schedule은 자동으로 바꾸지 않고 거부합니다. `run.sh --dry-run`도 실제 state table의 count를 검사합니다. 기존 홀수 결과는 새 work directory에서 다시 준비합니다.
 
-File schedule은 LEaP 실행 전에 검사합니다. Auto count는 임시 topology에서 predictor를 실행한 뒤 검사하고, 통과한 preparation만 work directory에 복사합니다. 홀수이면 기존 input/state/log를 보존하고 진단용 temporary directory를 남깁니다. `build.sh --dry-run`은 file을 검사하지만 auto predictor를 실행하지 않으므로 auto count 검증은 실제 build까지 보류됩니다. Predictor 계산식과 temperature/target probability는 자동 변경하지 않습니다.
+File schedule은 LEaP 실행 전에 검사합니다. Auto ladder는 임시 topology에서 predictor를 실행해 만들고, 통과한 preparation만 work directory에 복사합니다. State 생성이 실패하면 기존 input/state/log를 보존하고 진단용 temporary directory를 남깁니다. `build.sh --dry-run`은 auto predictor를 실행하지 않으므로 auto replica 수는 실제 build에서 정해집니다. Predictor 계산식과 온도 범위는 바꾸지 않습니다.
 
 사용자가 직접 실행하는 파일은 이 directory의 root에 있습니다. `helpers/`는 `build.sh`, `run.sh` 또는 `anal.py`가 자동 호출하는 leaf-local 내부 code이며 직접 실행하지 않습니다.
 
 중단되거나 marker가 없는 stage output은 자동 삭제하거나 재실행하지 않고 보존한 채 중단합니다.
 
-Water count를 위한 first-pass LEaP input과 `solvated.pdb`는 `work/.build_tmp.XXXXXX/`에서 생성합니다. 전체 build가 성공하면 temporary directory를 삭제하고, 실패하면 진단을 위해 경로를 출력하고 보존합니다. Final PDB, topology, restart, resolved config와 LEaP log는 유지합니다. REST build의 preprocessing TPR, processed topology와 energy-check raw file도 같은 temporary directory에 둡니다. 성공 후에는 `work/topol.top`, `work/system.gro`, replica topology, `work/build.log`, `work/build_summary.toml`, `work/energy_check.tsv`와 `work/net_charge.tsv`를 남깁니다. `./build.sh --keep-intermediates INPUT.pdb`를 사용하면 성공 후에도 temporary directory를 보존합니다. Replica는 공통 `work/system.gro`를 직접 참조합니다. 실제 minimization, equilibration, production TPR·`*.grompp.log`와 restart는 정리하지 않습니다.
+Water count를 위한 first-pass LEaP input과 `solvated.pdb`는 `work/.build_tmp.XXXXXX/`에서 생성합니다. 전체 build가 성공하면 temporary directory를 삭제하고, 실패하면 진단을 위해 경로를 출력하고 보존합니다. Final PDB, topology, restart, resolved config와 LEaP log는 유지합니다. REST build의 preprocessing TPR, processed topology와 energy-check raw file도 같은 temporary directory에 둡니다. 성공 후에는 `work/topol.top`, `work/system.gro`, replica topology, `work/build.log`, `work/build_summary.toml`, `work/energy_check.tsv`, `work/net_charge.tsv`와 `work/hot_molecules.tsv`를 남깁니다. `./build.sh --keep-intermediates INPUT.pdb`를 사용하면 성공 후에도 temporary directory를 보존합니다. Replica는 공통 `work/system.gro`를 직접 참조합니다. 실제 minimization, equilibration, production TPR·`*.grompp.log`와 restart는 정리하지 않습니다.
 
-이 directory의 runtime code는 별도로 복사해 사용할 수 있습니다. GROMACS를
-build할 때는 상위 `patches/` directory의 correction도 함께 사용합니다. Python
+이 directory의 runtime code는 별도로 복사해 사용할 수 있습니다. Python
 dependency는 복사한 directory의 `requirements.txt`를 사용해 설치합니다.
 
 REST2 scaling에 κ schedule을 추가합니다. 기본 schedule은 357 K까지 κ=1.0을
 유지하고 450 K에서 1.020이 되도록 선형 보간합니다. 이 값은 universal default가
 아니며 IDP와 force-field/water 조합별 pilot simulation에서 compactness와 exchange를
 확인해야 합니다. κ 효과는 temperature predictor에 포함되지 않습니다.
+
+기본 `temperature_mode = "file"`은 `inputs/temperatures.txt`의 12개 effective
+temperature(300–450 K, geometric 간격)를 사용하므로 system 크기와 관계없이
+12 replica를 만듭니다. 1UBQ(tempered solute 1231 atom)에서 offline predictor가
+예측한 이웃 exchange 확률은 κ 효과를 빼고 약 0.27–0.30입니다. Solute가 더 크면
+첫 production segment의 exchange 통계를 확인하고 replica 수를 늘립니다.
 
 ```bash
 ./download.sh 1UBQ
@@ -29,10 +34,9 @@ replicas=$(awk 'NR > 1 {count++} END {print count + 0}' work/states.tsv)
 ```
 
 명시적인 κ 목록은 `[rest3_kappa]`의 `mode = "file"`과 `file`로 입력합니다.
-Temperature와 κ 목록의 길이는 같아야 합니다. Runtime에는 REST2와 같은 patched
-GROMACS/PLUMED HREX build와 상위 directory의
-[`HREX_WORKLOAD_FIX_1` correction](../patches/gromacs-2024.3-plumed-2.10-hrex-energy.patch)이
-필요합니다. 적용 순서와 검증 범위는 [상위 README](../README.md)에 있습니다.
+Temperature와 κ 목록의 길이는 같아야 합니다. Runtime에는 REST2와 같은
+PLUMED 2.10.2 이상으로 patch한 GROMACS 2024.3 external-MPI build가
+필요합니다. Build 방법과 검증 범위는 [상위 README](../README.md)에 있습니다.
 `download.sh`는 source PDB와 함께
 검증된 `repex-topology-parser` 0.2.2 source를 내려받습니다.
 기본 OPC 설정에서는 `kappa_atom_names=['OW']`가 water oxygen type을 선택합니다.
@@ -51,7 +55,7 @@ option도 유지합니다.
 | `water_model` | `TIP3P` (`ff99SB-ILDN`, `ff14SB`), `OPC` (`ff19SB`) | `OPC` | LEaP water와 REST3 water atom type을 함께 결정합니다. |
 | `box_shape` | `rectangular`, `octahedral` | `rectangular` | 각각 `solvatebox`, `solvateoct`를 사용합니다. |
 | `salt_type` | `NaCl`, `KCl`, `MgCl2`, `CaCl2` | `NaCl` | Neutralization 뒤 추가할 bulk salt를 선택합니다. |
-| `tempered_region` | `solute`만 지원 | `solute` | Water와 ion을 제외한 solute를 tempering합니다. 다른 값은 build 시작 전에 error로 중단합니다. |
+| `tempered_region` | `solute`만 지원 | `solute` | Water와 ion을 제외한 모든 molecule(여러 protein chain, ligand 포함)을 hot molecule로 parser에 전달합니다. 선택 결과는 `work/hot_molecules.tsv`에 기록합니다. 다른 값은 build 시작 전에 error로 중단합니다. |
 | `equilibration_ensemble` | `NPT`만 지원 | `NPT` | Replica equilibration에 적용합니다. |
 | `production_ensemble` | `NVT`, `NPT` | `NPT` | GROMACS production pressure coupling을 설정합니다. |
 | `constraint_mode` | `h-bonds`만 지원 | `h-bonds` | Hydrogen-containing bond에 LINCS를 적용합니다. |
@@ -59,12 +63,14 @@ option도 유지합니다.
 
 | Mode option | Mode | 사용하는 설정 | 무시하는 설정과 결과 |
 | --- | --- | --- | --- |
-| `temperature_mode` | `auto` (기본값) | `minimum_temperature`, `maximum_temperature`, `target_exchange_probability`, `generator_tolerance` | `temperature_file`을 무시하고 tempered-solute atom 수로 ladder를 계산합니다. |
-| `temperature_mode` | `file` | `temperature_file` | Auto 설정을 무시하고 file temperature에서 `lambda_pp`와 `lambda_pw`를 계산합니다. |
+| `temperature_mode` | `auto` | `minimum_temperature`, `maximum_temperature`, `target_exchange_probability`, `generator_tolerance` | `temperature_file`을 무시하고 tempered-solute atom 수로 ladder를 계산합니다. 1UBQ 기본값(300–450 K, p=0.20)은 11 state가 나와 p≈0.286, 12 state로 조정됩니다. |
+| `temperature_mode` | `file` (기본값) | `temperature_file` | Auto 설정을 무시하고 file temperature에서 `lambda_pp`와 `lambda_pw`를 계산합니다. |
 | `rest3_kappa.mode` | `linear` (기본값) | `onset_temperature`, `maximum_temperature`, `maximum_kappa` | `file`을 무시하고 onset 이하 1.0, 이후 선형 κ를 계산합니다. |
 | `rest3_kappa.mode` | `file` | `file` | Linear 설정을 무시하고 κ 목록을 순서대로 사용합니다. |
 
-Temperature와 κ file은 사용자가 생성해야 합니다. 두 file 모두 공백, comma,
+기본 `inputs/temperatures.txt`는 `T_i = 300 × 1.5^(i/11)`(i = 0–11)입니다. 다른
+범위나 replica 수를 쓰려면 이 file을 수정합니다. κ file은 사용자가 생성해야
+합니다. 두 file 모두 공백, comma,
 semicolon, `|`를 구분자로 받고 `#` comment를 허용합니다. Temperature는 둘 이상의
 양수여야 하고 중복 없이 오름차순이며 첫 값은 `run.temperature`와 같아야 합니다.
 κ 개수는 temperature state 수와 같아야 하고 모든 κ는 1.0 이상이어야 합니다.
@@ -74,13 +80,23 @@ semicolon, `|`를 구분자로 받고 `#` comment를 허용합니다. Temperatur
 REST는 hot solute atom의 charge만 `sqrt(λ)`로 줄이고 water와 ion은 cold로
 둡니다. 따라서 charged solute의 scaled replica에는 `Q_ref + q_hot(sqrt(λ) − 1)`의
 net charge가 생깁니다. `Q_ref`는 unscaled topology의 total charge(변환 roundoff
-수준)이고 `q_hot`은 parser의 hot molecule 0(첫 protein molecule) atom의 원래 charge 합입니다. PME에서 GROMACS는
+수준)이고 `q_hot`은 `work/hot_molecules.tsv`에 기록된 모든 hot molecule atom의 원래 charge 합입니다. PME에서 GROMACS는
 균일한 neutralizing background를 더하고 Ewald net-charge warning 하나를
 출력합니다. Solute만 tempering하는 방식은
 [PLUMED HREX tutorial](https://www.plumed.org/doc-v2.9/user-doc/html/hrex.html)과
 [REST3 parser 예제](https://github.com/koreyr/repex_topology_parser)를 따릅니다.
 Background charge artifact가 큰 system(예: membrane)에서는 이 선택을 따로
 검토합니다.
+
+Parser 0.2.2는 molecule 이름에 `system` 같은 section 단어가 들어 있으면 topology를
+잘못 읽습니다. ParmEd는 여러 residue로 된 molecule을 `system1`, `system2`로
+부르므로 `helpers/convert_topology.py`가 이 이름을 `Solute_1`, `Solute_2`로
+바꿉니다. Parser는 dihedral type을 찾을 때 모든 hot molecule에 molecule 0의 atom
+type을 쓰므로 `helpers/rest3_parser_adapter.py`가 molecule별 atom type을 쓰도록
+고칩니다. 두 peptide와 ion이 있는 작은 AmberTools system에서 두 molecule의
+charge(`sqrt(λ)`), atom type과 dihedral force constant(`λ`) scaling, ion/water
+보존을 확인했습니다. 여러 molecule system의 실제 `grompp`와 HREX run은
+미검증입니다.
 
 `maxwarn`은 public config option이 아닙니다. `build.sh`는 `helpers/net_charge.py`로
 replica별 예상 charge를 `work/net_charge.tsv`에 기록합니다. `helpers/grompp_utils.bash`의
@@ -173,26 +189,36 @@ continuation은 미검증입니다. Runner가 GPU ID를 전달하므로 CPU-only
 
 ## English
 
-Only even replica counts of at least two are supported. `build.sh` and `run.sh` reject odd schedules without adjusting them. `run.sh --dry-run` checks the actual state-table count too. Prepare a new work directory for results built with an odd schedule.
+Only even replica counts of at least two are supported. When the auto predictor returns an odd count N, the temperature range is kept and the target exchange probability is raised to give N+1 states. The largest target that still gives N+1 is used, so every neighbor pair has nearly the same predicted probability. The value used is printed by the build and stored as `used_target_exchange_probability` in `work/system_counts.tsv`. Odd file schedules are rejected, not adjusted. `run.sh --dry-run` checks the actual state-table count too. Prepare a new work directory for results built with an odd schedule.
 
-File schedules are checked before LEaP. Auto counts are checked after running the predictor on a temporary topology; only preparation with a valid count is copied to the work directory. Odd results preserve existing inputs, states and logs and retain temporary diagnostics. `build.sh --dry-run` validates files but defers auto-count validation until an actual build. The predictor algorithm, temperature range and target probability are not adjusted automatically.
+File schedules are checked before LEaP. The auto ladder is predicted on a temporary topology, and only preparation that passes is copied to the work directory. If state generation fails, existing inputs, states and logs are preserved and temporary diagnostics are retained. `build.sh --dry-run` does not run the auto predictor, so the auto replica count is set by the actual build. The predictor algorithm and temperature range are not changed.
 
 User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh`, `run.sh`, or `anal.py`; it is not a separate entry point.
 
 Interrupted or unmarked stage output is retained and stops the workflow instead of being deleted or rerun automatically.
 
-The first-pass LEaP input and water-count `solvated.pdb` are created under `work/.build_tmp.XXXXXX/`. A successful build removes that temporary directory; a failed build prints and retains it for diagnosis. Final PDB, topology, restart, resolved config, and LEaP logs are retained. REST preprocessing TPRs, processed topologies, and raw energy-check files use the same temporary directory. After success, the build retains `work/topol.top`, `work/system.gro`, replica topologies, `work/build.log`, `work/build_summary.toml`, `work/energy_check.tsv`, and `work/net_charge.tsv`. Use `./build.sh --keep-intermediates INPUT.pdb` to retain the temporary directory after success. Replicas reference the shared `work/system.gro` directly. Run-stage minimization, equilibration, production TPRs, `*.grompp.log` files, and restarts are never cleaned.
+The first-pass LEaP input and water-count `solvated.pdb` are created under `work/.build_tmp.XXXXXX/`. A successful build removes that temporary directory; a failed build prints and retains it for diagnosis. Final PDB, topology, restart, resolved config, and LEaP logs are retained. REST preprocessing TPRs, processed topologies, and raw energy-check files use the same temporary directory. After success, the build retains `work/topol.top`, `work/system.gro`, replica topologies, `work/build.log`, `work/build_summary.toml`, `work/energy_check.tsv`, `work/net_charge.tsv`, and `work/hot_molecules.tsv`. Use `./build.sh --keep-intermediates INPUT.pdb` to retain the temporary directory after success. Replicas reference the shared `work/system.gro` directly. Run-stage minimization, equilibration, production TPRs, `*.grompp.log` files, and restarts are never cleaned.
 
 REST scales only hot solute charges by `sqrt(lambda)`; water and ions stay
 cold. A scaled replica of a charged solute therefore carries a net charge of
 `Q_ref + q_hot(sqrt(lambda) - 1)`, where `Q_ref` is the total charge of the
 unscaled topology (conversion roundoff) and `q_hot` is the unscaled charge of
-the atoms of parser hot molecule 0 (the first, protein molecule). With PME, GROMACS adds a uniform neutralizing background
+all hot-molecule atoms listed in `work/hot_molecules.tsv`. With PME, GROMACS adds a uniform neutralizing background
 and prints one Ewald net-charge warning. Tempering only the solute follows the
 [PLUMED HREX tutorial](https://www.plumed.org/doc-v2.9/user-doc/html/hrex.html)
 and the [REST3 parser examples](https://github.com/koreyr/repex_topology_parser).
 Review this choice for systems where background-charge artifacts are large,
 such as membranes.
+
+Parser 0.2.2 misreads a topology when a molecule name contains a section word
+such as `system`. ParmEd names multi-residue molecules `system1`, `system2`, so
+`helpers/convert_topology.py` renames them `Solute_1`, `Solute_2`. The parser
+also looks up dihedral types with molecule 0's atom types for every hot
+molecule; `helpers/rest3_parser_adapter.py` makes it use each molecule's own
+types. A small AmberTools system with two peptides and ions confirmed charge
+(`sqrt(lambda)`), atom-type and dihedral force-constant (`lambda`) scaling for
+both molecules and unchanged ions and water. Real `grompp` and HREX runs of a
+multi-molecule system are unverified.
 
 `maxwarn` is not a public configuration option. `build.sh` writes each
 replica's expected charge to `work/net_charge.tsv` with `helpers/net_charge.py`.
@@ -213,7 +239,7 @@ gate has not been run with real GROMACS (unverified).
 | `water_model` | `TIP3P` (`ff99SB-ILDN`, `ff14SB`), `OPC` (`ff19SB`) | `OPC` | Selects both LEaP water and REST3 water atom types. |
 | `box_shape` | `rectangular`, `octahedral` | `rectangular` | Uses `solvatebox` or `solvateoct`, respectively. |
 | `salt_type` | `NaCl`, `KCl`, `MgCl2`, `CaCl2` | `NaCl` | Selects bulk salt added after neutralization. |
-| `tempered_region` | `solute` only | `solute` | Tempers the non-water, non-ion solute. Other values stop the build before it starts. |
+| `tempered_region` | `solute` only | `solute` | Passes every non-water, non-ion molecule (including multiple protein chains and ligands) to the parser as a hot molecule and records the selection in `work/hot_molecules.tsv`. Other values stop the build before it starts. |
 | `equilibration_ensemble` | `NPT` only | `NPT` | Applies to replica equilibration. |
 | `production_ensemble` | `NVT`, `NPT` | `NPT` | Selects GROMACS production pressure coupling. |
 | `constraint_mode` | `h-bonds` only | `h-bonds` | Applies LINCS to bonds involving hydrogen. |
@@ -221,31 +247,37 @@ gate has not been run with real GROMACS (unverified).
 
 | Mode option | Mode | Settings used | Ignored settings and result |
 | --- | --- | --- | --- |
-| `temperature_mode` | `auto` (default) | `minimum_temperature`, `maximum_temperature`, `target_exchange_probability`, `generator_tolerance` | Ignores `temperature_file` and predicts a ladder from tempered-solute atoms. |
-| `temperature_mode` | `file` | `temperature_file` | Ignores auto settings and computes `lambda_pp` and `lambda_pw` from file temperatures. |
+| `temperature_mode` | `auto` | `minimum_temperature`, `maximum_temperature`, `target_exchange_probability`, `generator_tolerance` | Ignores `temperature_file` and predicts a ladder from tempered-solute atoms. For 1UBQ the defaults (300–450 K, p=0.20) give 11 states, adjusted to 12 at p≈0.286. |
+| `temperature_mode` | `file` (default) | `temperature_file` | Ignores auto settings and computes `lambda_pp` and `lambda_pw` from file temperatures. |
 | `rest3_kappa.mode` | `linear` (default) | `onset_temperature`, `maximum_temperature`, `maximum_kappa` | Ignores `file`; κ is 1.0 through onset and then increases linearly. |
 | `rest3_kappa.mode` | `file` | `file` | Ignores linear settings and uses the κ list in order. |
 
-The user must create the temperature and κ files. Both accept whitespace,
+The default `inputs/temperatures.txt` holds `T_i = 300 × 1.5^(i/11)` for
+i = 0–11; edit it to change the range or replica count. The user must create
+the κ file. Both accept whitespace,
 commas, semicolons, and `|` as separators and allow `#` comments. Temperatures
 must contain at least two unique, increasing positive values, with the first
 equal to `run.temperature`. The κ count must equal the temperature-state count,
 and every κ must be at least 1.0. The two modes can be combined; final
 temperatures, λ values, κ values, and seeds are recorded in `work/states.tsv`.
 
-This directory's runtime code can be copied on its own. Keep the parent
-`patches/` correction available when building GROMACS. Install the Python
+This directory's runtime code can be copied on its own. Install the Python
 dependencies from the local `requirements.txt` after copying it.
 
-Production requires the same patched GROMACS/PLUMED HREX build as REST2 and
-the [`HREX_WORKLOAD_FIX_1` correction](../patches/gromacs-2024.3-plumed-2.10-hrex-energy.patch).
-See the [parent README](../README.md) for application steps and validation
-scope.
+Production requires the same GROMACS 2024.3 build patched with PLUMED 2.10.2
+or later as REST2. See the [parent README](../README.md) for build steps and
+validation scope.
 
 REST3 adds a κ schedule to REST2 scaling. The default keeps κ at 1.0 through
 357 K and linearly reaches 1.020 at 450 K. This is not a universal value; assess
 compactness and exchange in a system- and force-field-specific pilot run. The
-temperature predictor does not model the κ correction. File mode accepts an
+temperature predictor does not model the κ correction. The default
+`temperature_mode = "file"` reads 12 geometric effective temperatures
+(300–450 K) from `inputs/temperatures.txt`, so the build creates 12 replicas
+for any system. For 1UBQ (1231 tempered-solute atoms) the offline predictor
+estimates neighbor exchange probabilities of about 0.27–0.30 without the κ
+effect. For larger solutes, check the exchange statistics of the first
+production segment and add replicas when needed. File κ mode accepts an
 explicit κ list with one value per state. Replica preproduction uses the same
 minimization-to-NPT-equilibration sequence as the fixed tutorial.
 `minimization_steepest_steps` and `heating_initial_temperature` remain in `config.toml` because the shared config checker requires them; REST GROMACS inputs do not use them.

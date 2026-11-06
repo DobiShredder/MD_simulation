@@ -11,7 +11,9 @@
 
 REUS의 terminal Cα distance CV와 20개 window에 dual-boost GaMD를 결합합니다.
 Window는 6–25 Å, 1 Å 간격이고
-`rk2=rk3=10 kcal mol⁻¹ Å⁻²`입니다.
+`rk2=rk3=1.0 kcal mol⁻¹ Å⁻²`입니다. `r1=0`, `r4=99`로 표본 범위 전체가 harmonic입니다.
+300 K window 폭은 약 0.55 Å, 예상 인접 교환 확률은 약 0.2입니다(Gaussian 예측, 미검증).
+이 값은 `make_restraints.py`와 analysis `prepare.py`의 `RESTRAINT_FORCE_KCAL_MOL_A2`가 같아야 합니다.
 
 GaREUS는 CV 방향의 umbrella/replica exchange와 CV에 포함되지 않은 자유도의
 GaMD acceleration을 동시에 사용합니다. 두 bias가 함께 작동하므로 window
@@ -42,12 +44,26 @@ state에 사용합니다. Analysis에서는 먼저 MBAR로 umbrella bias를 제�
 | `download.sh` | 1UAO PDB/mmCIF를 받고 checksum을 기록합니다. |
 | `prepare.py` | 1UAO의 첫 NMR model을 simulation PDB로 정리합니다. |
 | `make_restraints.py` | Terminal Cα index와 20개 window restraint를 생성합니다. |
-| `build.sh` | 공통 topology, state table, restraint와 replica별 seed를 배치합니다. |
-| `run.sh` | Window별 pre-production, GaMD parameter preparation과 GaREUS exchange를 실행합니다. |
+| `build.sh` | 공통 topology, `work/shared` stage input, state table, restraint와 replica별 seed를 배치합니다. |
+| `run.sh` | 공통 NPT pre-production, window별 NVT equilibration, GaMD parameter preparation과 GaREUS exchange를 실행합니다. |
 | `anal.py` | Exchange/occupancy, restraint sampling과 GaMD boost 범위를 계산합니다. |
 
-각 window에서 minimization, 200 ps heating과 100 ps equilibration을 실행합니다.
-15 Å reference window에서 4 ns 동안 GaMD parameter를 한 번 준비한 뒤 같은
+Production은 NVT라서 모든 window의 부피가 같아야 합니다. AMBER manual(REMD 절)은
+NVT replica exchange 전에 원래 system을 constant pressure로 먼저 안정화하라고
+권합니다. 그래서 pre-production은 두 부분으로 나뉩니다.
+
+| 순서 | Stage | 위치 | Ensemble | 길이 |
+| --- | --- | --- | --- | --- |
+| 1 | minimization | `work/shared` | 고정 box | 5,000 cycles |
+| 2 | heating 20 → 300 K | `work/shared` | NVT | 100,000 steps (200 ps) |
+| 3 | equilibration | `work/shared` | NPT | 25,000 steps (50 ps) |
+| 4 | window equilibration | `work/NNN` | NVT, window restraint | 25,000 steps (50 ps) |
+
+1–3은 window restraint 없이 한 번만 실행하고 `inputs/shared/*.in`을 사용합니다.
+4는 모든 window가 `work/shared/equilibrate.rst7`의 box와 velocity에서 시작해
+그 부피를 유지합니다. 한 window가 거치는 equilibration은 NPT 25,000 + NVT
+25,000 = 50,000 steps입니다.
+15 Å reference window에서 4 ns 동안 NVT로 GaMD parameter를 한 번 준비한 뒤 같은
 `gamd-restart.dat`을 모든 window에 배치합니다. `igamd=3`,
 `sigma0P=sigma0D=6.0`을 사용하며 이 state를 `irest_gamd=1`로 이어받아
 1 ns NVT GaREUS calculation을 실행합니다. 교환은 1 ps마다 시도합니다.
@@ -71,8 +87,9 @@ MPI executable과 launcher는 `AMBER_MPI_ENGINE`과 `MPI_LAUNCHER`로 바꿀 수
 있습니다. GPU mapping은 scheduler 또는 `CUDA_VISIBLE_DEVICES`에서 설정합니다.
 
 각 window는 고유한 positive seed를 사용합니다. Langevin restart마다 다른 `ig`를
-쓰도록 heating은 seed, equilibration은 seed+1,000,000, GaMD preparation은
-seed+2,000,000, production은 seed+3,000,000을 사용합니다. `gamd.prepare.log`는 15 Å
+쓰도록 window equilibration은 seed+1,000,000, GaMD preparation은
+seed+2,000,000, production은 seed+3,000,000을 사용합니다. 공통 heating은
+600001, 공통 NPT equilibration은 1600001입니다(`build.sh`의 `shared_seed`). `gamd.prepare.log`는 15 Å
 reference window에만 생성됩니다. Production은 window별
 `gamd.production.log`를 기록합니다. 완료 marker와 필수 output이 있는 stage만
 건너뜁니다. 불완전하거나 marker가 없는 기존 결과는 보존하고 중단합니다.
@@ -110,7 +127,8 @@ MBAR와 2차 cumulant expansion으로 계산합니다.
 ### 완료 상태와 재실행
 
 Engine이 성공하고 모든 replica의 필수 output을 확인한 뒤
-`work/.STAGE.complete`를 기록합니다. Minimization은 `.out`, `.rst7`,
+`work/.STAGE.complete`를 기록합니다. 공통 stage는 `work/.shared_STAGE.complete`를
+쓰고 `work/shared/` output을 확인합니다. Minimization은 `.out`, `.rst7`,
 `.info`를 요구하며 heating, equilibration과 production은 `.nc`도 요구합니다.
 Production에는 `work/exchange.log`도 필요합니다.
 GaREUS production은 `gamd.production.log`와 `restraint.production.dat`도 확인합니다.
@@ -141,8 +159,28 @@ REUS/GaREUS parser는 AMBER H-REMD의 `# exchange N` block을 읽습니다. 1-ba
 Only even replica counts of at least two are supported. `build.sh` and `run.sh` reject odd schedules without adjusting them. `run.sh --dry-run` checks the actual state-table count too. Prepare a new work directory for results built with an odd schedule.
 
 This example combines dual-boost GaMD with 20 terminal-Cα distance windows from
-6 to 25 Å. Each window is minimized, heated for 200 ps, and equilibrated for
-100 ps. A single 4 ns GaMD parameter-preparation run at the 15 Å reference
+6 to 25 Å with `rk2=rk3=1.0 kcal mol⁻¹ Å⁻²` and harmonic bounds `r1=0`, `r4=99`.
+Windows are about 0.55 Å wide at 300 K, with a predicted neighbor acceptance of
+about 0.2 (Gaussian estimate, unverified). `RESTRAINT_FORCE_KCAL_MOL_A2` must match
+in `make_restraints.py` and the analysis `prepare.py`.
+
+Production runs at constant volume, so every window must share one box. The
+AMBER manual (REMD section) asks for a constant-pressure run of the original
+system before NVT replica exchange. Pre-production is therefore split:
+
+| Order | Stage | Location | Ensemble | Length |
+| --- | --- | --- | --- | --- |
+| 1 | minimization | `work/shared` | fixed box | 5,000 cycles |
+| 2 | heating 20 → 300 K | `work/shared` | NVT | 100,000 steps (200 ps) |
+| 3 | equilibration | `work/shared` | NPT | 25,000 steps (50 ps) |
+| 4 | window equilibration | `work/NNN` | NVT, window restraint | 25,000 steps (50 ps) |
+
+Stages 1–3 run once without window restraints from `inputs/shared/*.in`. Every
+window starts stage 4 from the box and velocities in `work/shared/equilibrate.rst7`
+and keeps that volume. Each window therefore sees 25,000 NPT + 25,000 NVT =
+50,000 equilibration steps.
+
+A single 4 ns NVT GaMD parameter-preparation run at the 15 Å reference
 window provides the same `gamd-restart.dat` parameters to every replica. One
 1 ns NVT GaREUS run continues that state with `irest_gamd=1`, with exchanges
 attempted every 1 ps.
@@ -168,8 +206,10 @@ MBAR and then reweights the GaMD boost with a second-order cumulant expansion.
 Run the build as `./build.sh structure/chignolin.pdb`. The defaults are
 `igamd=3` and `sigma0P=sigma0D=6.0`. Each window has a
 unique positive seed and separate production GaMD logs. Langevin dynamics needs
-a different `ig` on each restart, so heating uses the seed, equilibration adds
-1,000,000, GaMD preparation adds 2,000,000, and production adds 3,000,000. The run uses `pmemd.cuda` for
+a different `ig` on each restart, so window equilibration adds 1,000,000 to the
+window seed, GaMD preparation adds 2,000,000, and production adds 3,000,000.
+Shared heating uses 600001 and shared NPT equilibration 1600001 (`shared_seed`
+in `build.sh`). The run uses `pmemd.cuda` for
 individual stages and `pmemd.cuda.MPI -rem 3` for replica exchange.
 
 `igamd=3`, `iE=1` select lower-bound dual boost; `sigma0P` and `sigma0D` cap
@@ -194,7 +234,8 @@ uses MBAR followed by second-order cumulant expansion to calculate the PMF.
 ### Completion and reruns
 
 The runner writes `work/.STAGE.complete` only after engine success and verification
-of every replica’s required outputs. Minimization requires `.out`, `.rst7` and
+of every replica’s required outputs. Shared stages write
+`work/.shared_STAGE.complete` after checking `work/shared/`. Minimization requires `.out`, `.rst7` and
 `.info`; heating, equilibration and production also require `.nc`.
 Production additionally requires `work/exchange.log`.
 GaREUS production also requires `gamd.production.log` and `restraint.production.dat`.

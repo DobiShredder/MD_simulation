@@ -12,7 +12,7 @@ from pathlib import Path
 
 sys.dont_write_bytecode = True
 sys.path.insert(0, ".")
-from apply_config import apply_config  # noqa: E402
+from apply_config import apply_amber_ensemble, apply_config  # noqa: E402
 from config_utils import load_config, positive_float, positive_int, section, string_value  # noqa: E402
 
 # Langevin dynamics (ntt=3) should use a different ig on each restart
@@ -87,6 +87,61 @@ def window_seeds(value: object, count: int) -> list[int]:
     return [value + 7919 * index for index in range(count)]
 
 
+def shared_seed(value: object, window_count: int) -> int:
+    """Seed for the shared heating stage that runs once before the windows."""
+    if value == "random":
+        return secrets.randbelow(900_000_000) + 1
+    # The next value in the window seed sequence, so it never repeats a window seed.
+    return value + 7919 * window_count
+
+
+def write_shared_inputs(
+    directory: Path,
+    run: dict[str, object],
+    dynamics: list[str],
+    npt: list[str],
+    seed: int,
+    random_seed: object,
+) -> None:
+    """Heat and NPT-equilibrate the unbiased system once (Amber26 manual, REMD).
+
+    NVT replica exchange needs every replica at the same volume, so all GaREUS
+    windows start from the box written by this shared NPT stage.
+    """
+    directory.mkdir()
+    temperature = positive_float(run, "temperature")
+    heating_steps = positive_int(run, "heating_steps")
+    unbiased = [value for value in dynamics if value != "nmropt=1"]
+    (directory / "minimize.in").write_text(
+        "Shared system minimization\n&cntrl\n imin=1,\n maxcyc=5000,\n ncyc=2500,\n"
+        " ntb=1,\n cut=10.0,\n ntpr=100,\n/\n",
+        encoding="utf-8",
+    )
+    heat_values = [
+        "imin=0", "irest=0", "ntx=1", f"ig={seed}", f"nstlim={heating_steps}",
+        "tempi=20.0", "ntb=1", "ntp=0", *unbiased, "nmropt=1",
+    ]
+    (directory / "heat.in").write_text(
+        "Shared heating\n&cntrl\n"
+        + "\n".join(f" {value}," for value in heat_values)
+        + "\n/\n&wt\n type='TEMP0',\n istep1=0,\n"
+        + f" istep2={heating_steps},\n value1=20.0,\n value2={temperature:.3f},\n/\n"
+        + "&wt type='END' /\n",
+        encoding="utf-8",
+    )
+    equilibrate_values = [
+        "imin=0", "irest=1", "ntx=5",
+        f"ig={stage_seed(random_seed, seed, EQUILIBRATION_SEED_STAGE)}",
+        f"nstlim={positive_int(run, 'equilibration_steps')}", *npt, *unbiased,
+    ]
+    (directory / "equilibrate.in").write_text(
+        "Shared NPT equilibration\n&cntrl\n"
+        + "\n".join(f" {value}," for value in equilibrate_values)
+        + "\n/\n",
+        encoding="utf-8",
+    )
+
+
 def stage_seed(random_seed: object, window_seed: int, seed_stage: int) -> int:
     """Return ig for a restarted stage: wall-clock seed or an offset integer seed."""
     if random_seed == "random":
@@ -154,6 +209,12 @@ def main() -> None:
 
     if args.method == "gareus":
         check_reference_replica(section(config, "gamd"), len(state_centers))
+        if str(run.get("equilibration_ensemble", "")).upper() != "NPT":
+            raise SystemExit(
+                "Config error: GaREUS requires equilibration_ensemble = \"NPT\" for the shared "
+                "stage that fixes the window volume"
+            )
+        window_equilibration_steps = positive_int(run, "window_equilibration_steps")
     random_seed = run.get("random_seed")
     seeds = window_seeds(random_seed, len(state_centers))
     dump_frequency = positive_int(umbrella, "distance_output_interval_steps")
@@ -186,50 +247,80 @@ def main() -> None:
         f"pres0={pressure:.3f}",
         "taup=2.0",
     ]
+    if args.method == "gareus":
+        write_shared_inputs(
+            args.output / "shared",
+            run,
+            dynamics,
+            npt,
+            shared_seed(random_seed, len(state_centers)),
+            random_seed,
+        )
     for index, center in enumerate(state_centers):
         replica = f"{index:03d}"
         seed = seeds[index]
         directory = args.output / replica
         directory.mkdir()
         (directory / "distance.RST").write_text(f"&rst\n iat={atom_1},{atom_2},\n r1=0.0, r2={center:.6f}, r3={center:.6f}, r4=999.0,\n rk2={force:.6f}, rk3={force:.6f},\n/\n", encoding="utf-8")
-        (directory / "minimize.in").write_text(render("Window minimization", ["imin=1", "maxcyc=5000", "ncyc=2500", "ntb=1", "cut=10.0", "nmropt=1"]), encoding="utf-8")
-        heating_steps = positive_int(run, "heating_steps")
-        (directory / "heat.in").write_text(
-            render(
-                "Window heating",
-                [
-                    "imin=0",
-                    "irest=0",
-                    "ntx=1",
-                    f"ig={seed}",
-                    f"nstlim={heating_steps}",
-                    "tempi=20.0",
-                    "ntb=1",
-                    "ntp=0",
-                    *dynamics,
-                ],
-                heating_steps=heating_steps,
-                temperature=temperature,
-            ),
-            encoding="utf-8",
-        )
-        (directory / "equilibrate.in").write_text(
-            render(
-                "Window equilibration",
-                [
-                    "imin=0",
-                    "irest=1",
-                    "ntx=5",
-                    f"ig={stage_seed(random_seed, seed, EQUILIBRATION_SEED_STAGE)}",
-                    f"nstlim={positive_int(run, 'equilibration_steps')}",
-                    *npt,
-                    *dynamics,
-                ],
-                dump_frequency,
-                "restraint.equilibrate.dat",
-            ),
-            encoding="utf-8",
-        )
+        if args.method == "gareus":
+            # Each window starts from the shared NPT box and keeps that volume.
+            (directory / "equilibrate.in").write_text(
+                render(
+                    "Window NVT equilibration in the shared box",
+                    [
+                        "imin=0",
+                        "irest=1",
+                        "ntx=5",
+                        f"ig={stage_seed(random_seed, seed, EQUILIBRATION_SEED_STAGE)}",
+                        f"nstlim={window_equilibration_steps}",
+                        "ntb=1",
+                        "ntp=0",
+                        *dynamics,
+                    ],
+                    dump_frequency,
+                    "restraint.equilibrate.dat",
+                ),
+                encoding="utf-8",
+            )
+        else:
+            (directory / "minimize.in").write_text(render("Window minimization", ["imin=1", "maxcyc=5000", "ncyc=2500", "ntb=1", "cut=10.0", "nmropt=1"]), encoding="utf-8")
+            heating_steps = positive_int(run, "heating_steps")
+            (directory / "heat.in").write_text(
+                render(
+                    "Window heating",
+                    [
+                        "imin=0",
+                        "irest=0",
+                        "ntx=1",
+                        f"ig={seed}",
+                        f"nstlim={heating_steps}",
+                        "tempi=20.0",
+                        "ntb=1",
+                        "ntp=0",
+                        *dynamics,
+                    ],
+                    heating_steps=heating_steps,
+                    temperature=temperature,
+                ),
+                encoding="utf-8",
+            )
+            (directory / "equilibrate.in").write_text(
+                render(
+                    "Window equilibration",
+                    [
+                        "imin=0",
+                        "irest=1",
+                        "ntx=5",
+                        f"ig={stage_seed(random_seed, seed, EQUILIBRATION_SEED_STAGE)}",
+                        f"nstlim={positive_int(run, 'equilibration_steps')}",
+                        *npt,
+                        *dynamics,
+                    ],
+                    dump_frequency,
+                    "restraint.equilibrate.dat",
+                ),
+                encoding="utf-8",
+            )
         production_ensemble = ["ntb=1", "ntp=0"] if args.method == "gareus" else npt
         values = ["imin=0", "irest=1", "ntx=5", f"nstlim={exchange}", f"numexchg={production_per_segment // exchange}", *production_ensemble, *dynamics]
         if args.method == "gareus":
@@ -237,7 +328,7 @@ def main() -> None:
             values.extend(["igamd=3", "iE=1", "irest_gamd=1", "ntcmdprep=0", "ntcmd=0", "ntebprep=0", "nteb=0", f"ntave={positive_int(gamd, 'averaging_interval_steps')}", f"sigma0P={positive_float(gamd, 'sigma0'):.3f}", f"sigma0D={positive_float(gamd, 'sigma0'):.3f}"])
             conventional = positive_int(gamd, "conventional_statistics_steps")
             boost = positive_int(gamd, "boost_statistics_steps")
-            gamd_prepare = ["imin=0", "irest=1", "ntx=5", f"ig={stage_seed(random_seed, seed, GAMD_PREPARATION_SEED_STAGE)}", f"nstlim={conventional + boost}", *npt, *dynamics, "igamd=3", "iE=1", "irest_gamd=0", f"ntcmdprep={positive_int(gamd, 'conventional_preparation_steps')}", f"ntcmd={conventional}", f"ntebprep={positive_int(gamd, 'boost_preparation_steps')}", f"nteb={boost}", f"ntave={positive_int(gamd, 'averaging_interval_steps')}", f"sigma0P={positive_float(gamd, 'sigma0'):.3f}", f"sigma0D={positive_float(gamd, 'sigma0'):.3f}"]
+            gamd_prepare = ["imin=0", "irest=1", "ntx=5", f"ig={stage_seed(random_seed, seed, GAMD_PREPARATION_SEED_STAGE)}", f"nstlim={conventional + boost}", *production_ensemble, *dynamics, "igamd=3", "iE=1", "irest_gamd=0", f"ntcmdprep={positive_int(gamd, 'conventional_preparation_steps')}", f"ntcmd={conventional}", f"ntebprep={positive_int(gamd, 'boost_preparation_steps')}", f"nteb={boost}", f"ntave={positive_int(gamd, 'averaging_interval_steps')}", f"sigma0P={positive_float(gamd, 'sigma0'):.3f}", f"sigma0D={positive_float(gamd, 'sigma0'):.3f}"]
             (directory / "gamd_prepare.in").write_text(render("Shared GaMD parameter preparation", gamd_prepare, dump_frequency, "restraint.gamd_prepare.dat"), encoding="utf-8")
         # Exchange production runs from the tutorial directory through the group file,
         # so run.sh replaces @DISANG@ and @DUMPAVE@ with work-directory paths.
@@ -254,6 +345,12 @@ def main() -> None:
     with resolved.open("a", encoding="utf-8") as handle:
         handle.write(f"\n[replica_exchange]\nreplicas = {len(state_centers)}\nexchange_interval_steps = {exchange}\n")
     apply_config(args.config, args.output)
+    if args.method == "gareus":
+        # apply_config gives every equilibrate.in the equilibration_ensemble (the shared
+        # NPT stage). Window equilibration must stay NVT in the shared box.
+        for index in range(len(state_centers)):
+            path = args.output / f"{index:03d}" / "equilibrate.in"
+            path.write_text(apply_amber_ensemble(path.read_text(encoding="utf-8"), "NVT", pressure, "isotropic"), encoding="utf-8")
     print(f"Created {len(state_centers)} {args.method.upper()} windows: {args.output}")
 
 

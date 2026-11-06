@@ -112,6 +112,84 @@ mark_stage_complete() {
     echo "Completed: $stage (work)"
 }
 
+shared_outputs_complete() {
+    local stage=$1 suffix
+    local require_complete=${2:-}
+    local required=(out rst7 info)
+    if [[ "$stage" != minimize ]]; then
+        required+=(nc)
+    fi
+    for suffix in "${required[@]}"; do
+        if [[ ! -s "work/shared/$stage.$suffix" ]]; then
+            if [[ "$require_complete" == --require-complete ]]; then
+                die "shared $stage output is incomplete: work/shared/$stage.$suffix; existing files were preserved."
+            fi
+            return 1
+        fi
+    done
+}
+
+shared_stage_status() {
+    local stage=$1 output
+    local marker="work/.shared_$stage.complete"
+    if [[ -f "$marker" ]] && shared_outputs_complete "$stage"; then
+        echo complete
+        return
+    fi
+    if [[ -e "$marker" ]]; then
+        echo partial
+        return
+    fi
+    for output in "work/shared/$stage."{out,rst7,nc,info}; do
+        if [[ -e "$output" ]]; then
+            echo partial
+            return
+        fi
+    done
+    echo missing
+}
+
+# The unbiased system runs once at constant pressure; every window starts
+# from this box, so NVT exchange uses one volume (Amber26 manual, REMD).
+run_shared_stage() {
+    local stage=$1
+    local input_restart=$2
+    local status
+    "${PYTHON:-python3}" helpers/input_identity.py \
+        --record "work/shared/.$stage.identity.json" --stage "shared $stage" \
+        --directory work/shared --marker "work/.shared_$stage.complete" -- "$amber_engine" \
+        -O -i "$stage.in" -o "$stage.out" -p ../system.parm7 -c "$input_restart" \
+        -r "$stage.rst7" -x "$stage.nc" -inf "$stage.info"
+
+    status=$(shared_stage_status "$stage")
+    if [[ "$status" == complete ]]; then
+        echo "Skipping completed stage: shared $stage"
+        return
+    fi
+    if [[ "$status" == partial ]]; then
+        die "Partial shared $stage output retained in work/shared. Inspect the files before retrying."
+    fi
+
+    echo "Running: shared $stage"
+    if ! (
+        cd work/shared
+        "$amber_engine" \
+            -O \
+            -i "$stage.in" \
+            -o "$stage.out" \
+            -p ../system.parm7 \
+            -c "$input_restart" \
+            -r "$stage.rst7" \
+            -x "$stage.nc" \
+            -inf "$stage.info"
+    ); then
+        die "shared $stage failed: work/shared/$stage.out"
+    fi
+    shared_outputs_complete "$stage" --require-complete
+    touch "work/.shared_$stage.complete"
+    echo "Completed: shared $stage (work/shared)"
+}
+
 run_window_stage() {
     local stage=$1
     local input_restart=$2
@@ -283,9 +361,13 @@ fi
 if (( dry_run )); then
     echo "Dry run: planned replica commands; no engine execution"
     printf '+ %q -O -i %q -o %q -p %q -c %q -r %q -x %q -inf %q\n' \
-        "$amber_engine" work/000/minimize.in work/000/minimize.out \
-        work/000/system.parm7 work/000/system.rst7 work/000/minimize.rst7 \
-        work/000/minimize.nc work/000/minimize.info
+        "$amber_engine" work/shared/minimize.in work/shared/minimize.out \
+        work/system.parm7 work/system.rst7 work/shared/minimize.rst7 \
+        work/shared/minimize.nc work/shared/minimize.info
+    printf '+ %q -O -i %q -o %q -p %q -c %q -r %q -x %q -inf %q\n' \
+        "$amber_engine" work/000/equilibrate.in work/000/equilibrate.out \
+        work/000/system.parm7 work/shared/equilibrate.rst7 work/000/equilibrate.rst7 \
+        work/000/equilibrate.nc work/000/equilibrate.info
     printf '+ %q -np %q %q -ng %q -groupfile %q -rem 3 -remlog %q\n' \
         "$mpi_launcher" "$replica_count" "$amber_mpi_engine" "$replica_count" \
         work/production.group work/exchange.log
@@ -295,7 +377,7 @@ fi
 "${PYTHON:-python3}" helpers/input_identity.py --verify work
 source_identity=(--record work/.source.identity.json --stage "replica source inputs"
     --input work/states.tsv --value="$amber_engine" --value="$amber_mpi_engine")
-for input in inputs/*.in work/[0-9][0-9][0-9]/system.parm7 work/[0-9][0-9][0-9]/system.rst7 \
+for input in inputs/*.in inputs/shared/*.in work/shared/*.in work/[0-9][0-9][0-9]/system.parm7 \
         work/[0-9][0-9][0-9]/*.in work/[0-9][0-9][0-9]/distance.RST; do
     if [[ "$input" == */production.in && -f "${input%.in}.template.in" ]]; then
         continue
@@ -313,12 +395,12 @@ for executable in "$amber_engine" "$amber_mpi_engine" "$mpi_launcher"; do
 done
 # Reject retained output before running any stage or rewriting generated input.
 missing_stage=""
-for stage in minimize heat equilibrate gamd_prepare production; do
-    if [[ "$stage" == gamd_prepare ]]; then
-        status=$(gamd_state_status)
-    else
-        status=$(stage_status "$stage")
-    fi
+for stage in shared_minimize shared_heat shared_equilibrate equilibrate gamd_prepare production; do
+    case "$stage" in
+        shared_*) status=$(shared_stage_status "${stage#shared_}") ;;
+        gamd_prepare) status=$(gamd_state_status) ;;
+        *) status=$(stage_status "$stage") ;;
+    esac
     if [[ "$status" == partial ]]; then
         die "Partial or unmarked $stage output retained in work; inspect the files before retrying."
     fi
@@ -333,9 +415,11 @@ if [[ "$(stage_status production)" == complete ]]; then
     exit 0
 fi
 
-run_window_stage minimize system.rst7
-run_window_stage heat minimize.rst7
-run_window_stage equilibrate heat.rst7
+run_shared_stage minimize ../system.rst7
+run_shared_stage heat minimize.rst7
+run_shared_stage equilibrate heat.rst7
+
+run_window_stage equilibrate ../shared/equilibrate.rst7
 prepare_gamd_state
 
 production_identity=(--record work/.production-input.identity.json --stage "replica production inputs"

@@ -1,8 +1,8 @@
 # T4 lysozyme RBFE / T4 lysozyme RBFE
 
-![RBFE dual topology에서 선택되는 atom / Atoms selected by the RBFE dual topology](../../../assets/simulation/rbfe_alchemical_atoms.svg)
+![RBFE common core와 soft-core atom / RBFE common core and soft-core atoms](../../../assets/simulation/rbfe_alchemical_atoms.svg)
 
-*현재 mask는 공통 ring만이 아니라 BNZ와 MBN residue 전체를 각각 decouple하고 couple합니다. / The current masks decouple and couple the complete BNZ and MBN residues, not only the shared ring.*
+*Ring carbon 6개와 ring hydrogen 5개는 common core로 linear mixing되고, BNZ의 H1과 MBN의 methyl group(C1, H1–H3)만 soft-core입니다. / The ring carbons and five ring hydrogens form a linearly mixed common core; only BNZ H1 and the MBN methyl group (C1, H1–H3) are soft-core.*
 
 
 ## 한국어
@@ -18,7 +18,7 @@ protein complex와 물에서 각각 계산하고 두 값의 차이로 `ΔΔG_bin
 | `download.sh` | 4W53 PDB/mmCIF와 ligand SDF download | `structure/` |
 | `prepare.py` | Protein과 bound BNZ/MBN heavy atom 분리, ligand atom name을 SDF template 이름으로 변경 | `protein.pdb`, `bound_*.pdb` |
 | `build.sh` | Ideal SDF에서 GAFF2/AM1-BCC parameter 생성, complex 및 solvent topology 생성 | `work/build/`, `states.tsv` |
-| `generate_inputs.py` | 22개 window input 생성; `build.sh`가 호출 | `work/complex/`, `work/solvent/` |
+| `generate_inputs.py` | `inputs/atom_mapping.tsv`로 common core 확인, core 좌표 동기화, 22개 window input 생성; `build.sh`가 호출 | `work/build/*_core.rst7`, `work/complex/`, `work/solvent/` |
 | `run.sh` | Minimization, heating, equilibration, production 실행 | Window별 restart, trajectory, log |
 | `anal.py` | Cross-state energy 추출, FE-ToolKit MBAR/BAR 실행과 두 environment 조합 | `free_energy.tsv`, `overlap_matrix.tsv` |
 
@@ -42,11 +42,33 @@ atom 위치를 사용하고 빠진 hydrogen은 mol2 template의 internal coordin
 만듭니다. `build.sh`는 생성된 `complex.pdb`와 `solvent.pdb`에서 BNZ 12개,
 MBN 15개 atom을 확인하고 다르면 중단합니다.
 
+### Common core
+
+`inputs/atom_mapping.tsv`는 BNZ ring C1–C6, H2–H6을 MBN의 C2–C7, H4–H8에
+대응시킵니다. 대응된 11개 atom은 common core로 두 end state의 parameter를
+lambda에 따라 linear mixing합니다. 대응되지 않은 BNZ H1과 MBN methyl
+C1/H1/H2/H3만 soft-core가 되며, `generate_inputs.py`가 이 차이로
+`scmask1=':BNZ@H1'`, `scmask2=':MBN@C1,H1,H2,H3'`를 만듭니다.
+
+Amber manual은 common atom이 두 state에서 같은 순서와 같은 시작 좌표를 갖도록
+요구하고(Amber26 §27.1.6, p.555, sander 기준), pmemd용 준비 예시도 대응 atom의
+좌표를 같게 두도록 합니다(§27.1.8.1, p.568). pmemd가 common atom을 대응시키는
+방식은 실제 실행으로 확인하지 않았습니다. `generate_inputs.py`는 mapping 순서를 검사하고,
+MBN core 좌표를 BNZ 대응 atom에 복사해 `work/build/{complex,solvent}_core.rst7`을
+만듭니다. Window는 이 restart에서 시작합니다. Ring carbon은 같은 crystal 좌표에서
+오고 tleap이 만든 ring H는 약 0.01 Å 이내로 일치하므로, 차이가 0.1 Å를 넘으면
+mapping 또는 preparation 오류로 보고 중단합니다. BNZ H1은 tleap이 ring C1에서
+methyl 방향(차이 약 0.6°)으로 놓습니다.
+
+Common core가 끝까지 결합 상태를 유지하므로 ligand 전체가 동시에 약하게
+결합되는 구간이 없습니다. 그래서 binding site에서 ligand를 붙잡는 별도
+restraint를 두지 않습니다.
+
 ### 주요 option
 
 Complex와 solvent environment는 각각 lambda 0.0–1.0의 11개 window를 사용합니다.
-`timask1`/`timask2`는 BNZ와 MBN end state를, `scmask1`/`scmask2`는 soft-core
-대상을 지정합니다. 각 window는 200 ps heating, 100 ps NPT equilibration과
+`timask1=':BNZ'`/`timask2=':MBN'`는 두 end state를, `scmask1`/`scmask2`는
+위 common core에서 빠진 soft-core atom을 지정합니다. 각 window는 200 ps heating, 100 ps NPT equilibration과
 1 ns production을 실행합니다. Minimization, heating과 equilibration은
 input identity가 일치하고 `*.out`, `*.rst7`, `*.info`와 해당 stage의
 trajectory가 모두 있으면 건너뜁니다. 일부 output만 남으면 파일을 보존하고
@@ -63,6 +85,13 @@ Soft-core interaction은 Amber 26의 `aces26=1` 형식을 사용합니다.
 사이의 nonbonded term을 lambda에 따라 바꿉니다. 이 형식은 `pmemd.cuda`에서
 실행하며 `run.sh`는 다른 engine override를 거부합니다. Minimization의
 `ntmin=2`는 `ifsc=1`에서 요구되는 steepest-descent algorithm을 사용합니다.
+
+BNZ C1–H1은 common atom과 soft-core atom을 잇는 SHAKE bond입니다(`ntc=2`).
+`pmemd.cuda`는 `tishake=0`(기본)에서 이런 bond가 있으면 `gti_syn_mass=3`을
+기본으로 사용해 SHAKE bond 길이를 두 end state의 linear combination으로
+맞춥니다(Amber26 §27.1.7.5, p.567). 그래서 `tishake`와 `gti_syn_mass`를
+따로 지정하지 않고 2 fs timestep을 유지합니다. Common-core input의 실제
+`pmemd.cuda` parsing, DV/DL과 MBAR block은 미검증입니다.
 
 Production의 `ifmbar=1`과 `mbar_lambda`는 각 saved configuration의 potential
 energy를 11개 state에서 평가합니다. 이 계산은 현재 window의 dynamics를
@@ -139,8 +168,31 @@ crystal heavy-atom pose and builds the missing hydrogens from the template
 internal coordinates. `build.sh` stops unless `complex.pdb` and `solvent.pdb`
 contain 12 BNZ and 15 MBN atoms.
 
-The complex and solvent environments each contain eleven lambda windows. AMBER
-soft-core masks define the two ligand end states. Every window uses 200 ps of
+`inputs/atom_mapping.tsv` maps BNZ ring C1–C6 and H2–H6 onto MBN C2–C7 and
+H4–H8. These 11 atoms form the common core, whose parameters are mixed linearly
+with lambda. Only the unmapped BNZ H1 and the MBN methyl C1/H1/H2/H3 are
+soft-core, so `generate_inputs.py` writes `scmask1=':BNZ@H1'` and
+`scmask2=':MBN@C1,H1,H2,H3'`.
+
+The Amber manual requires common atoms to appear in the same order with
+identical starting coordinates in both states (Amber26 §27.1.6, p.555, stated
+for sander), and its pmemd preparation example also asks for identical
+coordinates of corresponding atoms (§27.1.8.1, p.568). How pmemd pairs common
+atoms has not been checked in an actual run.
+`generate_inputs.py` checks the mapping order and copies the MBN core
+coordinates onto the mapped BNZ atoms in `work/build/{complex,solvent}_core.rst7`,
+which every window starts from. The ring carbons come from the same crystal
+atoms and the tleap-built ring hydrogens agree within about 0.01 Å, so a gap
+above 0.1 Å is treated as a mapping or preparation error. tleap places BNZ H1
+along the ring C1 → methyl direction (about 0.6° off).
+
+Because the common core stays coupled at every lambda, the ligand is never
+weakly bound as a whole, and no extra restraint is needed to keep it in the
+binding site.
+
+The complex and solvent environments each contain eleven lambda windows. `timask1=':BNZ'` and
+`timask2=':MBN'` define the end states, and the soft-core masks list only the
+atoms outside the common core. Every window uses 200 ps of
 heating, 100 ps of NPT equilibration, and one 1 ns production run.
 Minimization, heating, and equilibration are skipped when input identities match
 and their `*.out`, `*.rst7`, `*.info`, and applicable trajectory files are complete.
@@ -156,6 +208,13 @@ The inputs use the Amber 26 `aces26=1` soft-core format and scale
 `run.sh` therefore requires `pmemd.cuda`. Minimization uses `ntmin=2` because
 `ifsc=1` requires the steepest-descent algorithm. `ifmbar=1` evaluates every saved
 configuration at all eleven lambda states without changing its propagation.
+
+BNZ C1–H1 is a SHAKE bond between a common and a soft-core atom (`ntc=2`). With
+the default `tishake=0`, `pmemd.cuda` then defaults to `gti_syn_mass=3`, which
+sets such bond lengths to the linear combination of the two end states
+(Amber26 §27.1.7.5, p. 567). The inputs therefore keep the 2 fs timestep
+without setting `tishake` or `gti_syn_mass`. Parsing of the common-core inputs,
+DV/DL, and MBAR blocks in an actual `pmemd.cuda` run remain unverified.
 
 `anal.py` extracts the cross-state energy matrix and runs the AmberTools 26
 FE-ToolKit. A complete matrix is analyzed with MBAR. If an energy at a distant

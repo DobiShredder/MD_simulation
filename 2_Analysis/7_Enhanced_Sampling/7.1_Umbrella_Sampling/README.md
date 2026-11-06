@@ -30,7 +30,7 @@ Input과 output 경로는 `prepare.py`의 `WINDOWS_DIR`과 `OUTPUT_DIR`에서
 설정합니다. `run.sh`는 이 script를 호출하며 input 검사와 결과 경로 출력도
 `prepare.py`가 처리합니다.
 
-`anal.py`는 300 K, 5–25 Å 범위와 100 bins를 기본으로 사용합니다. AMBER
+`anal.py`는 300 K, 3–27 Å 범위와 120 bins(0.2 Å)를 기본으로 사용합니다. 범위는 rk=1.0 window 폭(약 0.55 Å)을 기준으로 바깥 center에서 약 5σ까지 넓혔습니다. AMBER
 NMR-style restraint의 bias는 `rk(r-r0)^2`이므로 `window.tsv`의 `rk`를 그대로
 사용합니다. External WHAM의 `1/2 k(r-r0)^2` convention을 위한 factor-of-two
 변환은 적용하지 않습니다.
@@ -77,7 +77,7 @@ external WHAM executable.
 
 Run `./run.sh` to discard the first 100 ps and prepare each distance series,
 then run `python3 anal.py` to calculate and plot the PMF and neighboring-window
-overlap. The default grid covers 5–25 Å with 100 bins at 300 K.
+overlap. The default grid covers 3–27 Å with 120 bins (0.2 Å) at 300 K, about 5σ beyond the outer centers for the rk=1.0 windows (about 0.55 Å wide).
 
 An AMBER DUMPAVE file for one distance restraint has two columns: the MD step
 counted from the start of the run and the distance in Å. `prepare.py`

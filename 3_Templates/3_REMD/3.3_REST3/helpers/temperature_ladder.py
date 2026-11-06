@@ -195,3 +195,44 @@ def generate_temperature_ladder(
             )
         )
     return rows
+
+
+def generate_even_temperature_ladder(
+    *,
+    target_probability: float,
+    **options: object,
+) -> tuple[list[LadderRow], float]:
+    """Return an even-sized ladder and the target probability it used.
+
+    AMBER replica exchange needs an even replica count. If the requested
+    target gives an odd count N, the target is raised to the largest value
+    that still gives N + 1 states. The temperature range stays the same,
+    and the extra state is spread over the ladder instead of being squeezed
+    next to the maximum temperature.
+    """
+    rows = generate_temperature_ladder(target_probability=target_probability, **options)
+    if len(rows) % 2 == 0:
+        return rows, target_probability
+
+    wanted_count = len(rows) + 1
+    # Bisection keeps count(low_target) <= wanted_count < count(high_target).
+    low_target = target_probability
+    high_target = target_probability
+    while len(generate_temperature_ladder(target_probability=high_target, **options)) <= wanted_count:
+        high_target = (high_target + 1.0) / 2.0
+        if high_target > 0.999:
+            raise ValueError("could not add a state to make the ladder even")
+    while high_target - low_target > 1.0e-5:
+        middle_target = (low_target + high_target) / 2.0
+        count = len(generate_temperature_ladder(target_probability=middle_target, **options))
+        if count <= wanted_count:
+            low_target = middle_target
+        else:
+            high_target = middle_target
+
+    rows = generate_temperature_ladder(target_probability=low_target, **options)
+    if len(rows) != wanted_count:
+        raise ValueError(
+            f"raising the target probability gave {len(rows)} states instead of {wanted_count}"
+        )
+    return rows, low_target

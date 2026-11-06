@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -42,14 +43,16 @@ def selected_indices(topology: object, mask: str) -> list[int]:
     return [index + 1 for index, value in enumerate(AmberMask(topology, mask).Selection()) if value]
 
 
-def validate_mapping(config: dict[str, object], topology: object, mask_a: str, mask_b: str) -> list[tuple[str, str]]:
+# Tutorial builds place mapped atoms within about 0.01 A. A larger gap means the
+# two ligand MOL2 files are not overlaid in one coordinate frame.
+CORE_TOLERANCE_ANGSTROM = 0.1
+
+
+def read_mapping(config: dict[str, object]) -> list[tuple[str, str]]:
     build = section(config, "build")
     mapping_path = Path(string_value(build, "atom_mapping_file"))
     if not mapping_path.is_file():
         raise ValueError(f"atom mapping file not found: {mapping_path}")
-
-    atoms_a = {topology.atoms[index - 1].name for index in selected_indices(topology, mask_a)}
-    atoms_b = {topology.atoms[index - 1].name for index in selected_indices(topology, mask_b)}
     rows: list[tuple[str, str]] = []
     with mapping_path.open(encoding="utf-8") as handle:
         for line_number, raw in enumerate(handle, 1):
@@ -59,14 +62,78 @@ def validate_mapping(config: dict[str, object], topology: object, mask_a: str, m
             fields = line.split()
             if len(fields) != 2:
                 raise ValueError(f"{mapping_path}:{line_number}: expected two atom-name columns")
-            if fields[0] not in atoms_a or fields[1] not in atoms_b:
-                raise ValueError(f"{mapping_path}:{line_number}: mapped atom name is absent from its ligand")
             rows.append((fields[0], fields[1]))
     if not rows:
-        raise ValueError("atom mapping file contains no mappings")
+        raise ValueError(f"atom mapping file contains no mappings: {mapping_path}")
     if len({row[0] for row in rows}) != len(rows) or len({row[1] for row in rows}) != len(rows):
         raise ValueError("atom mapping must be one-to-one")
     return rows
+
+
+def ligand_atoms(topology: object, mask: str) -> tuple[str, dict[str, object]]:
+    """Return the residue name and atoms selected by one ligand mask."""
+    atoms = [topology.atoms[index - 1] for index in selected_indices(topology, mask)]
+    if not atoms:
+        raise ValueError(f"ligand mask selects no atoms: {mask}")
+    residues = {atom.residue for atom in atoms}
+    if len(residues) != 1:
+        raise ValueError(f"ligand mask must select one residue: {mask}")
+    residue = next(iter(residues))
+    if len(atoms) != len(residue.atoms):
+        raise ValueError(f"ligand mask must select the whole residue: {mask}")
+    if sum(1 for item in topology.residues if item.name == residue.name) != 1:
+        raise ValueError(f"ligand residue name must be unique in the topology: {residue.name}")
+    names = [atom.name for atom in atoms]
+    if len(set(names)) != len(names):
+        raise ValueError(f"ligand atom names must be unique: {residue.name}")
+    return residue.name, {atom.name: atom for atom in atoms}
+
+
+def common_core(
+    topology: object,
+    mask_a: str,
+    mask_b: str,
+    mapping: list[tuple[str, str]],
+) -> tuple[str, str, list[tuple[object, object]]]:
+    """Return scmask1, scmask2 and the mapped atom pairs for one environment."""
+    residue_a, atoms_a = ligand_atoms(topology, mask_a)
+    residue_b, atoms_b = ligand_atoms(topology, mask_b)
+    for name_a, name_b in mapping:
+        if name_a not in atoms_a or name_b not in atoms_b:
+            raise ValueError(f"mapped atom is absent from its ligand: {name_a} {name_b}")
+    pairs = sorted(((atoms_a[a], atoms_b[b]) for a, b in mapping), key=lambda pair: pair[0].idx)
+
+    # pmemd pairs the timask atoms outside scmask by their order, so mapped
+    # atoms must appear in the same order in both ligands.
+    order_b = [atom_b.idx for _, atom_b in pairs]
+    if order_b != sorted(order_b):
+        raise ValueError("mapped ligand B atoms are not in the same order as their ligand A partners")
+
+    mapped_a = {atom_a.name for atom_a, _ in pairs}
+    mapped_b = {atom_b.name for _, atom_b in pairs}
+    unique_a = [name for name in atoms_a if name not in mapped_a]
+    unique_b = [name for name in atoms_b if name not in mapped_b]
+    scmask_a = f":{residue_a}@{','.join(unique_a)}" if unique_a else ""
+    scmask_b = f":{residue_b}@{','.join(unique_b)}" if unique_b else ""
+    return scmask_a, scmask_b, pairs
+
+
+def synchronize_core(rst7: Path, output: Path, pairs: list[tuple[object, object]]) -> float:
+    """Copy ligand B core coordinates onto the mapped ligand A atoms."""
+    import parmed
+
+    restart = parmed.amber.Rst7.open(str(rst7))
+    coordinates = restart.coordinates.reshape(-1, 3)
+    largest = 0.0
+    for atom_a, atom_b in pairs:
+        gap = float(((coordinates[atom_a.idx] - coordinates[atom_b.idx]) ** 2).sum() ** 0.5)
+        largest = max(largest, gap)
+        coordinates[atom_a.idx] = coordinates[atom_b.idx]
+    if largest > CORE_TOLERANCE_ANGSTROM:
+        raise ValueError(f"mapped core atoms differ by {largest:.3f} A (limit {CORE_TOLERANCE_ANGSTROM} A): {rst7}")
+    restart.coordinates = coordinates.reshape(1, -1, 3)
+    restart.write(str(output))
+    return largest
 
 
 def relative_link(target: Path, link: Path) -> None:
@@ -79,7 +146,8 @@ def render(template: Path, output: Path, replacements: dict[str, str]) -> None:
     text = template.read_text(encoding="utf-8")
     for marker, value in replacements.items():
         text = text.replace(marker, value)
-    if "@" in text:
+    # Soft-core masks contain "@", so look only for unreplaced @NAME@ markers.
+    if re.search(r"@[A-Z_]+@", text):
         raise ValueError(f"Unreplaced marker found: {output}")
     output.write_text(text, encoding="utf-8")
 
@@ -112,21 +180,46 @@ def main() -> None:
     except ValueError as error:
         raise SystemExit(f"Config error: {error}") from None
 
-    complex_topology = parmed.load_file(str(args.work_dir / "build/complex.parm7"))
-    selected_a = selected_indices(complex_topology, mask_a)
-    selected_b = selected_indices(complex_topology, mask_b)
-    if not selected_a or not selected_b:
-        raise SystemExit("Both RBFE ligand masks must select at least one atom")
-    if set(selected_a).intersection(selected_b):
-        raise SystemExit("RBFE ligand masks overlap")
     try:
-        mapping = validate_mapping(config, complex_topology, mask_a, mask_b)
+        mapping = read_mapping(config)
     except ValueError as error:
         raise SystemExit(f"Config error: {error}") from None
+
+    # Each environment has its own atom indices and restart, so the common core
+    # is resolved and synchronized separately for complex and solvent.
+    soft_core_masks: dict[str, tuple[str, str]] = {}
+    for environment in ("complex", "solvent"):
+        topology_file = args.work_dir / "build" / f"{environment}.parm7"
+        topology = parmed.load_file(str(topology_file))
+        selected_a = selected_indices(topology, mask_a)
+        selected_b = selected_indices(topology, mask_b)
+        if not selected_a or not selected_b:
+            raise SystemExit(f"Both RBFE ligand masks must select at least one atom: {topology_file}")
+        if set(selected_a).intersection(selected_b):
+            raise SystemExit(f"RBFE ligand masks overlap: {topology_file}")
+        try:
+            scmask_a, scmask_b, pairs = common_core(topology, mask_a, mask_b, mapping)
+            largest = synchronize_core(
+                args.work_dir / "build" / f"{environment}.rst7",
+                args.work_dir / "build" / f"{environment}_core.rst7",
+                pairs,
+            )
+        except ValueError as error:
+            raise SystemExit(f"Common-core error ({environment}): {error}") from None
+        soft_core_masks[environment] = (scmask_a, scmask_b)
+        print(
+            f"{environment}: {len(pairs)} common-core atoms (largest pre-sync gap {largest:.4f} A); "
+            f"scmask1='{scmask_a}', scmask2='{scmask_b}'"
+        )
+    if soft_core_masks["complex"] != soft_core_masks["solvent"]:
+        raise SystemExit("Complex and solvent soft-core masks differ; check the ligand atom names")
+    scmask_a, scmask_b = soft_core_masks["complex"]
 
     common = {
         "@MASK_A@": mask_a,
         "@MASK_B@": mask_b,
+        "@SCMASK_A@": scmask_a,
+        "@SCMASK_B@": scmask_b,
         "@TIMESTEP_PS@": f"{timestep_ps:.6f}",
         "@TEMPERATURE@": f"{temperature:.3f}",
         "@PRESSURE@": f"{pressure:.3f}",
@@ -147,7 +240,7 @@ def main() -> None:
             directory = args.work_dir / environment / window
             directory.mkdir(parents=True, exist_ok=True)
             relative_link(args.work_dir / "build" / f"{environment}.parm7", directory / "system.parm7")
-            relative_link(args.work_dir / "build" / f"{environment}.rst7", directory / "system.rst7")
+            relative_link(args.work_dir / "build" / f"{environment}_core.rst7", directory / "system.rst7")
             replacements = {
                 **common,
                 "@LAMBDA@": f"{lambda_value:.6f}",

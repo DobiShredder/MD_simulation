@@ -24,6 +24,10 @@ multidimensional replica exchange로 인접 state를 교환합니다. `windows.t
 center를 Å 단위로 한 줄에 하나씩 적고 `config.toml`에는 두 AMBER atom mask,
 force constant와 exchange interval을 지정합니다.
 
+기본 `force_constant = 1.0`은 AMBER `rk`(E = rk(r − r₀)², kcal mol⁻¹ Å⁻²)입니다. 기본
+0.947 Å 간격에서 300 K window 폭은 약 0.55 Å이고 예상 인접 교환 확률은 약 0.22입니다
+(Gaussian 예측, 미검증). Window 간격을 바꾸면 force constant도 함께 조정합니다.
+
 ```bash
 ./build.sh prepared.pdb
 ./run.sh --dry-run
@@ -111,6 +115,8 @@ Window별 MD input과 restraint는 `helpers/make_window_replicas.py`가
 Only even replica counts of at least two are supported. `build.sh` and `run.sh` reject odd schedules without adjusting them. `run.sh --dry-run` checks the actual state-table count too. Prepare a new work directory for results built with an odd schedule.
 
 The default has 20 centers including both 6 and 24 Å, spaced by `18/19 ≈ 0.947368 Å`. State tables and restraint centers use eight decimal places.
+
+The default `force_constant = 1.0` is the AMBER `rk` (E = rk(r − r₀)², kcal mol⁻¹ Å⁻²). At this spacing, 300 K windows are about 0.55 Å wide and the predicted neighbor exchange acceptance is about 0.22 (Gaussian estimate, unverified). Adjust the force constant together with the window spacing.
 
 Minimization completion requires each replica’s `.out`, `.rst7`, and `.info`; a minimization trajectory is optional. Heating, equilibration, and production also require `.nc`. Equilibration resolves `DISANG` and `DUMPAVE` to `distance.RST` and `restraint.equilibrate.dat` within each replica directory.
 

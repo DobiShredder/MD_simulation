@@ -25,7 +25,7 @@ Heat Chignolin from 20 K to 300 K over 100 ps at constant volume
   restraintmask='!:WAT,Na+,Cl- & !@H=',
 
   ntpr=5000,
-  ntwx=0,
+  ntwx=5000,
   ntwr=50000,
   nmropt=1,
 /

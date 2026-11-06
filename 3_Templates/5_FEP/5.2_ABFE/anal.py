@@ -24,6 +24,10 @@ TEMPERATURE_K = 300.0
 BOOTSTRAP_SAMPLES = 20
 GAS_CONSTANT = 0.00198720425864083
 STANDARD_VOLUME_A3 = 1660.539
+# Restraint-stage production writes DUMPAVE rows as "step value..."; the
+# timestep is read from resolved_config.toml in main().
+RESTRAINT_DUMP_FILE = "production.restraint.dat"
+PRODUCTION_TIMESTEP_PS = 0.002
 
 
 def show_help() -> None:
@@ -101,6 +105,87 @@ def extract_window(
                     output_handle.write(input_handle.read())
 
 
+def restraint_energy(kind: str, value: float, row: dict[str, str]) -> float:
+    """Evaluate one full-strength AMBER flat-bottom restraint (manual 31.1).
+
+    r2 = r3 = reference. The potential is k(R - r2)^2 between r1 and r4 and
+    continues linearly with the same slope outside. Angles are reported in
+    degrees but the force constants use radians.
+    """
+    reference = float(row["reference"])
+    force = float(row["force_constant"])
+    lower = float(row["r1"])
+    upper = float(row["r4"])
+    if kind.startswith("dihedral"):
+        # AMBER shifts a torsion by n*360 to the value closest to (r2 + r3) / 2.
+        value = reference + (value - reference + 180.0) % 360.0 - 180.0
+    unit = 1.0 if kind == "distance" else math.pi / 180.0
+    if value < lower:
+        edge = (lower - reference) * unit
+        return force * edge * edge + 2.0 * force * edge * (value - lower) * unit
+    if value > upper:
+        edge = (upper - reference) * unit
+        return force * edge * edge + 2.0 * force * edge * (value - upper) * unit
+    offset = (value - reference) * unit
+    return force * offset * offset
+
+
+def read_restraint_dump(path: Path, restraint_count: int) -> list[tuple[float, list[float]]]:
+    """Read DUMPAVE rows: step followed by the DISANG values in file order."""
+    if not path.is_file():
+        raise SystemExit(f"restraint DUMPAVE output not found: {path}")
+    rows: list[tuple[float, list[float]]] = []
+    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        fields = line.split()
+        if not fields or fields[0].startswith("#"):
+            continue
+        if len(fields) != restraint_count + 1:
+            raise SystemExit(
+                f"{path}:{line_number}: expected step and {restraint_count} restraint values"
+            )
+        rows.append((float(fields[0]), [float(value) for value in fields[1:]]))
+    if not rows:
+        raise SystemExit(f"restraint DUMPAVE output is empty: {path}")
+    return rows
+
+
+def write_restraint_window_energies(
+    state: dict[str, str],
+    lambdas: list[str],
+    restraints: list[dict[str, str]],
+    data_directory: Path,
+) -> None:
+    """Write edgembar efep files for one restraint window.
+
+    Restraint windows differ only by the restraint weight (1 - lambda), so the
+    energy difference between states is (lambda_i - lambda_j) * U_full and the
+    shared unrestrained energy cancels in MBAR.
+    """
+    window_directory = Path(state["directory"])
+    completion_marker = window_directory / ".production.001.complete"
+    if not completion_marker.is_file():
+        raise SystemExit(
+            "production completion marker not found: "
+            f"{completion_marker}. Run run.sh to completion before analysis."
+        )
+    dump = window_directory / RESTRAINT_DUMP_FILE
+    rows = read_restraint_dump(dump, len(restraints))
+    full_energies = [
+        sum(
+            restraint_energy(row["restraint"], value, row)
+            for value, row in zip(values, restraints)
+        )
+        for _, values in rows
+    ]
+    sampled = f"{float(state['lambda']):.8f}"
+    for evaluated in lambdas:
+        weight = 1.0 - float(evaluated)
+        path = data_directory / f"efep_{sampled}_{evaluated}.dat"
+        with path.open("w", encoding="utf-8") as handle:
+            for (step, _), energy in zip(rows, full_energies):
+                handle.write(f"{step * PRODUCTION_TIMESTEP_PS:.4f} {weight * energy:.6f}\n")
+
+
 def choose_estimator(
     stage: str,
     lambdas: list[str],
@@ -153,10 +238,15 @@ def prepare_stage_data(
     data_directory.mkdir(parents=True)
     log_file = mbar_directory / "extract.log"
 
-    for state in stage_states:
-        extract_window(extractor, state, data_directory, log_file)
-
     lambdas = [f"{float(state['lambda']):.8f}" for state in stage_states]
+    if stage == "restraint":
+        restraints = read_tsv(WORK / "restraints.tsv")
+        for state in stage_states:
+            write_restraint_window_energies(state, lambdas, restraints, data_directory)
+    else:
+        for state in stage_states:
+            extract_window(extractor, state, data_directory, log_file)
+
     observed_files = {path.name for path in data_directory.glob("efep_*.dat")}
     estimator = choose_estimator(stage, lambdas, observed_files, log_file)
     return data_directory, lambdas, estimator
@@ -366,10 +456,11 @@ def main() -> None:
     from helpers.result_generation import analysis_generation
 
     print(f"Reading free-energy analysis inputs: {WORK / 'states.tsv'}", flush=True)
-    global TEMPERATURE_K, STANDARD_VOLUME_A3
+    global TEMPERATURE_K, STANDARD_VOLUME_A3, PRODUCTION_TIMESTEP_PS
     try:
         resolved = load_config(WORK / "resolved_config.toml")
         TEMPERATURE_K = positive_float(section(resolved, "run"), "temperature")
+        PRODUCTION_TIMESTEP_PS = positive_float(section(resolved, "run"), "timestep") / 1000.0
         concentration = positive_float(section(resolved, "alchemical"), "standard_state_concentration")
         STANDARD_VOLUME_A3 = 1660.539 / concentration
     except ValueError as error:

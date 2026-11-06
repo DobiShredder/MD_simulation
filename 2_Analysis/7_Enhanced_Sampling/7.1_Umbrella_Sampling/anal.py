@@ -16,9 +16,11 @@ TUTORIAL_DIR = Path.cwd()
 OUTPUT_DIR = TUTORIAL_DIR / "output"
 
 TEMPERATURE_KELVIN = 300.0
-PMF_MIN_ANGSTROM = 5.0
-PMF_MAX_ANGSTROM = 25.0
-PMF_BINS = 100
+# rk = 1.0 windows are about 0.55 A wide, so the grid extends about 5 sigma past
+# the outer centers (6 and 24 A). Frames outside the grid stop the analysis.
+PMF_MIN_ANGSTROM = 3.0
+PMF_MAX_ANGSTROM = 27.0
+PMF_BINS = 120
 WHAM_TOLERANCE_KCAL_MOL = 1.0e-8
 WHAM_MAX_ITERATIONS = 100000
 OVERLAP_BINS = 50

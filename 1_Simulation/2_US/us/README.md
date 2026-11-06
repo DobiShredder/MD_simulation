@@ -61,7 +61,7 @@ Distance는 `distance-cont.dat`에 기록되며 `2_Analysis/7_Enhanced_Sampling/
 | --- | --- |
 | `iat=5,133` | Terminal Cα pair입니다. Topology가 바뀌면 atom index를 다시 계산합니다. |
 | `r2=r3=CENTER` | Flat-bottom 폭이 없는 harmonic center이며 `build.sh`가 `windows.tsv` 값으로 치환합니다. |
-| `rk2=rk3=FORCE` | 중심 양쪽의 force constant이며 기본값은 10 kcal mol⁻¹ Å⁻²입니다. |
+| `rk2=rk3=FORCE` | 중심 양쪽의 force constant이며 기본값은 1.0 kcal mol⁻¹ Å⁻²입니다. 1 Å 간격에서 300 K window 폭은 약 0.55 Å로 인접 histogram이 겹칩니다. 이전 값 10은 폭 약 0.17 Å로 거의 겹치지 않았습니다. |
 | `DISANG=restraint.RST` | 모든 minimization·heating·equilibration·production stage에서 window restraint를 읽습니다. |
 | `&ewald netfrc=0` | Heavy-atom positional restraint(`ntr=1`)를 쓰는 `heat.in`에서 PME net-force 제거를 끕니다. AMBER manual이 `ntr=1`과 함께 권장합니다. |
 | `--window N` | 하나의 window만 실행합니다. 생략하면 모든 window를 순서대로 처리합니다. |
@@ -85,7 +85,9 @@ histogram overlap before the PMF offsets can be connected.
 topology, ordered seeds, and `restraint.RST.template`; `run.sh` executes the
 four restrained stages. `iat=5,133` selects the terminal Cα pair,
 `r2=r3` sets the center, `rk2=rk3` sets its strength, and `DISANG` keeps the
-restraint active. `--window N` limits execution to one window.
+restraint active. The default strength is 1.0 kcal mol⁻¹ Å⁻²: at 1 Å spacing,
+300 K windows are about 0.55 Å wide and neighboring histograms overlap. The
+previous value of 10 gave about 0.17 Å windows with almost no overlap. `--window N` limits execution to one window.
 `heat.in` also uses heavy-atom positional restraints (`ntr=1`) and sets
 `netfrc=0` in `&ewald`, as the AMBER manual recommends.
 

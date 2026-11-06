@@ -41,8 +41,8 @@ ligand의 Boresch restraint를 풀어 1 M 상태로 보내는 analytic 값이므
 | --- | --- | --- |
 | `download.sh` | 3HTB와 JZ4 ideal SDF download | `structure/` |
 | `prepare.py` | T4 lysozyme와 JZ4를 선택하고 anchor metadata 기록 | `complex.pdb`, `preparation.tsv` |
-| `build.sh` | JZ4 parameter, 원본/zero-charge topology와 65개 window 생성 | `work/build/`, `states.tsv` |
-| `generate_inputs.py` | Topology에서 restraint atom 번호와 input 생성 | `restraints.tsv`, `work/restraint/`, `work/charge/`, `work/vdw/` |
+| `build.sh` | JZ4 parameter, 원본·JZ4 두 copy·zero-charge topology와 65개 window 생성 | `work/build/`, `states.tsv` |
+| `generate_inputs.py` (자동 호출) | Topology에서 restraint atom 번호, copy mask와 input 생성 | `restraints.tsv`, `work/restraint/`, `work/charge/`, `work/vdw/` |
 | `run.sh` | Window별 MD와 1 ns production 실행 | Restart, trajectory, AMBER output |
 | `anal.py` | Stage별 MBAR 계산과 standard-state correction 조합 | `free_energy.tsv`, `overlap_matrix.tsv` |
 
@@ -63,17 +63,28 @@ geometry를 `restraints.tsv`에 기록합니다. Torsion reference는 Amber와 �
 ParmEd dihedral convention으로 계산합니다.
 
 Restraint·charge stage는 11개 lambda state를 사용합니다. LJ stage는 endpoint
-근처를 촘촘히 나눈 16개 state를 사용합니다. `icfe`와 `clambda`가 alchemical
-state를 정하고 `ifsc`/`scmask1`이 LJ endpoint의 singularity를 피합니다.
-`ifmbar=1`은 각 configuration의 potential energy를 해당 stage의 모든 lambda에서
-평가합니다. 이 full energy matrix가 MBAR의 input입니다.
+근처를 촘촘히 나눈 16개 state를 사용합니다. Charge와 LJ stage에서는 `icfe`와
+`clambda`가 alchemical state를 정하고, `ifmbar=1`이 각 configuration의 potential
+energy를 해당 stage의 모든 lambda에서 평가합니다. 이 full energy matrix가 MBAR의
+input입니다.
 
-Restraint와 charge stage는 atom을 생성하거나 제거하지 않는 non-softcore
-transformation입니다. PMEMD가 두 endpoint의 대응 atom을 구성할 수 있도록
-`timask1=timask2=':JZ4'`를 사용합니다. Restraint stage는 `gti_nmropt=1`, charge
-stage는 `crgmask=':JZ4'`로 실제로 scaling할 energy term을 지정합니다.
-`timask1=':JZ4', timask2=''`인 비대칭 unique-atom mask는 `ifsc=1`인 LJ
-decoupling에만 사용합니다.
+Stage별 AMBER 설정은 다음과 같습니다.
+
+| Stage | Topology | 주요 설정 |
+| --- | --- | --- |
+| Restraint | `complex.parm7` | TI 없음. `DISANG` force constant를 `(1-λ)`배로 줄임 |
+| Charge | `{complex,solvent}_charge.parm7` (JZ4 두 copy) | `timask1=':164'`, `timask2=':165'`, `crgmask=':165'`, `ifsc=0` (solvent는 `:1`/`:2`) |
+| LJ | `{complex,solvent}_uncharged.parm7` | `timask1=':JZ4'`, `timask2=''`, `ifsc=1`, `scmask1=':JZ4'`, `aces26=1` |
+
+Charge stage는 Amber manual 27.1.8.1의 linear-scaling TI입니다. `build.sh`가 같은
+좌표의 JZ4를 하나 더 넣은 topology를 LEaP로 만듭니다. λ=0의 V0는 charge가 있는
+첫 copy, λ=1의 V1은 `crgmask`로 charge를 0으로 만든 두 번째 copy입니다. 두
+copy는 서로 상호작용하지 않습니다. 두 번째 copy는 solute 뒤에 붙으므로 protein과
+첫 copy의 atom 번호가 `complex.parm7`과 같습니다. `generate_inputs.py`는 copy
+residue 번호를 topology에서 읽고 두 copy의 atom 이름, charge, 좌표와 restraint
+atom 번호를 확인합니다. Pmemd에서 `crgmask`는 두 endpoint 모두에 적용되므로,
+같은 JZ4를 `timask1`과 `timask2`에 함께 두면 charge가 양쪽에서 0이 되어 이
+stage의 값도 0이 됩니다.
 
 Window는 `work/restraint/complex/`, `work/charge/{complex,solvent}/`와
 `work/vdw/{complex,solvent}/`에 생성됩니다. 각 directory 아래의 `000`부터
@@ -88,18 +99,22 @@ trajectory가 모두 있으면 건너뜁니다. 일부 output만 남으면 파�
 계산 전에 중단합니다.
 
 Restraint stage는 λ=0의 restrained complex에서 λ=1의 unrestrained complex로
-진행합니다. 모든 window는 같은 full-strength `DISANG` file을 사용하고,
-`gti_nmropt=1`이 restraint energy를 lambda에 따라 제거합니다. Complex
-minimization에도 같은 `DISANG` restraint를 적용해 heating 전에 anchor geometry가
-흐트러지지 않게 합니다. Restraint stage에서 계산한 제거값은 같은 방향으로
-binding cycle에 더합니다. AMBER의 `rk2`/`rk3`는 `U=rk(x-x0)^2`의 계수이므로 Boresch
+진행합니다. 각 window의 `disang.rest`는 force constant에 `1-λ`를 곱한 일반 MD
+input입니다. Soft-core TI로 restraint만 바꾸는 방식은 쓰지 않습니다. ACES26에서는
+SC/CC `ele,vdw`가 항상 λ로 scaling되어(manual 27.1.7.4) ligand까지 decouple되기
+때문입니다. Production은 `DUMPAVE=production.restraint.dat`에 6개 restraint 값을
+5000 step마다 기록합니다. `anal.py`가 이 값으로 full-strength restraint energy
+`U`를 다시 계산하고, state j의 energy를 `(1-λj)U`로 넣은 efep file을 만들어
+MBAR에 넘깁니다. 이 energy 식은 AmberTools 26 sander의 restraint energy와 0.02
+kcal/mol 이내로 일치했습니다. Complex minimization에도 같은 `DISANG` restraint를
+적용해 heating 전에 anchor geometry가 흐트러지지 않게 합니다. Restraint stage에서
+계산한 제거값은 같은 방향으로 binding cycle에 더합니다. AMBER의 `rk2`/`rk3`는 `U=rk(x-x0)^2`의 계수이므로 Boresch
 analytic correction에서는 `K=2×rk`로 변환합니다. `standard_state_correction`은
 decoupled ligand의 restraint를 풀어 1 M 상태로 옮기는 항이며 보통 음수입니다.
 이 함수가 반환한 release free energy는 binding cycle에서 뺍니다.
 
-Charge stage는 원래 topology와 `crgmask=':JZ4'`를 사용합니다. JZ4의 net
-charge는 0이지만 atom별 partial charge interaction은 이 stage에서 제거합니다.
-LJ stage는 JZ4 charge를 0으로 만든 `complex_uncharged.parm7` 또는
+JZ4의 net charge는 0이지만 atom별 partial charge interaction은 charge stage에서
+제거합니다. LJ stage는 JZ4 charge를 0으로 만든 `complex_uncharged.parm7` 또는
 `solvent_uncharged.parm7`을 사용하고 `crgmask`를 다시 적용하지 않습니다.
 Soft-core input은 `aces26=1`과 명시적인 SC/CC nonbonded term 목록을 사용하며
 `pmemd.cuda`에서 실행합니다.
@@ -114,7 +129,8 @@ cycle과 standard-state correction을 다시 검토합니다.
 MBAR를 사용하고, 없으면 모든 adjacent pair가 기록된 stage에 BAR를 사용합니다.
 사용한 estimator는 `free_energy.tsv`에 stage별로 기록합니다. FE-ToolKit의
 automatic equilibration, correlated-sample stride와 20회 bootstrap을 사용합니다.
-각 window의 `production.out`을 읽습니다. 더 긴 계산과 segment 구성은
+Charge와 LJ window는 `production.out`, restraint window는
+`production.restraint.dat`를 읽습니다. 더 긴 계산과 segment 구성은
 `3_Templates/5_FEP/5.2_ABFE`에서 설정합니다.
 
 | Output | 내용 |
@@ -124,9 +140,15 @@ automatic equilibration, correlated-sample stride와 20회 bootstrap을 사용�
 | `work/overlap_matrix.tsv` | Stage별 lambda overlap |
 | `work/mbar/abfe_report.html` | FE-ToolKit convergence report |
 
-`gti_nmropt=1` restraint MBAR와 ACES26 MBAR energy matrix는 Amber 26
-`pmemd.cuda` desktop short run으로 아직 검증하지 않았습니다. 실행 전 mdout에
-각 lambda의 `MBAR Energy analysis` block이 모두 기록되는지 확인합니다.
+다음 항목은 `pmemd.cuda`가 없어 미검증입니다. 짧은 run으로 먼저 확인합니다.
+
+- Charge·LJ window mdout에 각 lambda의 `MBAR Energy analysis` block이 모두
+  기록되는지 확인합니다.
+- Charge stage의 두 copy linear TI에서 첫 copy에 건 Boresch restraint가 `DV/DL`에
+  섞이지 않는지 확인합니다. 같은 complex charge window(예: λ=0.5)를 restraint
+  유무로 짧게 돌려 `DV/DL` 평균을 비교합니다.
+- Restraint stage의 λ=1 window(`rk=0`)도 `production.restraint.dat`를 쓰는지,
+  pmemd DUMPAVE의 column이 sander처럼 `step`과 6개 값인지 확인합니다.
 
 Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 중단하고 파일을 보존합니다. 새 build 전에는 기존 `work/`를 다른 위치에 보관하거나 별도 tutorial 사본을 사용합니다.
 
@@ -184,20 +206,29 @@ decoupled restrained ligand to the 1 M state, so the reverse traversal enters
 the cycle as `-ΔG°release`.
 
 Run the five public entry points in the order shown above. `build.sh` uses
-ff19SB, GAFF2/AM1-BCC, and OPC, writes original and zero-JZ4-charge topologies,
-then creates 65 windows. Restraint and charge
+ff19SB, GAFF2/AM1-BCC, and OPC, writes the original, two-JZ4-copy, and
+zero-JZ4-charge topologies, then creates 65 windows. Restraint and charge
 stages use eleven lambda states; the soft-core LJ stages use sixteen states with
 additional endpoint spacing. Each window contains 200 ps heating, 100 ps
 equilibration, and one 1 ns production run.
 JZ4 is parameterized with a net charge of zero. The protein anchors are GLN102
 `CG-CB-CA`, and the ligand anchors are JZ4 `C7-C8-C9`.
 
-The restraint and charge stages do not create or remove atoms. Their
-non-softcore inputs use `timask1=timask2=':JZ4'` so PMEMD has a nonempty,
-one-to-one endpoint mapping. `gti_nmropt=1` defines the changing restraint
-term, while `crgmask=':JZ4'` defines charge removal. Only the soft-core LJ
-stage uses the asymmetric unique-atom masks `timask1=':JZ4'` and
-`timask2=''`.
+| Stage | Topology | Key settings |
+| --- | --- | --- |
+| Restraint | `complex.parm7` | No TI; `DISANG` force constants scaled by `(1-λ)` |
+| Charge | `{complex,solvent}_charge.parm7` (two JZ4 copies) | `timask1=':164'`, `timask2=':165'`, `crgmask=':165'`, `ifsc=0` (`:1`/`:2` in solvent) |
+| LJ | `{complex,solvent}_uncharged.parm7` | `timask1=':JZ4'`, `timask2=''`, `ifsc=1`, `scmask1=':JZ4'`, `aces26=1` |
+
+The charge stage is linear-scaling TI (Amber manual 27.1.8.1). LEaP adds a
+second JZ4 at identical coordinates; V0 is the charged first copy and V1 the
+second copy with charges removed by `crgmask`. The copies do not interact. The
+copy is appended after the solute, so protein and first-copy atom indices match
+`complex.parm7`. `generate_inputs.py` reads the copy residue numbers from the
+topology and checks atom names, charges, coordinates, and restraint atom indices.
+In pmemd `crgmask` applies to both endpoints, so placing the same JZ4 in both
+`timask1` and `timask2` would zero its charges in both states and give a zero
+charge leg.
 
 The solvent topology uses a 20 Å solute-to-box-edge buffer to keep the shortest
 box dimension out of the `pmemd.cuda` small-box guard with the 10 Å cutoff.
@@ -206,23 +237,28 @@ and their `*.out`, `*.rst7`, `*.info`, and applicable trajectory files are compl
 Partial outputs are preserved and rejected. Existing production output
 in any window stops the workflow before it can be overwritten.
 
-The restraint stage uses one full-strength `DISANG` definition in every window.
-`gti_nmropt=1` removes that restraint from the restrained state at lambda zero
-to the unrestrained state at lambda one, and `ifmbar=1` records its cross-state
-energies. Complex minimization uses the same `DISANG` restraints so heating
+The restraint stage is ordinary MD: each window scales the `DISANG` force
+constants by `1-λ`, from fully restrained at lambda zero to unrestrained at
+lambda one. A soft-core TI restraint stage is not used because ACES26 always
+scales SC/CC `ele,vdw` with lambda (manual 27.1.7.4), which would also decouple
+the ligand. Production writes the six restraint values every 5000 steps to
+`DUMPAVE=production.restraint.dat`. `anal.py` recomputes the full-strength
+restraint energy `U` and writes MBAR efep files with `(1-λj)U` for each state j.
+This energy matched AmberTools 26 sander restraint energies within 0.02
+kcal/mol. Complex minimization uses the same `DISANG` restraints so heating
 does not start from displaced anchor geometry. Torsion references follow the
-Amber/ParmEd dihedral convention. The charge stage uses
-`crgmask=':JZ4'` with the original topology. Although JZ4 is net neutral, this
-stage removes its atom-centered partial-charge interactions. The LJ stage uses
-the zero-JZ4-charge topology without applying `crgmask` a second time.
+Amber/ParmEd dihedral convention. Although JZ4 is net neutral, the charge stage
+removes its atom-centered partial-charge interactions. The LJ stage uses the
+zero-JZ4-charge topology without applying `crgmask` a second time.
 Soft-core interactions use the Amber 26 `aces26=1` format and require
 `pmemd.cuda`.
 
 `anal.py` uses FE-ToolKit MBAR when a stage has the full cross-state energy
 matrix and falls back to adjacent-state BAR when all neighboring pairs are
 available. The selected estimator is recorded for each stage in
-`free_energy.tsv`. It reads `production.out` from each window and then adds the
-analytical standard-state term. Use `3_Templates/5_FEP/5.2_ABFE` for longer or
+`free_energy.tsv`. It reads `production.out` from charge and LJ windows and
+`production.restraint.dat` from restraint windows, then adds the analytical
+standard-state term. Use `3_Templates/5_FEP/5.2_ABFE` for longer or
 segmented calculations. The leading PME
 net-charge correction is zero because JZ4 is neutral. Outputs include bootstrap uncertainty,
 per-state sampling diagnostics, stage overlap matrices, and an HTML convergence
@@ -233,8 +269,14 @@ The restraint stage runs from a restrained to an unrestrained bound complex.
 Its sampled removal free energy enters the binding cycle with the same sign,
 while the negative analytical standard-state release term is subtracted. AMBER uses
 `U=rk(x-x0)^2`; the analytical Boresch expression therefore uses `K=2*rk`.
-The `gti_nmropt=1` restraint-MBAR combination still requires an Amber 26
-`pmemd.cuda` desktop smoke test.
+Unverified without `pmemd.cuda`; check these in a short run first:
+
+- Every charge and LJ mdout contains `MBAR Energy analysis` blocks for all lambdas.
+- In the two-copy linear-TI charge stage, the Boresch restraint on the first
+  copy does not enter `DV/DL`. Compare short runs of one complex charge window
+  (for example λ=0.5) with and without the restraint.
+- The λ=1 restraint window (`rk=0`) still writes `production.restraint.dat`,
+  and pmemd DUMPAVE rows are `step` plus six values as in sander.
 
 Build stops before changing inputs when topology/restart files already exist, preserving those files. Preserve the existing `work/` elsewhere or use a separate tutorial copy before a new build.
 

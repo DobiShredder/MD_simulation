@@ -19,7 +19,7 @@ from config_utils import (  # noqa: E402
     section,
     string_value,
 )
-from temperature_ladder import LadderRow, generate_temperature_ladder  # noqa: E402
+from temperature_ladder import LadderRow, generate_even_temperature_ladder  # noqa: E402
 
 WATER_NAMES = {"WAT", "HOH", "TIP3", "TIP3P", "OPC"}
 ION_NAMES = {
@@ -142,6 +142,7 @@ def main() -> None:
         counts = count_system(args.topology)
 
         diagnostic_rows: list[LadderRow] = []
+        used_target: float | None = None
         if mode == "auto":
             minimum = positive_float(exchange, "minimum_temperature")
             maximum = positive_float(exchange, "maximum_temperature")
@@ -153,7 +154,7 @@ def main() -> None:
             else:
                 predictor_atoms = counts["solute_atoms"]
                 predictor_waters = 0
-            diagnostic_rows = generate_temperature_ladder(
+            diagnostic_rows, used_target = generate_even_temperature_ladder(
                 protein_atoms=predictor_atoms,
                 water_molecules=predictor_waters,
                 minimum_temperature=minimum,
@@ -162,6 +163,12 @@ def main() -> None:
                 tolerance=tolerance,
             )
             temperatures = [row.temperature for row in diagnostic_rows]
+            if used_target != target:
+                print(
+                    f"Auto ladder had an odd state count; raised the target exchange "
+                    f"probability from {target:.4f} to {used_target:.4f} to get "
+                    f"{len(temperatures)} states in {minimum:.2f}-{maximum:.2f} K."
+                )
         elif mode == "file":
             temperatures = read_temperatures(
                 Path(string_value(exchange, "temperature_file")),
@@ -178,9 +185,7 @@ def main() -> None:
         if len(temperatures) < 2 or len(temperatures) % 2:
             raise ValueError(
                 f"{args.config}: {mode} schedule produced {len(temperatures)} states; "
-                "replica exchange requires at least two and an even number. "
-                "The schedule was not adjusted; choose a different configuration "
-                "or supply an even temperature file."
+                "replica exchange requires at least two and an even number."
             )
 
         base_temperature = positive_float(section(config, "run"), "temperature")
@@ -226,6 +231,8 @@ def main() -> None:
             f"predictor_water_molecules\t{predictor_waters}",
         ]
     )
+    if used_target is not None:
+        count_lines.append(f"used_target_exchange_probability\t{used_target:.6f}")
     (args.output / "system_counts.tsv").write_text(
         "\n".join(count_lines) + "\n", encoding="utf-8"
     )

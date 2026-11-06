@@ -36,7 +36,7 @@ random_seed = "random"
 atom_mask_1 = ":1@CA"
 atom_mask_2 = ":10@CA"
 windows_file = "windows.tsv"
-force_constant = 10.0
+force_constant = 1.0
 exchange_interval_steps = 1000
 distance_output_interval_steps = 500
 

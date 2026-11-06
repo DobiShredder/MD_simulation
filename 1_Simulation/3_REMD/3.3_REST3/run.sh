@@ -274,8 +274,19 @@ option_log=work/mdrun_option_check.log
 if ! "$gmx_mpi" mdrun -h -hrex > "$option_log" 2>&1; then
     die "GROMACS does not recognize -hrex: $option_log"
 fi
-if ! grep -Fq HREX_WORKLOAD_FIX_1 "$option_log"; then
-    die "GROMACS lacks the REST HREX swapped-energy fix: $option_log"
+# The PLUMED patch appends "plumed_X.Y.Z" to the GROMACS version. The GROMACS
+# 2024 patch computes the HREX swapped-coordinate energy correctly only from
+# PLUMED 2.10.2 (PLUMED PR #1505); older builds give near-zero acceptance.
+version_log=work/gromacs_version.log
+if ! "$gmx_mpi" --version > "$version_log" 2>&1; then
+    die "Cannot read the GROMACS version: $version_log"
+fi
+if [[ ! "$(< "$version_log")" =~ plumed_([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
+    die "GROMACS is not patched with PLUMED: $version_log"
+fi
+plumed_version="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}"
+if (( BASH_REMATCH[1] * 10000 + BASH_REMATCH[2] * 100 + BASH_REMATCH[3] < 21002 )); then
+    die "GROMACS was patched with PLUMED $plumed_version; REST HREX needs PLUMED 2.10.2 or later: $version_log"
 fi
 if ! "$gmx_mpi" mdrun -h -plumed work/000/plumed.dat >> "$option_log" 2>&1; then
     die "GROMACS does not recognize -plumed: $option_log"

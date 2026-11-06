@@ -1,4 +1,4 @@
-Heat to 300 K over 200 ps
+Heat the shared system to 300 K over 200 ps
 &cntrl
  imin=0,
  irest=0,
@@ -28,5 +28,3 @@ Heat to 300 K over 200 ps
  value2=300.0,
 /
 &wt type='END' /
-DISANG=@DISANG@
-DUMPAVE=@DUMPAVE@

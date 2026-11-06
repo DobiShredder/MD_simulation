@@ -2,9 +2,9 @@
 
 ## 한국어
 
-최소 2개·짝수 replica만 지원합니다. `build.sh`와 `run.sh`는 홀수 schedule을 자동 조정하지 않고 거부합니다. `run.sh --dry-run`도 실제 state table의 count를 검사합니다. 기존 홀수 결과는 새 work directory에서 다시 준비합니다.
+최소 2개·짝수 replica만 지원합니다. Auto mode에서 predictor가 홀수 N개 state를 내면 온도 범위는 그대로 두고 target exchange probability를 올려 N+1개로 맞춥니다. N+1개가 되는 값 중 가장 큰 값을 쓰므로 모든 인접 pair의 예상 교환 확률이 거의 같아집니다. 실제로 쓴 값은 build 출력과 `work/system_counts.tsv`의 `used_target_exchange_probability`에 남습니다. File mode의 홀수 schedule은 자동으로 바꾸지 않고 거부합니다. `run.sh --dry-run`도 실제 state table의 count를 검사합니다. 기존 홀수 결과는 새 work directory에서 다시 준비합니다.
 
-File schedule은 LEaP 실행 전에 검사합니다. Auto count는 임시 topology에서 predictor를 실행한 뒤 검사하고, 통과한 preparation만 work directory에 복사합니다. 홀수이면 기존 input/state/log를 보존하고 진단용 temporary directory를 남깁니다. `build.sh --dry-run`은 file을 검사하지만 auto predictor를 실행하지 않으므로 auto count 검증은 실제 build까지 보류됩니다. Predictor 계산식과 temperature/target probability는 자동 변경하지 않습니다.
+File schedule은 LEaP 실행 전에 검사합니다. Auto ladder는 임시 topology에서 predictor를 실행해 만들고, 통과한 preparation만 work directory에 복사합니다. State 생성이 실패하면 기존 input/state/log를 보존하고 진단용 temporary directory를 남깁니다. `build.sh --dry-run`은 auto predictor를 실행하지 않으므로 auto replica 수는 실제 build에서 정해집니다. Predictor 계산식과 온도 범위는 바꾸지 않습니다.
 
 사용자가 직접 실행하는 파일은 이 directory의 root에 있습니다. `helpers/`는 `build.sh`, `run.sh` 또는 `anal.py`가 자동 호출하는 leaf-local 내부 code이며 직접 실행하지 않습니다.
 
@@ -12,13 +12,17 @@ File schedule은 LEaP 실행 전에 검사합니다. Auto count는 임시 topolo
 
 Water count를 위한 first-pass LEaP input과 `solvated.pdb`는 `work/.build_tmp.XXXXXX/`에서 생성합니다. 전체 build가 성공하면 temporary directory를 삭제하고, 실패하면 진단을 위해 경로를 출력하고 보존합니다. Final PDB, topology, restart, resolved config와 LEaP log는 유지합니다. REST build의 preprocessing TPR, processed topology와 energy-check raw file도 같은 temporary directory에 둡니다. 성공 후에는 `work/topol.top`, `work/system.gro`, replica topology, `work/build.log`, `work/build_summary.toml`, `work/energy_check.tsv`와 `work/net_charge.tsv`를 남깁니다. `./build.sh --keep-intermediates INPUT.pdb`를 사용하면 성공 후에도 temporary directory를 보존합니다. Replica는 공통 `work/system.gro`를 직접 참조합니다. 실제 minimization, equilibration, production TPR·`*.grompp.log`와 restart는 정리하지 않습니다.
 
-이 directory의 runtime code는 별도로 복사해 사용할 수 있습니다. GROMACS를
-build할 때는 상위 `patches/` directory의 correction도 함께 사용합니다. Python
+이 directory의 runtime code는 별도로 복사해 사용할 수 있습니다. Python
 dependency는 복사한 directory의 `requirements.txt`를 사용해 설치합니다.
 
-Water와 ion을 제외한 solute 전체를 tempered region으로 사용합니다. Temperature
-predictor에는 solute atom 수와 water 0을 전달하고, 생성한 effective temperature
-`T_i`에서 `lambda_pp=T_0/T_i`, `lambda_pw=sqrt(lambda_pp)`를 계산합니다.
+Water와 ion을 제외한 solute 전체를 tempered region으로 사용합니다. 기본
+`temperature_mode = "file"`은 `inputs/temperatures.txt`의 12개 effective
+temperature(300–450 K, geometric 간격)를 사용하므로 system 크기와 관계없이
+12 replica를 만듭니다. 각 `T_i`에서 `lambda_pp=T_0/T_i`,
+`lambda_pw=sqrt(lambda_pp)`를 계산합니다. 1UBQ(tempered solute 1231 atom)에서
+offline predictor가 예측한 이웃 exchange 확률은 약 0.27–0.30입니다. Solute가
+더 크면 확률이 낮아지므로 첫 production segment의 exchange 통계를 확인하고
+replica 수를 늘립니다.
 
 ```bash
 ./download.sh 1UBQ
@@ -27,11 +31,9 @@ replicas=$(awk 'NR > 1 {count++} END {print count + 0}' work/states.tsv)
 ./run.sh --cpus "$replicas" --gpus 1
 ```
 
-Production에는 PLUMED 2.10이 patch된 GROMACS 2024.3/2024.6 external-MPI build와
-상위 directory의
-[`HREX_WORKLOAD_FIX_1` correction](../patches/gromacs-2024.3-plumed-2.10-hrex-energy.patch)이
-필요합니다. 적용 순서와 검증 범위는 [상위 README](../README.md)에 있습니다.
-`run.sh`는 시작 전에 이 marker와 `-hrex` 지원을 검사합니다. Predictor의 목표
+Production에는 PLUMED 2.10.2 이상으로 patch한 GROMACS 2024.3 external-MPI
+build가 필요합니다. Build 방법과 검증 범위는 [상위 README](../README.md)에
+있습니다. `run.sh`는 시작 전에 PLUMED patch version과 `-hrex` 지원을 검사합니다. Predictor의 목표
 probability는 실제 HREX acceptance를 보장하지 않으므로 짧은 pilot run에서
 `Repl average probabilities`를 확인합니다.
 각 replica는 tutorial과 같이 minimization 뒤 300 K velocity를 생성하는 NPT
@@ -56,10 +58,11 @@ CMAP 실수를 GROMACS 2024.x가 읽을 수 있는 정밀도로 정규화합니�
 
 | `temperature_mode` | 사용하는 설정 | 무시하는 설정 | 생성 결과 |
 | --- | --- | --- | --- |
-| `auto` (기본값) | `minimum_temperature`, `maximum_temperature`, `target_exchange_probability`, `generator_tolerance` | `temperature_file` | Tempered solute atom 수와 water 0으로 ladder를 계산합니다. |
-| `file` | `temperature_file` | Auto ladder 설정 | File temperature에서 `lambda_pp=T0/T`, `lambda_pw=sqrt(lambda_pp)`를 계산합니다. |
+| `auto` | `minimum_temperature`, `maximum_temperature`, `target_exchange_probability`, `generator_tolerance` | `temperature_file` | Tempered solute atom 수와 water 0으로 ladder를 계산합니다. 1UBQ 기본값(300–450 K, p=0.20)은 11 state가 나와 p≈0.286, 12 state로 조정됩니다. |
+| `file` (기본값) | `temperature_file` | Auto ladder 설정 | File temperature에서 `lambda_pp=T0/T`, `lambda_pw=sqrt(lambda_pp)`를 계산합니다. |
 
-Temperature file은 사용자가 생성해야 합니다. 구분자는 공백, comma, semicolon,
+기본 `inputs/temperatures.txt`는 `T_i = 300 × 1.5^(i/11)`(i = 0–11)입니다. 다른
+범위나 replica 수를 쓰려면 이 file을 수정합니다. 구분자는 공백, comma, semicolon,
 `|`이며 `#` 뒤는 comment입니다. 값은 양수이고 중복 없이 오름차순이어야 하며,
 둘 이상이어야 하고 첫 값은 `run.temperature`와 같아야 합니다. 적용된 temperature,
 λ와 seed는 `work/states.tsv`에 기록됩니다.
@@ -162,9 +165,9 @@ continuation은 미검증입니다. Runner가 GPU ID를 전달하므로 CPU-only
 
 ## English
 
-Only even replica counts of at least two are supported. `build.sh` and `run.sh` reject odd schedules without adjusting them. `run.sh --dry-run` checks the actual state-table count too. Prepare a new work directory for results built with an odd schedule.
+Only even replica counts of at least two are supported. When the auto predictor returns an odd count N, the temperature range is kept and the target exchange probability is raised to give N+1 states. The largest target that still gives N+1 is used, so every neighbor pair has nearly the same predicted probability. The value used is printed by the build and stored as `used_target_exchange_probability` in `work/system_counts.tsv`. Odd file schedules are rejected, not adjusted. `run.sh --dry-run` checks the actual state-table count too. Prepare a new work directory for results built with an odd schedule.
 
-File schedules are checked before LEaP. Auto counts are checked after running the predictor on a temporary topology; only preparation with a valid count is copied to the work directory. Odd results preserve existing inputs, states and logs and retain temporary diagnostics. `build.sh --dry-run` validates files but defers auto-count validation until an actual build. The predictor algorithm, temperature range and target probability are not adjusted automatically.
+File schedules are checked before LEaP. The auto ladder is predicted on a temporary topology, and only preparation that passes is copied to the work directory. If state generation fails, existing inputs, states and logs are preserved and temporary diagnostics are retained. `build.sh --dry-run` does not run the auto predictor, so the auto replica count is set by the actual build. The predictor algorithm and temperature range are not changed.
 
 User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh`, `run.sh`, or `anal.py`; it is not a separate entry point.
 
@@ -210,26 +213,29 @@ gate has not been run with real GROMACS (unverified).
 
 | `temperature_mode` | Settings used | Settings ignored | Result |
 | --- | --- | --- | --- |
-| `auto` (default) | `minimum_temperature`, `maximum_temperature`, `target_exchange_probability`, `generator_tolerance` | `temperature_file` | Predicts the ladder from tempered-solute atoms and zero waters. |
-| `file` | `temperature_file` | Auto-ladder settings | Computes `lambda_pp=T0/T` and `lambda_pw=sqrt(lambda_pp)` from the file temperatures. |
+| `auto` | `minimum_temperature`, `maximum_temperature`, `target_exchange_probability`, `generator_tolerance` | `temperature_file` | Predicts the ladder from tempered-solute atoms and zero waters. For 1UBQ the defaults (300–450 K, p=0.20) give 11 states, adjusted to 12 at p≈0.286. |
+| `file` (default) | `temperature_file` | Auto-ladder settings | Computes `lambda_pp=T0/T` and `lambda_pw=sqrt(lambda_pp)` from the file temperatures. |
 
-The user must create the temperature file. It accepts whitespace, commas,
+The default `inputs/temperatures.txt` holds `T_i = 300 × 1.5^(i/11)` for
+i = 0–11. Edit it to change the range or replica count. It accepts whitespace, commas,
 semicolons, and `|` as separators; text after `#` is a comment. It must contain
 at least two unique, increasing positive values, and its first value must equal
 `run.temperature`. Applied temperatures, λ values, and seeds are written to
 `work/states.tsv`.
 
-This directory's runtime code can be copied on its own. Keep the parent
-`patches/` correction available when building GROMACS. Install the Python
+This directory's runtime code can be copied on its own. Install the Python
 dependencies from the local `requirements.txt` after copying it.
 
-The complete non-water, non-ion solute is the tempered region. The offline
-predictor receives the solute atom count and zero waters, then the build derives
-`lambda_pp=T_0/T_i` and `lambda_pw=sqrt(lambda_pp)` for every effective
-temperature. Production requires the patched PLUMED 2.10 HREX integration and
-the [`HREX_WORKLOAD_FIX_1` correction](../patches/gromacs-2024.3-plumed-2.10-hrex-energy.patch).
-See the [parent README](../README.md) for application steps and validation
-scope. Preproduction follows the
+The complete non-water, non-ion solute is the tempered region. The default
+`temperature_mode = "file"` reads 12 geometric effective temperatures
+(300–450 K) from `inputs/temperatures.txt`, so the build creates 12 replicas
+for any system and derives `lambda_pp=T_0/T_i` and `lambda_pw=sqrt(lambda_pp)`
+for each state. For 1UBQ (1231 tempered-solute atoms) the offline predictor
+estimates neighbor exchange probabilities of about 0.27–0.30. Larger solutes
+lower this value; check the exchange statistics of the first production segment
+and add replicas when needed. Production requires GROMACS 2024.3 patched with PLUMED 2.10.2 or later;
+`run.sh` checks the PLUMED patch version and `-hrex` support before starting.
+See the [parent README](../README.md) for build steps and validation scope. Preproduction follows the
 tutorial's minimization-to-NPT-equilibration sequence. `minimization_steepest_steps` and `heating_initial_temperature` remain in `config.toml` because the shared config checker requires them; REST GROMACS inputs do not use them. The build checks
 scale-one energy identity with a 0.1 kJ/mol tolerance. Before the first
 `grompp`, it normalizes long ParmEd-formatted CMAP numbers to a precision
