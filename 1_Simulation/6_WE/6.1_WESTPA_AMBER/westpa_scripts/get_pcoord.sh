@@ -12,5 +12,10 @@ if [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
         --registry "$WORK_DIR" --read "$WORK_DIR/common_files" --read "$WEST_SIM_ROOT/inputs" --read "$WEST_STRUCT_DATA_REF" --write "$WEST_PCOORD_RETURN" -- "$0" "${original_args[@]}"
 fi
 
-"$WEST_SIM_ROOT/westpa_scripts/calc_pcoord.sh" "$WEST_STRUCT_DATA_REF" \
-    > "$WEST_PCOORD_RETURN"
+# WESTPA writes this callback's stdout/stderr to $WORK_DIR/get_pcoord.log.
+cpptraj_log="$WORK_DIR/get_pcoord.cpptraj.log"
+if ! "$WEST_SIM_ROOT/westpa_scripts/calc_pcoord.sh" "$WEST_STRUCT_DATA_REF" "$cpptraj_log" \
+        > "$WEST_PCOORD_RETURN"; then
+    echo "Error: initial progress coordinate failed for $WEST_STRUCT_DATA_REF; cpptraj log: $cpptraj_log" >&2
+    exit 1
+fi

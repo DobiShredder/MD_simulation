@@ -8,6 +8,21 @@ preparation_only=0
 production_only=0
 segment_range=""
 
+show_help() {
+    cat <<'EOF'
+Usage: ./run.sh [--preparation-only | --production-only] [--segments START-END] [--dry-run]
+
+Run preproduction, shared GaMD preparation, and AMBER GaREUS production.
+
+Options:
+  --preparation-only  Run through shared GaMD parameter preparation and stop.
+  --production-only   Run exchange production from the completed GaMD state.
+  --segments RANGE    Run an inclusive 1-based production segment range.
+  --dry-run   Print the replica-exchange command without running it.
+  -h, --help  Show this help message and exit.
+EOF
+}
+
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --dry-run)
@@ -28,22 +43,12 @@ while [[ $# -gt 0 ]]; do
             segment_range=$1
             ;;
         -h|--help)
-            cat <<'EOF'
-Usage: ./run.sh [--preparation-only | --production-only] [--segments START-END] [--dry-run]
-
-Run preproduction, shared GaMD preparation, and AMBER GaREUS production.
-
-Options:
-  --preparation-only  Run through shared GaMD parameter preparation and stop.
-  --production-only   Run exchange production from the completed GaMD state.
-  --segments RANGE    Run an inclusive 1-based production segment range.
-  --dry-run   Print the replica-exchange command without running it.
-  -h, --help  Show this help message and exit.
-EOF
+            show_help
             exit 0
             ;;
         *)
-            echo "Usage: $0 [--dry-run]" >&2
+            echo "Error: unknown option: $1" >&2
+            show_help >&2
             exit 2
             ;;
     esac
@@ -60,6 +65,8 @@ die() {
 }
 
 work_dir=${WORK_DIR:-work}
+rerun_command="./run.sh ${original_args[*]:-}"
+rerun_command=${rerun_command% }
 if (( ! ${dry_run:-0} )) && [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
     exec "${PYTHON:-python3}" helpers/writer_guard.py \
         --registry "$work_dir" --write "$work_dir" -- "$0" "${original_args[@]}"
@@ -68,13 +75,15 @@ if (( ! dry_run )); then
     "${PYTHON:-python3}" helpers/input_identity.py --verify "$work_dir"
 fi
 states_file="$work_dir/states.tsv"
+if [[ ! -s "$work_dir/resolved_config.toml" ]]; then
+    die "Run ./build.sh first: $work_dir/resolved_config.toml"
+fi
+if [[ ! -s "$states_file" ]]; then
+    die "Run ./build.sh first: $states_file"
+fi
 amber_engine=$("${PYTHON:-python3}" helpers/config_utils.py "$work_dir/resolved_config.toml" engine AMBER_ENGINE pmemd.cuda)
 amber_mpi_engine=$("${PYTHON:-python3}" helpers/config_utils.py "$work_dir/resolved_config.toml" mpi_engine AMBER_MPI_ENGINE pmemd.cuda.MPI)
 mpi_launcher=${MPI_LAUNCHER:-mpirun}
-
-if [[ ! -s "$states_file" || ! -s "$work_dir/resolved_config.toml" ]]; then
-    die "Run ./build.sh first."
-fi
 
 replica_count=$(awk 'NR > 1 {count++} END {print count + 0}' "$states_file")
 if (( replica_count < 2 || replica_count % 2 != 0 )); then
@@ -111,6 +120,76 @@ if (( ! dry_run )); then
 fi
 
 source helpers/completion_helpers.sh
+
+# Paths written by one stage, including its completion marker.
+stage_candidates() {
+    local stage=$1
+    local replica
+    if [[ "$stage" == shared_* ]]; then
+        printf '%s\n' "$work_dir/.$stage.complete" "$work_dir/shared/${stage#shared_}."{out,rst7,nc,info}
+        return
+    fi
+    if [[ "$stage" == gamd_prepare ]]; then
+        printf '%s\n' "$work_dir/.gamd_prepare.complete" \
+            "$work_dir/$gamd_reference_replica/"{gamd_prepare.out,gamd_prepare.rst7,gamd_prepare.nc,gamd_prepare.info,gamd.prepare.log}
+        while IFS=$'\t' read -r replica _; do
+            if [[ "$replica" != replica ]]; then
+                printf '%s\n' "$work_dir/$replica/"{gamd-restart.dat,production_start.rst7,prepared.gamd.rst}
+            fi
+        done < "$states_file"
+        return
+    fi
+    printf '%s\n' "$work_dir/.$stage.complete"
+    if [[ "$stage" == production.* ]]; then
+        printf '%s\n' "$work_dir/exchange.${stage#production.}.log"
+    fi
+    while IFS=$'\t' read -r replica _; do
+        if [[ "$replica" == replica ]]; then
+            continue
+        fi
+        printf '%s\n' "$work_dir/$replica/$stage."{out,rst7,nc,info,gamd.rst} \
+            "$work_dir/$replica/restraint.$stage.dat" "$work_dir/$replica/gamd.$stage.log"
+    done < "$states_file"
+}
+
+# Retained output is never moved here; print the manual recovery instead.
+# All windows of a stage rerun together, so the list spans every window.
+die_partial() {
+    local stage=$1
+    local label=${stage/#shared_/shared }
+    local path
+    local retained=()
+    while IFS= read -r path; do
+        if [[ -e "$path" || -L "$path" ]]; then
+            retained+=("$path")
+        fi
+    done < <(stage_candidates "$stage")
+    die "Partial $label output is retained in $work_dir. Move these files out of $work_dir, keeping their directories, and rerun $rerun_command:
+  for file in ${retained[*]:-}; do mkdir -p \"$work_dir.failed/\${file%/*}\"; mv \"\$file\" \"$work_dir.failed/\$file\"; done"
+}
+
+# After a failed multipmemd run, show the MPI log and windows whose AMBER
+# output lacks the final timing block.
+report_replica_failure() {
+    local stage=$1
+    local mpirun_log=$2
+    local replica output
+    if [[ -s "$mpirun_log" ]]; then
+        echo "Last 20 lines of $mpirun_log:" >&2
+        tail -n 20 "$mpirun_log" >&2
+    fi
+    while IFS=$'\t' read -r replica _; do
+        if [[ "$replica" == replica ]]; then
+            continue
+        fi
+        output="$work_dir/$replica/$stage.out"
+        if [[ ! -s "$output" ]]; then
+            echo "Missing window output: $output" >&2
+        elif ! grep -q 'Total wall time' "$output"; then
+            echo "Unfinished window output: $output" >&2
+        fi
+    done < "$states_file"
+}
 
 check_stage_identity() {
     local stage=$1
@@ -200,7 +279,7 @@ run_stage_if_needed() {
         return
     fi
     if [[ "$status" == partial ]]; then
-        die "Partial $stage output detected and retained in $work_dir. Use a new WORK_DIR or resolve the partial stage."
+        die_partial "$stage"
     fi
     run_stage "$stage" "$input_restart"
 
@@ -269,7 +348,7 @@ run_shared_stage_if_needed() {
         return
     fi
     if [[ "$status" == partial ]]; then
-        die "Partial shared $stage output detected and retained in $shared_dir. Use a new WORK_DIR or resolve the partial stage."
+        die_partial "shared_$stage"
     fi
 
     echo "Running shared $stage stage."
@@ -347,14 +426,14 @@ prepare_common_gamd_state() {
         return
     fi
     if [[ -e "$completion_marker" || "$existing" -ne 0 ]]; then
-        die "Partial GaMD preparation output retained: $reference_dir"
+        die_partial gamd_prepare
     fi
     while IFS=$'\t' read -r replica _; do
         if [[ "$replica" == replica ]]; then
             continue
         fi
         if [[ -e "$work_dir/$replica/gamd-restart.dat" || -e "$work_dir/$replica/production_start.rst7" ]]; then
-            die "Unmarked GaMD preparation output retained: $work_dir/$replica"
+            die_partial gamd_prepare
         fi
     done < "$states_file"
     if (( production_only )); then
@@ -516,7 +595,7 @@ for segment in $(seq "$segment_start" "$segment_end"); do
         continue
     fi
     if [[ "$status" == partial ]]; then
-        die "Partial production output detected and retained: $work_dir/$segment_name"
+        die_partial "$segment_name"
     fi
 
     group_file="$work_dir/$segment_name.group"
@@ -529,7 +608,8 @@ for segment in $(seq "$segment_start" "$segment_end"); do
             cp "$work_dir/$replica/$input_gamd_state" "$work_dir/$replica/gamd-restart.dat"
         fi
     done < "$states_file"
-    echo "Running GaREUS production segment $segment/$production_segments."
+    mpirun_log="$work_dir/mpirun.$segment_name.log"
+    echo "Running GaREUS production segment $segment/$production_segments (MPI output: $mpirun_log)."
 
     if ! "$mpi_launcher" \
         "${mpi_options[@]}" \
@@ -539,8 +619,10 @@ for segment in $(seq "$segment_start" "$segment_end"); do
         -ng "$replica_count" \
         -groupfile "$group_file" \
         -rem 3 \
-        -remlog "$exchange_log"; then
-        die "GaREUS segment $segment Run failed: $exchange_log"
+        -remlog "$exchange_log" \
+        >> "$mpirun_log" 2>&1; then
+        report_replica_failure "$segment_name" "$mpirun_log"
+        die "GaREUS segment $segment failed: $mpirun_log, $exchange_log"
     fi
 
     completed=$(completed_stage_count "$segment_name" --require-gamd-log --require-complete)

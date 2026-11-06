@@ -40,14 +40,36 @@ fi
 
 if (( ! dry_run )); then
     "${PYTHON:-python3}" helpers/input_identity.py --verify "$work_dir"
-    production_output=$(find "$work_dir" -type f \
-        \( -name 'production.out' -o -name 'production.rst7' \
-           -o -name 'production.info' -o -name 'production.nc' \) \
-        -print -quit)
-    if [[ -n "$production_output" ]]; then
-        die "Production output already exists: $production_output"
-    fi
 fi
+
+report_engine_failure() {
+    local label=$1
+    local exit_status=$2
+    local output_file=$3
+    if [[ -s "$output_file" ]]; then
+        echo "Last 20 lines of $output_file:" >&2
+        tail -n 20 "$output_file" >&2
+    fi
+    die "$label calculation failed with exit status $exit_status: $output_file"
+}
+
+report_partial_stage() {
+    local label=$1
+    local directory=$2
+    local stage=$3
+    local failed_dir="$work_dir.failed/${directory#"$work_dir"/}"
+    local leftovers=()
+    local path
+    for path in "$directory/.$stage.success.json" "$directory/$stage".{out,rst7,info,nc}; do
+        if [[ -e "$path" ]]; then
+            leftovers+=("$path")
+        fi
+    done
+    if (( ${#leftovers[@]} == 0 )); then
+        die "$label completion check failed; see the message above: $directory"
+    fi
+    die "Partial $stage output is retained for $label: ${leftovers[*]}. Move these files out of $work_dir (for example: mkdir -p $failed_dir && mv ${leftovers[*]} $failed_dir/) and rerun ./run.sh."
+}
 
 run_stage() {
     local directory=$1
@@ -90,19 +112,25 @@ run_stage() {
     if [[ "$trajectory" == yes ]]; then
         required+=("$directory/$stage.nc")
     fi
+    # Completed stages are reused and missing stages run. A stage with output but
+    # no completion evidence stops the run; production is never overwritten.
     local output completion_state
-    completion_state=$("${PYTHON:-python3}" helpers/input_identity.py \
-        --check-completion "$directory/.$stage.identity.json")
+    if ! completion_state=$("${PYTHON:-python3}" helpers/input_identity.py \
+            --check-completion "$directory/.$stage.identity.json"); then
+        report_partial_stage "$calculation" "$directory" "$stage"
+    fi
     if [[ "$completion_state" == complete ]]; then
         reused_stage_count=$((reused_stage_count + 1))
         return
     fi
 
-    if ! (
+    local engine_status=0
+    (
         cd "$directory"
         "${command[@]}"
-    ); then
-        die "$stage calculation failed: $output_file"
+    ) || engine_status=$?
+    if (( engine_status != 0 )); then
+        report_engine_failure "$calculation - $stage" "$engine_status" "$output_file"
     fi
     for output in "${required[@]}"; do
         if [[ ! -s "$output" ]]; then

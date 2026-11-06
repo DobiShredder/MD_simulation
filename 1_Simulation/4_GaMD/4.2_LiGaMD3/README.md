@@ -201,11 +201,20 @@ retroactively. Start a new tutorial copy without generated `work/` directories f
 a new calculation. AMBER stages with `ntwx=0` do not require a trajectory for
 completion. Supported continuation retains its existing restart/state handoff.
 
-Production은 시작 증거도 보존합니다. Engine이 output 없이 mutable GaMD state만
-바꾸고 실패해도 preparation state를 복사해 그 실패 상태를 덮어쓰지 않습니다.
+Production은 시작 기록 `work/.production.started`를 남깁니다. Production이
+실패하면 rerun은 남은 output과 engine이 바꾼 `work/gamd-restart.dat`을 preparation
+state로 덮어쓰지 않고 중단합니다. Error message에 나온 file을 `work` 밖으로 옮긴 뒤
+`./run.sh --allow-unverified`를 다시 실행합니다. 예를 들어 `mkdir -p work.failed`와
+`mv work/production.* work/.production.started work/gamd-restart.dat work.failed/`를
+사용합니다. 완료된 production은 다시 실행하지 않습니다.
 
-Production also retains an attempt record. If the engine changes only mutable GaMD
-state before failing, retry does not overwrite that state with the prepared state.
+Production leaves an attempt record, `work/.production.started`. After a failed
+production, a rerun stops instead of overwriting the leftover output or the
+engine-modified `work/gamd-restart.dat` with the prepared state. Move the files named
+in the error message out of `work` and rerun `./run.sh --allow-unverified`, for example with
+`mkdir -p work.failed` and
+`mv work/production.* work/.production.started work/gamd-restart.dat work.failed/`.
+A completed production is not rerun.
 
 Public analysis entries automatically use `helpers/writer_guard.py` to reject concurrent writers to the same output. Protection covers engine execution through publication, and signal cleanup drains children before releasing the lock. Do not delete a lock to force a retry.
 

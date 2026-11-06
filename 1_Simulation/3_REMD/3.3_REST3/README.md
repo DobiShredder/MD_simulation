@@ -182,7 +182,9 @@ residue의 Cα distance를 TSV로 저장합니다.
 - [REST3 원 논문](https://pmc.ncbi.nlm.nih.gov/articles/PMC10795075/)
 - [repex-topology-parser](https://github.com/koreyr/repex_topology_parser)
 
-Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 중단하고 파일을 보존합니다. 새 build 전에는 기존 `work/`를 다른 위치에 보관하거나 별도 tutorial 사본을 사용합니다.
+Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 중단하고 파일을 보존합니다. 새 build 전에는 기존 `work/`를 다른 위치에 보관하거나 별도 tutorial 사본을 사용합니다. `build.sh`는 모든 build 검사를 통과한 뒤 마지막으로 `work/build.done`을 씁니다. 이 파일이 없으면 `run.sh`는 실행하지 않습니다.
+
+`run.sh`가 partial output으로 중단하면 오류 메시지가 나열한 파일을 `work.failed/`처럼 `work` 밖으로 옮긴 뒤 같은 command를 다시 실행합니다. 완료된 앞 stage는 건너뜁니다.
 
 Replica 실행이나 batch 도중 `grompp`가 실패하면 이미 시작한 replica가 모두 종료될 때까지 기다린 뒤 실패로 종료합니다. 후속 stage는 시작하지 않습니다.
 
@@ -324,7 +326,9 @@ be one. Both lists must contain the same number of values. Temperature
 determines the lambdas but not kappa. The build assigns deterministic seeds and
 writes `work/states.tsv`; the runner uses its row count as the replica count.
 
-Build stops before changing inputs when topology/restart files already exist, preserving those files. Preserve the existing `work/` elsewhere or use a separate tutorial copy before a new build.
+Build stops before changing inputs when topology/restart files already exist, preserving those files. Preserve the existing `work/` elsewhere or use a separate tutorial copy before a new build. `build.sh` writes `work/build.done` as its last step after every build check passes; `run.sh` refuses to start without it.
+
+When `run.sh` stops on partial output, move the files listed in the error out of `work` (for example, to `work.failed/`) and rerun the same command; completed earlier stages are skipped.
 
 If a replica or a mid-batch `grompp` command fails, the runner waits for all already-started replicas before returning failure. Subsequent stages do not start.
 

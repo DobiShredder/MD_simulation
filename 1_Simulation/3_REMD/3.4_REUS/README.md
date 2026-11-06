@@ -99,6 +99,8 @@ Window overlap과 PMF는
 
 Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 중단하고 파일을 보존합니다. 새 build 전에는 기존 `work/`를 다른 위치에 보관하거나 별도 tutorial 사본을 사용합니다.
 
+`run.sh`가 partial output으로 중단하면 오류 메시지가 나열한 파일을 `work.failed/`처럼 `work` 밖으로 옮긴 뒤 같은 command를 다시 실행합니다. 완료된 앞 stage는 건너뜁니다. Production의 MPI 출력은 `work/mpirun.production.log`에 이어서 기록합니다.
+
 `download.sh`는 모든 asset과 `SHA256SUMS`를 staging에서 확인한 뒤 `helpers/publish_download.py`로 게시합니다. Transfer, checksum 또는 일반 publication 실패에서는 기존 파일을 보존하며, 관련 없는 preparation 파일도 유지합니다. `structure/.download.pending`가 남으면 prepare/build와 새 download가 거부됩니다. 보존된 staging과 marker를 점검하고, marker만 삭제해 이전 파일과 새 파일을 섞어 사용하지 않습니다.
 
 ### Exchange 진단
@@ -159,6 +161,8 @@ restraint-distance ranges as TSV files. Window trajectories are written to
 PMF calculation.
 
 Build stops before changing inputs when topology/restart files already exist, preserving those files. Preserve the existing `work/` elsewhere or use a separate tutorial copy before a new build.
+
+When `run.sh` stops on partial output, move the files listed in the error out of `work` (for example, to `work.failed/`) and rerun the same command; completed earlier stages are skipped. Production MPI output is appended to `work/mpirun.production.log`.
 
 ### 동시 실행과 input 변경
 

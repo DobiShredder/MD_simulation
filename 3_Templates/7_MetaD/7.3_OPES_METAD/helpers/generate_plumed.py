@@ -46,6 +46,11 @@ def parse_arguments() -> argparse.Namespace:
         action="store_true",
         help="Use disposable output names for a PLUMED parse-only check",
     )
+    parser.add_argument(
+        "--stage",
+        default="PLUMED input generation",
+        help="Workflow stage named in configuration errors",
+    )
     return parser.parse_args()
 
 
@@ -74,7 +79,7 @@ def string_list(values: dict[str, object], key: str) -> list[str]:
 
 
 def comma(values: list[float | int | str]) -> str:
-    return ",".join(f"{value:g}" if isinstance(value, float) else str(value) for value in values)
+    return ",".join(number(value) if isinstance(value, float) else str(value) for value in values)
 
 
 def read_cv(path: Path | None) -> str:
@@ -83,6 +88,14 @@ def read_cv(path: Path | None) -> str:
     text = path.read_text(encoding="utf-8").strip()
     if not text:
         raise ValueError("collective-variable definition file is empty")
+    return text
+
+
+def number(value: float) -> str:
+    """Write a PLUMED number without losing precision (6-digit :g is too coarse)."""
+    text = f"{value:g}"
+    if float(text) != value:
+        text = repr(float(value))
     return text
 
 
@@ -105,6 +118,18 @@ def render_opes_metad(args: argparse.Namespace, config: dict[str, object]) -> st
     state_stride = positive_int(opes, "state_write_interval_steps")
     if state_stride % pace != 0:
         raise ValueError("state_write_interval_steps must be divisible by pace_steps")
+    # The next segment reads opes.state, so the last write must be the segment end.
+    production_steps = positive_int(run, "production_steps")
+    segments = positive_int(run, "production_segments")
+    if production_steps % segments != 0:
+        raise ValueError("production_steps must be divisible by production_segments")
+    segment_steps = production_steps // segments
+    if segment_steps % state_stride != 0:
+        raise ValueError(
+            f"production steps per segment ({segment_steps}) must be divisible by "
+            f"state_write_interval_steps ({state_stride}) so that opes.state is "
+            "written at the end of each segment"
+        )
     state_read = ""
     if args.restart and not args.parse_only:
         state_read = f"  STATE_RFILE={state_path(args, 'opes.state')}\n"
@@ -112,9 +137,9 @@ def render_opes_metad(args: argparse.Namespace, config: dict[str, object]) -> st
 
 opes: OPES_METAD ...
   ARG={comma(arguments)}
-  TEMP={positive_float(run, 'temperature'):g}
+  TEMP={number(positive_float(run, 'temperature'))}
   PACE={pace}
-  BARRIER={positive_float(opes, 'barrier'):g}
+  BARRIER={number(positive_float(opes, 'barrier'))}
   SIGMA={comma(sigma)}
   FILE={state_path(args, 'KERNELS')}
 {state_read}  STATE_WFILE={state_path(args, 'opes.state')}
@@ -133,7 +158,7 @@ def main() -> None:
         config = load_config(args.config)
         text = render_opes_metad(args, config)
     except (TypeError, ValueError) as error:
-        raise SystemExit(f"Config error: {error}") from None
+        raise SystemExit(f"Config error in {args.stage} ({args.config}): {error}") from None
     restart = "RESTART\n\n" if args.restart and not args.parse_only else ""
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(restart + text, encoding="utf-8")

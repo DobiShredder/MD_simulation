@@ -90,14 +90,14 @@ if (( ! dry_run )) && [[ -d "$work_dir" ]]; then
     existing_build=$(find "$work_dir" -type f \
         \( -name '*.parm7' -o -name '*.rst7' \) -print -quit)
     if [[ -n "$existing_build" ]]; then
-        die "Build output already exists and was retained: $existing_build. Use a new work directory for a new build."
+        die "Build output already exists and was retained: $existing_build. Move $work_dir aside (for example: mv $work_dir $work_dir.old) or set WORK_DIR to a new directory, then rerun ./build.sh."
     fi
 fi
 
 if [[ -d "$work_dir" ]]; then
     existing_result=$(find "$work_dir" -type f \( -name '.*.complete' -o -name '*.out' -o -name '*.cpt' \) -print -quit)
     if [[ -n "$existing_result" ]]; then
-        die "Existing simulation results were found: $existing_result"
+        die "Existing simulation results were found: $existing_result. Move $work_dir aside (for example: mv $work_dir $work_dir.old) or set WORK_DIR to a new directory, then rerun ./build.sh."
     fi
 fi
 
@@ -119,7 +119,9 @@ if (( ! dry_run )); then
 fi
 
 # Reject invalid file schedules before replacing build inputs or logs.
-"$python" helpers/generate_inputs.py "$method" "$config" "$work_dir/inputs" --validate-only
+if ! "$python" helpers/generate_inputs.py "$method" "$config" "$work_dir/inputs" --validate-only; then
+    die "Config validation failed: $config"
+fi
 
 if (( dry_run )); then
     echo "Method: $method"
@@ -135,7 +137,9 @@ mkdir -p "$work_dir"
 build_tmp=$(mktemp -d "$work_dir/.build_tmp.XXXXXX")
 candidate_dir="$build_tmp/candidate"
 mkdir -p "$candidate_dir/inputs"
-"$python" helpers/generate_inputs.py "$method" "$config" "$candidate_dir/inputs"
+if ! "$python" helpers/generate_inputs.py "$method" "$config" "$candidate_dir/inputs"; then
+    die "Solvation input generation failed: $config -> $candidate_dir/inputs"
+fi
 cp "$input" "$candidate_dir/input.pdb"
 cp "$candidate_dir/input.pdb" "$build_tmp/input.pdb"
 mv "$candidate_dir/inputs/tleap.solvate.in" "$build_tmp/tleap.solvate.in"
@@ -145,17 +149,23 @@ if ! (cd "$build_tmp" && "$tleap" -f tleap.solvate.in > leap.solvate.log 2>&1); 
     die "Initial tleap solvation failed. See log: $build_tmp/leap.solvate.log"
 fi
 cp "$build_tmp/leap.solvate.log" "$candidate_dir/leap.solvate.log"
-water_count=$("$python" helpers/count_waters.py "$build_tmp/solvated.pdb")
-salt_concentration=$("$python" - "$config" <<'PY'
+if ! water_count=$("$python" helpers/count_waters.py "$build_tmp/solvated.pdb"); then
+    die "Water count failed: $build_tmp/solvated.pdb"
+fi
+if ! salt_concentration=$("$python" - "$config" <<'PY'
 import sys
 sys.path.insert(0, "helpers")
 from pathlib import Path
 from config_utils import load_config
 print(load_config(Path(sys.argv[1]))["build"]["salt_concentration_molar"])
 PY
-)
+); then
+    die "Cannot read build.salt_concentration_molar: $config"
+fi
 salt_pairs=$(awk -v waters="$water_count" -v concentration="$salt_concentration" 'BEGIN {printf "%d", waters * concentration / 55.5 + 0.5}')
-"$python" helpers/generate_inputs.py "$method" "$config" "$candidate_dir/inputs" --salt-pairs "$salt_pairs"
+if ! "$python" helpers/generate_inputs.py "$method" "$config" "$candidate_dir/inputs" --salt-pairs "$salt_pairs"; then
+    die "Final tleap input generation failed: $config -> $candidate_dir/inputs"
+fi
 
 echo "Building the AMBER system ($water_count waters, $salt_pairs salt formula units)."
 if ! (cd "$candidate_dir" && "$tleap" -f inputs/tleap.final.in > tleap.stdout.log 2>&1); then
@@ -169,9 +179,13 @@ for output in system.parm7 system.rst7 system.pdb; do
 done
 
 echo "Generating $method replica states and inputs: $work_dir"
-"$python" helpers/generate_states.py "$method" "$config" "$candidate_dir/system.parm7" "$candidate_dir"
-"$python" helpers/generate_inputs.py "$method" "$config" "$candidate_dir/inputs" \
-    --salt-pairs "$salt_pairs" --states "$candidate_dir/states.tsv"
+if ! "$python" helpers/generate_states.py "$method" "$config" "$candidate_dir/system.parm7" "$candidate_dir"; then
+    die "Replica state generation failed: $config, $candidate_dir/system.parm7 -> $candidate_dir/states.tsv"
+fi
+if ! "$python" helpers/generate_inputs.py "$method" "$config" "$candidate_dir/inputs" \
+    --salt-pairs "$salt_pairs" --states "$candidate_dir/states.tsv"; then
+    die "Replica input generation failed: $config, $candidate_dir/states.tsv -> $candidate_dir"
+fi
 
 # Publish preparation only after the schedule passed; old inputs survive rejection.
 cp -R "$candidate_dir/." "$work_dir/"

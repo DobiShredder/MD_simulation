@@ -48,7 +48,7 @@ convergence를 함께 확인합니다. Kinetic reweighting과 2D PMF는 포함�
 `run.sh`는 profile별 temporary directory에서 cpptraj input, CV와 PMF를
 생성합니다. 새 CV와 reweighting 결과가 모두 확인된 뒤 최종 directory를
 교체합니다. 어느 단계에서 실패해도 이전 결과와 log를 유지하며, 실패한
-cpptraj log의 마지막 부분은 stderr에 출력합니다.
+cpptraj log는 `output/PROFILE.failed/`에 복사하고 마지막 부분을 stderr에 출력합니다.
 
 `result_generation.py`는 자동 호출되는 내부 helper입니다. 완료한 파일의 hash를
 결과 directory의 `.generation.json`에 기록합니다. 기본 경로는 `output/PROFILE`이며
@@ -80,7 +80,7 @@ per-frame total boost `ΔV` for reweighting.
 `run.sh` creates the cpptraj input, CV, and PMF in a profile-specific temporary
 directory. It replaces the final directory only after checking the new CV and
 reweighting outputs. Failure at either stage preserves previous results and
-logs; recent failed cpptraj log lines are printed to stderr.
+logs; failed cpptraj logs are copied to `output/PROFILE.failed/`, and their last lines are printed to stderr.
 
 `result_generation.py` is called automatically and records completed file hashes
 in `.generation.json`. The default result directory is `output/PROFILE`, with

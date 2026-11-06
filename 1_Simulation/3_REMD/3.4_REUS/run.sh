@@ -4,6 +4,10 @@ set -euo pipefail
 original_args=("$@")
 
 dry_run=0
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+    echo "Usage: $0 [--dry-run]"
+    exit 0
+fi
 if [[ "${1:-}" == "--dry-run" && $# -eq 1 ]]; then
     dry_run=1
 elif [[ $# -ne 0 ]]; then
@@ -63,6 +67,79 @@ stage_status() {
     fi
 }
 
+# Paths written by one window stage, including completion evidence.
+stage_candidates() {
+    local stage=$1
+    local replica
+    printf '%s\n' "work/.$stage.complete"
+    if [[ "$stage" == production ]]; then
+        printf '%s\n' work/production.group work/exchange.log
+    fi
+    while IFS=$'\t' read -r replica _; do
+        if [[ "$replica" == replica ]]; then
+            continue
+        fi
+        printf '%s\n' "work/$replica/$stage."{out,rst7,nc,info} \
+            "work/$replica/restraint.$stage.dat" "work/$replica/.$stage.success.json"
+    done < work/states.tsv
+}
+
+# Retained output is never moved here; print the manual recovery instead.
+# All windows of a stage rerun together, so the list spans every window.
+die_partial() {
+    local stage=$1
+    local path
+    local retained=()
+    while IFS= read -r path; do
+        if [[ -e "$path" || -L "$path" ]]; then
+            retained+=("$path")
+        fi
+    done < <(stage_candidates "$stage")
+    die "Partial $stage output is retained for all windows in work. Move these files out of work, keeping their window directories, and rerun ./run.sh:
+  for file in ${retained[*]:-}; do mkdir -p \"work.failed/\${file%/*}\"; mv \"\$file\" \"work.failed/\$file\"; done"
+}
+
+# Production is never overwritten; refuse complete or partial output.
+check_production_absent() {
+    local path
+    local existing=0
+    while IFS= read -r path; do
+        if [[ -e "$path" || -L "$path" ]]; then
+            existing=1
+        fi
+    done < <(stage_candidates production)
+    if (( ! existing )); then
+        return
+    fi
+    if [[ -f work/.production.complete ]]; then
+        die "REUS production already exists and is complete in work. Files were preserved. Move work aside (for example: mv work work.old) to start a new run."
+    fi
+    die_partial production
+}
+
+# After a failed multipmemd run, show the MPI log and windows whose AMBER
+# output lacks the final timing block.
+report_replica_failure() {
+    local stage=$1
+    local mpirun_log=$2
+    local replica output
+    if [[ -s "$mpirun_log" ]]; then
+        echo "Last 20 lines of $mpirun_log:" >&2
+        tail -n 20 "$mpirun_log" >&2
+    fi
+    while IFS=$'\t' read -r replica _; do
+        if [[ "$replica" == replica ]]; then
+            continue
+        fi
+        output="work/$replica/$stage.out"
+        if [[ ! -s "$output" ]]; then
+            echo "Missing window output: $output" >&2
+        elif ! grep -q 'Total wall time' "$output"; then
+            echo "Unfinished window output: $output" >&2
+        fi
+    done < work/states.tsv
+}
+
 run_window_stage() {
     local stage=$1
     local input_restart=$2
@@ -76,7 +153,7 @@ run_window_stage() {
         return
     fi
     if [[ "$status" == partial ]]; then
-        die "Partial $stage output retained in work. Files were preserved. Start a new tutorial copy."
+        die_partial "$stage"
     fi
 
     echo "Running: $stage"
@@ -173,11 +250,8 @@ for executable in "$amber_engine" "$amber_mpi_engine" "$mpi_launcher"; do
         die "Executable not found: $executable"
     fi
 done
-if find work/[0-9][0-9][0-9] -maxdepth 1 \
-    \( -name 'production.out' -o -name 'production.rst7' \) \
-    -print -quit 2>/dev/null | grep -q .; then
-    die "Production output already exists in work."
-fi
+# Check production before rerunning any preproduction stage.
+check_production_absent
 
 run_window_stage minimize system.rst7
 run_window_stage heat minimize.rst7
@@ -200,13 +274,7 @@ while IFS=$'\t' read -r replica _; do
 done < work/states.tsv
 "${PYTHON:-python3}" helpers/input_identity.py "${production_identity[@]}"
 
-for output in work/production.group work/exchange.log work/.production.complete \
-    work/[0-9][0-9][0-9]/production.{out,rst7,nc,info} \
-    work/[0-9][0-9][0-9]/restraint.production.dat; do
-    if [[ -e "$output" || -L "$output" ]]; then
-        die "Production output already exists or is partial: $output. Files were preserved. Start a new tutorial copy."
-    fi
-done
+check_production_absent
 
 group_file=work/production.group
 : > "$group_file"
@@ -227,15 +295,18 @@ while IFS=$'\t' read -r replica _; do
         >> "$group_file"
 done < work/states.tsv
 
-echo "Running: 1 ns REUS production"
+mpirun_log=work/mpirun.production.log
+echo "Running: 1 ns REUS production (MPI output: $mpirun_log)"
 if ! "$mpi_launcher" \
     -np "$replica_count" \
     "$amber_mpi_engine" \
     -ng "$replica_count" \
     -groupfile "$group_file" \
     -rem 3 \
-    -remlog work/exchange.log; then
-    die "REUS production failed. Inspect terminal output; expected diagnostics (if created): work/exchange.log and work/*/production.out"
+    -remlog work/exchange.log \
+    >> "$mpirun_log" 2>&1; then
+    report_replica_failure production "$mpirun_log"
+    die "REUS production failed: $mpirun_log, work/exchange.log"
 fi
 
 while IFS=$'\t' read -r replica _; do

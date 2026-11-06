@@ -21,9 +21,10 @@ residue-time map과 state fraction을 표시합니다. Cpptraj total output에�
 
 다른 system은 `run.sh` 상단의 두 경로와 residue mask를 수정합니다.
 `secstruct` action에는 stride keyword가 없습니다. Frame을 건너뛰려면
-cpptraj command에 `-ya "1 last 5"`를 추가하거나 `trajin`의 세 번째 정수인
-offset을 사용합니다. 큰 stride는 짧은 secondary-structure transition을 놓칠
-수 있습니다.
+`1_Preprocessing/1.3_Conversion`의 `start_frame`, `stop_frame`, `stride`로
+`sampled.nc`를 만든 뒤 이 `run.sh`의 `trajectory`를
+`../../1_Preprocessing/1.3_Conversion/output/sampled.nc`로 바꿉니다. 큰 stride는
+짧은 secondary-structure transition을 놓칠 수 있습니다.
 
 STRIDE program도 secondary structure assignment에 사용할 수 있습니다.
 Cpptraj과 다른 hydrogen-bond 및 assignment 규칙을 사용하므로 두 program의
@@ -35,7 +36,7 @@ proline처럼 필요한 backbone amide atom이 없는 residue가 있어도 cpptr
 
 `run.sh`는 빈 temporary directory에서 새 결과를 계산하고 필수 output을
 확인한 뒤 `output/`을 교체합니다. 계산 실패나 새 output 누락 시 이전 결과와
-log를 유지합니다. 실패한 실행의 log 마지막 부분은 stderr에 출력합니다.
+log를 유지합니다. 실패한 실행의 log는 `output.failed/`에 복사하고 마지막 부분을 stderr에 출력합니다.
 
 자동 호출되는 `result_generation.py`가 완료한 파일의 hash를
 `output/.generation.json`에 기록합니다. `anal.py`는 이 기록을 확인하며,
@@ -54,16 +55,18 @@ directory를 함께 보존하고 검사합니다. 파일을 개별적으로 섞�
 Cpptraj's DSSP implementation assigns integer secondary-structure states for
 each Chignolin residue and frame. The workflow writes assignments, per-residue
 populations, and total fractions; `anal.py` displays a residue-time map and
-state fractions. `secstruct` has no stride keyword; use cpptraj `-ya` or the
-third `trajin` integer offset for frame sampling. STRIDE is an alternative
+state fractions. `secstruct` has no stride keyword. To sample frames, create
+`sampled.nc` with `start_frame`, `stop_frame`, and `stride` in
+`1_Preprocessing/1.3_Conversion`, then set `trajectory` in this `run.sh` to
+`../../1_Preprocessing/1.3_Conversion/output/sampled.nc`. STRIDE is an alternative
 assignment program, but its definitions differ from cpptraj DSSP.
 
 ### Result storage and reruns
 
 `run.sh` calculates in an empty temporary directory, checks required outputs,
 and then replaces `output/`. Calculation failure or missing new outputs leaves
-the previous results and logs intact. Recent failed-generation log lines are
-printed to stderr.
+the previous results and logs intact. Failed-generation logs are copied to
+`output.failed/`, and their last lines are printed to stderr.
 
 The automatically called `result_generation.py` records completed file hashes
 in `output/.generation.json`. `anal.py` checks this record and, when saving

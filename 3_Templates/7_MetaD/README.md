@@ -35,6 +35,30 @@ PLUMED input을 연결합니다.
 직전까지 실행하고, `--production-only`는 완료된 equilibration과 기존 bias
 state에서 시작합니다.
 
+### 실패한 production segment 복구
+
+Segment K(K ≥ 2)를 시작하기 전에 `run.sh`는 root bias file과 `COLVAR`를
+`work/K/bias_start/`에 복사합니다. 실패한 segment는 root bias file에 hill,
+kernel 또는 state를 이미 추가했을 수 있으므로 그대로 이어서 실행하면
+`work/K-1/production.rst7`과 bias가 맞지 않습니다. `run.sh`는 이런 segment를
+자동으로 지우거나 되돌리지 않고, 다시 실행하면 중단하면서 다음 command를
+출력합니다. WT-MetaD의 segment 3 예시입니다.
+
+```bash
+mkdir -p work.failed
+mv work/003 work.failed/
+cp -p work.failed/003/bias_start/HILLS work/HILLS
+cp -p work.failed/003/bias_start/COLVAR work/COLVAR
+./run.sh --segments 3-10
+```
+
+복사할 file은 method별 bias state(`HILLS`, `KERNELS`/`opes.state`,
+`DELTAFS`/`opes.state`, Funnel의 `FUNNEL_GRID`)와 `COLVAR`입니다. Segment 1이
+실패하면 snapshot 대신 `work/001`과 root bias file을 `work.failed/`로 옮깁니다.
+PLUMED backup file(`work/bck.*`)은 restart에서 읽지 않으므로 함께 옮깁니다.
+PLUMED log의 위치(`work/K/plumed.log`)는 AMBER 기본 이름을 가정한 것으로
+미검증입니다.
+
 ## English
 
 WT-MetaD, Funnel-MetaD, OPES_METAD, and OPES_EXPANDED are selected by leaf
@@ -59,3 +83,27 @@ The existing `--segment N` selector and inclusive 1-based
 `--segments START-END` are mutually exclusive. `--preparation-only` stops
 before bias deposition; `--production-only` requires completed equilibration
 and the applicable bias state.
+
+### Recovering a failed production segment
+
+Before segment K (K ≥ 2) starts, `run.sh` copies the root bias files and
+`COLVAR` into `work/K/bias_start/`. A failed segment may already have appended
+hills, kernels, or state to the root files, so continuing from them would not
+match `work/K-1/production.rst7`. `run.sh` never deletes or restores such a
+segment; a rerun stops and prints the restore commands. Example for WT-MetaD
+segment 3:
+
+```bash
+mkdir -p work.failed
+mv work/003 work.failed/
+cp -p work.failed/003/bias_start/HILLS work/HILLS
+cp -p work.failed/003/bias_start/COLVAR work/COLVAR
+./run.sh --segments 3-10
+```
+
+The restored files are the method's bias state (`HILLS`, `KERNELS`/`opes.state`,
+`DELTAFS`/`opes.state`, plus `FUNNEL_GRID` for Funnel) and `COLVAR`. If segment 1
+fails, move `work/001` and the root bias files to `work.failed/` instead.
+PLUMED backup files (`work/bck.*`) are not read on restart; move them as well.
+The PLUMED log location (`work/K/plumed.log`) assumes the AMBER default name and
+is unverified.

@@ -4,7 +4,7 @@
 
 Equilibration은 `work/heat.rst7`을 initial coordinate file과 positional restraint의 `-ref` input으로 함께 읽습니다. 이 reference가 변경되거나 누락되면 기존 stage 결과를 보존하고 실행을 거부합니다.
 
-사용자가 직접 실행하는 파일은 이 directory의 root에 있습니다. `helpers/`는 `build.sh`, `run.sh` 또는 `anal.py`가 자동 호출하는 leaf-local 내부 code이며 직접 실행하지 않습니다.
+사용자가 직접 실행하는 파일은 이 directory의 root에 있습니다. `helpers/`는 `build.sh` 또는 `run.sh`가 자동 호출하는 leaf-local 내부 code이며 직접 실행하지 않습니다.
 
 중단되거나 marker가 없는 stage output은 자동 삭제하거나 재실행하지 않고 보존한 채 중단합니다.
 
@@ -39,7 +39,7 @@ production 50,000,000 steps는 100 ns입니다. 실제 적용값과 salt formula
 첫 실행에서 production segment가 하나이면 output을 `work/`에 직접 저장합니다. 여러 개이면
 `work/001`, `work/002` 순서로 저장합니다.
 Preproduction과 production에서 partial output을 발견하면 기존 파일을 보존하고
-중단합니다. 재시작하려면 해당 파일의 상태를 확인하거나 새 `WORK_DIR`을 사용합니다.
+중단합니다.
 
 ### Config 선택값
 
@@ -52,7 +52,9 @@ Preproduction과 production에서 partial output을 발견하면 기존 파일�
 | `equilibration_ensemble` | `NVT`, `NPT` | `NPT` | Equilibration의 `ntb`와 `ntp`를 설정합니다. |
 | `production_ensemble` | `NVT`, `NPT` | `NPT` | Production의 `ntb`와 `ntp`를 설정합니다. |
 | `constraint_mode` | `h-bonds`만 지원 | `h-bonds` | Hydrogen-containing bond에 SHAKE를 적용합니다. |
-| `random_seed` | `"random"` 또는 양의 정수 | `"random"` | `"random"`은 AMBER `ig=-1`, 정수는 고정 seed를 사용합니다. |
+| `pressure_coupling` | `isotropic`, `anisotropic` | `isotropic` | NPT stage에서 각각 `ntp=1`, `ntp=2`를 사용합니다. 다른 값은 build를 중단합니다. |
+| `timestep` | 2.0 fs 이하 | `2.0` | AMBER `dt`(ps)로 기록합니다. Hydrogen mass repartitioning이 없으므로 2 fs보다 크면 build가 중단됩니다. |
+| `random_seed` | `"random"` 또는 양의 정수 | `"random"` | Heating의 seed입니다. 이후 stage는 `ig=-1`로 실행할 때마다 새 seed를 사용합니다. |
 
 ### Engine 선택과 실행 상태
 
@@ -62,7 +64,7 @@ Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 
 
 다운로드는 임시 파일의 PDB atom record를 확인한 뒤 최종 파일로 교체합니다. 실패하면 기존 PDB를 보존하고 임시 파일을 정리합니다.
 
-빈 output도 기존 파일로 취급합니다. Completion marker와 필수 nonempty output이 모두 있어야 단계를 건너뛰며, partial output은 자동으로 덮어쓰지 않습니다.
+빈 output도 기존 파일로 취급합니다. Completion marker와 필수 nonempty output이 모두 있어야 단계를 건너뛰며, partial output은 자동으로 덮어쓰지 않습니다. Error가 나열한 파일을 `WORK_DIR` 밖으로 옮긴 뒤 같은 `./run.sh` command를 다시 실행하면 그 stage부터 다시 계산합니다.
 
 ### 동시 실행과 input 변경
 
@@ -102,7 +104,7 @@ SIGKILL 또는 node 장애로 남은 lock은 자동으로 지우지 않습니다
 
 Equilibration reads `work/heat.rst7` as both the initial coordinate file and the positional-restraint `-ref` input. A changed or missing reference stops the run and preserves existing stage results.
 
-User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh`, `run.sh`, or `anal.py`; it is not a separate entry point.
+User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh` or `run.sh`; it is not a separate entry point.
 
 Interrupted or unmarked stage output is retained and stops the workflow instead of being deleted or rerun automatically.
 
@@ -119,7 +121,9 @@ The first-pass LEaP input and water-count `solvated.pdb` are created under `work
 | `equilibration_ensemble` | `NVT`, `NPT` | `NPT` | Sets equilibration `ntb` and `ntp`. |
 | `production_ensemble` | `NVT`, `NPT` | `NPT` | Sets production `ntb` and `ntp`. |
 | `constraint_mode` | `h-bonds` only | `h-bonds` | Applies SHAKE to bonds involving hydrogen. |
-| `random_seed` | `"random"` or a positive integer | `"random"` | `"random"` maps to AMBER `ig=-1`; an integer fixes the seed. |
+| `pressure_coupling` | `isotropic`, `anisotropic` | `isotropic` | NPT stages use `ntp=1` or `ntp=2`, respectively. Other values stop the build. |
+| `timestep` | 2.0 fs or less | `2.0` | Written as AMBER `dt` in ps. Values above 2 fs stop the build because hydrogen masses are not repartitioned. |
+| `random_seed` | `"random"` or a positive integer | `"random"` | Sets the heating seed; later stages use `ig=-1` and receive a new seed per invocation. |
 
 This directory can be copied and used on its own. Install its Python
 dependencies from the local `requirements.txt` after copying it.
@@ -148,7 +152,7 @@ Build stops before changing inputs when topology/restart files already exist, pr
 
 Downloads replace the final PDB only after validating atom records in a temporary file. Failure preserves the existing PDB and removes the temporary file.
 
-Empty outputs also count as existing files. A stage is skipped only when its completion marker and all required nonempty outputs exist; partial outputs are not overwritten automatically.
+Empty outputs also count as existing files. A stage is skipped only when its completion marker and all required nonempty outputs exist; partial outputs are not overwritten automatically. Move the files listed by the error outside `WORK_DIR` and rerun the same `./run.sh` command to recompute that stage.
 
 ### Concurrent runs and input changes
 

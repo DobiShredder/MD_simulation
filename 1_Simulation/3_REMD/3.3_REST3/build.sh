@@ -32,7 +32,7 @@ if [[ -d "$work_dir" ]]; then
     existing_build=$(find "$work_dir" -type f \
         \( -name '*.parm7' -o -name '*.rst7' \) -print -quit)
     if [[ -n "$existing_build" ]]; then
-        die "Build output already exists and was retained: $existing_build. Use a new work directory for a new build."
+        die "Build output already exists and was retained: $existing_build. Move work aside (for example: mv work work.old) and rerun ./build.sh $input_pdb."
     fi
 fi
 
@@ -44,7 +44,7 @@ python_bin=${PYTHON:-python3}
 if find "$work_dir" -type f \
     \( -name 'minimize.gro' -o -name 'equilibrate.gro' -o -name 'production.gro' \) \
     -print -quit 2>/dev/null | grep -q .; then
-    die "Simulation output already exists in $work_dir. Remove it before rebuilding."
+    die "Simulation output already exists in work. Move work aside (for example: mv work work.old) and rerun ./build.sh $input_pdb."
 fi
 
 for input_file in "$input_pdb" "$temperature_file" "$kappa_file"; do
@@ -167,4 +167,6 @@ if ! "$python_bin" "verify_rest3.py" \
     die "REST3 topology-preservation check failed: $states_file, $work_dir/processed.top and replica topologies in $work_dir"
 fi
 
+# Last step: run.sh refuses a work directory without this marker.
+touch "$work_dir/build.done"
 echo "REST3 topologies and coordinates: $work_dir"

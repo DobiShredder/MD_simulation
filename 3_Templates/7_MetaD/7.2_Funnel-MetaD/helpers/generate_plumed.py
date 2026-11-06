@@ -49,12 +49,25 @@ def parse_arguments() -> argparse.Namespace:
         action="store_true",
         help="Use disposable output names for a PLUMED parse-only check",
     )
+    parser.add_argument(
+        "--stage",
+        default="PLUMED input generation",
+        help="Workflow stage named in configuration errors",
+    )
     return parser.parse_args()
 
 
 
 
 
+
+
+def number(value: float) -> str:
+    """Write a PLUMED number without losing precision (6-digit :g is too coarse)."""
+    text = f"{value:g}"
+    if float(text) != value:
+        text = repr(float(value))
+    return text
 
 
 def state_path(args: argparse.Namespace, name: str) -> str:
@@ -103,30 +116,30 @@ fps: FUNNEL_PS ...
 
 funnel: FUNNEL ...
   ARG=fps.lp,fps.ld
-  ZCC={zcc:g}
-  ALPHA={alpha:g}
-  RCYL={positive_float(funnel, 'cylinder_radius'):g}
-  MINS={minimum:g}
-  MAXS={maximum:g}
-  KAPPA={positive_float(funnel, 'wall_force'):g}
+  ZCC={number(zcc)}
+  ALPHA={number(alpha)}
+  RCYL={number(positive_float(funnel, 'cylinder_radius'))}
+  MINS={number(minimum)}
+  MAXS={number(maximum)}
+  KAPPA={number(positive_float(funnel, 'wall_force'))}
   NBINS={positive_int(funnel, 'radial_grid_bins')}
   NBINZ={positive_int(funnel, 'axial_grid_bins')}
   FILE={state_path(args, 'FUNNEL_GRID')}
 ...
 
-lower: LOWER_WALLS ARG=fps.lp AT={lower:g} KAPPA={positive_float(funnel, 'wall_force'):g} EXP=2
-upper: UPPER_WALLS ARG=fps.lp AT={upper:g} KAPPA={positive_float(funnel, 'wall_force'):g} EXP=2
+lower: LOWER_WALLS ARG=fps.lp AT={number(lower)} KAPPA={number(positive_float(funnel, 'wall_force'))} EXP=2
+upper: UPPER_WALLS ARG=fps.lp AT={number(upper)} KAPPA={number(positive_float(funnel, 'wall_force'))} EXP=2
 
 metad: METAD ...
   ARG=fps.lp
-  SIGMA={positive_float(metad, 'sigma'):g}
-  HEIGHT={positive_float(metad, 'height'):g}
+  SIGMA={number(positive_float(metad, 'sigma'))}
+  HEIGHT={number(positive_float(metad, 'height'))}
   PACE={positive_int(metad, 'pace_steps')}
-  BIASFACTOR={positive_float(metad, 'bias_factor'):g}
-  TEMP={positive_float(run, 'temperature'):g}
+  BIASFACTOR={number(positive_float(metad, 'bias_factor'))}
+  TEMP={number(positive_float(run, 'temperature'))}
   FILE={state_path(args, 'HILLS')}
-  GRID_MIN={minimum:g}
-  GRID_MAX={maximum:g}
+  GRID_MIN={number(minimum)}
+  GRID_MAX={number(maximum)}
   GRID_BIN={positive_int(metad, 'grid_bins')}
   CALC_RCT
 ...
@@ -141,7 +154,7 @@ def main() -> None:
         config = load_config(args.config)
         text = render_funnel(args, config)
     except (TypeError, ValueError) as error:
-        raise SystemExit(f"Config error: {error}") from None
+        raise SystemExit(f"Config error in {args.stage} ({args.config}): {error}") from None
     restart = "RESTART\n\n" if args.restart and not args.parse_only else ""
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(restart + text, encoding="utf-8")

@@ -52,10 +52,15 @@ cleanup_generation() {
     status=$?
     if [[ -d "$generation_dir" ]]; then
         if [[ $status -ne 0 ]]; then
-            echo "Error: analysis failed; previous output is unchanged. Recent generation logs:" >&2
+            # The generation directory is removed below; keep its logs for diagnosis.
+            failed_logs=output.failed
+            mkdir -p "$failed_logs"
+            rm -f -- "$failed_logs"/*.log
+            echo "Error: analysis failed; previous output is unchanged. Generation logs were copied to $failed_logs/:" >&2
             for log in "$generation_dir"/*.log; do
                 if [[ -f "$log" ]]; then
-                    echo "Log: $log" >&2
+                    cp "$log" "$failed_logs/"
+                    echo "Log: $failed_logs/${log##*/}" >&2
                     tail -n 20 "$log" >&2
                 fi
             done
@@ -80,12 +85,12 @@ if ! "$cpptraj" \
     -y "$trajectory" \
     -i "$input_file" \
     > cpptraj.log 2>&1; then
-    echo "Error: cpptraj failed: $output_dir/cpptraj.log" >&2
+    echo "Error: cpptraj failed: output.failed/cpptraj.log" >&2
     exit 1
 fi
 
 if [[ ! -s phi_psi.dat ]]; then
-    echo "Error: feature extraction output missing or empty: $output_dir/phi_psi.dat; see $output_dir/cpptraj.log" >&2
+    echo "Error: feature extraction output missing or empty: $output_dir/phi_psi.dat; see output.failed/cpptraj.log" >&2
     exit 1
 fi
 

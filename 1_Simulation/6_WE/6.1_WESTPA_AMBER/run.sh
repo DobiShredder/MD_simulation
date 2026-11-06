@@ -15,7 +15,7 @@ fi
 
 if (( dry_run )); then
     echo "Dry run: planned WESTPA command; no iteration execution"
-    printf '+ w_run --work-manager serial > %q 2>&1\n' "$WORK_DIR/west.log"
+    printf '+ w_run --work-manager serial >> %q 2>&1\n' "$WORK_DIR/west.log"
     exit 0
 fi
 
@@ -51,14 +51,36 @@ if [[ ! "$requested_iteration" =~ ^[1-9][0-9]*$ ]]; then
     exit 1
 fi
 
-echo "Running: up to $requested_iteration WESTPA iterations; log: $WORK_DIR/west.log"
-if ! w_run --work-manager serial > "$WORK_DIR/west.log" 2>&1; then
-    echo "Error: WESTPA Run failed: $WORK_DIR/west.log" >&2
+# Print this run's WESTPA log section and the newest segment log, then stop.
+report_westpa_failure() {
+    local message=$1
+    echo "Last 20 lines of this run in $west_log:" >&2
+    tail -n "+$log_start_line" "$west_log" | tail -n 20 >&2
+    # Segment logs are named ITERATION-SEGMENT, so the last name is the newest.
+    local segment_logs=("$WORK_DIR"/seg_logs/*.log)
+    local latest_segment_log=${segment_logs[${#segment_logs[@]}-1]}
+    if [[ -f "$latest_segment_log" ]]; then
+        echo "Last 20 lines of the most recent segment log $latest_segment_log:" >&2
+        tail -n 20 "$latest_segment_log" >&2
+    fi
+    echo "Error: $message: $west_log" >&2
     exit 1
+}
+
+# Each run appends to west.log after a timestamped header.
+west_log="$WORK_DIR/west.log"
+log_start_line=1
+if [[ -f "$west_log" ]]; then
+    log_start_line=$(( $(wc -l < "$west_log") + 1 ))
 fi
-if grep -q -- '-- ERROR' "$WORK_DIR/west.log"; then
-    echo "Error: A run error was recorded in the WESTPA log: $WORK_DIR/west.log" >&2
-    exit 1
+echo "===== w_run started $(date '+%Y-%m-%d %H:%M:%S') =====" >> "$west_log"
+
+echo "Running: up to $requested_iteration WESTPA iterations; log: $west_log"
+if ! w_run --work-manager serial >> "$west_log" 2>&1; then
+    report_westpa_failure "WESTPA run failed"
+fi
+if awk -v start="$log_start_line" 'NR >= start && /-- ERROR/ {found = 1} END {exit !found}' "$west_log"; then
+    report_westpa_failure "A run error was recorded in the WESTPA log"
 fi
 
 if ! current_iteration=$("${PYTHON:-python3}" - "$WORK_DIR/west.h5" <<'PY'

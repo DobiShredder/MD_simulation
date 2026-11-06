@@ -56,6 +56,32 @@ die() {
     exit 1
 }
 
+show_engine_output() {
+    local output=$1
+    if [[ -s "$output" ]]; then
+        echo "Last 20 lines of $output:" >&2
+        tail -n 20 "$output" >&2
+    fi
+}
+
+# Partial output is never removed or overwritten; the user moves it out of work.
+die_partial() {
+    local reason=$1
+    local label=$2
+    shift 2
+    local leftover_files=()
+    local path
+    for path in "$@"; do
+        if [[ -e "$path" ]]; then
+            leftover_files+=("$path")
+        fi
+    done
+    if (( ${#leftover_files[@]} == 0 )); then
+        die "${reason}No rMD $label output was written. Fix the cause and rerun $rerun_command."
+    fi
+    die "${reason}Partial rMD $label output is retained: ${leftover_files[*]}. Move these files out of work (for example: mkdir -p work.failed && mv ${leftover_files[*]} work.failed/) and rerun $rerun_command."
+}
+
 stage_state() {
     local marker=$1
     shift
@@ -106,6 +132,10 @@ run_stage() {
     local prefix="work/$stage"
     local marker="work/.$stage.complete"
     local required=("$prefix.out" "$prefix.rst7")
+    local stage_outputs=("$prefix.out" "$prefix.rst7" "$prefix.info" "$prefix.nc" "$marker")
+    if [[ "$stage" == ratchet ]]; then
+        stage_outputs+=(work/ratchet.dat)
+    fi
     # Always name -inf: AMBER otherwise writes mdinfo, which has no input identity.
     local command=(
         "$engine" -O
@@ -139,7 +169,7 @@ run_stage() {
             return
         fi
         if [[ "$state" == partial ]]; then
-            die "Partial $label output detected and retained: $prefix"
+            die_partial "" "$label" "${stage_outputs[@]}"
         fi
     fi
 
@@ -155,12 +185,13 @@ run_stage() {
         cd work
         "${command[@]}"
     ); then
-        die "$label failed: $prefix.out"
+        show_engine_output "$prefix.out"
+        die_partial "rMD $label failed. " "$label" "${stage_outputs[@]}"
     fi
     local output
     for output in "${required[@]}"; do
         if [[ ! -s "$output" ]]; then
-            die "$label output is incomplete: $output"
+            die_partial "rMD $label output is incomplete: $output. " "$label" "${stage_outputs[@]}"
         fi
     done
     touch "$marker"
@@ -171,11 +202,18 @@ if (( ! ${dry_run:-0} )) && [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_E
     exec "${PYTHON:-python3}" ../helpers/writer_guard.py \
         --registry "../work" --read "../work" --write work -- "$0" "${original_args[@]}"
 fi
-engine=$("${PYTHON:-python3}" ../helpers/config_utils.py "../work/resolved_config.toml" engine AMBER_ENGINE pmemd.cuda)
+config=../work/resolved_config.toml
+if [[ ! -s "$config" ]]; then
+    die "Run ../build.sh first: $config"
+fi
+engine=$("${PYTHON:-python3}" ../helpers/config_utils.py "$config" engine AMBER_ENGINE pmemd.cuda)
 python=${PYTHON:-python3}
 topology=../work/system.parm7
 coordinates=../work/system.rst7
-config=../work/resolved_config.toml
+rerun_command="./run.sh"
+if (( ${#original_args[@]} > 0 )); then
+    rerun_command+=" ${original_args[*]}"
+fi
 
 if (( dry_run )); then
     echo '+ (cd .. && python3 helpers/generate_inputs.py rmd work/resolved_config.toml rmd/work --topology work/system.parm7)'
@@ -196,17 +234,31 @@ else
     for stage in min-solvent min-all heat equil ratchet; do
         identity_options+=(--output "work/$stage.out" --output "work/.$stage.complete")
     done
-    "$python" ../helpers/input_identity.py --record work/.source.identity.json \
-        --stage "rMD source configuration" "${identity_options[@]}"
+    # An existing source identity must match before generated inputs are replaced.
+    # On the first run it is recorded only after generate_inputs.py has resolved the
+    # atom masks, so a corrected mask is not rejected as a changed input.
+    source_identity_recorded=0
+    if [[ -e work/.source.identity.json ]]; then
+        "$python" ../helpers/input_identity.py --record work/.source.identity.json \
+            --stage "rMD source configuration" "${identity_options[@]}"
+        source_identity_recorded=1
+    fi
 
     if [[ -e work/ratchet.out && ! -f work/.ratchet.complete ]]; then
-        die "Partial ratchet-MD output detected: work/ratchet"
+        die_partial "" "ratchet MD" work/ratchet.out work/ratchet.rst7 \
+            work/ratchet.info work/ratchet.nc work/ratchet.dat
     fi
-    (
+    if ! (
         cd ..
         "$python" -B helpers/generate_inputs.py rmd work/resolved_config.toml rmd/work \
             --topology work/system.parm7
-    )
+    ); then
+        die "rMD input generation failed; see the Config error above. Atom masks are checked against $topology. Fix config.toml, move ../work aside (for example: mv ../work ../work.old), rerun ../build.sh, and then rerun $rerun_command."
+    fi
+    if (( ! source_identity_recorded )); then
+        "$python" ../helpers/input_identity.py --record work/.source.identity.json \
+            --stage "rMD source configuration" "${identity_options[@]}"
+    fi
     cp "$topology" work/system.parm7
     cp "$coordinates" work/system.rst7
 fi

@@ -16,6 +16,39 @@ die() {
     exit 1
 }
 
+# Print existing files as work/... paths, relative to the tutorial directory.
+retained_files() {
+    local names=()
+    local name
+    for name in "$@"; do
+        if [[ -e "$name" || -L "$name" ]]; then
+            names+=("work/$name")
+        fi
+    done
+    echo "${names[*]}"
+}
+
+# Stop with the retained stage files and the manual recovery command.
+die_retained() {
+    local label=$1
+    local reason=$2
+    shift 2
+    local retained
+    retained=$(retained_files "$@")
+    if [[ -z "$retained" ]]; then
+        die "${reason}No $label output was written; rerun ./run.sh after fixing the cause."
+    fi
+    die "${reason}Partial $label output is retained: $retained. Move these files out of work (for example: mkdir -p work.failed && mv $retained work.failed/) and rerun ./run.sh."
+}
+
+show_engine_log() {
+    local engine_output=$1
+    if [[ -s "$engine_output" ]]; then
+        echo "Last 20 lines of work/$engine_output:" >&2
+        tail -n 20 "$engine_output" >&2
+    fi
+}
+
 run_stage() {
     local label=$1
     local output=$2
@@ -33,6 +66,21 @@ run_stage() {
     "${PYTHON:-python3}" ../helpers/input_identity.py \
         --record ".$output.identity.json" --stage "$label" -- "$@"
 
+    # Engine files without completion evidence are kept for manual inspection.
+    local stage_files=()
+    local index
+    for ((index = 1; index < $#; index++)); do
+        case "${!index}" in
+            -o|-r|-x|-inf)
+                index=$((index + 1))
+                stage_files+=("${!index}")
+                ;;
+        esac
+    done
+    if [[ ! -e ".$output.success.json" && -n "$(retained_files "${stage_files[@]}")" ]]; then
+        die_retained "$label" "" "${stage_files[@]}"
+    fi
+
     local completion_state
     completion_state=$("${PYTHON:-python3}" ../helpers/input_identity.py \
         --check-completion ".$output.identity.json")
@@ -43,16 +91,17 @@ run_stage() {
 
     echo "Running: $label"
     if ! "$@"; then
-        die "$label failed; expected engine output: work/$output (may be absent); see engine diagnostics above"
+        show_engine_log "$output"
+        die_retained "$label" "$label failed; engine output: work/$output. " "${stage_files[@]}"
     fi
     if [[ ! -s "$output" ]]; then
-        die "$label output was not created: work/$output"
+        die_retained "$label" "$label output was not created: work/$output. " "${stage_files[@]}"
     fi
     if [[ ! -s "$restart" ]]; then
-        die "$label restart was not created: work/$restart"
+        die_retained "$label" "$label restart was not created: work/$restart. " "${stage_files[@]}"
     fi
     if [[ "$output" == production.out && ! -s production.nc ]]; then
-        die "$label trajectory was not created: work/production.nc"
+        die_retained "$label" "$label trajectory was not created: work/production.nc. " "${stage_files[@]}"
     fi
     "${PYTHON:-python3}" ../helpers/input_identity.py \
         --finish-completion ".$output.identity.json"
@@ -76,8 +125,9 @@ fi
 if [[ ! -s "$topology" || ! -s "$coordinates" ]]; then
     die "Run preflight: topology or restart missing: $topology, $coordinates. Run ../2_Topology_Build/run.sh first."
 fi
-if (( ! dry_run )) && [[ -e work/production.out ]]; then
-    die "Production output already exists: work/production.out"
+# A partial production run is reported by run_stage with recovery steps.
+if (( ! dry_run )) && [[ -e work/production.out && -e work/.production.out.success.json ]]; then
+    die "Production output already exists: work/production.out. To start again, move work aside (for example: mv work work.old) and rerun ./run.sh."
 fi
 
 if (( ! dry_run )); then
@@ -100,7 +150,7 @@ if (( ! dry_run )); then
         fi
         if [[ -e "$destination" ]]; then
             if ! cmp -s "$source_input" "$destination"; then
-                die "Run preflight: copied input differs and was retained: $destination. Use a new tutorial copy."
+                die "Run preflight: copied input differs and was retained: $destination. Move work aside (for example: mv work work.old) and rerun ./run.sh."
             fi
         else
             cp "$source_input" "$destination"

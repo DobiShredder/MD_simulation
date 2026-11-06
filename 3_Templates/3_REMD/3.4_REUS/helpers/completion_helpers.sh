@@ -25,6 +25,10 @@ stage_state() {
             fi
         done
     done < "$states_file"
+    # An exchange log without the marker belongs to an interrupted segment.
+    if [[ "$stage" == production.* && -e "$work_dir/exchange.${stage#production.}.log" ]]; then
+        existing=$((existing + 1))
+    fi
 
     if [[ -f "$marker" && "$complete" -eq "$expected" ]]; then
         echo complete

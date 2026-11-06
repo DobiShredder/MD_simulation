@@ -30,9 +30,10 @@ Protonation, missing atom, 결정학적 첨가물과 force field는 build 전에
 Download와 전처리 구조는 `structure/`, AMBER control file은 `inputs/`,
 생성된 topology·restart·trajectory는 `work/`에 둡니다.
 
-Minimization, heating과 equilibration은 main output과 restart가 모두 있으면
-건너뜁니다. 둘 중 일부만 있으면 해당 stage를 다시 실행하고, production output은
-덮어쓰지 않습니다.
+`run.sh`는 완료 기록이 있는 stage를 건너뜁니다. 완료 기록 없이 output이 남아
+있으면 파일을 보존하고 중단합니다. Error가 나열한 파일을 `work/` 밖으로 옮긴 뒤
+`./run.sh`를 다시 실행하면 그 stage부터 다시 계산합니다. 완료된 production
+output은 덮어쓰지 않습니다.
 
 각 system README는 실제 script의 input과 output, 그리고 그 외 중요 option들에 대해 설명합니다.
 1 ns라는 동일한 길이는 workflow 학습을 위한 값입니다.
@@ -62,8 +63,9 @@ missing atoms, crystallographic additives, and force-field choices before the
 build. All three systems use OPC, and KcsA additionally uses Lipid21. The default
 engine is `pmemd.cuda`. Source and prepared structures use `structure/`, AMBER
 control files use `inputs/`, and generated files use `work/`.
-Minimization, heating, and equilibration are skipped when both their main output
-and restart exist; incomplete pairs are rerun. Existing production output is
-never overwritten.
+`run.sh` skips stages with completion records. Outputs without a completion
+record are preserved and the run stops; move the files listed by the error out
+of `work/` and rerun `./run.sh` to recompute that stage. Completed production
+output is never overwritten.
 Each system README documents its scripts, inputs, outputs, and other important
 options. The common 1 ns length is a tutorial workflow setting.

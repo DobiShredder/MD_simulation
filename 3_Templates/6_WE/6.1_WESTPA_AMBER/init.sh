@@ -70,23 +70,43 @@ fi
     --input "$WORK_DIR/inputs/segment.in.template" --input "$WORK_DIR/configs/west.001.cfg" \
     --output "$WORK_DIR/west.h5" --output "$WORK_DIR/west.init.log"
 
+report_init_failure() {
+    local message=$1
+    local log_file
+    # get_pcoord.log holds the basis-state progress-coordinate callback output.
+    for log_file in "$init_log" "$WORK_DIR/get_pcoord.log"; do
+        if [[ -s "$log_file" ]]; then
+            echo "Last 20 lines of $log_file:" >&2
+            tail -n 20 "$log_file" >&2
+        fi
+    done
+    die "$message: $init_log"
+}
+
 mkdir -p "$WORK_DIR/traj_segs" "$WORK_DIR/seg_logs" "$WORK_DIR/istates"
 initial_walkers=$(<"$WORK_DIR/initial_walkers.txt")
-echo "Initializing WESTPA state; log: $WORK_DIR/west.init.log"
+# A retry after a failed w_init appends to the log after a timestamped header.
+init_log="$WORK_DIR/west.init.log"
+log_start_line=1
+if [[ -f "$init_log" ]]; then
+    log_start_line=$(( $(wc -l < "$init_log") + 1 ))
+fi
+echo "===== w_init started $(date '+%Y-%m-%d %H:%M:%S') =====" >> "$init_log"
+echo "Initializing WESTPA state; log: $init_log"
 if ! w_init \
     -r "$WORK_DIR/configs/west.001.cfg" \
     --bstate-file "$WORK_DIR/bstates/bstates.txt" \
     --tstate-file "$WORK_DIR/tstate.file" \
     --segs-per-state "$initial_walkers" \
-    --work-manager serial > "$WORK_DIR/west.init.log" 2>&1; then
-    die "WESTPA initialization failed: $WORK_DIR/west.init.log"
+    --work-manager serial >> "$init_log" 2>&1; then
+    report_init_failure "WESTPA initialization failed"
 fi
-if grep -q -- '-- ERROR' "$WORK_DIR/west.init.log"; then
-    die "WESTPA initialization reported an error: $WORK_DIR/west.init.log"
+if awk -v start="$log_start_line" 'NR >= start && /-- ERROR/ {found = 1} END {exit !found}' "$init_log"; then
+    report_init_failure "WESTPA initialization reported an error"
 fi
 
 if [[ ! -s "$WORK_DIR/west.h5" ]]; then
-    die "WESTPA initialization did not create state: $WORK_DIR/west.h5"
+    report_init_failure "WESTPA initialization did not create state $WORK_DIR/west.h5"
 fi
 
 echo "WESTPA state: $WORK_DIR/west.h5"

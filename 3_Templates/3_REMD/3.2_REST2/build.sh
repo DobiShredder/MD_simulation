@@ -132,14 +132,14 @@ if (( ! dry_run )) && [[ -d "$work_dir" ]]; then
     existing_build=$(find "$work_dir" -type f \
         \( -name '*.parm7' -o -name '*.rst7' \) -print -quit)
     if [[ -n "$existing_build" ]]; then
-        die "Build output already exists and was retained: $existing_build. Use a new work directory for a new build."
+        die "Build output already exists and was retained: $existing_build. Move $work_dir aside (for example: mv $work_dir $work_dir.old) or set WORK_DIR to a new directory, then rerun ./build.sh."
     fi
 fi
 
 if [[ -d "$work_dir" ]]; then
     existing_result=$(find "$work_dir" -type f \( -name '.*.complete' -o -name '*.out' -o -name '*.cpt' \) -print -quit)
     if [[ -n "$existing_result" ]]; then
-        die "Existing simulation results were found: $existing_result"
+        die "Existing simulation results were found: $existing_result. Move $work_dir aside (for example: mv $work_dir $work_dir.old) or set WORK_DIR to a new directory, then rerun ./build.sh."
     fi
 fi
 
@@ -167,7 +167,9 @@ if (( ! dry_run )); then
 fi
 
 # Reject invalid file schedules before replacing build inputs or logs.
-"$python" helpers/generate_inputs.py "$method" "$config" "$work_dir/inputs" --validate-only
+if ! "$python" helpers/generate_inputs.py "$method" "$config" "$work_dir/inputs" --validate-only; then
+    die "Config validation failed: $config"
+fi
 
 if (( dry_run )); then
     echo "Method: $method"
@@ -192,7 +194,9 @@ log_event versions 0 "gromacs=$("$gmx" --version 2>&1 | head -n 1) plumed=$("$pl
 
 cp "$input" "$candidate_dir/input.pdb"
 log_command generate-solvation-input "$python" helpers/generate_inputs.py "$method" "$config" "$candidate_dir/inputs"
-"$python" helpers/generate_inputs.py "$method" "$config" "$candidate_dir/inputs"
+if ! "$python" helpers/generate_inputs.py "$method" "$config" "$candidate_dir/inputs"; then
+    die "Solvation input generation failed: $config -> $candidate_dir/inputs"
+fi
 cp "$candidate_dir/input.pdb" "$build_tmp/input.pdb"
 mv "$candidate_dir/inputs/tleap.solvate.in" "$build_tmp/tleap.solvate.in"
 
@@ -202,17 +206,23 @@ if ! (cd "$build_tmp" && "$tleap" -f tleap.solvate.in > leap.solvate.log 2>&1); 
 fi
 cp "$build_tmp/leap.solvate.log" "$candidate_dir/leap.solvate.log"
 log_event solvation 0 "input=$build_tmp/tleap.solvate.in output=$build_tmp/solvated.pdb log=$candidate_dir/leap.solvate.log"
-water_count=$("$python" helpers/count_waters.py "$build_tmp/solvated.pdb")
-salt_concentration=$("$python" - "$config" <<'PY'
+if ! water_count=$("$python" helpers/count_waters.py "$build_tmp/solvated.pdb"); then
+    die "Water count failed: $build_tmp/solvated.pdb"
+fi
+if ! salt_concentration=$("$python" - "$config" <<'PY'
 import sys
 sys.path.insert(0, "helpers")
 from pathlib import Path
 from config_utils import load_config
 print(load_config(Path(sys.argv[1]))["build"]["salt_concentration_molar"])
 PY
-)
+); then
+    die "Cannot read build.salt_concentration_molar: $config"
+fi
 salt_pairs=$(awk -v waters="$water_count" -v concentration="$salt_concentration" 'BEGIN {printf "%d", waters * concentration / 55.5 + 0.5}')
-"$python" helpers/generate_inputs.py "$method" "$config" "$candidate_dir/inputs" --salt-pairs "$salt_pairs"
+if ! "$python" helpers/generate_inputs.py "$method" "$config" "$candidate_dir/inputs" --salt-pairs "$salt_pairs"; then
+    die "Final tleap input generation failed: $config -> $candidate_dir/inputs"
+fi
 
 echo "Building the AMBER system ($water_count waters, $salt_pairs salt formula units)."
 if ! (cd "$candidate_dir" && "$tleap" -f inputs/tleap.final.in > tleap.stdout.log 2>&1); then
@@ -222,24 +232,35 @@ log_event final-tleap 0 "input=$candidate_dir/inputs/tleap.final.in outputs=$can
 
 echo "Generating $method replica states: $config -> $candidate_dir/states.tsv"
 log_command generate-states "$python" helpers/generate_states.py "$method" "$config" "$candidate_dir/system.parm7" "$candidate_dir"
-"$python" helpers/generate_states.py "$method" "$config" "$candidate_dir/system.parm7" "$candidate_dir"
-"$python" helpers/generate_inputs.py "$method" "$config" "$candidate_dir/inputs" \
-    --salt-pairs "$salt_pairs" --states "$candidate_dir/states.tsv"
+if ! "$python" helpers/generate_states.py "$method" "$config" "$candidate_dir/system.parm7" "$candidate_dir"; then
+    die "Replica state generation failed: $config, $candidate_dir/system.parm7 -> $candidate_dir/states.tsv"
+fi
+if ! "$python" helpers/generate_inputs.py "$method" "$config" "$candidate_dir/inputs" \
+    --salt-pairs "$salt_pairs" --states "$candidate_dir/states.tsv"; then
+    die "Replica input generation failed: $config, $candidate_dir/states.tsv -> $candidate_dir"
+fi
 log_event generate-states 0 "output=$candidate_dir/states.tsv"
 # Publish preparation only after the schedule passed; old inputs survive rejection.
+# run.sh requires build.done, which is written only after every check below passes.
 cp -R "$candidate_dir/." "$work_dir/"
 build_log="$work_dir/build.log"
 
 echo "Converting AMBER topology: $work_dir/system.parm7 -> $work_dir/topol.top, $work_dir/system.gro"
 log_command convert-topology "$python" helpers/convert_topology.py "$work_dir/system.parm7" "$work_dir/system.rst7" "$work_dir/topol.top" "$work_dir/system.gro"
-"$python" helpers/convert_topology.py "$work_dir/system.parm7" "$work_dir/system.rst7" \
-    "$work_dir/topol.top" "$work_dir/system.gro"
+if ! "$python" helpers/convert_topology.py "$work_dir/system.parm7" "$work_dir/system.rst7" \
+    "$work_dir/topol.top" "$work_dir/system.gro"; then
+    die "ParmEd topology conversion failed: $work_dir/system.parm7, $work_dir/system.rst7 -> $work_dir/topol.top"
+fi
 helper_dir=helpers
 # ParmEd can emit CMAP numbers longer than GROMACS 2024.x can safely parse.
-"$python" "$helper_dir/scale_cmap.py" "$work_dir/topol.top" "$work_dir/topol.top" 1.0
+if ! "$python" "$helper_dir/scale_cmap.py" "$work_dir/topol.top" "$work_dir/topol.top" 1.0; then
+    die "CMAP serialization normalization failed: $work_dir/topol.top"
+fi
 log_event convert-topology 0 "outputs=$work_dir/topol.top,$work_dir/system.gro"
 # The unscaled topology must report its own total charge (Q_ref, roundoff only).
-reference_charge=$("$python" "$helper_dir/net_charge.py" "$work_dir/topol.top")
+if ! reference_charge=$("$python" "$helper_dir/net_charge.py" "$work_dir/topol.top"); then
+    die "Reference net-charge calculation failed: $work_dir/topol.top"
+fi
 log_command preprocess "$gmx" grompp -f inputs/energy_check.mdp -p "$work_dir/topol.top" -c "$work_dir/system.gro" -pp "$build_tmp/processed.top" -o "$build_tmp/preprocess.tpr"
 if ! run_grompp "base topology" "$build_tmp/grompp_preprocess.log" "$reference_charge" \
     "$gmx" grompp -f "inputs/energy_check.mdp" \
@@ -247,29 +268,39 @@ if ! run_grompp "base topology" "$build_tmp/grompp_preprocess.log" "$reference_c
     -pp "$build_tmp/processed.top" -o "$build_tmp/preprocess.tpr"; then
     die "Processed topology generation failed: $build_tmp/grompp_preprocess.log"
 fi
-"$python" "$helper_dir/scale_cmap.py" "$work_dir/topol.top" "$build_tmp/processed.top" 1.0
+if ! "$python" "$helper_dir/scale_cmap.py" "$work_dir/topol.top" "$build_tmp/processed.top" 1.0; then
+    die "Failed to restore residue-specific CMAPs: $work_dir/topol.top -> $build_tmp/processed.top"
+fi
 
-"$python" "$helper_dir/mark_hot.py" "$build_tmp/processed.top" "$build_tmp/processed.hot.top"
+if ! "$python" "$helper_dir/mark_hot.py" "$build_tmp/processed.top" "$build_tmp/processed.hot.top"; then
+    die "Hot-region marker generation failed: $build_tmp/processed.top -> $build_tmp/processed.hot.top"
+fi
 # partial_tempering scales the charges of "_" atom types; ions stay cold.
 # run.sh compares each replica's grompp net charge with this table.
-"$python" "$helper_dir/net_charge.py" "$build_tmp/processed.hot.top" --hot-marked-types \
-    --states "$work_dir/states.tsv" --output "$work_dir/net_charge.tsv"
+if ! "$python" "$helper_dir/net_charge.py" "$build_tmp/processed.hot.top" --hot-marked-types \
+    --states "$work_dir/states.tsv" --output "$work_dir/net_charge.tsv"; then
+    die "Expected net-charge table generation failed: $build_tmp/processed.hot.top, $work_dir/states.tsv -> $work_dir/net_charge.tsv"
+fi
 while IFS=$'\t' read -r replica _ lambda_pp _ _; do
     if [[ "$replica" == replica ]]; then
         continue
     fi
-    if "$plumed" partial_tempering "$lambda_pp" < "$build_tmp/processed.hot.top" > "$work_dir/$replica/topol.top"; then
-        if [[ ! -s "$work_dir/$replica/topol.top" ]]; then
-            die "REST2 topology scaling did not create: $work_dir/$replica/topol.top"
-        fi
-    else
-        status=$?
-        echo "Error: REST2 topology scaling failed for replica $replica: $build_tmp/processed.hot.top -> $work_dir/$replica/topol.top; inspect terminal diagnostics." >&2
-        exit "$status"
+    scaling_log="$build_tmp/partial_tempering.$replica.log"
+    if ! "$plumed" partial_tempering "$lambda_pp" \
+        < "$build_tmp/processed.hot.top" \
+        > "$work_dir/$replica/topol.top" \
+        2> "$scaling_log"; then
+        die "REST2 topology scaling failed for replica $replica: $build_tmp/processed.hot.top -> $work_dir/$replica/topol.top; see $scaling_log"
     fi
-    "$python" "$helper_dir/scale_cmap.py" "$build_tmp/processed.top" "$work_dir/$replica/topol.top" "$lambda_pp"
+    if [[ ! -s "$work_dir/$replica/topol.top" ]]; then
+        die "REST2 topology scaling did not create: $work_dir/$replica/topol.top; see $scaling_log"
+    fi
+    if ! "$python" "$helper_dir/scale_cmap.py" "$build_tmp/processed.top" "$work_dir/$replica/topol.top" "$lambda_pp"; then
+        die "REST2 CMAP scaling failed for replica $replica: $work_dir/$replica/topol.top"
+    fi
     printf 'energy: ENERGY\nPRINT ARG=energy STRIDE=5000 FILE=plumed_energy.dat\n' > "$work_dir/$replica/plumed.dat"
 done < "$work_dir/states.tsv"
+
 
 echo "Checking unscaled and scale-one energies: $work_dir/system.gro; logs: $build_tmp/energy_check"
 energy_dir="$build_tmp/energy_check"
@@ -306,11 +337,13 @@ for variant in unscaled scale_one; do
         die "Potential-energy extraction failed: $energy_dir/$variant.energy.log"
     fi
 done
-"$python" "$helper_dir/compare_energy.py" \
+if ! "$python" "$helper_dir/compare_energy.py" \
     "$energy_dir/unscaled.xvg" \
     "$energy_dir/scale_one.xvg" \
     0.1 \
-    --output "$work_dir/energy_check.tsv"
+    --output "$work_dir/energy_check.tsv"; then
+    die "Scale-one energy check failed: $work_dir/energy_check.tsv; raw files: $energy_dir"
+fi
 log_event energy-check 0 "status=pass output=$work_dir/energy_check.tsv"
 
 replica_count=$(awk 'NR > 1 {count++} END {print count + 0}' "$work_dir/states.tsv")
@@ -331,7 +364,7 @@ done
 
 echo "Completed: REST energy check ($work_dir/energy_check.tsv)"
 log_command build-summary "$python" helpers/build_provenance.py --output "$work_dir/build_summary.toml"
-"$python" helpers/build_provenance.py \
+if ! "$python" helpers/build_provenance.py \
     --output "$work_dir/build_summary.toml" \
     --method "$method" \
     --gromacs "$gmx" \
@@ -344,7 +377,9 @@ log_command build-summary "$python" helpers/build_provenance.py --output "$work_
     --warning-log "$build_tmp/grompp_preprocess.log" \
     --warning-log "$energy_dir/unscaled.grompp.log" \
     --warning-log "$energy_dir/scale_one.grompp.log" \
-    "${topology_args[@]}"
+    "${topology_args[@]}"; then
+    die "Build summary failed: $work_dir/build_summary.toml"
+fi
 if [[ ! -s "$work_dir/build_summary.toml" ]]; then
     die "Final build summary missing or empty: $work_dir/build_summary.toml"
 fi
@@ -352,4 +387,7 @@ log_event build-summary 0 "output=$work_dir/build_summary.toml energy_table=$wor
 
 finish_build_tmp
 
+# Last step: run.sh refuses a work directory without this marker.
+touch "$work_dir/build.done"
+log_event build-complete 0 "marker=$work_dir/build.done"
 echo "Built $replica_count $method replicas: $work_dir/000 ..."

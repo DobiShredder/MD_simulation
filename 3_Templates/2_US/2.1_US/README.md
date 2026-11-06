@@ -52,7 +52,7 @@ harmonic distance force constant와 같은 양이 아닙니다.
 | `equilibration_ensemble` | `NVT`, `NPT` | `NPT` | Seed와 window equilibration의 `ntb`와 `ntp`를 설정합니다. |
 | `production_ensemble` | `NVT`, `NPT` | `NPT` | Window production의 `ntb`와 `ntp`를 설정합니다. |
 | `constraint_mode` | `h-bonds`만 지원 | `h-bonds` | Hydrogen-containing bond에 SHAKE를 적용합니다. |
-| `random_seed` | `"random"` 또는 양의 정수 | `"random"` | `"random"`은 AMBER `ig=-1`, 정수는 고정 seed를 사용합니다. |
+| `random_seed` | `"random"` 또는 양의 정수 | `"random"` | rMD와 모든 window의 heating `ig`입니다. `"random"`은 `ig=-1`입니다. 이후 equilibration, ratchet MD와 production은 `ig=-1`로 실행할 때마다 새 seed를 사용합니다. |
 
 `windows_file`은 항상 명시적인 window center 목록을 읽습니다. 이 option에는
 `auto`/`file` mode 구분이 없습니다. Blank line과 `#`로 시작하는 comment line을
@@ -123,7 +123,7 @@ The first-pass LEaP input and water-count `solvated.pdb` are created under `work
 | `equilibration_ensemble` | `NVT`, `NPT` | `NPT` | Sets `ntb` and `ntp` for seed and window equilibration. |
 | `production_ensemble` | `NVT`, `NPT` | `NPT` | Sets window-production `ntb` and `ntp`. |
 | `constraint_mode` | `h-bonds` only | `h-bonds` | Applies SHAKE to bonds involving hydrogen. |
-| `random_seed` | `"random"` or a positive integer | `"random"` | `"random"` maps to AMBER `ig=-1`; an integer fixes the seed. |
+| `random_seed` | `"random"` or a positive integer | `"random"` | Sets the heating `ig` for rMD and every window; `"random"` maps to `ig=-1`. Later equilibration, ratchet MD, and production use `ig=-1` and receive a new seed per invocation. |
 
 `windows_file` always supplies an explicit list of window centers. It does not
 have separate `auto` and `file` modes. After blank lines and full-line `#`

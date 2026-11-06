@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import math
 import sys
 from pathlib import Path
 
@@ -46,6 +47,11 @@ def parse_arguments() -> argparse.Namespace:
         action="store_true",
         help="Use disposable output names for a PLUMED parse-only check",
     )
+    parser.add_argument(
+        "--stage",
+        default="PLUMED input generation",
+        help="Workflow stage named in configuration errors",
+    )
     return parser.parse_args()
 
 
@@ -84,7 +90,7 @@ def integer_list(values: dict[str, object], key: str, expected: int) -> list[int
 
 
 def comma(values: list[float | int | str]) -> str:
-    return ",".join(f"{value:g}" if isinstance(value, float) else str(value) for value in values)
+    return ",".join(number(value) if isinstance(value, float) else str(value) for value in values)
 
 
 def read_cv(path: Path | None) -> str:
@@ -94,6 +100,23 @@ def read_cv(path: Path | None) -> str:
     if not text:
         raise ValueError("collective-variable definition file is empty")
     return text
+
+
+def number(value: float) -> str:
+    """Write a PLUMED number without losing precision (6-digit :g is too coarse)."""
+    text = f"{value:g}"
+    if float(text) != value:
+        text = repr(float(value))
+    return text
+
+
+def grid_bound(value: float) -> str:
+    """Write +/-pi symbolically so periodic grids match the PLUMED torsion domain."""
+    if math.isclose(value, math.pi, rel_tol=0.0, abs_tol=1e-9):
+        return "pi"
+    if math.isclose(value, -math.pi, rel_tol=0.0, abs_tol=1e-9):
+        return "-pi"
+    return number(value)
 
 
 def state_path(args: argparse.Namespace, name: str) -> str:
@@ -117,18 +140,20 @@ def render_wt(args: argparse.Namespace, config: dict[str, object]) -> str:
         raise ValueError("each grid_min value must be smaller than grid_max")
     if positive_float(metad, "bias_factor") <= 1.0:
         raise ValueError("bias_factor must be greater than one")
+    grid_min_text = ",".join(grid_bound(value) for value in grid_min)
+    grid_max_text = ",".join(grid_bound(value) for value in grid_max)
     return f"""{read_cv(args.cv_file)}
 
 metad: METAD ...
   ARG={comma(arguments)}
   SIGMA={comma(sigma)}
-  HEIGHT={positive_float(metad, 'height'):g}
+  HEIGHT={number(positive_float(metad, 'height'))}
   PACE={positive_int(metad, 'pace_steps')}
-  BIASFACTOR={positive_float(metad, 'bias_factor'):g}
-  TEMP={positive_float(run, 'temperature'):g}
+  BIASFACTOR={number(positive_float(metad, 'bias_factor'))}
+  TEMP={number(positive_float(run, 'temperature'))}
   FILE={state_path(args, 'HILLS')}
-  GRID_MIN={comma(grid_min)}
-  GRID_MAX={comma(grid_max)}
+  GRID_MIN={grid_min_text}
+  GRID_MAX={grid_max_text}
   GRID_BIN={comma(grid_bins)}
   CALC_RCT
 ...
@@ -146,7 +171,7 @@ def main() -> None:
         config = load_config(args.config)
         text = render_wt(args, config)
     except (TypeError, ValueError) as error:
-        raise SystemExit(f"Config error: {error}") from None
+        raise SystemExit(f"Config error in {args.stage} ({args.config}): {error}") from None
     restart = "RESTART\n\n" if args.restart and not args.parse_only else ""
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(restart + text, encoding="utf-8")

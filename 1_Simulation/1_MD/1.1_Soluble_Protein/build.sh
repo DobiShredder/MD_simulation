@@ -3,8 +3,23 @@ set -euo pipefail
 
 original_args=("$@")
 
+usage() {
+    cat <<EOF
+Usage: $0 CHIGNOLIN.pdb
+
+Build the solvated chignolin AMBER system (ff19SB/OPC) in work/.
+
+Options:
+  -h, --help  Show this help message and exit.
+EOF
+}
+
+if [[ "${1:-}" == -h || "${1:-}" == --help ]]; then
+    usage
+    exit 0
+fi
 if [[ $# -ne 1 ]]; then
-    echo "Usage: $0 CHIGNOLIN.pdb" >&2
+    usage >&2
     exit 2
 fi
 
@@ -29,7 +44,7 @@ if [[ -d "$work_dir" ]]; then
     existing_build=$(find "$work_dir" -type f \
         \( -name '*.parm7' -o -name '*.rst7' \) -print -quit)
     if [[ -n "$existing_build" ]]; then
-        die "Build output already exists and was retained: $existing_build. Use a new work directory for a new build."
+        die "Build output already exists and was retained: $existing_build. Move work aside (for example: mv work work.old) and rerun ./build.sh structure/chignolin.pdb."
     fi
 fi
 
@@ -43,7 +58,7 @@ fi
 if find "$work_dir" -type f \
     \( -name 'min*.out' -o -name 'heat*.out' -o -name 'equil*.out' \
        -o -name 'production*.out' \) -print -quit 2>/dev/null | grep -q .; then
-    die "Simulation output already exists in $work_dir. Remove it before rebuilding."
+    die "Simulation output already exists in $work_dir. Move work aside (for example: mv work work.old) and rerun ./build.sh structure/chignolin.pdb."
 fi
 
 # AMBER system build

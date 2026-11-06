@@ -46,7 +46,7 @@ fi
 output_pdb="$work_dir/system-coordinates.pdb"
 
 if (( ! dry_run )) && [[ -e "$output_pdb" || -L "$output_pdb" ]]; then
-    die "Coordinate build output already exists: $output_pdb. Files were preserved. Start a new tutorial copy without generated work directories."
+    die "Coordinate build output already exists: $output_pdb. Files were preserved. Move it out of work (for example: mkdir -p work.old && mv $output_pdb work.old/) and rerun ./run.sh $protein_pdb."
 fi
 
 # Input and dependency checks
@@ -81,7 +81,7 @@ fi
 mkdir -p "$work_dir"
 echo "Building membrane coordinates: $protein_pdb -> $output_pdb"
 
-python3 \
+if ! python3 \
     build_membrane.py \
     "$protein_pdb" \
     "$structure_dir/POPC.gro" \
@@ -91,7 +91,9 @@ python3 \
     --composition "$composition" \
     --xy-padding "$xy_padding" \
     --water-padding "$water_padding" \
-    --protein-lipid-distance "$protein_lipid_distance"
+    --protein-lipid-distance "$protein_lipid_distance"; then
+    die "Membrane coordinate build failed; see the messages above. Check $protein_pdb and $structure_dir/."
+fi
 
 if [[ ! -s "$output_pdb" ]]; then
     die "Coordinate build output was not created: $output_pdb"

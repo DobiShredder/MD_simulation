@@ -9,10 +9,8 @@ window_range=""
 preparation_only=0
 production_only=0
 
-while [[ $# -gt 0 ]]; do
-    case "$1" in
-        -h|--help)
-            cat <<'EOF'
+show_help() {
+    cat <<'EOF'
 Usage: ./run.sh [--preparation-only | --production-only] [--window N | --windows START-END] [--dry-run]
 
 Run all generated umbrella windows or one selected one.
@@ -25,6 +23,12 @@ Options:
   --dry-run      Print engine commands without running them.
   -h, --help     Show this help message and exit.
 EOF
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -h|--help)
+            show_help
             exit 0
             ;;
         --dry-run)
@@ -57,7 +61,8 @@ EOF
             shift 2
             ;;
         *)
-            echo "Usage: ./run.sh [--dry-run] [--window N]" >&2
+            echo "Error: unknown option: $1" >&2
+            show_help >&2
             exit 2
             ;;
     esac
@@ -77,9 +82,45 @@ die() {
     exit 1
 }
 
+show_engine_output() {
+    local output=$1
+    if [[ -s "$output" ]]; then
+        echo "Last 20 lines of $output:" >&2
+        tail -n 20 "$output" >&2
+    fi
+}
+
+# Partial output is never removed or overwritten; the user moves it out of work.
+die_partial() {
+    local reason=$1
+    local window_dir=$2
+    local stage_label=$3
+    shift 3
+    local window_id=${window_dir##*/}
+    local leftover_files=()
+    local path
+    for path in "$@"; do
+        if [[ -e "$path" ]]; then
+            leftover_files+=("$path")
+        fi
+    done
+    if (( ${#leftover_files[@]} == 0 )); then
+        die "${reason}No $stage_label output was written for window $window_id. Fix the cause and rerun $rerun_command."
+    fi
+    die "${reason}Partial $stage_label output is retained for window $window_id: ${leftover_files[*]}. Move these files out of $work_dir (for example: mkdir -p $work_dir.failed/$window_id && mv ${leftover_files[*]} $work_dir.failed/$window_id/) and rerun $rerun_command."
+}
+
 # User settings and input/output paths
-engine=$("${PYTHON:-python3}" ../helpers/config_utils.py "../work/resolved_config.toml" engine AMBER_ENGINE pmemd.cuda)
+resolved_config=../work/resolved_config.toml
+if [[ ! -s "$resolved_config" ]]; then
+    die "Run ../build.sh first: $resolved_config"
+fi
+engine=$("${PYTHON:-python3}" ../helpers/config_utils.py "$resolved_config" engine AMBER_ENGINE pmemd.cuda)
 work_dir=${WORK_DIR:-work}
+rerun_command="./run.sh"
+if (( ${#original_args[@]} > 0 )); then
+    rerun_command+=" ${original_args[*]}"
+fi
 window_root="$work_dir"
 processed_window_count=0
 skipped_window_count=0
@@ -149,6 +190,7 @@ run_stage() {
     local prefix="$window_dir/$stage"
     local completion_marker="$window_dir/.$stage.complete"
     local required=("$prefix.out" "$prefix.rst7")
+    local stage_outputs=("$prefix.out" "$prefix.rst7" "$prefix.info" "$prefix.nc" "$completion_marker")
     # Always name -inf: AMBER otherwise writes mdinfo, which has no input identity.
     local command=(
         "$engine" -O
@@ -179,7 +221,7 @@ run_stage() {
             return
         fi
         if [[ "$state" == partial ]]; then
-            die "Partial $stage_label output detected and retained: $prefix"
+            die_partial "" "$window_dir" "$stage_label" "${stage_outputs[@]}"
         fi
     fi
 
@@ -202,14 +244,17 @@ run_stage() {
         cd "$window_dir"
         run_command "${command[@]}"
     ); then
-        die "${window_dir##*/} window $stage_label failed: $prefix.out"
+        show_engine_output "$prefix.out"
+        die_partial "Window ${window_dir##*/} $stage_label failed. " \
+            "$window_dir" "$stage_label" "${stage_outputs[@]}"
     fi
 
     if (( ! dry_run )); then
         local output
         for output in "${required[@]}"; do
             if [[ ! -s "$output" ]]; then
-                die "${window_dir##*/} window $stage_label output is incomplete: $output"
+                die_partial "Window ${window_dir##*/} $stage_label output is incomplete: $output. " \
+                    "$window_dir" "$stage_label" "${stage_outputs[@]}"
             fi
         done
         touch "$completion_marker"
@@ -243,7 +288,10 @@ run_window() {
             return
         fi
         if [[ "$production_state" == partial ]]; then
-            die "Partial production output detected: $window_dir/production"
+            die_partial "" "$window_dir" production \
+                "$window_dir/production.out" "$window_dir/production.rst7" \
+                "$window_dir/production.info" "$window_dir/production.nc" \
+                "$window_dir/.production.complete"
         fi
     fi
 

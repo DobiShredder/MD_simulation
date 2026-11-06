@@ -45,7 +45,7 @@ if [[ -d "$work_dir" ]]; then
     existing_build=$(find "$work_dir" -type f \
         \( -name '*.parm7' -o -name '*.rst7' \) -print -quit)
     if [[ -n "$existing_build" ]]; then
-        die "Build output already exists and was retained: $existing_build. Use a new work directory for a new build."
+        die "Build output already exists and was retained: $existing_build. To rebuild, move the old build aside first (for example: mv $work_dir $work_dir.previous) and rerun ./build.sh."
     fi
 fi
 

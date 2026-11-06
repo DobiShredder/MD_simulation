@@ -50,6 +50,33 @@ die() {
     exit 1
 }
 
+# Stop with the retained stage files and the manual recovery command.
+die_retained() {
+    local stage=$1
+    local label=$2
+    local reason=$3
+    shift 3
+    local retained=()
+    local path
+    for path in "$@"; do
+        if [[ -e "$path" || -L "$path" ]]; then
+            retained+=("$path")
+        fi
+    done
+    if (( ${#retained[@]} == 0 )); then
+        die "${reason}No $stage output was written for $label; rerun $rerun_command after fixing the cause."
+    fi
+    die "${reason}Partial $stage output is retained for $label: ${retained[*]}. Move these files out of $work_dir (for example: mkdir -p $failed_dir && mv ${retained[*]} $failed_dir/) and rerun $rerun_command."
+}
+
+show_engine_log() {
+    local engine_output=$1
+    if [[ -s "$engine_output" ]]; then
+        echo "Last 20 lines of $engine_output:" >&2
+        tail -n 20 "$engine_output" >&2
+    fi
+}
+
 run_stage() {
     local stage=$1
     local label=$2
@@ -99,16 +126,17 @@ run_stage() {
         return
     fi
     if [[ -f "$marker" || "$existing" -ne 0 ]]; then
-        die "Partial $stage output detected and retained: $directory"
+        die_retained "$stage" "$label" "" "${required[@]}" "$marker"
     fi
 
     echo "Running: $label"
     if ! "$@"; then
-        die "$label failed in $directory; expected engine output: ${required[0]} (may be absent); see engine diagnostics above"
+        show_engine_log "${required[0]}"
+        die_retained "$stage" "$label" "$label failed in $directory; engine output: ${required[0]}. " "${required[@]}"
     fi
     for output in "${required[@]}"; do
         if [[ ! -s "$output" ]]; then
-            die "$label output was not created: $output"
+            die_retained "$stage" "$label" "$label output was not created: $output. " "${required[@]}"
         fi
     done
     touch "$marker"
@@ -123,6 +151,15 @@ fi
 topology="$work_dir/system.parm7"
 coordinates="$work_dir/system.rst7"
 resolved="$work_dir/resolved_config.toml"
+# Recovery moves retained files beside, not inside, the identity-checked work tree.
+failed_dir="${work_dir%/}.failed"
+rerun_command="./run.sh"
+if (( ${#original_args[@]} )); then
+    rerun_command+=" ${original_args[*]}"
+fi
+if [[ -n "${WORK_DIR:-}" ]]; then
+    rerun_command="WORK_DIR=$work_dir $rerun_command"
+fi
 
 if (( ! dry_run )); then
     if [[ ! -s "$topology" ]]; then
@@ -131,15 +168,18 @@ if (( ! dry_run )); then
     if [[ ! -s "$coordinates" ]]; then
         die "Run preflight: restart missing or empty: $coordinates. Run ./build.sh first."
     fi
-    if [[ ! -s "$resolved" ]]; then
-        die "Run preflight: resolved config missing or empty: $resolved. Run ./build.sh first."
-    fi
 fi
 
+# Dry runs also read the engine and segment count from the build-generated config.
+if [[ ! -s "$resolved" ]]; then
+    die "Run preflight: resolved config missing or empty: $resolved. Run ./build.sh first."
+fi
 engine=$("${PYTHON:-python3}" helpers/config_utils.py "$resolved" engine AMBER_ENGINE pmemd.cuda pmemd sander)
 
-segments=$(awk -F' = ' '$1=="production_segments" {print $2}' "$resolved" 2>/dev/null || true)
-segments=${segments:-10}
+segments=$(awk -F' = ' '$1=="production_segments" {print $2}' "$resolved")
+if [[ ! "$segments" =~ ^[1-9][0-9]*$ ]]; then
+    die "Run preflight: production_segments is missing or not a positive integer in $resolved (written by ./build.sh)."
+fi
 segment_start=1; segment_end=$segments
 if [[ -n "$segment_range" ]]; then
     if [[ ! "$segment_range" =~ ^([1-9][0-9]*)-([1-9][0-9]*)$ ]]; then

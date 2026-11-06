@@ -44,6 +44,7 @@ WESTPA 2 command와 Python `h5py`가 같은 execution environment에 있어야 �
 | `config.toml` | 수정 | force field, MD 길이, progress coordinate, bin과 walker 설정 |
 | `build.sh` | 직접 실행 | topology, RMSD reference, equilibrated basis restart와 WESTPA config 생성 |
 | `helpers/configure_we.py` | `build.sh`가 호출 | block config와 AMBER segment input 생성 |
+| `helpers/check_we_states.py` | `build.sh`가 호출 | basis progress coordinate가 target bin 밖인지 확인 |
 | `init.sh` | 직접 실행 | basis/target state에서 `work/west.h5` 초기화 |
 | `run.sh` | 직접 실행 | 선택한 block 또는 남은 block을 이어서 실행 |
 | `westpa_scripts/*.sh` | WESTPA가 호출 | segment 전파와 start/end progress coordinate 계산 |
@@ -64,7 +65,11 @@ WESTPA segment input도 `trajectory_interval_steps`를 `ntwx`로 사용해
 `bstates/bstates.txt`는 basis restart의 label, probability와 filename을 기록합니다.
 `tstate.file`의 값은 target bin 안의 representative progress coordinate입니다.
 WESTPA는 그 값이 속한 bin을 target으로 사용합니다. 따라서 target boundary는
-`bin_boundaries`와 함께 설계해야 합니다.
+`bin_boundaries`와 함께 설계해야 합니다. Bin은 `[b0, b1)`, …, `[마지막 boundary, inf)`
+입니다. `build.sh`는 basis MD 전에 target 값이 첫 boundary 이상인지와 모든 bin이
+target이 아닌지 검사합니다. Basis MD 뒤에는 `helpers/check_we_states.py`로 basis
+progress coordinate와 그 bin을 출력하고, basis가 target bin 안에 있으면
+중단합니다.
 
 ### Restart와 resource
 
@@ -93,6 +98,14 @@ SIGKILL이나 node 장애로 writer lock이 남았다면 아래 lock 확인 절�
 이 파일을 지우지 않습니다. 내용을 확인한 뒤 error에 출력된 `mv` command로
 directory를 `<segment>.failed.<timestamp>`로 옮기고 `./run.sh`를 다시 실행합니다.
 실제 AMBER/WESTPA run을 중단한 뒤 재개하는 과정은 검증하지 않았습니다.
+
+`init.sh`는 `work/west.init.log`에, `run.sh`는 `work/west.<block>.log`에 실행마다
+timestamp header를 붙여 이어 씁니다. 실패하면 이번 실행의 마지막 log 줄과 가장
+최근 segment log를 terminal에 출력합니다. Segment 실패는
+`work/seg_logs/<iteration>-<segment>.log`의 `runseg.sh` error와
+`work/traj_segs/<iteration>/<segment>/segment.out`의 AMBER output에서 확인합니다.
+같은 directory의 `pcoord.start.cpptraj.log`와 `pcoord.end.cpptraj.log`에는
+progress coordinate 계산의 cpptraj output이 남습니다.
 
 기본값은 한 GPU에서 `pmemd.cuda`를 serial로 실행합니다. CPU engine에서는
 process work manager를 선택할 수 있습니다.
@@ -235,7 +248,12 @@ environment.
 
 The basis-state file maps a label and probability to the generated basis
 restart. A target-state value is a representative point inside its target bin;
-the matching boundary comes from `bin_boundaries`. Design both together.
+the matching boundary comes from `bin_boundaries`. Design both together. Bins
+are `[b0, b1)`, …, `[last boundary, inf)`. Before basis MD, `build.sh` checks
+that every target value is at or above the first boundary and that at least one
+bin is not a target. After basis MD, `helpers/check_we_states.py` prints the
+basis progress coordinate and its bin, and stops if the basis lies in a target
+bin.
 
 Successful topology and basis-state stages receive completion markers.
 Interrupted minimization, heating, or equilibration output is retained and the
@@ -264,6 +282,14 @@ keeps partial segments. The script does not delete those files. Inspect them,
 move the directory to `<segment>.failed.<timestamp>` with the `mv` command printed
 in the error, and rerun `./run.sh`. Interrupting and resuming a real AMBER/WESTPA
 run has not been tested.
+
+`init.sh` appends to `work/west.init.log` and `run.sh` to `work/west.<block>.log`,
+each run after a timestamped header. On failure, the terminal shows the last log
+lines of that run and the newest segment log. For a failed segment, read the
+`runseg.sh` error in `work/seg_logs/<iteration>-<segment>.log` and the AMBER
+output in `work/traj_segs/<iteration>/<segment>/segment.out`. The cpptraj output
+of the progress-coordinate calculation stays in `pcoord.start.cpptraj.log` and
+`pcoord.end.cpptraj.log` in the same directory.
 
 The default is serial `pmemd.cuda` on one GPU. A CPU engine may use the
 `processes` work manager and multiple workers. GPU worker placement remains an

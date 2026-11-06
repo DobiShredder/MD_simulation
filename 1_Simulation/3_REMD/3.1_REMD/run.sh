@@ -4,6 +4,10 @@ set -euo pipefail
 original_args=("$@")
 
 dry_run=0
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+    echo "Usage: $0 [--dry-run]"
+    exit 0
+fi
 if [[ "${1:-}" == "--dry-run" && $# -eq 1 ]]; then
     dry_run=1
 elif [[ $# -ne 0 ]]; then
@@ -80,6 +84,54 @@ stage_status() {
     echo missing
 }
 
+# Retained output is never moved here; print the manual recovery instead.
+# All replicas of a stage rerun together, so the list spans every replica.
+die_partial() {
+    local stage=$1
+    local replica path
+    local candidates=("work/.$stage.complete")
+    local retained=()
+    if [[ "$stage" == production ]]; then
+        candidates+=(work/exchange.log)
+    fi
+    while IFS=$'\t' read -r replica _; do
+        if [[ "$replica" == replica ]]; then
+            continue
+        fi
+        candidates+=("work/$replica/$stage."{out,rst7,nc,info} "work/$replica/restraint.$stage.dat")
+    done < work/states.tsv
+    for path in "${candidates[@]}"; do
+        if [[ -e "$path" || -L "$path" ]]; then
+            retained+=("$path")
+        fi
+    done
+    die "Partial $stage output is retained for all replicas in work. Move these files out of work, keeping their replica directories, and rerun ./run.sh:
+  for file in ${retained[*]:-}; do mkdir -p \"work.failed/\${file%/*}\"; mv \"\$file\" \"work.failed/\$file\"; done"
+}
+
+# After a failed multipmemd run, show the MPI log and replicas whose AMBER
+# output lacks the final timing block.
+report_replica_failure() {
+    local stage=$1
+    local mpirun_log=$2
+    local replica output
+    if [[ -s "$mpirun_log" ]]; then
+        echo "Last 20 lines of $mpirun_log:" >&2
+        tail -n 20 "$mpirun_log" >&2
+    fi
+    while IFS=$'\t' read -r replica _; do
+        if [[ "$replica" == replica ]]; then
+            continue
+        fi
+        output="work/$replica/$stage.out"
+        if [[ ! -s "$output" ]]; then
+            echo "Missing replica output: $output" >&2
+        elif ! grep -q 'Total wall time' "$output"; then
+            echo "Unfinished replica output: $output" >&2
+        fi
+    done < work/states.tsv
+}
+
 mark_stage_complete() {
     local stage=$1
     stage_outputs_complete "$stage" --require-complete
@@ -100,7 +152,7 @@ run_replica_stage() {
         return
     fi
     if [[ "$status" == partial ]]; then
-        die "Partial $stage output retained in work. Inspect the files before retrying."
+        die_partial "$stage"
     fi
 
     echo "Running: $stage"
@@ -200,7 +252,7 @@ missing_stage=""
 for stage in minimize heat equilibrate production; do
     status=$(stage_status "$stage")
     if [[ "$status" == partial ]]; then
-        die "Partial or unmarked $stage output retained in work; inspect the files before retrying."
+        die_partial "$stage"
     fi
     if [[ "$status" == missing ]]; then
         missing_stage=$stage
@@ -245,15 +297,18 @@ while IFS=$'\t' read -r replica _; do
         >> "$group_file"
 done < work/states.tsv
 
-echo "Running: 1 ns T-REMD production"
+mpirun_log=work/mpirun.production.log
+echo "Running: 1 ns T-REMD production (MPI output: $mpirun_log)"
 if ! "$mpi_launcher" \
     -np "$replica_count" \
     "$amber_mpi_engine" \
     -ng "$replica_count" \
     -groupfile "$group_file" \
     -rem 1 \
-    -remlog work/exchange.log; then
-    die "T-REMD production failed: work/exchange.log"
+    -remlog work/exchange.log \
+    >> "$mpirun_log" 2>&1; then
+    report_replica_failure production "$mpirun_log"
+    die "T-REMD production failed: $mpirun_log, work/exchange.log"
 fi
 
 mark_stage_complete production

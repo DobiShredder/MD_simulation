@@ -147,7 +147,9 @@ run_command() {
     local label=$1
     local directory=$2
     local engine_output=$3
-    shift 3
+    local plumed_log=$4  # empty for stages without PLUMED
+    local colvar=$5
+    shift 5
     if (( dry_run )); then
         echo "Dry run: $label ($directory)"
         printf '+ (cd %q &&' "$directory"
@@ -157,7 +159,16 @@ run_command() {
     fi
     echo "Running: $label"
     if ! (cd "$directory"; "$@"); then
-        die "$label failed in $directory; expected engine output: $engine_output (may be absent); see engine diagnostics above"
+        echo "Error: $label failed in $directory. Engine output: $engine_output" >&2
+        if [[ -n "$plumed_log" ]]; then
+            echo "PLUMED log: $plumed_log (AMBER default name; unverified)" >&2
+            echo "COLVAR: $colvar" >&2
+        fi
+        if [[ -s "$engine_output" ]]; then
+            echo "Last 20 lines of $engine_output:" >&2
+            tail -n 20 "$engine_output" >&2
+        fi
+        exit 1
     fi
 }
 
@@ -193,10 +204,16 @@ run_preproduction_stage() {
             return
         fi
         if [[ "$state" == partial ]]; then
-            die "Partial $stage output detected and retained: $work_dir"
+            local retained=()
+            for output in "$marker" "${required[@]}"; do
+                if [[ -e "$output" ]]; then
+                    retained+=("$output")
+                fi
+            done
+            die "Partial $stage output is retained: ${retained[*]}. Move these files out of $work_dir (for example: mkdir -p $work_dir.failed && mv ${retained[*]} $work_dir.failed/) and rerun ./run.sh."
         fi
     fi
-    run_command "$stage" "$work_dir" "$work_dir/$stage.out" "${command[@]}"
+    run_command "$stage" "$work_dir" "$work_dir/$stage.out" "" "" "${command[@]}"
     if (( ! dry_run )); then
         for output in "${required[@]}"; do
             if [[ ! -s "$output" ]]; then
@@ -213,27 +230,80 @@ check_plumed() {
     local actions=(FUNNEL_PS FUNNEL METAD)
     for action in "${actions[@]}"; do
         if ! "$plumed" manual --action "$action" >/dev/null 2>&1; then
-            die "PLUMED action unavailable: $action"
+            die "PLUMED action unavailable: $action. Rebuild PLUMED 2.10 with --enable-modules=funnel."
         fi
     done
 
     parse_input="$work_dir/plumed.parse.dat"
+    parse_log="$work_dir/plumed.parse.log"
     generate=(
         "$python" helpers/generate_plumed.py "$config_file" "$parse_input"
-        --parse-only
+        --parse-only --stage "PLUMED parse-only check"
         --funnel-context "$work_dir/funnel_context.toml"
     )
     "${generate[@]}"
     atom_count=$(<"$work_dir/atom_count.txt")
-    if ! (cd "$work_dir"; "$plumed" driver --plumed plumed.parse.dat --parse-only --natoms "$atom_count"); then
-        find "$work_dir" -maxdepth 1 -type f -name 'plumed.parse.*' -delete
-        die "PLUMED parse-only check failed: $parse_input"
+    if ! (cd "$work_dir"; "$plumed" driver --plumed plumed.parse.dat --parse-only --natoms "$atom_count") \
+            > "$parse_log" 2>&1; then
+        find "$work_dir" -maxdepth 1 -type f -name 'plumed.parse.*' ! -name 'plumed.parse.log' -delete
+        echo "Last lines of $parse_log:" >&2
+        tail -n 20 "$parse_log" >&2
+        die "PLUMED parse-only check failed: $parse_input (generated from $config_file). PLUMED output: $parse_log"
     fi
     find "$work_dir" -maxdepth 1 -type f -name 'plumed.parse.*' -delete
 }
 
 production_state_files() {
     echo HILLS COLVAR FUNNEL_GRID
+}
+
+# A failed segment may already have appended to the root bias files.
+# Print the manual restore steps; nothing is moved or restored automatically.
+refuse_partial_segment() {
+    local segment_index=$1
+    local segment_name=$2
+    local segment_dir=$3
+    local failed_dir="$work_dir.failed"
+    local name
+    local retained=()
+    echo "Error: Partial production segment $segment_name output is retained: $segment_dir" >&2
+    if [[ "$segment_dir" == "$work_dir" ]]; then
+        for name in production.out production.info production.rst7 production.nc $(production_state_files); do
+            if [[ -e "$work_dir/$name" ]]; then
+                retained+=("$work_dir/$name")
+            fi
+        done
+        echo "Move the failed output out of $work_dir, then rerun:" >&2
+        echo "  mkdir -p $failed_dir" >&2
+        echo "  mv ${retained[*]} $failed_dir/" >&2
+        echo "  ./run.sh" >&2
+    else
+        echo "Root bias files may contain output from the failed attempt. Restore them, then rerun:" >&2
+        echo "  mkdir -p $failed_dir" >&2
+        echo "  mv $segment_dir $failed_dir/" >&2
+        if (( segment_index == 1 )); then
+            for name in $(production_state_files); do
+                if [[ -e "$work_dir/$name" ]]; then
+                    echo "  mv $work_dir/$name $failed_dir/" >&2
+                fi
+            done
+        elif [[ -d "$segment_dir/bias_start" ]]; then
+            for name in $(production_state_files); do
+                echo "  cp -p $failed_dir/$segment_name/bias_start/$name $work_dir/$name" >&2
+            done
+        else
+            echo "  # No bias snapshot exists in $segment_dir/bias_start; restore these files" >&2
+            echo "  # to the end of the previous segment from your own copy: $(production_state_files)" >&2
+        fi
+        echo "  ./run.sh --segments $segment_index-$segments" >&2
+    fi
+    for name in "$work_dir"/bck.*; do
+        if [[ -e "$name" ]]; then
+            echo "PLUMED backup files ($work_dir/bck.*) are not read on restart; move them to $failed_dir/ as well." >&2
+            break
+        fi
+    done
+    exit 1
 }
 
 run_production_segment() {
@@ -300,8 +370,12 @@ run_production_segment() {
             echo "Skipping completed stage: production segment $segment_name/$segments ($segment_dir)"
             return
         fi
+        # A bias snapshot without a completion marker means an earlier attempt started.
+        if [[ "$state" == missing && -d "$segment_dir/bias_start" ]]; then
+            state=partial
+        fi
         if [[ "$state" == partial ]]; then
-            die "Partial production segment detected: $segment_dir"
+            refuse_partial_segment "$segment_index" "$segment_name" "$segment_dir"
         fi
         if [[ "$segment_index" -gt 1 && ! -f "$previous_dir/.production.complete" ]]; then
             die "Previous production segment is incomplete: $work_dir/$previous_name"
@@ -315,8 +389,33 @@ run_production_segment() {
                     die "Bias state required for continuation was not found: $work_dir/$output"
                 fi
             done
-        elif [[ -e "$work_dir/HILLS" || -e "$work_dir/KERNELS" || -e "$work_dir/DELTAFS" || -e "$work_dir/opes.state" || -e "$work_dir/COLVAR" || -e "$work_dir/FUNNEL_GRID" ]]; then
-            die "Bias output exists before the first production segment: $work_dir"
+        else
+            local existing_bias=()
+            for output in HILLS KERNELS DELTAFS opes.state COLVAR FUNNEL_GRID; do
+                if [[ -e "$work_dir/$output" ]]; then
+                    existing_bias+=("$work_dir/$output")
+                fi
+            done
+            if (( ${#existing_bias[@]} > 0 )); then
+                die "Bias output exists before the first production segment: ${existing_bias[*]}. If it is from a failed first segment, move it out of $work_dir (for example: mkdir -p $work_dir.failed && mv ${existing_bias[*]} $work_dir.failed/) and rerun ./run.sh."
+            fi
+        fi
+
+        if [[ "$segment_index" -gt 1 ]]; then
+            # Snapshot the bias state at the start of this segment (copy only)
+            # so a failed attempt can be undone manually; see README.md.
+            local snapshot_options=()
+            for output in $(production_state_files); do
+                snapshot_options+=(--output "$segment_dir/bias_start/$output")
+            done
+            "$python" helpers/input_identity.py \
+                --record "$segment_dir/.bias-start.identity.json" \
+                --stage "bias snapshot for production segment $segment_name" \
+                "${snapshot_options[@]}"
+            mkdir -p "$segment_dir/bias_start"
+            for output in $(production_state_files); do
+                cp -p "$work_dir/$output" "$segment_dir/bias_start/$output"
+            done
         fi
 
         if [[ "$seed_setting" == random ]]; then
@@ -329,6 +428,7 @@ run_production_segment() {
         generated_plumed=(
         "$python" helpers/generate_plumed.py "$config_file"
         "$segment_dir/plumed.dat" --file-prefix "$prefix"
+        --stage "production segment $segment_name"
     )
     generated_plumed+=(--funnel-context "$work_dir/funnel_context.toml")
     if [[ "$segment_index" -gt 1 ]]; then
@@ -342,6 +442,7 @@ run_production_segment() {
     fi
 
     run_command "production segment $segment_name/$segments" "$segment_dir" "$segment_dir/production.out" \
+        "$segment_dir/plumed.log" "$work_dir/COLVAR" \
         "$engine" "${amber_options[@]}" -O \
         -i production.in -o production.out \
         -p "$topology_path" -c "$input_restart" \
@@ -411,5 +512,21 @@ for ((segment_index = segment_start; segment_index <= segment_end; segment_index
 done
 
 if (( ! dry_run )); then
-    echo "MetaD production segments completed: $work_dir"
+    last_segment=$segment_end
+    first_segment=$segment_start
+    if [[ -n "$selected_segment" ]]; then
+        first_segment=$selected_segment
+        last_segment=$selected_segment
+    fi
+    bias_paths=()
+    for output in $(production_state_files); do
+        bias_paths+=("$work_dir/$output")
+    done
+    echo "MetaD production segments completed: $first_segment-$last_segment of $segments ($work_dir)"
+    echo "Bias state and COLVAR: ${bias_paths[*]}"
+    if (( last_segment < segments )); then
+        echo "Next: ./run.sh --segments $((last_segment + 1))-$segments"
+    else
+        echo "Next: python3 anal.py"
+    fi
 fi

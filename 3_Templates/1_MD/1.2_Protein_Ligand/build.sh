@@ -89,7 +89,7 @@ if (( ! dry_run )) && [[ -d "$work_dir" ]]; then
     existing_build=$(find "$work_dir" -type f \
         \( -name '*.parm7' -o -name '*.rst7' \) -print -quit)
     if [[ -n "$existing_build" ]]; then
-        die "Build output already exists and was retained: $existing_build. Use a new work directory for a new build."
+        die "Build output already exists and was retained: $existing_build. Move $work_dir aside or set WORK_DIR to a new directory, then rerun ./build.sh."
     fi
 fi
 
@@ -126,7 +126,9 @@ fi
 
 mkdir -p "$work_dir/inputs"
 cp "$input" "$work_dir/input.pdb"
-"$python" helpers/generate_inputs.py "$config" "$work_dir/inputs"
+if ! "$python" helpers/generate_inputs.py "$config" "$work_dir/inputs"; then
+    die "Input generation failed (helpers/generate_inputs.py); see the message above and check $config."
+fi
 build_tmp=$(mktemp -d "$work_dir/.build_tmp.XXXXXX")
 cp "$work_dir/input.pdb" "$build_tmp/input.pdb"
 mv "$work_dir/inputs/tleap.solvate.in" "$build_tmp/tleap.solvate.in"
@@ -143,19 +145,25 @@ if ! (
 fi
 
 cp "$build_tmp/leap.solvate.log" "$work_dir/leap.solvate.log"
-water_count=$("$python" helpers/count_waters.py "$build_tmp/solvated.pdb")
-salt_concentration=$("$python" - "$config" <<'PY'
+if ! water_count=$("$python" helpers/count_waters.py "$build_tmp/solvated.pdb"); then
+    die "Water counting failed (helpers/count_waters.py); see $build_tmp/solvated.pdb and $build_tmp/leap.solvate.log"
+fi
+if ! salt_concentration=$("$python" - "$config" <<'PY'
 import sys
 sys.path.insert(0, "helpers")
 from pathlib import Path
 from config_utils import load_config
 print(load_config(Path(sys.argv[1]))["build"]["salt_concentration_molar"])
 PY
-)
+); then
+    die "Could not read salt_concentration from $config; see the message above."
+fi
 salt_pairs=$(awk -v waters="$water_count" -v concentration="$salt_concentration" \
     'BEGIN { printf "%d", waters * concentration / 55.5 + 0.5 }')
 
-"$python" helpers/generate_inputs.py "$config" "$work_dir/inputs" --salt-pairs "$salt_pairs"
+if ! "$python" helpers/generate_inputs.py "$config" "$work_dir/inputs" --salt-pairs "$salt_pairs"; then
+    die "Final input generation failed (helpers/generate_inputs.py --salt-pairs $salt_pairs); see the message above and check $config."
+fi
 for parameter in ligand.mol2 ligand.frcmod; do
     if ! cmp -s "$build_tmp/inputs/$parameter" "$work_dir/inputs/$parameter"; then
         die "Final build: ligand parameter changed between LEaP passes: $parameter. Files were preserved; see $build_tmp/leap.solvate.log"

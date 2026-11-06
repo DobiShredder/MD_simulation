@@ -16,8 +16,52 @@ die() {
     exit 1
 }
 
+show_engine_output() {
+    local output=$1
+    if [[ -s "$output" ]]; then
+        echo "Last 20 lines of $work_dir/$output:" >&2
+        tail -n 20 "$output" >&2
+    fi
+}
+
+# Partial output is never removed or overwritten; the user moves it out of work.
+# Called after cd work, so paths are relative to work.
+die_partial() {
+    local reason=$1
+    local label=$2
+    shift 2
+    local leftover_files=()
+    local path
+    for path in "$@"; do
+        if [[ -e "$path" ]]; then
+            leftover_files+=("$work_dir/$path")
+        fi
+    done
+    if (( ${#leftover_files[@]} == 0 )); then
+        die "${reason}No $label output was written. Fix the cause and rerun $rerun_command."
+    fi
+    die "${reason}Partial $label output is retained: ${leftover_files[*]}. Move these files out of $work_dir (for example: mkdir -p $work_dir.failed && mv ${leftover_files[*]} $work_dir.failed/) and rerun $rerun_command."
+}
+
+# Stop when a stage left output without completion evidence.
+refuse_partial() {
+    local label=$1
+    local evidence=$2
+    shift 2
+    local path
+    if [[ -e "$evidence" ]]; then
+        return
+    fi
+    for path in "$@"; do
+        if [[ -e "$path" ]]; then
+            die_partial "" "$label" "$@"
+        fi
+    done
+}
+
 engine=${AMBER_ENGINE:-pmemd.cuda}
 work_dir=work
+rerun_command="./run.sh"
 
 if (( ! ${dry_run:-0} )) &&
         [[ ${original_args[0]:-} != -h && ${original_args[0]:-} != --help && ${original_args[0]:-} != --dry-run ]] &&
@@ -70,10 +114,12 @@ run_preparation_stage() {
     shift 3
 
     local state
+    local stage_outputs=("$stage.out" "$stage.rst7" "$stage.info" "$stage.nc")
     "${PYTHON:-python3}" ../helpers/input_identity.py \
         --record ".$stage.identity.json" --stage "$stage" -- \
         "$engine" -O -i "$input_file" -o "$stage.out" -p "$topology" \
         -c "$input_restart" -r "$stage.rst7" -inf "$stage.info" "$@"
+    refuse_partial "$stage" ".$stage.success.json" "${stage_outputs[@]}"
     state=$("${PYTHON:-python3}" ../helpers/input_identity.py \
         --check-completion ".$stage.identity.json")
     if [[ "$state" == complete ]]; then
@@ -91,12 +137,13 @@ run_preparation_stage() {
         -r "$stage.rst7" \
         -inf "$stage.info" \
         "$@"; then
-        die "$stage calculation failed: $work_dir/$stage.out"
+        show_engine_output "$stage.out"
+        die_partial "$stage calculation failed. " "$stage" "${stage_outputs[@]}"
     fi
     local output
     for output in "$stage.out" "$stage.rst7"; do
         if [[ ! -s "$output" ]]; then
-            die "$stage output was not created: $work_dir/$output"
+            die_partial "$stage output was not created: $work_dir/$output. " "$stage" "${stage_outputs[@]}"
         fi
     done
     "${PYTHON:-python3}" ../helpers/input_identity.py \
@@ -120,6 +167,11 @@ run_preparation_stage equilibrate inputs/equilibrate.in heat.rst7 \
     -c equilibrate.rst7 -r gamd_prepare.rst7 -inf gamd_prepare.info \
     -x gamd_prepare.nc -gamd gamd_prepare.gamd.log
 
+prepare_outputs=(
+    gamd_prepare.out gamd_prepare.rst7 gamd_prepare.info gamd_prepare.nc
+    gamd_prepare.gamd.log gamd_prepare.gamd.rst gamd-restart.dat
+)
+refuse_partial gamd_prepare .gamd_prepare.success.json "${prepare_outputs[@]}"
 gamd_state=$("${PYTHON:-python3}" ../helpers/input_identity.py \
     --check-completion .gamd_prepare.identity.json)
 if [[ "$gamd_state" == complete && -s gamd_prepare.gamd.log && -s gamd_prepare.gamd.rst ]]; then
@@ -136,14 +188,17 @@ else
         -inf gamd_prepare.info \
         -x gamd_prepare.nc \
         -gamd gamd_prepare.gamd.log; then
-        die "gamd_prepare calculation failed: $work_dir/gamd_prepare.out"
+        show_engine_output gamd_prepare.out
+        die_partial "gamd_prepare calculation failed. " gamd_prepare "${prepare_outputs[@]}"
     fi
     if [[ ! -s gamd-restart.dat ]]; then
-        die "gamd_prepare state was not created: $work_dir/gamd-restart.dat"
+        die_partial "gamd_prepare state was not created: $work_dir/gamd-restart.dat. " \
+            gamd_prepare "${prepare_outputs[@]}"
     fi
     for output in gamd_prepare.out gamd_prepare.rst7 gamd_prepare.gamd.log; do
         if [[ ! -s "$output" ]]; then
-            die "GaMD preparation output was not created: $work_dir/$output"
+            die_partial "GaMD preparation output was not created: $work_dir/$output. " \
+                gamd_prepare "${prepare_outputs[@]}"
         fi
     done
     cp gamd-restart.dat gamd_prepare.gamd.rst
@@ -159,9 +214,23 @@ fi
     -c gamd_prepare.rst7 -r production.rst7 -inf production.info \
     -x production.nc -gamd production.gamd.log
 
-if compgen -G 'production.*' >/dev/null; then
-    die "Production output already exists in $work_dir. Remove it only if you intend to restart production."
+if [[ -e .production.success.json ]]; then
+    "${PYTHON:-python3}" ../helpers/input_identity.py \
+        --check-completion .production.identity.json >/dev/null
+    die "Production already completed: $work_dir/production.nc. Analyze it with python3 anal.py. To run a new production, move work aside (for example: mv work work.old) and rerun the build.sh and run.sh commands in README.md."
 fi
+
+# A failed production leaves its attempt record and the engine-modified GaMD state.
+production_outputs=(
+    production.out production.rst7 production.info production.nc
+    production.gamd.log .production.started
+)
+for output in "${production_outputs[@]}"; do
+    if [[ -e "$output" ]]; then
+        die_partial "" production "${production_outputs[@]}" gamd-restart.dat
+    fi
+done
+production_outputs+=(gamd-restart.dat)
 
 "${PYTHON:-python3}" ../helpers/input_identity.py \
     --check-completion .production.identity.json >/dev/null
@@ -179,12 +248,14 @@ if ! "$engine" \
     -inf production.info \
     -x production.nc \
     -gamd production.gamd.log; then
-    die "production calculation failed: $work_dir/production.out"
+    show_engine_output production.out
+    die_partial "production calculation failed. " production "${production_outputs[@]}"
 fi
 
 for output in production.out production.rst7 production.nc production.gamd.log; do
     if [[ ! -s "$output" ]]; then
-        die "Production output was not created: $work_dir/$output"
+        die_partial "Production output was not created: $work_dir/$output. " \
+            production "${production_outputs[@]}"
     fi
 done
 

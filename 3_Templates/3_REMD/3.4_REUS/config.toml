@@ -39,7 +39,3 @@ windows_file = "windows.tsv"
 force_constant = 1.0
 exchange_interval_steps = 1000
 distance_output_interval_steps = 500
-
-[resources]
-openmp_threads_per_replica = 1
-gpu_count = 1

@@ -79,6 +79,14 @@ WESTPA 설정은 `3_Templates/6_WE/6.1_WESTPA_AMBER`에서 구성합니다.
 `work/target_events.tsv`는 RMSD 3.0 Å 이상에 도달한 segment를 기록합니다.
 Initial-state progress coordinate callback의 log는 `work/get_pcoord.log`입니다.
 
+`init.sh`는 `w_init` output을 `work/west.init.log`에, `run.sh`는 `w_run` output을
+`work/west.log`에 실행마다 timestamp header를 붙여 이어 씁니다. 실패하면 이번
+실행의 마지막 log 줄과 가장 최근 segment log를 terminal에 출력합니다. Segment
+실패는 `work/seg_logs/<iteration>-<segment>.log`의 `runseg.sh` error와
+`work/traj_segs/<iteration>/<segment>/segment.out`의 AMBER output에서 확인합니다.
+같은 directory의 `pcoord.start.cpptraj.log`와 `pcoord.end.cpptraj.log`에는
+progress coordinate 계산의 cpptraj output이 남습니다.
+
 Weight diagnostics는 finite이며 음수가 아닌 weight와 segment별 1차원 finite pcoord를 요구합니다. Total weight는 유한한 양수여야 합니다. 합을 1로 강제 보정하지 않고 실제 합을 출력합니다. 잘못된 HDF5를 읽으면 기존 TSV를 보존합니다. `calc_pcoord.sh`는 cpptraj output의 numeric RMSD와 column 수를 확인하고 잘못된 값을 반환하지 않습니다.
 
 공개 analysis entry는 자동으로 `helpers/writer_guard.py`를 호출해 같은 output의 동시 writer를 거부합니다. Engine 실행부터 결과 게시까지 보호하며, signal 종료 시 child가 멈춘 뒤 lock을 해제합니다. Lock을 임의로 삭제해 실행을 재개하지 않습니다.
@@ -140,6 +148,15 @@ in `3_Templates/6_WE/6.1_WESTPA_AMBER`. Analysis writes total weight, effective
 walker count and RMSD range to `work/iteration_summary.tsv`, bin occupancy to
 `work/bin_occupancy.tsv`, and target arrivals to `work/target_events.tsv`. The
 initial-state progress-coordinate callback logs to `work/get_pcoord.log`.
+
+`init.sh` appends `w_init` output to `work/west.init.log`, and `run.sh` appends
+`w_run` output to `work/west.log`, each run after a timestamped header. On
+failure, the terminal shows the last log lines of that run and the newest
+segment log. For a failed segment, read the `runseg.sh` error in
+`work/seg_logs/<iteration>-<segment>.log` and the AMBER output in
+`work/traj_segs/<iteration>/<segment>/segment.out`. The cpptraj output of the
+progress-coordinate calculation stays in `pcoord.start.cpptraj.log` and
+`pcoord.end.cpptraj.log` in the same directory.
 
 ### 동시 실행과 input 변경
 

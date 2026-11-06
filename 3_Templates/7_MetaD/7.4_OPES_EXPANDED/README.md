@@ -55,6 +55,10 @@ python3 anal.py
 보존합니다. `anal.py`는 energy, expanded CV, bias 범위와 생성된 state 수를
 기록합니다.
 
+`state_write_interval_steps`는 `pace_steps`로 나누어떨어져야 하고, segment당
+step 수(`production_steps / production_segments`)도 이 값으로 나누어떨어져야
+합니다. 그래야 마지막 `opes.state`가 segment 끝 상태가 됩니다.
+
 이 template는 multithermal expansion입니다. Hamiltonian expansion을 사용하려면
 Hamiltonian state 정의와 engine coupling을 별도로 구성해야 합니다.
 `download.sh PDB_ID`는 optional source PDB를 내려받습니다. `build.sh`는 NPT
@@ -150,7 +154,8 @@ default, NPT equilibration is followed by fixed-volume NVT production.
 The configured range must contain the base temperature. The first segment
 creates `DELTAFS` and `opes.state`. PLUMED 2.10 can restart from either file;
 this template consistently reads the readable `opes.state` checkpoint and
-retains `DELTAFS` for state free-energy estimates and analysis. Analysis reports
+retains `DELTAFS` for state free-energy estimates and analysis. `state_write_interval_steps` must be a multiple of `pace_steps` and must divide the steps per segment (`production_steps / production_segments`), so the last `opes.state` matches the segment end.
+Analysis reports
 energy, expanded-CV and bias ranges plus the generated state count. Hamiltonian
 expansion requires a separate Hamiltonian-state definition and coupling setup.
 `download.sh`, `build.sh`, `run.sh`, and `anal.py` retrieve, generate,

@@ -79,7 +79,7 @@ if (( ! dry_run )) && [[ -d "$work_dir" ]]; then
     existing_build=$(find "$work_dir" -type f \
         \( -name '*.parm7' -o -name '*.rst7' \) -print -quit)
     if [[ -n "$existing_build" ]]; then
-        die "Build output already exists and was retained: $existing_build. Use a new work directory for a new build."
+        die "Build output already exists and was retained: $existing_build. For a new build, set WORK_DIR to a new directory or move the old build aside (for example: mv $work_dir $work_dir.previous)."
     fi
 fi
 
@@ -114,6 +114,11 @@ if ! command -v "$tleap" >/dev/null 2>&1; then
     die "Executable not found: $tleap"
 fi
 
+# build.sh reads the final topology with parmed after tleap.
+if ! "$python" -c "import parmed" >/dev/null 2>&1; then
+    die "Python package parmed is required for the MetaD build (see requirements.txt): $python"
+fi
+
 mkdir -p "$work_dir/inputs"
 cp "$input" "$work_dir/input.pdb"
 cp "$config" "$work_dir/source_config.toml"
@@ -134,9 +139,14 @@ salt_concentration=$("$python" - "$config" <<'PY'
 import sys
 sys.path.insert(0, "helpers")
 from pathlib import Path
-from config_utils import load_config
+from config_utils import load_config, nonnegative_float, section
 
-print(load_config(Path(sys.argv[1]))["build"]["salt_concentration_molar"])
+try:
+    build = section(load_config(Path(sys.argv[1])), "build")
+    # load_config converts the public salt_concentration (mM) to molar.
+    print(nonnegative_float(build, "salt_concentration_molar"))
+except ValueError as error:
+    raise SystemExit(f"Config error in build salt setup ({sys.argv[1]}): {error}") from None
 PY
 )
 salt_pairs=$(awk -v waters="$water_count" -v concentration="$salt_concentration" 'BEGIN {printf "%d", waters * concentration / 55.5 + 0.5}')

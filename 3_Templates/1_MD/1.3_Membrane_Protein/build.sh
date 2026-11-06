@@ -61,7 +61,7 @@ if (( ! dry_run )) && [[ -d "$work_dir" ]]; then
     existing_build=$(find "$work_dir" -type f \
         \( -name '*.parm7' -o -name '*.rst7' \) -print -quit)
     if [[ -n "$existing_build" ]]; then
-        die "Build output already exists and was retained: $existing_build. Use a new work directory for a new build."
+        die "Build output already exists and was retained: $existing_build. Move $work_dir aside or set WORK_DIR to a new directory, then rerun ./build.sh."
     fi
 fi
 
@@ -95,7 +95,9 @@ fi
 
 mkdir -p "$work_dir/inputs"
 cp "$input" "$work_dir/input.pdb"
-"$python" helpers/generate_inputs.py "$config" "$work_dir/inputs"
+if ! "$python" helpers/generate_inputs.py "$config" "$work_dir/inputs"; then
+    die "Input generation failed (helpers/generate_inputs.py); see the message above and check $config."
+fi
 parameter_file="$work_dir/build_parameters.tsv"
 composition=$(awk -F '\t' '$1=="composition" {print $2}' "$parameter_file")
 popc=$(awk -F '\t' '$1=="popc" {print $2}' "$parameter_file")
@@ -105,18 +107,38 @@ xy_padding=$(awk -F '\t' '$1=="xy_padding" {print $2}' "$parameter_file")
 water_padding=$(awk -F '\t' '$1=="water_padding" {print $2}' "$parameter_file")
 protein_lipid_distance=$(awk -F '\t' '$1=="protein_lipid_distance" {print $2}' "$parameter_file")
 
-echo "Packing the oriented protein into the configured bilayer: $work_dir/input.pdb -> $work_dir/system-coordinates.pdb"
-"$python" helpers/build_membrane.py "$work_dir/input.pdb" "$popc" "$pope" "$cholesterol" \
-    "$work_dir/system-coordinates.pdb" --composition "$composition" \
-    --xy-padding "$xy_padding" --water-padding "$water_padding" \
-    --protein-lipid-distance "$protein_lipid_distance"
-"$python" helpers/generate_inputs.py "$config" "$work_dir/inputs" --coordinate "$work_dir/system-coordinates.pdb"
+packing_log="$work_dir/build_membrane.log"
+echo "Packing the oriented protein into the configured bilayer: $work_dir/input.pdb -> $work_dir/system-coordinates.pdb; log: $packing_log"
+if ! "$python" helpers/build_membrane.py \
+    "$work_dir/input.pdb" \
+    "$popc" \
+    "$pope" \
+    "$cholesterol" \
+    "$work_dir/system-coordinates.pdb" \
+    --composition "$composition" \
+    --xy-padding "$xy_padding" \
+    --water-padding "$water_padding" \
+    --protein-lipid-distance "$protein_lipid_distance" \
+    > "$packing_log" 2>&1; then
+    tail -n 20 "$packing_log" >&2
+    die "Membrane packing failed (helpers/build_membrane.py). See $packing_log"
+fi
+# Keep packing warnings, such as a missing OPM thickness REMARK, visible.
+if grep -q '^Warning:' "$packing_log"; then
+    grep '^Warning:' "$packing_log" >&2
+fi
+
+if ! "$python" helpers/generate_inputs.py "$config" "$work_dir/inputs" --coordinate "$work_dir/system-coordinates.pdb"; then
+    die "LEaP input generation failed (helpers/generate_inputs.py --coordinate); see the message above and check $config."
+fi
 
 echo "Building the membrane AMBER topology; log: $work_dir/leap.log"
 if ! (cd "$work_dir" && "$tleap" -f inputs/tleap.in > tleap.stdout.log 2>&1); then
     die "tleap failed. See $work_dir/tleap.stdout.log and $work_dir/leap.log"
 fi
-"$python" helpers/apply_config.py "$config" "$work_dir"
+if ! "$python" helpers/apply_config.py "$config" "$work_dir"; then
+    die "Applying $config to generated inputs failed (helpers/apply_config.py); see the message above."
+fi
 for output in system.parm7 system.rst7 system.pdb resolved_config.toml; do
     if [[ ! -s "$work_dir/$output" ]]; then
         die "Build output was not created: $work_dir/$output"

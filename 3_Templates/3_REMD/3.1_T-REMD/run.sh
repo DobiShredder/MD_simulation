@@ -49,6 +49,8 @@ die() {
 }
 
 work_dir=${WORK_DIR:-work}
+rerun_command="./run.sh ${original_args[*]:-}"
+rerun_command=${rerun_command% }
 if (( ! ${dry_run:-0} )) && [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
     exec "${PYTHON:-python3}" helpers/writer_guard.py \
         --registry "$work_dir" --write "$work_dir" -- "$0" "${original_args[@]}"
@@ -122,6 +124,66 @@ stage_status() {
     echo missing
 }
 
+# Paths written by one stage, including its completion marker.
+stage_candidates() {
+    local stage=$1
+    local replica
+    if [[ "$stage" == shared_* ]]; then
+        printf '%s\n' "$work_dir/.$stage.complete" "$work_dir/shared/${stage#shared_}."{out,rst7,nc,info}
+        return
+    fi
+    printf '%s\n' "$work_dir/.$stage.complete"
+    if [[ "$stage" == production.* ]]; then
+        printf '%s\n' "$work_dir/exchange.${stage#production.}.log"
+    fi
+    while IFS=$'\t' read -r replica _; do
+        if [[ "$replica" == replica ]]; then
+            continue
+        fi
+        printf '%s\n' "$work_dir/$replica/$stage."{out,rst7,nc,info} \
+            "$work_dir/$replica/restraint.$stage.dat" "$work_dir/$replica/gamd.$stage.log"
+    done < "$states_file"
+}
+
+# Retained output is never moved here; print the manual recovery instead.
+# All replicas of a stage rerun together, so the list spans every replica.
+die_partial() {
+    local stage=$1
+    local label=${stage/#shared_/shared }
+    local path
+    local retained=()
+    while IFS= read -r path; do
+        if [[ -e "$path" || -L "$path" ]]; then
+            retained+=("$path")
+        fi
+    done < <(stage_candidates "$stage")
+    die "Partial $label output is retained in $work_dir. Move these files out of $work_dir, keeping their directories, and rerun $rerun_command:
+  for file in ${retained[*]:-}; do mkdir -p \"$work_dir.failed/\${file%/*}\"; mv \"\$file\" \"$work_dir.failed/\$file\"; done"
+}
+
+# After a failed multipmemd run, show the MPI log and replicas whose AMBER
+# output lacks the final timing block.
+report_replica_failure() {
+    local stage=$1
+    local mpirun_log=$2
+    local replica output
+    if [[ -s "$mpirun_log" ]]; then
+        echo "Last 20 lines of $mpirun_log:" >&2
+        tail -n 20 "$mpirun_log" >&2
+    fi
+    while IFS=$'\t' read -r replica _; do
+        if [[ "$replica" == replica ]]; then
+            continue
+        fi
+        output="$work_dir/$replica/$stage.out"
+        if [[ ! -s "$output" ]]; then
+            echo "Missing replica output: $output" >&2
+        elif ! grep -q 'Total wall time' "$output"; then
+            echo "Unfinished replica output: $output" >&2
+        fi
+    done < "$states_file"
+}
+
 mark_stage_complete() {
     local stage=$1
     stage_outputs_complete "$stage" --require-complete
@@ -181,7 +243,7 @@ run_replica_stage() {
         return
     fi
     if [[ "$status" == partial ]]; then
-        die "Incomplete $stage outputs found in $work_dir; existing .out, .rst7, .nc, and .info files were preserved. Use a new WORK_DIR or resolve the partial stage."
+        die_partial "$stage"
     fi
 
     echo "Running: $stage"
@@ -275,7 +337,7 @@ run_shared_stage() {
         return
     fi
     if [[ "$status" == partial ]]; then
-        die "Incomplete shared $stage outputs found in $shared_dir; existing files were preserved. Use a new WORK_DIR or resolve the partial stage."
+        die_partial "shared_$stage"
     fi
 
     echo "Running: shared $stage"
@@ -314,8 +376,11 @@ write_group_file() {
     done < "$states_file"
 }
 
-if [[ ! -s "$states_file" || ! -s "$resolved_config" ]]; then
-    die "Run ./build.sh first."
+if [[ ! -s "$resolved_config" ]]; then
+    die "Run ./build.sh first: $resolved_config"
+fi
+if [[ ! -s "$states_file" ]]; then
+    die "Run ./build.sh first: $states_file"
 fi
 
 amber_engine=$("${PYTHON:-python3}" helpers/config_utils.py "$resolved_config" engine AMBER_ENGINE pmemd.cuda)
@@ -423,7 +488,7 @@ for ((segment = segment_start; segment <= segment_end; segment++)); do
         continue
     fi
     if [[ "$status" == partial ]]; then
-        die "Partial production output detected: $segment_name"
+        die_partial "$segment_name"
     fi
 
 
@@ -431,7 +496,8 @@ for ((segment = segment_start; segment <= segment_end; segment++)); do
     exchange_log="$work_dir/exchange.$(printf '%03d' "$segment").log"
     write_group_file "$segment_name" "$input_restart" "$group_file"
 
-    echo "Running: T-REMD production segment $segment/$production_segments"
+    mpirun_log="$work_dir/mpirun.$segment_name.log"
+    echo "Running: T-REMD production segment $segment/$production_segments (MPI output: $mpirun_log)"
     if ! "$mpi_launcher" \
         "${mpi_options[@]}" \
         -np "$mpi_processes" \
@@ -440,8 +506,10 @@ for ((segment = segment_start; segment <= segment_end; segment++)); do
         -ng "$replica_count" \
         -groupfile "$group_file" \
         -rem 1 \
-        -remlog "$exchange_log"; then
-        die "T-REMD segment $segment failed: $exchange_log"
+        -remlog "$exchange_log" \
+        >> "$mpirun_log" 2>&1; then
+        report_replica_failure "$segment_name" "$mpirun_log"
+        die "T-REMD segment $segment failed: $mpirun_log, $exchange_log"
     fi
     mark_stage_complete "$segment_name"
 done

@@ -30,7 +30,7 @@ if [[ -d "$work_dir" ]]; then
     existing_build=$(find "$work_dir" -type f \
         \( -name '*.parm7' -o -name '*.rst7' \) -print -quit)
     if [[ -n "$existing_build" ]]; then
-        die "Build output already exists and was retained: $existing_build. Use a new work directory for a new build."
+        die "Build output already exists and was retained: $existing_build. Move work aside (for example: mv work work.old) and rerun ./build.sh $input_pdb."
     fi
 fi
 
@@ -44,7 +44,7 @@ energy_tolerance=0.1
 if find "$work_dir" -type f \
     \( -name 'minimize.gro' -o -name 'equilibrate.gro' -o -name 'production.gro' \) \
     -print -quit 2>/dev/null | grep -q .; then
-    die "Simulation output already exists in $work_dir. Remove it before rebuilding."
+    die "Simulation output already exists in work. Move work aside (for example: mv work work.old) and rerun ./build.sh $input_pdb."
 fi
 
 for input_file in "$input_pdb" "$temperature_file"; do
@@ -209,9 +209,13 @@ for variant in unscaled scale_one; do
     fi
 done
 
-"$python_bin" "compare_energy.py" \
+if ! "$python_bin" "compare_energy.py" \
     "$energy_dir/unscaled.xvg" \
     "$energy_dir/scale_one.xvg" \
-    "$energy_tolerance"
+    "$energy_tolerance"; then
+    die "Scale-one energy check failed: $energy_dir/unscaled.xvg, $energy_dir/scale_one.xvg"
+fi
 
+# Last step: run.sh refuses a work directory without this marker.
+touch "$work_dir/build.done"
 echo "REST2 topologies and coordinates: $work_dir"

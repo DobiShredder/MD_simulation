@@ -35,7 +35,7 @@ if (( ! dry_run )); then
     for output_name in amber-named.pdb tleap.in system.parm7 system.rst7 system.pdb leap.log tleap.stdout.log; do
         output_path="$work_dir/$output_name"
         if [[ -e "$output_path" || -L "$output_path" ]]; then
-            die "Topology build output already exists: $output_path. Files were preserved. Start a new tutorial copy without generated work directories."
+            die "Topology build output already exists: $output_path. Files were preserved. Move work aside (for example: mv work work.old) and rerun ./run.sh $coordinate_pdb."
         fi
     done
 fi
@@ -52,7 +52,7 @@ fi
 if (( ! dry_run )) && find "$work_dir" -type f \
     \( -name 'min*.out' -o -name 'heat*.out' -o -name 'equil*.out' \
        -o -name 'production*.out' \) -print -quit 2>/dev/null | grep -q .; then
-    die "Topology build: simulation output already exists in $work_dir. Files were preserved. Start a new tutorial copy without generated work directories."
+    die "Topology build: simulation output already exists in $work_dir. Files were preserved. Move work aside (for example: mv work work.old) and rerun ./run.sh $coordinate_pdb."
 fi
 
 if (( dry_run )); then
@@ -74,11 +74,13 @@ if [[ ! -s "$amber_named_pdb" ]]; then
 fi
 
 echo "Preparing LEaP input: $amber_named_pdb -> $generated_tleap (template: tleap.in)"
-python3 \
+if ! python3 \
     prepare_tleap.py \
     "$amber_named_pdb" \
     tleap.in \
-    "$generated_tleap"
+    "$generated_tleap"; then
+    die "LEaP input preparation failed; see the messages above. Check $amber_named_pdb and tleap.in."
+fi
 
 # Apply ff19SB, Lipid21, and OPC to the converted coordinate file.
 if ! (

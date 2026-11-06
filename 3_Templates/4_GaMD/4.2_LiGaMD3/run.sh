@@ -54,12 +54,50 @@ die() {
     exit 1
 }
 
+show_engine_output() {
+    local output=$1
+    if [[ -s "$output" ]]; then
+        echo "Last 20 lines of $output:" >&2
+        tail -n 20 "$output" >&2
+    fi
+}
+
+# Partial output is never removed or overwritten; the user moves it out of the work tree.
+die_partial() {
+    local reason=$1
+    local label=$2
+    local directory=$3
+    shift 3
+    local failed_dir="$work_dir.failed"
+    if [[ "$directory" != "$work_dir" ]]; then
+        failed_dir+="/${directory##*/}"
+    fi
+    local leftover_files=()
+    local path
+    for path in "$@"; do
+        if [[ -e "$path" ]]; then
+            leftover_files+=("$path")
+        fi
+    done
+    if (( ${#leftover_files[@]} == 0 )); then
+        die "${reason}No $label output was written in $directory. Fix the cause and rerun $rerun_command."
+    fi
+    die "${reason}Partial $label output is retained in $directory: ${leftover_files[*]}. Move these files out of $work_dir (for example: mkdir -p $failed_dir && mv ${leftover_files[*]} $failed_dir/) and rerun $rerun_command."
+}
+
 work_dir=${WORK_DIR:-work}
 if (( ! ${dry_run:-0} )) && [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
     exec "${PYTHON:-python3}" helpers/writer_guard.py \
         --registry "$work_dir" --write "$work_dir" -- "$0" "${original_args[@]}"
 fi
 resolved="$work_dir/resolved_config.toml"
+if [[ ! -s "$resolved" ]]; then
+    die "Run ./build.sh first: $resolved"
+fi
+rerun_command="./run.sh"
+if (( ${#original_args[@]} > 0 )); then
+    rerun_command+=" ${original_args[*]}"
+fi
 engine=$("${PYTHON:-python3}" helpers/config_utils.py "$resolved" engine AMBER_ENGINE pmemd.cuda)
 read -r -a amber_options <<< "${AMBER_OPTIONS:-}"
 
@@ -69,9 +107,12 @@ read_value() {
 }
 
 if (( ! dry_run )); then
-    if [[ ! -s "$work_dir/system.parm7" || ! -s "$work_dir/system.rst7" || ! -s "$resolved" ]]; then
-        die "Run preflight: build input missing or empty in $work_dir (system.parm7, system.rst7, resolved_config.toml). Run ./build.sh first."
-    fi
+    # build.sh writes the GaMD inputs last; a failed generator leaves them missing.
+    for build_output in system.parm7 system.rst7 inputs/gamd_prepare.in inputs/production.in; do
+        if [[ ! -s "$work_dir/$build_output" ]]; then
+            die "Run preflight: build output missing or empty: $work_dir/$build_output. Run ./build.sh first."
+        fi
+    done
     if ! command -v "$engine" >/dev/null 2>&1; then
         die "AMBER engine not found: $engine"
     fi
@@ -80,8 +121,10 @@ if (( ! dry_run )); then
     fi
 fi
 
-segments=$(read_value production_segments 2>/dev/null || true)
-segments=${segments:-10}
+segments=$(read_value production_segments)
+if [[ ! "$segments" =~ ^[1-9][0-9]*$ ]]; then
+    die "Run preflight: run.production_segments is missing or not a positive integer in $resolved"
+fi
 segment_start=1
 segment_end=$segments
 if [[ -n "$segment_range" ]]; then
@@ -133,6 +176,12 @@ run_stage() {
     local marker="$directory/.$stage.complete"
     local prefix="$directory/$stage"
     local required=("$prefix.out" "$prefix.rst7" "$prefix.info")
+    local stage_outputs=("$prefix.out" "$prefix.rst7" "$prefix.info" "$prefix.nc"
+        "$prefix.gamd.log" "$prefix.gamd.rst" "$marker")
+    # The engine updates gamd-restart.dat in place during a GaMD stage.
+    if [[ "$use_gamd" == yes ]]; then
+        stage_outputs+=("$directory/gamd-restart.dat")
+    fi
     local template_file=$input_file
     if [[ "$stage" == production ]]; then
         input_file=production.in
@@ -163,7 +212,7 @@ run_stage() {
         local production_state
         production_state=$(stage_state "$marker" "${required[@]}")
         if [[ "$production_state" == partial ]]; then
-            die "Partial $label output detected and retained: $directory"
+            die_partial "" "$label" "$directory" "${stage_outputs[@]}"
         fi
         if [[ "$production_state" == complete && ! -s "$directory/production.in" ]]; then
             die "$label input is missing and outputs were retained: $directory/production.in"
@@ -218,7 +267,7 @@ PY
         return
     fi
     if [[ "$state" == partial ]]; then
-        die "Partial $label output detected and retained: $directory"
+        die_partial "" "$label" "$directory" "${stage_outputs[@]}"
     fi
     if [[ -n "$previous_gamd_state" ]]; then
         cp "$previous_gamd_state" "$directory/gamd-restart.dat"
@@ -226,18 +275,21 @@ PY
 
     echo "Running: $label ($directory)"
     if ! (cd "$directory"; "${command[@]}"); then
-        die "$label failed in $directory; expected engine output: $prefix.out (may be absent); see engine diagnostics above"
+        show_engine_output "$prefix.out"
+        die_partial "$label failed. " "$label" "$directory" "${stage_outputs[@]}"
     fi
     if [[ "$use_gamd" == yes ]]; then
         if [[ ! -s "$directory/gamd-restart.dat" ]]; then
-            die "$label GaMD state was not created: $directory/gamd-restart.dat"
+            die_partial "$label GaMD state was not created: $directory/gamd-restart.dat. " \
+                "$label" "$directory" "${stage_outputs[@]}"
         fi
         cp "$directory/gamd-restart.dat" "$prefix.gamd.rst"
     fi
     local output
     for output in "${required[@]}"; do
         if [[ ! -s "$output" ]]; then
-            die "$label output was not created: $output"
+            die_partial "$label output was not created: $output. " \
+                "$label" "$directory" "${stage_outputs[@]}"
         fi
     done
     touch "$marker"

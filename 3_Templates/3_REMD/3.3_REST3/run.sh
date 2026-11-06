@@ -93,21 +93,30 @@ die() {
 }
 
 work_dir=${WORK_DIR:-work}
+rerun_command="./run.sh ${original_args[*]:-}"
+rerun_command=${rerun_command% }
 if (( ! ${dry_run:-0} )) && [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
     exec "${PYTHON:-python3}" helpers/writer_guard.py \
         --registry "$work_dir" --write "$work_dir" -- "$0" "${original_args[@]}"
 fi
+states="$work_dir/states.tsv"
+resolved="$work_dir/resolved_config.toml"
+if [[ ! -s "$resolved" ]]; then
+    die "Run ./build.sh first: $resolved"
+fi
+if [[ ! -s "$states" ]]; then
+    die "Run ./build.sh first: $states"
+fi
+# build.sh writes build.done only after the energy check and build summary pass.
+if [[ ! -f "$work_dir/build.done" ]]; then
+    die "Build did not complete: $work_dir/build.done is missing; see $work_dir/build.log. Move $work_dir aside (for example: mv $work_dir $work_dir.old) and rerun ./build.sh."
+fi
 if (( ! dry_run )); then
     "${PYTHON:-python3}" helpers/input_identity.py --verify "$work_dir"
 fi
-states="$work_dir/states.tsv"
-resolved="$work_dir/resolved_config.toml"
 gmx=$("${PYTHON:-python3}" helpers/config_utils.py "$resolved" equilibration_engine GROMACS gmx)
 gmx_mpi=$("${PYTHON:-python3}" helpers/config_utils.py "$resolved" production_engine GROMACS_MPI gmx_mpi)
 mpi_launcher=${MPI_LAUNCHER:-mpirun}
-if [[ ! -s "$states" || ! -s "$resolved" ]]; then
-    die "Run ./build.sh first."
-fi
 
 replica_count=$(awk 'NR > 1 {count++} END {print count + 0}' "$states")
 if (( replica_count < 2 || replica_count % 2 != 0 )); then
@@ -169,7 +178,8 @@ if (( ! dry_run )); then
     fi
     # The PLUMED patch appends "plumed_X.Y.Z" to the GROMACS version. The GROMACS
     # 2024 patch computes the HREX swapped-coordinate energy correctly only from
-    # PLUMED 2.10.2 (PLUMED PR #1505); older builds give near-zero acceptance.
+    # PLUMED 2.10.2 (PLUMED issue #1326, fixed by PR #1505); older builds give
+    # near-zero acceptance.
     version_log="$work_dir/gromacs_version.log"
     if ! version_output=$("$gmx_mpi" --version 2>&1); then
         echo "$version_output" > "$version_log"
@@ -241,6 +251,42 @@ for replica_dir in "${replica_dirs[@]}"; do
         die "Expected net charge missing for replica ${replica_dir##*/}: $charge_table"
     fi
 done
+
+# Retained output is never moved here; print the manual recovery instead.
+# All replicas of a stage rerun together, so the list spans every replica.
+die_partial() {
+    local stage=$1
+    shift
+    local path
+    local retained=()
+    for path in "$work_dir/.$stage.complete" "$@"; do
+        if [[ -e "$path" || -L "$path" ]]; then
+            retained+=("$path")
+        fi
+    done
+    die "Partial $stage output is retained for all replicas in $work_dir. Move these files out of $work_dir, keeping their replica directories, and rerun $rerun_command:
+  for file in ${retained[*]:-}; do mkdir -p \"$work_dir.failed/\${file%/*}\"; mv \"\$file\" \"$work_dir.failed/\$file\"; done"
+}
+
+# Point to GROMACS replica logs after a failed multi-replica run.
+report_replica_logs() {
+    local log_name=$1
+    local replica_dir log
+    local shown=0
+    for replica_dir in "${replica_dirs[@]}"; do
+        log="$replica_dir/$log_name"
+        if [[ ! -s "$log" ]]; then
+            echo "Missing replica log: $log" >&2
+        elif ! grep -q 'Finished mdrun' "$log"; then
+            echo "Unfinished replica log: $log" >&2
+            if (( ! shown )); then
+                echo "Last 20 lines of $log:" >&2
+                tail -n 20 "$log" >&2
+                shown=1
+            fi
+        fi
+    done
+}
 
 wait_for_batch() {
     local stage=$1
@@ -332,7 +378,14 @@ run_preproduction_stage() {
         return
     fi
     if [[ -n "$partial_output" ]]; then
-        die "Partial $stage output detected and retained: $partial_output"
+        local candidates=()
+        local suffix
+        for replica_dir in "${replica_dirs[@]}"; do
+            for suffix in gro cpt log tpr edr xtc grompp.log mdrun.log; do
+                candidates+=("$replica_dir/$stage.$suffix")
+            done
+        done
+        die_partial "$stage" "${candidates[@]}"
     fi
     local replica replica_dir gpu_id
     local replica_index=0
@@ -453,7 +506,15 @@ for ((segment = segment_start; segment <= segment_end; segment++)); do
         continue
     fi
     if [[ "$production_state" == partial ]]; then
-        die "Partial production output detected: $replica_dir/$segment_name"
+        printf -v part_suffix 'part%04d' "$segment"
+        candidates=()
+        for replica_dir in "${replica_dirs[@]}"; do
+            for suffix in gro cpt log tpr edr xtc trr grompp.log mdrun.log \
+                "$part_suffix.gro" "$part_suffix.log" "$part_suffix.edr" "$part_suffix.xtc" "$part_suffix.trr"; do
+                candidates+=("$replica_dir/$segment_name.$suffix")
+            done
+        done
+        die_partial "$segment_name" "${candidates[@]}"
     fi
     while IFS=$'\t' read -r replica _; do
         if [[ "$replica" == replica ]]; then
@@ -478,7 +539,12 @@ for ((segment = segment_start; segment <= segment_end; segment++)); do
     fi
     command+=("${gromacs_options[@]}")
     if ! "${command[@]}"; then
-        die "$method production segment $segment failed in $work_dir; expected replica logs: $work_dir/<replica>/$segment_name.log (may be absent); see engine diagnostics above"
+        log_name="$segment_name.log"
+        if (( segment > 1 )); then
+            printf -v log_name '%s.part%04d.log' "$segment_name" "$segment"
+        fi
+        report_replica_logs "$log_name"
+        die "$method production segment $segment failed in $work_dir; replica logs: $work_dir/<replica>/$log_name"
     fi
     for replica_dir in "${replica_dirs[@]}"; do
         "${PYTHON:-python3}" helpers/production_segment.py publish \

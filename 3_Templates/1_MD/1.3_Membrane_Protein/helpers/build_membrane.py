@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import argparse
 import math
+import re
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -214,18 +216,29 @@ def read_protein(path: Path) -> tuple[list[str], np.ndarray]:
     return lines, np.array(coordinates)
 
 
-def opm_half_thickness(lines: list[str]) -> float:
-    """Read the OPM membrane half-thickness recorded by prepare.py."""
+def opm_half_thickness(lines: list[str]) -> float | None:
+    """Read the OPM membrane half-thickness reported for information only."""
     prefix = "REMARK OPM MEMBRANE HALF-THICKNESS"
 
     for line in lines:
         if line.startswith(prefix):
             return float(line.split()[4])
 
-    raise SystemExit(
-        "OPM membrane orientation records are missing. "
-        "Process the OPM PDB with prepare.py first."
+    # Original OPM files record it as "REMARK ... 1/2 of bilayer thickness: 15.0".
+    for line in lines:
+        if not line.startswith("REMARK") or "bilayer thickness" not in line:
+            continue
+        match = re.search(r"([-+]?\d+(?:\.\d+)?)\s*$", line)
+        if match is not None:
+            return float(match.group(1))
+
+    print(
+        "Warning: no OPM membrane half-thickness REMARK was found; "
+        "the protein must already be oriented with the membrane normal along z "
+        "and the bilayer center at z=0.",
+        file=sys.stderr,
     )
+    return None
 
 
 def target_box_size(
@@ -820,7 +833,8 @@ def main() -> None:
     write_system(protein_lines, lipids, waters, target_box, args.output)
 
     print(f"Membrane coordinate: {args.output}")
-    print(f"OPM membrane half-thickness: {half_thickness:.1f} A")
+    if half_thickness is not None:
+        print(f"OPM membrane half-thickness: {half_thickness:.1f} A")
     print(
         "Box: "
         f"{target_box[0]:.3f} x {target_box[1]:.3f} x {target_box[2]:.3f} A"

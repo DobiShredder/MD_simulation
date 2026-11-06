@@ -27,6 +27,10 @@ while (( $# > 0 )); do
             dry_run=1
             shift
             ;;
+        -h|--help)
+            echo "Usage: $0 --cpus N --gpus N [--dry-run]"
+            exit 0
+            ;;
         *)
             echo "Usage: $0 --cpus N --gpus N [--dry-run]" >&2
             exit 2
@@ -49,6 +53,9 @@ die() {
     echo "Error: $*" >&2
     exit 1
 }
+
+rerun_command="./run.sh ${original_args[*]:-}"
+rerun_command=${rerun_command% }
 
 stage_status() {
     local stage=$1
@@ -87,6 +94,61 @@ stage_status() {
     else
         echo partial
     fi
+}
+
+# Retained output is never moved here; print the manual recovery instead.
+# All replicas of a stage rerun together, so the list spans every replica.
+die_partial() {
+    local stage=$1
+    local replica suffix path
+    local retained=()
+    if [[ -e "work/.$stage.complete" || -L "work/.$stage.complete" ]]; then
+        retained+=("work/.$stage.complete")
+    fi
+    while IFS=$'\t' read -r replica _; do
+        if [[ "$replica" == replica ]]; then
+            continue
+        fi
+        for suffix in gro cpt log tpr edr xtc grompp.log mdrun.log; do
+            path="work/$replica/$stage.$suffix"
+            if [[ -e "$path" || -L "$path" ]]; then
+                retained+=("$path")
+            fi
+        done
+    done < work/states.tsv
+    die "Partial $stage output is retained for all replicas in work. Move these files out of work, keeping their replica directories, and rerun $rerun_command:
+  for file in ${retained[*]:-}; do mkdir -p \"work.failed/\${file%/*}\"; mv \"\$file\" \"work.failed/\$file\"; done"
+}
+
+# Production is never overwritten; refuse complete or partial output.
+check_production_absent() {
+    local production_status
+    production_status=$(stage_status production)
+    if [[ "$production_status" == complete ]]; then
+        die "REST3 production already exists and is complete in work. Files were preserved. Move work aside (for example: mv work work.old) to start a new run."
+    fi
+    if [[ "$production_status" == partial ]]; then
+        die_partial production
+    fi
+}
+
+# Point to GROMACS replica logs after a failed multi-replica run.
+report_replica_logs() {
+    local replica_dir log
+    local shown=0
+    for replica_dir in "${replica_dirs[@]}"; do
+        log="$replica_dir/production.log"
+        if [[ ! -s "$log" ]]; then
+            echo "Missing replica log: $log" >&2
+        elif ! grep -q 'Finished mdrun' "$log"; then
+            echo "Unfinished replica log: $log" >&2
+            if (( ! shown )); then
+                echo "Last 20 lines of $log:" >&2
+                tail -n 20 "$log" >&2
+                shown=1
+            fi
+        fi
+    done
 }
 
 wait_for_batch() {
@@ -149,7 +211,7 @@ run_preproduction_stage() {
         return
     fi
     if [[ "$status" == partial ]]; then
-        die "Partial $stage output retained in work. Files were preserved. Start a new tutorial copy."
+        die_partial "$stage"
     fi
 
     echo "Running: $stage"
@@ -210,7 +272,11 @@ gmx_mpi=${GROMACS_MPI:-gmx_mpi}
 mpi_launcher=${MPI_LAUNCHER:-mpirun}
 
 if [[ ! -s work/states.tsv ]]; then
-    die "Run ./build.sh first."
+    die "Run ./build.sh first: work/states.tsv"
+fi
+# build.sh writes build.done only after every topology and energy check passes.
+if [[ ! -f work/build.done ]]; then
+    die "Build did not complete: work/build.done is missing. Check the ./build.sh error output, move work aside (for example: mv work work.old), and rerun ./build.sh."
 fi
 replica_count=$(awk 'NR > 1 {count++} END {print count + 0}' work/states.tsv)
 if (( replica_count < 2 || replica_count % 2 != 0 )); then
@@ -276,7 +342,8 @@ if ! "$gmx_mpi" mdrun -h -hrex > "$option_log" 2>&1; then
 fi
 # The PLUMED patch appends "plumed_X.Y.Z" to the GROMACS version. The GROMACS
 # 2024 patch computes the HREX swapped-coordinate energy correctly only from
-# PLUMED 2.10.2 (PLUMED PR #1505); older builds give near-zero acceptance.
+# PLUMED 2.10.2 (PLUMED issue #1326, fixed by PR #1505); older builds give
+# near-zero acceptance.
 version_log=work/gromacs_version.log
 if ! "$gmx_mpi" --version > "$version_log" 2>&1; then
     die "Cannot read the GROMACS version: $version_log"
@@ -292,20 +359,14 @@ if ! "$gmx_mpi" mdrun -h -plumed work/000/plumed.dat >> "$option_log" 2>&1; then
     die "GROMACS does not recognize -plumed: $option_log"
 fi
 
-if find work/[0-9][0-9][0-9] -maxdepth 1 \
-    \( -name 'production.gro' -o -name 'production.cpt' -o -name 'production.log' \) \
-    -print -quit 2>/dev/null | grep -q .; then
-    die "Production output already exists in work."
-fi
+# Check production before rerunning any preproduction stage.
+check_production_absent
 
 run_preproduction_stage minimize system
 run_preproduction_stage equilibrate minimize
 
 check_stage_identity production equilibrate
-production_status=$(stage_status production)
-if [[ "$production_status" != missing ]]; then
-    die "Production output already exists or is partial in work. Files were preserved. Start a new tutorial copy."
-fi
+check_production_absent
 
 replica_dirs=()
 while IFS=$'\t' read -r replica _; do
@@ -338,7 +399,8 @@ if ! "$mpi_launcher" \
     -hrex \
     -replex 1000 \
     -plumed plumed.dat; then
-    die "REST3 production failed; expected replica logs: work/<replica>/production.log (may be absent); see engine diagnostics above"
+    report_replica_logs
+    die "REST3 production failed; replica logs: work/<replica>/production.log"
 fi
 
 for replica_dir in "${replica_dirs[@]}"; do

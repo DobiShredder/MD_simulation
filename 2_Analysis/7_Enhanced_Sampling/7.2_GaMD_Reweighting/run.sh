@@ -59,10 +59,15 @@ cleanup_generation() {
     status=$?
     if [[ -d "$generation_dir" ]]; then
         if [[ $status -ne 0 ]]; then
-            echo "Error: analysis failed; previous output is unchanged. Recent generation logs:" >&2
+            # The generation directory is removed below; keep its logs for diagnosis.
+            failed_logs="$completed_output_dir.failed"
+            mkdir -p "$failed_logs"
+            rm -f -- "$failed_logs"/*.log
+            echo "Error: analysis failed; previous output is unchanged. Generation logs were copied to $failed_logs/:" >&2
             for log in "$generation_dir"/*.log; do
                 if [[ -f "$log" ]]; then
-                    echo "Log: $log" >&2
+                    cp "$log" "$failed_logs/"
+                    echo "Log: $failed_logs/${log##*/}" >&2
                     tail -n 20 "$log" >&2
                 fi
             done

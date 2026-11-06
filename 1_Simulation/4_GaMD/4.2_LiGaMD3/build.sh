@@ -51,7 +51,7 @@ if [[ -d "$work_dir" ]]; then
     existing_build=$(find "$work_dir" -type f \
         \( -name '*.parm7' -o -name '*.rst7' \) -print -quit)
     if [[ -n "$existing_build" ]]; then
-        die "Build output already exists and was retained: $existing_build. Use a new work directory for a new build."
+        die "Build output already exists and was retained: $existing_build. To build again, move work aside (for example: mv work work.old) and rerun ./build.sh."
     fi
 fi
 
@@ -79,10 +79,12 @@ echo "Parameterizing BEN with GAFF2/AM1-BCC."
 parameter_sdf=$ligand_sdf
 if [[ "$ligand_charge" -eq 1 ]]; then
     protonated_sdf="$work_dir/ben-protonated.sdf"
-    "$python" \
+    if ! "$python" \
         "protonate_benzamidine.py" \
         "$ligand_sdf" \
-        "$protonated_sdf"
+        "$protonated_sdf"; then
+        die "Benzamidine protonation failed: $ligand_sdf -> $protonated_sdf"
+    fi
     parameter_sdf=ben-protonated.sdf
 fi
 if ! (

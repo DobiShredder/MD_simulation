@@ -30,7 +30,7 @@ if [[ -d "$work_dir" ]]; then
     existing_build=$(find "$work_dir" -type f \
         \( -name '*.parm7' -o -name '*.rst7' \) -print -quit)
     if [[ -n "$existing_build" ]]; then
-        die "Build output already exists and was retained: $existing_build. Use a new work directory for a new build."
+        die "Build output already exists and was retained: $existing_build. Move work aside (for example: mv work work.old) and rerun ./build.sh $input_pdb."
     fi
 fi
 
@@ -43,7 +43,7 @@ equilibrate_seed_offset=1000000
 production_seed_offset=3000000
 
 if find "$work_dir" -type f -name 'production.out' -print -quit 2>/dev/null | grep -q .; then
-    die "Production output already exists in $work_dir. Remove it before rebuilding."
+    die "Production output already exists in work. Move work aside (for example: mv work work.old) and rerun ./build.sh $input_pdb."
 fi
 
 for input_file in "$input_pdb" "$states_file"; do

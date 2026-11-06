@@ -71,7 +71,7 @@ Production 일부만 존재하면 자동으로 덮어쓰지 않습니다. `anal.
 | `salt_type` | `NaCl`만 실제 적용 | `NaCl` | FEP builder는 `Na+`와 `Cl-`를 기록합니다. |
 | `equilibration_ensemble` | `NVT`, `NPT` | `NPT` | Generated equilibration input의 `ntb`와 `ntp`를 설정합니다. |
 | `production_ensemble` | `NVT`, `NPT` | `NPT` | Generated production input의 `ntb`와 `ntp`를 설정합니다. |
-| `random_seed` | 현재 config override 미적용 | `"random"` | Window seed는 `51000 + global window index`로 생성됩니다. |
+| `random_seed` | `"random"` 또는 양의 정수 | `"random"` | Heating만 새 velocity를 만듭니다. `"random"`은 `ig=-1`, 정수 N은 window마다 `ig=N + global window index`(1부터)를 씁니다. Equilibration과 production은 restart에서 이어가며 항상 `ig=-1`입니다. |
 
 `lambda_values`는 0.0과 1.0을 포함하는 중복 없는 오름차순 list를 직접
 지정합니다. Auto/file mode는 없으며, 각 값이 complex와 solvent의 한 window가
@@ -84,7 +84,7 @@ Production 일부만 존재하면 자동으로 덮어쓰지 않습니다. `anal.
 
 Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 중단하고 파일을 보존합니다. 새 build에는 별도 `WORK_DIR`을 지정합니다.
 
-빈 output도 기존 파일로 취급합니다. Completion marker와 필수 nonempty output이 모두 있어야 단계를 건너뛰며, partial output은 자동으로 덮어쓰지 않습니다.
+빈 output도 기존 파일로 취급합니다. Completion marker와 필수 nonempty output이 모두 있어야 단계를 건너뛰며, partial output은 자동으로 덮어쓰지 않습니다. Partial output이 있으면 error가 해당 window와 남은 파일을 표시합니다. 이 파일을 `WORK_DIR` 밖으로 옮긴 뒤(예: `mkdir -p work.failed && mv ... work.failed/`) error에 표시된 `./run.sh` command를 다시 실행합니다. `WORK_DIR` 안으로 옮기면 identity가 없는 결과로 거부됩니다.
 
 ### 동시 실행과 input 변경
 
@@ -160,7 +160,7 @@ The first-pass LEaP input and water-count `solvated.pdb` are created under `work
 | `salt_type` | Only `NaCl` is applied | `NaCl` | The FEP builder writes `Na+` and `Cl-`. |
 | `equilibration_ensemble` | `NVT`, `NPT` | `NPT` | Sets `ntb` and `ntp` in generated equilibration input. |
 | `production_ensemble` | `NVT`, `NPT` | `NPT` | Sets `ntb` and `ntp` in generated production input. |
-| `random_seed` | Config override is not currently applied | `"random"` | Window seeds are `51000 + global window index`. |
+| `random_seed` | `"random"` or a positive integer | `"random"` | Only heating starts new velocities. `"random"` writes `ig=-1`; an integer N writes `ig=N + global window index` (starting at 1) per window. Equilibration and production continue from restarts with `ig=-1`. |
 
 `lambda_values` is an explicit, unique, increasing list spanning 0.0 to 1.0.
 It has no auto/file mode. Each value creates one complex and one solvent window
@@ -200,7 +200,7 @@ overwritten automatically. The analysis requires FE-ToolKit
 
 Build stops before changing inputs when topology/restart files already exist, preserving those files. Use a separate `WORK_DIR` for a new build.
 
-Empty outputs also count as existing files. A stage is skipped only when its completion marker and all required nonempty outputs exist; partial outputs are not overwritten automatically.
+Empty outputs also count as existing files. A stage is skipped only when its completion marker and all required nonempty outputs exist; partial outputs are not overwritten automatically. For partial output, the error names the window and the leftover files. Move those files outside `WORK_DIR` (for example: `mkdir -p work.failed && mv ... work.failed/`) and rerun the `./run.sh` command shown in the error. Files moved elsewhere inside `WORK_DIR` are rejected as results without identity.
 
 ### Concurrent runs and input changes
 

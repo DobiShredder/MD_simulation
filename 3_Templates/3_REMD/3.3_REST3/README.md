@@ -6,7 +6,7 @@
 
 File schedule은 LEaP 실행 전에 검사합니다. Auto ladder는 임시 topology에서 predictor를 실행해 만들고, 통과한 preparation만 work directory에 복사합니다. State 생성이 실패하면 기존 input/state/log를 보존하고 진단용 temporary directory를 남깁니다. `build.sh --dry-run`은 auto predictor를 실행하지 않으므로 auto replica 수는 실제 build에서 정해집니다. Predictor 계산식과 온도 범위는 바꾸지 않습니다.
 
-사용자가 직접 실행하는 파일은 이 directory의 root에 있습니다. `helpers/`는 `build.sh`, `run.sh` 또는 `anal.py`가 자동 호출하는 leaf-local 내부 code이며 직접 실행하지 않습니다.
+사용자가 직접 실행하는 파일은 이 directory의 root에 있습니다. `helpers/`는 `build.sh` 또는 `run.sh`가 자동 호출하는 leaf-local 내부 code이며 직접 실행하지 않습니다.
 
 중단되거나 marker가 없는 stage output은 자동 삭제하거나 재실행하지 않고 보존한 채 중단합니다.
 
@@ -112,7 +112,9 @@ GROMACS로 실행하지 않았습니다(미검증).
 
 `GROMACS`와 `GROMACS_MPI`가 설정되어 있으면 각각 사용하며, 없으면 build가 기록한 `work/resolved_config.toml`의 `run.equilibration_engine`과 `run.production_engine`을 읽습니다. Executable 이름은 각각 `gmx`, `gmx_mpi`이며 설치 경로를 지정할 수 있습니다. Build의 GROMACS command도 source config의 같은 선택과 override를 사용합니다. 최초 minimization은 공통 `work/system.gro`를, 이후 stage는 replica별 `.gro`와 필요한 `.cpt`를 사용합니다. 빈 override, 누락된 engine 설정과 지원하지 않는 executable은 기본값으로 대체하지 않고 error로 중단합니다. Runner가 `helpers/config_utils.py`를 자동 호출해 이 설정을 읽습니다.
 
-Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 중단하고 파일을 보존합니다. 새 build에는 별도 `WORK_DIR`을 지정합니다.
+Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 중단하고 파일을 보존합니다. 새 build에는 별도 `WORK_DIR`을 지정합니다. `build.sh`는 energy check와 build summary를 통과한 뒤 마지막으로 `work/build.done`을 씁니다. 이 파일이 없으면 `run.sh`는 실행하지 않습니다.
+
+`run.sh`가 partial output으로 중단하면 오류 메시지가 나열한 파일을 `work.failed/`처럼 work directory 밖으로 옮긴 뒤 같은 command를 다시 실행합니다. 완료된 앞 stage와 segment는 건너뜁니다.
 
 다운로드는 임시 파일의 PDB atom record를 확인한 뒤 최종 파일로 교체합니다. 실패하면 기존 PDB를 보존하고 임시 파일을 정리합니다.
 
@@ -193,7 +195,7 @@ Only even replica counts of at least two are supported. When the auto predictor 
 
 File schedules are checked before LEaP. The auto ladder is predicted on a temporary topology, and only preparation that passes is copied to the work directory. If state generation fails, existing inputs, states and logs are preserved and temporary diagnostics are retained. `build.sh --dry-run` does not run the auto predictor, so the auto replica count is set by the actual build. The predictor algorithm and temperature range are not changed.
 
-User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh`, `run.sh`, or `anal.py`; it is not a separate entry point.
+User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh` or `run.sh`; it is not a separate entry point.
 
 Interrupted or unmarked stage output is retained and stops the workflow instead of being deleted or rerun automatically.
 
@@ -292,7 +294,9 @@ GROMACS 2024.x.
 
 `GROMACS` and `GROMACS_MPI` override `run.equilibration_engine` and `run.production_engine` in the build-generated `work/resolved_config.toml`. Executable names must be `gmx` and `gmx_mpi`; installation paths are accepted. GROMACS commands during build use the same selection and override from the source config. Initial minimization reads shared `work/system.gro`; subsequent stages read each replica’s `.gro` and, where required, `.cpt`. Empty overrides, missing engine settings and unsupported executables fail instead of falling back to a default. The runner invokes `helpers/config_utils.py` automatically to read this setting.
 
-Build stops before changing inputs when topology/restart files already exist, preserving those files. Use a separate `WORK_DIR` for a new build.
+Build stops before changing inputs when topology/restart files already exist, preserving those files. Use a separate `WORK_DIR` for a new build. `build.sh` writes `work/build.done` as its last step after the energy check and build summary pass; `run.sh` refuses to start without it.
+
+When `run.sh` stops on partial output, move the files listed in the error out of the work directory (for example, to `work.failed/`) and rerun the same command; completed earlier stages and segments are skipped.
 
 Downloads replace the final PDB only after validating atom records in a temporary file. Failure preserves the existing PDB and removes the temporary file.
 

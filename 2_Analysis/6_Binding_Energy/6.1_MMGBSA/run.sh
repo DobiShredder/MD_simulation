@@ -57,10 +57,15 @@ cleanup_generation() {
     status=$?
     if [[ -d "$generation_dir" ]]; then
         if [[ $status -ne 0 ]]; then
-            echo "Error: analysis failed; previous output is unchanged. Recent generation logs:" >&2
+            # The generation directory is removed below; keep its logs for diagnosis.
+            failed_logs=output.failed
+            mkdir -p "$failed_logs"
+            rm -f -- "$failed_logs"/*.log
+            echo "Error: analysis failed; previous output is unchanged. Generation logs were copied to $failed_logs/:" >&2
             for log in "$generation_dir"/*.log; do
                 if [[ -f "$log" ]]; then
-                    echo "Log: $log" >&2
+                    cp "$log" "$failed_logs/"
+                    echo "Log: $failed_logs/${log##*/}" >&2
                     tail -n 20 "$log" >&2
                 fi
             done
@@ -89,13 +94,13 @@ if ! "$ante_mmpbsa" \
     -n "$ligand_mask" \
     --radii mbondi2 \
     > topology.log 2>&1; then
-    echo "Error: MMPBSA topology generation failed: $output_dir/topology.log" >&2
+    echo "Error: MMPBSA topology generation failed: output.failed/topology.log" >&2
     exit 1
 fi
 
 for topology_file in complex.parm7 receptor.parm7 ligand.parm7; do
     if [[ ! -s "$topology_file" ]]; then
-        echo "Error: MMPBSA topology was not created: $output_dir/$topology_file; log: $output_dir/topology.log" >&2
+        echo "Error: MMPBSA topology was not created: $output_dir/$topology_file; log: output.failed/topology.log" >&2
         exit 1
     fi
 done
@@ -116,13 +121,13 @@ if ! "$mmpbsa" \
     -eo energy.csv \
     -deo decomposition.csv \
     > mmpbsa.log 2>&1; then
-    echo "Error: MM/GBSA Calculation failed: $output_dir/mmpbsa.log" >&2
+    echo "Error: MM/GBSA Calculation failed: output.failed/mmpbsa.log" >&2
     exit 1
 fi
 
 for output_file in final_results.dat final_decomposition.dat energy.csv decomposition.csv; do
     if [[ ! -s "$output_file" ]]; then
-        echo "Error: MMPBSA output was not created: $output_dir/$output_file; log: $output_dir/mmpbsa.log" >&2
+        echo "Error: MMPBSA output was not created: $output_dir/$output_file; log: output.failed/mmpbsa.log" >&2
         exit 1
     fi
 done

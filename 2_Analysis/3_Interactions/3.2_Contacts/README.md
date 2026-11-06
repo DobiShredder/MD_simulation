@@ -21,7 +21,7 @@ series를 frame별 OR로 합쳐 0–1 contact frequency를 계산합니다. 결�
 
 다른 system은 `run.sh` 상단의 두 경로를 수정합니다. Cpptraj의 raw
 `byresidue map`은 한 residue pair에 속한 atom-pair frequency를
-더하므로 1보다 클 수 있습니다. `contact_map.dat`은 그 값을 보존하지만,
+더하므로 1보다 클 수 있습니다. `native.contact_map.dat`과 `nonnative.contact_map.dat`은 그 값을 보존하지만,
 figure에는 binary `resseries present`의 평균을 사용합니다. Protein–ligand
 contact로 확장할 때는
 두 atom mask를 지정하고 residue 수와 plotting label을 system에 맞게 바꿉니다.
@@ -35,7 +35,7 @@ contact map을 만듭니다. Count가 양수이면 해당 frame의 residue serie
 
 `run.sh`는 빈 temporary directory에서 새 결과를 계산하고 필수 output을
 확인한 뒤 `output/`을 교체합니다. 계산 실패나 새 output 누락 시 이전 결과와
-log를 유지합니다. 실패한 실행의 log 마지막 부분은 stderr에 출력합니다.
+log를 유지합니다. 실패한 실행의 log는 `output.failed/`에 복사하고 마지막 부분을 stderr에 출력합니다.
 
 자동 호출되는 `result_generation.py`가 완료한 파일의 hash를
 `output/.generation.json`에 기록합니다. `anal.py`는 이 기록을 확인하며,
@@ -57,7 +57,8 @@ or two positions in sequence.
 `anal.py` combines native and non-native binary residue series frame by frame,
 writes a 0–1 `contact_frequency.tsv`, and displays both contact counts and a
 contact map. Raw cpptraj `byresidue map` values may exceed one because they sum
-atom-pair frequencies; those files are retained but are not used as the plotted
+atom-pair frequencies; `native.contact_map.dat` and `nonnative.contact_map.dat`
+retain them but are not used as the plotted
 frequency matrix. Edit the two paths and contact masks for another system.
 
 Rerunning `run.sh` removes previous contact-derived files before calculation.
@@ -69,8 +70,8 @@ a failed cpptraj run are removed so they cannot be used by subsequent analysis.
 
 `run.sh` calculates in an empty temporary directory, checks required outputs,
 and then replaces `output/`. Calculation failure or missing new outputs leaves
-the previous results and logs intact. Recent failed-generation log lines are
-printed to stderr.
+the previous results and logs intact. Failed-generation logs are copied to
+`output.failed/`, and their last lines are printed to stderr.
 
 The automatically called `result_generation.py` records completed file hashes
 in `output/.generation.json`. `anal.py` checks this record and, when saving

@@ -16,6 +16,23 @@ die() {
     exit 1
 }
 
+# Report a failed engine stage with the files needed for diagnosis.
+engine_failure() {
+    local label=$1
+    local engine_output=$2
+    shift 2
+    echo "Error: $label failed. Engine output: $engine_output" >&2
+    local detail
+    for detail in "$@"; do
+        echo "$detail" >&2
+    done
+    if [[ -s "$engine_output" ]]; then
+        echo "Last 20 lines of $engine_output:" >&2
+        tail -n 20 "$engine_output" >&2
+    fi
+    exit 1
+}
+
 work_dir=work
 
 if (( ! ${dry_run:-0} )) &&
@@ -93,18 +110,18 @@ parse_state=plumed.parse.state
 parse_colvar=plumed.parse.COLVAR
 render_plumed_input "$work_dir/$parse_input" "$parse_data" "$parse_state" "$parse_colvar"
 atom_count=$(<"$work_dir/atom_count.txt")
+parse_log=plumed.parse.log
 echo "Checking PLUMED input: $work_dir/$parse_input"
-if (
+if ! (
     cd "$work_dir"
     "$plumed" driver --plumed "$parse_input" --parse-only --natoms "$atom_count"
-); then
-    echo "Completed: PLUMED input check"
-else
-    status=$?
-    echo "Error: PLUMED input check failed: $work_dir/$parse_input; inspect terminal diagnostics." >&2
-    exit "$status"
+) > "$work_dir/$parse_log" 2>&1; then
+    echo "Last lines of $work_dir/$parse_log:" >&2
+    tail -n 20 "$work_dir/$parse_log" >&2
+    die "PLUMED input check failed: $work_dir/$parse_input. PLUMED output: $work_dir/$parse_log"
 fi
-for path in "$parse_input" "$parse_data" "$parse_state" "$parse_colvar"; do
+echo "Completed: PLUMED input check"
+for path in "$parse_input" "$parse_data" "$parse_state" "$parse_colvar" "$parse_log"; do
     if [[ -e "$work_dir/$path" ]]; then
         unlink "$work_dir/$path"
     fi
@@ -144,7 +161,7 @@ run_stage() {
             -inf "$stage.info" \
             "$@"
     ); then
-        die "$stage calculation failed: $output_file"
+        engine_failure "$stage" "$output_file"
     fi
     local output
     for output in "$output_file" "$restart_file"; do
@@ -161,11 +178,26 @@ run_stage minimize system.rst7
 run_stage heat minimize.rst7 -x heat.nc -ref minimize.rst7
 run_stage equilibrate heat.rst7 -x equilibrate.nc
 
-for output in production.out production.rst7 production.info production.nc; do
+if [[ -e "$work_dir/.production.success.json" ]]; then
+    "${PYTHON:-python3}" helpers/input_identity.py \
+        --check-completion "$work_dir/.production.identity.json" >/dev/null
+    die "Production output already exists and is complete: $work_dir/production.nc. Analyze it with: python3 anal.py"
+fi
+# A failed production leaves engine and PLUMED output; recovery is manual.
+leftover=()
+for output in production.out production.rst7 production.info production.nc DELTAFS opes.state COLVAR; do
     if [[ -e "$work_dir/$output" ]]; then
-        die "Production output already exists: $work_dir/$output"
+        leftover+=("$work_dir/$output")
     fi
 done
+for output in "$work_dir"/bck.*; do
+    if [[ -e "$output" ]]; then
+        leftover+=("$output")
+    fi
+done
+if (( ${#leftover[@]} > 0 )); then
+    die "Partial production output already exists and is retained: ${leftover[*]}. Move these files out of $work_dir (for example: mkdir -p $work_dir.failed && mv ${leftover[*]} $work_dir.failed/) and rerun ./run.sh."
+fi
 
 sed 's/@RANDOM_SEED@/74101/g' inputs/production.in.template > "$work_dir/production.in"
 render_plumed_input "$work_dir/plumed.dat" "DELTAFS" opes.state COLVAR
@@ -193,7 +225,9 @@ if ! (
         -x production.nc \
         -inf production.info
 ); then
-    die "production calculation failed: $work_dir/production.out"
+    engine_failure production "$work_dir/production.out" \
+        "PLUMED log: $work_dir/plumed.log (AMBER default name; unverified)" \
+        "COLVAR: $work_dir/COLVAR"
 fi
 for output in production.out production.rst7 production.nc COLVAR DELTAFS opes.state; do
     if [[ ! -s "$work_dir/$output" ]]; then
@@ -206,3 +240,5 @@ done
     --required-output "$work_dir/COLVAR" --required-output "$work_dir/DELTAFS" --required-output "$work_dir/opes.state"
 
 echo "1 ns OPES Expanded production completed: $work_dir/production.nc"
+echo "Bias state: $work_dir/DELTAFS $work_dir/opes.state"
+echo "Next: python3 anal.py"

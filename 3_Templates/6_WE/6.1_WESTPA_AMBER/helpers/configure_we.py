@@ -11,6 +11,7 @@ from pathlib import Path
 sys.dont_write_bytecode = True
 sys.path.insert(0, ".")
 from apply_config import apply_config  # noqa: E402
+from check_we_states import check_target_bins, read_target_values  # noqa: E402
 from config_utils import load_config, positive_float, positive_int, section, string_value  # noqa: E402
 
 
@@ -114,6 +115,8 @@ def main() -> None:
         walkers = positive_int(we, "walkers_per_bin")
         initial = positive_int(we, "initial_walkers")
         boundaries = float_list(we, "bin_boundaries")
+        # Check targets before the basis-state MD; build.sh checks the basis bin later.
+        check_target_bins(boundaries, read_target_values(target))
         timestep_ps = positive_float(run, "timestep") / 1000.0
         temperature = positive_float(run, "temperature")
         pressure = positive_float(run, "pressure")

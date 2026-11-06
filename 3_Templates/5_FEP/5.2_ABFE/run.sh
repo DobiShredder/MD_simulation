@@ -135,12 +135,24 @@ stage_state() {
     fi
 }
 
+report_engine_failure() {
+    local label=$1
+    local exit_status=$2
+    local output_file=$3
+    if [[ -s "$output_file" ]]; then
+        echo "Last 20 lines of $output_file:" >&2
+        tail -n 20 "$output_file" >&2
+    fi
+    die "$label calculation failed with exit status $exit_status: $output_file"
+}
+
 run_stage() {
     local directory=$1
     local stage=$2
     local input_restart=$3
     local trajectory=$4
     local calculation=$5
+    local rerun_command=$6
     local prefix="$directory/$stage"
     local completion_marker="$directory/.$stage.complete"
     local required=("$prefix.out" "$prefix.rst7" "$prefix.info")
@@ -179,7 +191,15 @@ run_stage() {
         return
     fi
     if [[ "$state" == partial ]]; then
-        die "Partial $stage output detected and retained: $prefix"
+        local failed_dir="$work_dir.failed/${directory#"$work_dir"/}"
+        local leftovers=()
+        local path
+        for path in "$completion_marker" "${required[@]}"; do
+            if [[ -e "$path" ]]; then
+                leftovers+=("$path")
+            fi
+        done
+        die "Partial $stage output is retained for $calculation: ${leftovers[*]}. Inspect $prefix.out, move these files out of $work_dir (for example: mkdir -p $failed_dir && mv ${leftovers[*]} $failed_dir/) and rerun $rerun_command."
     fi
     if (( ! workflow_started )); then
         if (( preparation_only )); then
@@ -191,15 +211,17 @@ run_stage() {
         fi
         workflow_started=1
     fi
-    if ! (
+    local engine_status=0
+    (
         cd "$directory"
         "${command[@]}"
-    ); then
-        die "$stage calculation failed: $prefix.out"
+    ) || engine_status=$?
+    if (( engine_status != 0 )); then
+        report_engine_failure "$calculation $stage" "$engine_status" "$prefix.out"
     fi
     for output in "${required[@]}"; do
         if [[ ! -s "$output" ]]; then
-            die "$stage output was not created: $output"
+            die "$calculation $stage output was not created: $output"
         fi
     done
     touch "$completion_marker"
@@ -253,20 +275,21 @@ while IFS=$'\t' read -r method_stage environment window lambda seed directory; d
         continue
     fi
     selected_state_count=$((selected_state_count + 1))
+    rerun_command="./run.sh --system $environment --stage $interaction --windows $window_index-$window_index"
     if (( ! dry_run )); then
         "${PYTHON:-python3}" helpers/input_identity.py --verify "$directory"
     fi
     calculation="ABFE $interaction/$environment window $window (lambda=$lambda)"
     if (( ! production_only )); then
-        run_stage "$directory" minimize system.rst7 no "$calculation"
-        run_stage "$directory" heat minimize.rst7 yes "$calculation"
-        run_stage "$directory" equilibrate heat.rst7 yes "$calculation"
+        run_stage "$directory" minimize system.rst7 no "$calculation" "$rerun_command"
+        run_stage "$directory" heat minimize.rst7 yes "$calculation" "$rerun_command"
+        run_stage "$directory" equilibrate heat.rst7 yes "$calculation" "$rerun_command"
     fi
     if (( ! preparation_only )); then
         if (( ! dry_run )) && [[ ! -s "$directory/equilibrate.rst7" || ! -f "$directory/.equilibrate.complete" ]]; then
             die "Completed equilibration output is required: $directory"
         fi
-        run_stage "$directory" production.001 equilibrate.rst7 yes "$calculation"
+        run_stage "$directory" production.001 equilibrate.rst7 yes "$calculation" "$rerun_command"
     fi
 done < "$states_file"
 

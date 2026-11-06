@@ -46,6 +46,19 @@ parameter_record="$work_dir/.ligand-parameters.identity.json"
     --record "$parameter_record" --stage "ligand parameter preparation" \
     --input "$ligand_sdf" --value="$ligand_charge" \
     --output "$work_dir/sqm.out" --output "$ligand_mol2" --output "$ligand_frcmod"
+
+# Parameter files without completion evidence are kept for manual inspection.
+if [[ ! -e "$work_dir/.ligand-parameters.success.json" ]]; then
+    retained=()
+    for parameter_output in "$work_dir/sqm.out" "$ligand_mol2" "$ligand_frcmod"; do
+        if [[ -e "$parameter_output" || -L "$parameter_output" ]]; then
+            retained+=("$parameter_output")
+        fi
+    done
+    if (( ${#retained[@]} )); then
+        die "Partial ligand parameter output is retained: ${retained[*]}. Move these files out of $work_dir (for example: mkdir -p $work_dir.failed && mv ${retained[*]} $work_dir.failed/) and rerun ./prepare.sh $ligand_sdf."
+    fi
+fi
 parameter_state=$("${PYTHON:-python3}" helpers/input_identity.py --check-completion "$parameter_record")
 if [[ "$parameter_state" == complete ]]; then
     echo "Using completed ligand parameters: $ligand_mol2, $ligand_frcmod"

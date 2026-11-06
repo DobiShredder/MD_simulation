@@ -99,11 +99,13 @@ Production에는 `work/exchange.log`도 필요합니다.
 
 계산을 시작하기 전에 모든 stage의 상태를 검사합니다. 일부 replica의 결과,
 zero-length 파일, marker만 있는 상태 또는 marker 없는 기존 output이 있으면
-파일을 덮어쓰지 않고 중단합니다. 기존 결과를 검토·보관한 뒤 별도 tutorial
-복사본에서 새 계산을 시작합니다. Marker를 수동으로 만들어 완료 처리하지 않습니다.
+파일을 덮어쓰지 않고 중단합니다. 오류 메시지가 나열한 파일을 `work.failed/`처럼
+`work` 밖으로 옮긴 뒤 같은 command를 다시 실행하면 완료된 앞 stage는 건너뜁니다. Marker를 수동으로 만들어 완료 처리하지 않습니다.
 정상 완료 후 재실행은 engine을 호출하거나 결과를 다시 쓰지 않습니다.
 
 Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 중단하고 파일을 보존합니다. 새 build 전에는 기존 `work/`를 다른 위치에 보관하거나 별도 tutorial 사본을 사용합니다.
+
+Production의 MPI 출력은 `work/mpirun.production.log`에 이어서 기록합니다.
 
 `download.sh`는 모든 asset과 `SHA256SUMS`를 staging에서 확인한 뒤 `helpers/publish_download.py`로 게시합니다. Transfer, checksum 또는 일반 publication 실패에서는 기존 파일을 보존하며, 관련 없는 preparation 파일도 유지합니다. `structure/.download.pending`가 남으면 prepare/build와 새 download가 거부됩니다. 보존된 staging과 marker를 점검하고, marker만 삭제해 이전 파일과 새 파일을 섞어 사용하지 않습니다.
 
@@ -167,12 +169,15 @@ Production additionally requires `work/exchange.log`.
 
 All stage states are checked before computation begins. Partial replica results,
 zero-length files, markers without required outputs and unmarked outputs cause
-an error without overwriting files. Review and archive retained results, then
-start a new calculation in a separate tutorial copy. Do not create markers
+an error without overwriting files. Move the files listed in the error out of
+`work` (for example, to `work.failed/`) and rerun the same command; completed
+earlier stages are skipped. Do not create markers
 manually to adopt old results. A rerun after normal completion invokes no engine
 and rewrites no results.
 
 Build stops before changing inputs when topology/restart files already exist, preserving those files. Preserve the existing `work/` elsewhere or use a separate tutorial copy before a new build.
+
+Production MPI output is appended to `work/mpirun.production.log`.
 
 ### 동시 실행과 input 변경
 

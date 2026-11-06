@@ -62,23 +62,38 @@ if (( reset )); then
         "$WORK_DIR/target_events.tsv"
 fi
 
+report_init_failure() {
+    local message=$1
+    local exit_status=$2
+    local log_file
+    # get_pcoord.log holds the basis-state progress-coordinate callback output.
+    for log_file in "$init_log" "$WORK_DIR/get_pcoord.log"; do
+        if [[ -s "$log_file" ]]; then
+            echo "Last 20 lines of $log_file:" >&2
+            tail -n 20 "$log_file" >&2
+        fi
+    done
+    echo "Error: $message: $init_log" >&2
+    exit "$exit_status"
+}
+
 mkdir -p "$WORK_DIR/traj_segs" "$WORK_DIR/seg_logs" "$WORK_DIR/istates"
 cd "$WEST_SIM_ROOT"
-echo "Initializing WESTPA state: $WORK_DIR/west.h5"
-if w_init \
+init_log="$WORK_DIR/west.init.log"
+echo "===== w_init started $(date '+%Y-%m-%d %H:%M:%S') =====" >> "$init_log"
+echo "Initializing WESTPA state: $WORK_DIR/west.h5; log: $init_log"
+init_status=0
+w_init \
     --bstate-file "$WEST_SIM_ROOT/bstates/bstates.txt" \
     --tstate-file "$WEST_SIM_ROOT/tstate.file" \
     --segs-per-state 4 \
-    --work-manager serial; then
-    :
-else
-    status=$?
-    echo "Error: WESTPA initialization failed: $WORK_DIR/west.h5; inspect terminal diagnostics." >&2
-    exit "$status"
+    --work-manager serial >> "$init_log" 2>&1 || init_status=$?
+if (( init_status != 0 )); then
+    report_init_failure "WESTPA initialization failed with exit status $init_status" "$init_status"
 fi
 
 if [[ ! -s "$WORK_DIR/west.h5" ]]; then
-    die "WESTPA initialization did not create state: $WORK_DIR/west.h5"
+    report_init_failure "WESTPA initialization did not create state $WORK_DIR/west.h5" 1
 fi
 
 echo "WESTPA state: $WORK_DIR/west.h5"

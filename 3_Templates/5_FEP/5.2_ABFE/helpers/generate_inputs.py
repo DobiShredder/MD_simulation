@@ -39,6 +39,16 @@ def window_directory(
     return work_dir / interaction / environment / window
 
 
+def heating_seed_base(run: dict[str, object]) -> int | None:
+    """Return the integer heating-seed base, or None for AMBER's random ig=-1."""
+    seed = run.get("random_seed")
+    if seed == "random":
+        return None
+    if isinstance(seed, bool) or not isinstance(seed, int) or seed <= 0:
+        raise ValueError("random_seed must be 'random' or a positive integer")
+    return seed
+
+
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Generate config-driven Amber ABFE windows.")
     parser.add_argument("config", type=Path, help="TOML configuration file")
@@ -336,7 +346,7 @@ def write_window(
     schedule: list[float],
     window_index: int,
     lambda_value: float,
-    state_index: int,
+    heating_seed: int,
     records: list[RestraintRecord],
     ligand_mask: str,
     common_replacements: dict[str, str],
@@ -372,7 +382,7 @@ def write_window(
         **common_replacements,
         "@STAGE@": stage,
         "@LAMBDA@": f"{lambda_value:.6f}",
-        "@RANDOM_SEED@": str(61000 + state_index),
+        "@RANDOM_SEED@": str(heating_seed),
         "@RESTRAINT_OPTIONS@": "nmropt=1," if environment == "complex" else "",
         "@WT_END@": "&wt type='END', /" if environment == "complex" else "",
         "@DISANG@": "DISANG=disang.rest" if environment == "complex" else "",
@@ -403,7 +413,7 @@ def write_window(
 
     return (
         f"{stage}\t{environment}\t{window}\t{lambda_value:.6f}\t"
-        f"{61000 + state_index}\t{directory}"
+        f"{heating_seed}\t{directory}"
     )
 
 
@@ -432,6 +442,7 @@ def main() -> None:
             "@TRAJECTORY_INTERVAL@": str(positive_int(run, "trajectory_interval_steps")),
         }
         mbar_interval = positive_int(run, "mbar_interval_steps")
+        seed_base = heating_seed_base(run)
     except ValueError as error:
         raise SystemExit(f"Config error: {error}") from None
 
@@ -462,6 +473,8 @@ def main() -> None:
     for stage, environment, schedule in stages:
         for window_index, lambda_value in enumerate(schedule):
             state_index += 1
+            # Only heating starts new velocities; later stages restart with ig=-1.
+            heating_seed = -1 if seed_base is None else seed_base + state_index
             states.append(
                 write_window(
                     args.work_dir,
@@ -471,7 +484,7 @@ def main() -> None:
                     schedule,
                     window_index,
                     lambda_value,
-                    state_index,
+                    heating_seed,
                     records,
                     ligand_mask,
                     common_replacements,

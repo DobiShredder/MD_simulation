@@ -4,7 +4,7 @@
 
 최소 2개·짝수 replica만 지원합니다. `build.sh`와 `run.sh`는 홀수 schedule을 자동 조정하지 않고 거부합니다. `run.sh --dry-run`도 실제 state table의 count를 검사합니다. 기존 홀수 결과는 새 work directory에서 다시 준비합니다.
 
-사용자가 직접 실행하는 파일은 이 directory의 root에 있습니다. `helpers/`는 `build.sh`, `run.sh` 또는 `anal.py`가 자동 호출하는 leaf-local 내부 code이며 직접 실행하지 않습니다.
+사용자가 직접 실행하는 파일은 이 directory의 root에 있습니다. `helpers/`는 `build.sh` 또는 `run.sh`가 자동 호출하는 leaf-local 내부 code이며 직접 실행하지 않습니다.
 
 중단되거나 marker가 없는 stage output은 자동 삭제하거나 재실행하지 않고 보존한 채 중단합니다.
 
@@ -86,6 +86,8 @@ Engine이 성공하고 모든 replica의 stage별 필수 output이 존재할 때
 
 Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 중단하고 파일을 보존합니다. 새 build에는 별도 `WORK_DIR`을 지정합니다.
 
+`run.sh`가 partial output으로 중단하면 오류 메시지가 나열한 파일을 `work.failed/`처럼 work directory 밖으로 옮긴 뒤 같은 command를 다시 실행합니다. 완료된 앞 stage와 segment는 건너뜁니다. Production segment의 MPI 출력은 `work/mpirun.production.NNN.log`에 이어서 기록합니다.
+
 다운로드는 임시 파일의 PDB atom record를 확인한 뒤 최종 파일로 교체합니다. 실패하면 기존 PDB를 보존하고 임시 파일을 정리합니다.
 
 ### 동시 실행과 input 변경
@@ -134,7 +136,7 @@ Reaction-coordinate masks, centers, force, and exchange interval follow REUS. Th
 `helpers/make_window_replicas.py` writes per-window MD inputs and
 restraints. Both are called automatically by `build.sh`.
 
-User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh`, `run.sh`, or `anal.py`; it is not a separate entry point.
+User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh` or `run.sh`; it is not a separate entry point.
 
 Interrupted or unmarked stage output is retained and stops the workflow instead of being deleted or rerun automatically.
 
@@ -212,6 +214,8 @@ just before the segment starts.
 A `.STAGE.complete` marker is written only after engine success and all required replica outputs are present. Shared stages write `.shared_STAGE.complete` after checking `work/shared/`. Minimization requires `.out`, `.rst7` and `.info`; MD stages also require `.nc`. Exchange production also requires `exchange.NNN.log`. GaREUS production also requires its GaMD log and restraint records. A marker without required outputs, or outputs without a marker, causes an error while preserving files. Use a new `WORK_DIR` or inspect the retained files before retrying. Legacy outputs are never marked complete automatically.
 
 Build stops before changing inputs when topology/restart files already exist, preserving those files. Use a separate `WORK_DIR` for a new build.
+
+When `run.sh` stops on partial output, move the files listed in the error out of the work directory (for example, to `work.failed/`) and rerun the same command; completed earlier stages and segments are skipped. Production MPI output is appended to `work/mpirun.production.NNN.log` for each segment.
 
 Downloads replace the final PDB only after validating atom records in a temporary file. Failure preserves the existing PDB and removes the temporary file.
 

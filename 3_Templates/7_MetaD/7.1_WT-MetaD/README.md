@@ -40,6 +40,8 @@ python3 anal.py
 `config.toml`의 `collective_variable.arguments`는 `cv.dat`의 label과 같아야 합니다.
 기본 φ/ψ atom 번호는 capped alanine 예시이므로 topology에 맞게 바꿉니다.
 `sigma`, `grid_min`, `grid_max`와 `grid_bins`는 CV 수와 같은 길이여야 합니다.
+Grid 경계가 ±π이면 generated `plumed.dat`에 periodic torsion domain과 같은
+`-pi`/`pi`로 씁니다.
 기본 hill은 1.2 kJ/mol, `PACE=500`, `BIASFACTOR=10`입니다.
 
 `build.sh`는 configured protein/water topology와 preproduction input을 만듭니다. `run.sh`는
@@ -142,7 +144,9 @@ mode.
 WT-MetaD deposits Gaussian hills along the CVs defined in `cv.dat`. The current
 bias reduces subsequent hill heights through `BIASFACTOR=10`. CV labels in
 `collective_variable.arguments` must match `cv.dat`; the supplied φ/ψ atom
-numbers are only a capped-alanine example.
+numbers are only a capped-alanine example. Grid bounds equal to ±π are written
+as `-pi`/`pi` in the generated `plumed.dat`, matching the periodic torsion
+domain.
 
 The defaults use 1.2 kJ/mol hills every 500 steps and ten 10 ns segments. The
 first segment creates `HILLS`; later segments use `RESTART` and append to the

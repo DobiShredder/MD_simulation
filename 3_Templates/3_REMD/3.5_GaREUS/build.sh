@@ -88,14 +88,14 @@ if (( ! dry_run )) && [[ -d "$work_dir" ]]; then
     existing_build=$(find "$work_dir" -type f \
         \( -name '*.parm7' -o -name '*.rst7' \) -print -quit)
     if [[ -n "$existing_build" ]]; then
-        die "Build output already exists and was retained: $existing_build. Use a new work directory for a new build."
+        die "Build output already exists and was retained: $existing_build. Move $work_dir aside (for example: mv $work_dir $work_dir.old) or set WORK_DIR to a new directory, then rerun ./build.sh."
     fi
 fi
 
 if [[ -d "$work_dir" ]]; then
     existing_result=$(find "$work_dir" -type f \( -name '.*.complete' -o -name '*.out' \) -print -quit)
     if [[ -n "$existing_result" ]]; then
-        die "Existing simulation results were found: $existing_result"
+        die "Existing simulation results were found: $existing_result. Move $work_dir aside (for example: mv $work_dir $work_dir.old) or set WORK_DIR to a new directory, then rerun ./build.sh."
     fi
 fi
 
@@ -114,7 +114,9 @@ if (( ! dry_run )); then
     fi
 fi
 
-"$python" helpers/generate_inputs.py "$config" "$work_dir/inputs" --validate-only
+if ! "$python" helpers/generate_inputs.py "$config" "$work_dir/inputs" --validate-only; then
+    die "Config validation failed: $config"
+fi
 
 if (( dry_run )); then
     printf '+ %q helpers/generate_inputs.py %q %q\n' "$python" "$config" "$work_dir/inputs"
@@ -128,7 +130,9 @@ fi
 
 mkdir -p "$work_dir/inputs"
 cp "$input" "$work_dir/input.pdb"
-"$python" helpers/generate_inputs.py "$config" "$work_dir/inputs"
+if ! "$python" helpers/generate_inputs.py "$config" "$work_dir/inputs"; then
+    die "Solvation input generation failed: $config -> $work_dir/inputs"
+fi
 build_tmp=$(mktemp -d "$work_dir/.build_tmp.XXXXXX")
 cp "$work_dir/input.pdb" "$build_tmp/input.pdb"
 mv "$work_dir/inputs/tleap.solvate.in" "$build_tmp/tleap.solvate.in"
@@ -142,19 +146,25 @@ if ! (
 fi
 
 cp "$build_tmp/leap.solvate.log" "$work_dir/leap.solvate.log"
-water_count=$("$python" helpers/count_waters.py "$build_tmp/solvated.pdb")
-salt_concentration=$("$python" - "$config" <<'PY'
+if ! water_count=$("$python" helpers/count_waters.py "$build_tmp/solvated.pdb"); then
+    die "Water count failed: $build_tmp/solvated.pdb"
+fi
+if ! salt_concentration=$("$python" - "$config" <<'PY'
 import sys
 sys.path.insert(0, "helpers")
 from pathlib import Path
 from config_utils import load_config
 print(load_config(Path(sys.argv[1]))["build"]["salt_concentration_molar"])
 PY
-)
+); then
+    die "Cannot read build.salt_concentration_molar: $config"
+fi
 salt_pairs=$(awk -v waters="$water_count" -v concentration="$salt_concentration" \
     'BEGIN { printf "%d", waters * concentration / 55.5 + 0.5 }')
 
-"$python" helpers/generate_inputs.py "$config" "$work_dir/inputs" --salt-pairs "$salt_pairs"
+if ! "$python" helpers/generate_inputs.py "$config" "$work_dir/inputs" --salt-pairs "$salt_pairs"; then
+    die "Final tleap input generation failed: $config -> $work_dir/inputs"
+fi
 
 echo "Building the final solvated system ($water_count waters, $salt_pairs salt formula units)."
 if ! (
@@ -171,7 +181,9 @@ for output in system.parm7 system.rst7 system.pdb resolved_config.toml; do
 done
 
 echo "Generating window replicas: $config; topology: $work_dir/system.parm7; output: $work_dir"
-"$python" helpers/make_window_replicas.py gareus "$config" "$work_dir/system.parm7" "$work_dir"
+if ! "$python" helpers/make_window_replicas.py gareus "$config" "$work_dir/system.parm7" "$work_dir"; then
+    die "Window replica generation failed: $config, $work_dir/system.parm7 -> $work_dir"
+fi
 
 remove_build_tmp
 

@@ -10,7 +10,7 @@ Minimization은 replica별 `.out`, `.rst7`, `.info`가 있어야 완료됩니다
 
 Build는 production segment마다 `production.NNN.template.in`을 만듭니다. Exchange production은 group file로 이 directory에서 실행되므로 `run.sh`가 segment 시작 직전 `@DISANG@`과 `@DUMPAVE@`를 `work/<replica>/distance.RST`와 `work/<replica>/restraint.production.NNN.dat`로 바꿔 `production.NNN.in`을 씁니다.
 
-사용자가 직접 실행하는 파일은 이 directory의 root에 있습니다. `helpers/`는 `build.sh`, `run.sh` 또는 `anal.py`가 자동 호출하는 leaf-local 내부 code이며 직접 실행하지 않습니다.
+사용자가 직접 실행하는 파일은 이 directory의 root에 있습니다. `helpers/`는 `build.sh` 또는 `run.sh`가 자동 호출하는 leaf-local 내부 code이며 직접 실행하지 않습니다.
 
 중단되거나 marker가 없는 stage output은 자동 삭제하거나 재실행하지 않고 보존한 채 중단합니다.
 
@@ -70,6 +70,8 @@ Seed 규칙: `"random"`이면 window마다 무작위 seed를 만들어 heating `
 
 Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 중단하고 파일을 보존합니다. 새 build에는 별도 `WORK_DIR`을 지정합니다.
 
+`run.sh`가 partial output으로 중단하면 오류 메시지가 나열한 파일을 `work.failed/`처럼 work directory 밖으로 옮긴 뒤 같은 command를 다시 실행합니다. 완료된 앞 stage와 segment는 건너뜁니다. Production segment의 MPI 출력은 `work/mpirun.production.NNN.log`에 이어서 기록합니다.
+
 다운로드는 임시 파일의 PDB atom record를 확인한 뒤 최종 파일로 교체합니다. 실패하면 기존 PDB를 보존하고 임시 파일을 정리합니다.
 
 빈 output도 기존 파일로 취급합니다. Completion marker와 필수 nonempty output이 모두 있어야 단계를 건너뛰며, partial output은 자동으로 덮어쓰지 않습니다.
@@ -126,7 +128,7 @@ The build writes one `production.NNN.template.in` per production segment. Exchan
 `helpers/make_window_replicas.py` writes per-window MD inputs and
 restraints. Both are called automatically by `build.sh`.
 
-User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh`, `run.sh`, or `anal.py`; it is not a separate entry point.
+User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh` or `run.sh`; it is not a separate entry point.
 
 Interrupted or unmarked stage output is retained and stops the workflow instead of being deleted or rerun automatically.
 
@@ -170,6 +172,8 @@ segment; the MPI process count must equal the number of windows. The default is
 `AMBER_ENGINE` overrides `run.engine` in the build-generated `work/resolved_config.toml`. Accepted executable names are `pmemd.cuda`; installation paths are accepted. Exchange production uses `AMBER_MPI_ENGINE` or resolved `run.mpi_engine`, with executable name `pmemd.cuda.MPI`. If an older resolved config lacks `run.mpi_engine`, set `AMBER_MPI_ENGINE` or build in a new `WORK_DIR`. Empty overrides, missing engine settings and unsupported executables fail instead of falling back to a default. The runner invokes `helpers/config_utils.py` automatically to read this setting.
 
 Build stops before changing inputs when topology/restart files already exist, preserving those files. Use a separate `WORK_DIR` for a new build.
+
+When `run.sh` stops on partial output, move the files listed in the error out of the work directory (for example, to `work.failed/`) and rerun the same command; completed earlier stages and segments are skipped. Production MPI output is appended to `work/mpirun.production.NNN.log` for each segment.
 
 Downloads replace the final PDB only after validating atom records in a temporary file. Failure preserves the existing PDB and removes the temporary file.
 

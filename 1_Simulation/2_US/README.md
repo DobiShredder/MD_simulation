@@ -57,9 +57,10 @@ ff19SB/OPC `system.parm7`을 ratchet MD와 모든 umbrella
 window가 공유합니다. Window별 solvation은 하지 않습니다. CV, atom index,
 ABMD target, window 범위와 force constant는 chignolin용 설정입니다.
 
-Preparation stage의 output과 restart가 모두 있으면 건너뛰고, 일부만 있으면
-해당 stage를 다시 실행합니다. 기존 ratchet 또는 umbrella production output이
-있으면 덮어쓰지 않고 시작 전에 중단합니다.
+성공 완료 증거가 있는 stage와 umbrella window는 건너뜁니다. 완료 증거 없이
+output이 남은 stage는 다시 실행하거나 덮어쓰지 않고 중단합니다. Error message에
+나온 file을 `work` 밖으로 옮긴 뒤 같은 command를 다시 실행합니다. 완료된
+ratchet MD는 다시 실행하지 않습니다.
 
 `tleap.in`은 20 Å OPC buffer를 추가한 뒤 atom center로 계산한 box에
 0.25 Å padding을 둡니다. AmberTools 26에서 초기 density는 약
@@ -97,9 +98,10 @@ one ff19SB/OPC topology shared by ratchet MD and every
 umbrella window. Seed frames are not resolvated. The CV, atom indices, target,
 window range, and restraint strength are specific to chignolin.
 
-A preparation stage is skipped when both its output and restart exist, and an
-incomplete pair is rerun. Existing ratchet or umbrella production output is
-detected before it can be overwritten.
+Stages and umbrella windows with successful completion evidence are skipped. A
+stage that left output without that evidence is neither rerun nor overwritten;
+the run stops. Move the files named in the error message out of `work` and rerun
+the same command. Completed ratchet MD is not rerun.
 
 The tleap build adds a 20 Å OPC buffer and defines the periodic box from
 atom centers with 0.25 Å padding. With AmberTools 26 this produced an initial

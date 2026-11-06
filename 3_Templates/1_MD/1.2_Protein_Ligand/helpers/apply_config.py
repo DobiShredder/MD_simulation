@@ -401,7 +401,18 @@ def _apply_config(config_path: Path, work_dir: Path) -> None:
     if "membrane" in config and box_shape != "rectangular":
         raise ValueError("membrane-protein templates require box_shape=rectangular")
     pressure = finite_float(run, "pressure", default=1.0)
-    pressure_coupling = str(run.get("pressure_coupling", "isotropic")).lower()
+    pressure_coupling = "isotropic"
+    if "pressure_coupling" in run:
+        pressure_coupling = choice_value(
+            run, "pressure_coupling", {"isotropic", "anisotropic"}
+        )
+    # Templates constrain bonds to hydrogen (SHAKE) but do not repartition
+    # hydrogen masses, so AMBER dt above 2 fs is not supported here.
+    timestep_fs = finite_float(run, "timestep", default=2.0)
+    if timestep_fs > 2.0:
+        raise ValueError(
+            f"timestep must be 2.0 fs or less without hydrogen mass repartitioning: {timestep_fs:g}"
+        )
     validate_divalent_neutralization(work_dir, salt)
 
     generated_minimization_steps: list[int] = []

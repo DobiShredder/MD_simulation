@@ -16,6 +16,33 @@ die() {
     exit 1
 }
 
+show_engine_output() {
+    local output=$1
+    if [[ -s "$output" ]]; then
+        echo "Last 20 lines of work/$output:" >&2
+        tail -n 20 "$output" >&2
+    fi
+}
+
+# Partial output is never removed or overwritten; the user moves it out of work.
+# Called after cd work, so paths are relative to work.
+die_partial() {
+    local reason=$1
+    local label=$2
+    shift 2
+    local leftover_files=()
+    local path
+    for path in "$@"; do
+        if [[ -e "$path" ]]; then
+            leftover_files+=("work/$path")
+        fi
+    done
+    if (( ${#leftover_files[@]} == 0 )); then
+        die "${reason}No $label output was written. Fix the cause and rerun ./run.sh."
+    fi
+    die "${reason}Partial $label output is retained: ${leftover_files[*]}. Move these files out of work (for example: mkdir -p work.failed && mv ${leftover_files[*]} work.failed/) and rerun ./run.sh."
+}
+
 run_stage() {
     local label=$1
     local output=$2
@@ -36,6 +63,21 @@ run_stage() {
     "${PYTHON:-python3}" ../helpers/input_identity.py \
         --record ".$output.identity.json" --stage "$label" "${identity_options[@]}" -- "$@"
 
+    local prefix=${output%.out}
+    local stage_outputs=("$prefix.out" "$prefix.rst7" "$prefix.nc" "$prefix.info")
+    if [[ "$output" == ratchet.out ]]; then
+        stage_outputs+=(ratchet.dat)
+    fi
+    # Output without completion evidence comes from a failed or interrupted run.
+    if [[ ! -e ".$output.success.json" ]]; then
+        local stage_output
+        for stage_output in "${stage_outputs[@]}"; do
+            if [[ -e "$stage_output" ]]; then
+                die_partial "" "$label" "${stage_outputs[@]}"
+            fi
+        done
+    fi
+
     local completion_state
     completion_state=$("${PYTHON:-python3}" ../helpers/input_identity.py \
         --check-completion ".$output.identity.json")
@@ -46,12 +88,13 @@ run_stage() {
 
     echo "Running: $label"
     if ! "$@"; then
-        die "$label failed. Expected output (if created): work/$output"
+        show_engine_output "$output"
+        die_partial "$label failed. " "$label" "${stage_outputs[@]}"
     fi
     local required_output
     for required_output in "$output" "$restart"; do
         if [[ ! -s "$required_output" ]]; then
-            die "$label output was not created: work/$required_output"
+            die_partial "$label output was not created: work/$required_output. " "$label" "${stage_outputs[@]}"
         fi
     done
     "${PYTHON:-python3}" ../helpers/input_identity.py \
@@ -80,8 +123,8 @@ fi
 if [[ ! -s "$topology" || ! -s "$coordinates" ]]; then
     die "Run ../prepare.sh first."
 fi
-if (( ! dry_run )) && [[ -e work/ratchet.out ]]; then
-    die "Ratchet MD output already exists: work/ratchet.out"
+if (( ! dry_run )) && [[ -e work/.ratchet.out.success.json ]]; then
+    die "Ratchet MD already completed: work/ratchet.nc. Extract seeds with python3 anal.py. To generate a new pathway, move work aside (for example: mv work work.old) and rerun ./run.sh."
 fi
 
 if (( ! dry_run )); then

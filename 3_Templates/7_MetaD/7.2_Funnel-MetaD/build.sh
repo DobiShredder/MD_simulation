@@ -79,7 +79,7 @@ if (( ! dry_run )) && [[ -d "$work_dir" ]]; then
     existing_build=$(find "$work_dir" -type f \
         \( -name '*.parm7' -o -name '*.rst7' \) -print -quit)
     if [[ -n "$existing_build" ]]; then
-        die "Build output already exists and was retained: $existing_build. Use a new work directory for a new build."
+        die "Build output already exists and was retained: $existing_build. For a new build, set WORK_DIR to a new directory or move the old build aside (for example: mv $work_dir $work_dir.previous)."
     fi
 fi
 
@@ -111,21 +111,30 @@ for executable in "$python" "$tleap"; do
     fi
 done
 
+# build.sh reads the final topology with parmed after tleap.
+if ! "$python" -c "import parmed" >/dev/null 2>&1; then
+    die "Python package parmed is required for the MetaD build (see requirements.txt): $python"
+fi
+
 mkdir -p "$work_dir/inputs"
 cp "$input" "$work_dir/input.pdb"
 cp "$config" "$work_dir/source_config.toml"
 
-readarray -t ligand_files < <("$python" - "$config" <<'PY'
+ligand_paths=$("$python" - "$config" <<'PY'
 import sys
 sys.path.insert(0, "helpers")
 from pathlib import Path
-from config_utils import load_config
+from config_utils import load_config, section, string_value
 
-build = load_config(Path(sys.argv[1]))["build"]
-print(build["ligand_mol2"])
-print(build["ligand_frcmod"])
+try:
+    build = section(load_config(Path(sys.argv[1])), "build")
+    print(string_value(build, "ligand_mol2"))
+    print(string_value(build, "ligand_frcmod"))
+except ValueError as error:
+    raise SystemExit(f"Config error in build ligand setup ({sys.argv[1]}): {error}") from None
 PY
 )
+readarray -t ligand_files <<< "$ligand_paths"
 if [[ ${#ligand_files[@]} -ne 2 ]]; then
     die "Could not read ligand_mol2 and ligand_frcmod from $config"
 fi
@@ -140,19 +149,24 @@ cp "${ligand_files[1]}" "$work_dir/ligand.frcmod"
 import sys
 sys.path.insert(0, "helpers")
 from pathlib import Path
-from config_utils import load_config
+from config_utils import load_config, section, string_value
 import parmed
 
-build = load_config(Path(sys.argv[1]))["build"]
+try:
+    build = section(load_config(Path(sys.argv[1])), "build")
+    expected_name = string_value(build, "ligand_residue_name")
+    if "ligand_net_charge" not in build:
+        raise ValueError("ligand_net_charge is required")
+    expected_charge = int(build["ligand_net_charge"])
+except (TypeError, ValueError) as error:
+    raise SystemExit(f"Config error in build ligand validation ({sys.argv[1]}): {error}") from None
 ligand = parmed.load_file(sys.argv[2], structure=True)
 names = {residue.name for residue in ligand.residues}
-expected_name = build["ligand_residue_name"]
 if names != {expected_name}:
     raise SystemExit(
         f"Ligand validation: MOL2 residue name mismatch: expected {expected_name}, found {sorted(names)}"
     )
 observed_charge = sum(float(atom.charge) for atom in ligand.atoms)
-expected_charge = int(build["ligand_net_charge"])
 if abs(observed_charge - expected_charge) > 1.0e-4:
     raise SystemExit(
         f"Ligand validation: MOL2 charge mismatch: expected {expected_charge}, found {observed_charge:.6f}"

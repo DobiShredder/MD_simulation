@@ -37,9 +37,14 @@ window directory가 있으면 종료합니다. 각 window의 계산 순서는 �
 3. Distance restraint를 사용한 100 ps NPT equilibration
 4. Distance restraint를 사용한 1 ns NPT production
 
-Minimization, heating 또는 equilibration의 `*.out`과 `*.rst7`이 모두 있고 성공 완료 증거가 있으면
-해당 stage를 건너뜁니다. 완료 증거가 없거나 필수 output이 누락되면 기존 결과를 보존하고 중단합니다.
-기존 `production.out`이 있는 window는 덮어쓰지 않고 시작 전에 중단합니다.
+Stage의 필수 output과 성공 완료 증거가 모두 있으면 해당 stage를 건너뜁니다.
+Production까지 완료된 window는 `Skipping completed window NNN`을 출력하고 다시
+실행하지 않습니다. 중간에 실패한 run은 같은 command로 다시 실행하면 남은 window부터
+이어갑니다.
+
+완료 증거 없이 output이 남은 stage는 덮어쓰지 않고 중단합니다. Error message에 나온
+file을 `work` 밖으로 옮긴 뒤 다시 실행합니다. 예를 들어
+`mkdir -p work.failed/007 && mv work/007/heat.* work.failed/007/`를 사용합니다.
 `inputs/continue.in`은 production restart에서 좌표와 velocity를 이어받는
 1 ns continuation input입니다. `run.sh`는 이 input을 실행하지 않습니다.
 완료된 window directory에서 직접 실행합니다.
@@ -94,8 +99,14 @@ previous value of 10 gave about 0.17 Å windows with almost no overlap. `--windo
 `build.sh` creates `work/NNN/` only after validating every seed and
 refuses to overwrite an existing build. Each window runs restrained
 minimization, 200 ps NVT heating, 100 ps NPT equilibration, and 1 ns NPT
-production. A preparation stage is skipped only with successful completion evidence and all required outputs; partial results are preserved and rejected. A window with an existing `production.out`
-is rejected before any production output is overwritten.
+production. A stage is skipped only with successful completion evidence and all
+required outputs. A window whose production completed prints
+`Skipping completed window NNN` and is not rerun, so rerunning the same command
+after a failure resumes with the remaining windows.
+
+A stage that left output without completion evidence is not overwritten; the run
+stops. Move the files named in the error message out of `work` and rerun, for
+example with `mkdir -p work.failed/007 && mv work/007/heat.* work.failed/007/`.
 
 `inputs/continue.in` inherits coordinates and velocities from a production
 restart. `run.sh` does not run it; start it manually in a completed window

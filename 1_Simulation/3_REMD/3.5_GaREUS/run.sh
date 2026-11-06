@@ -13,6 +13,10 @@ while (( $# > 0 )); do
         --allow-unverified)
             allow_unverified=1
             ;;
+        -h|--help)
+            echo "Usage: $0 [--dry-run] [--allow-unverified]"
+            exit 0
+            ;;
         *)
             echo "Usage: $0 [--dry-run] [--allow-unverified]" >&2
             exit 2
@@ -22,6 +26,7 @@ while (( $# > 0 )); do
 done
 if (( ! dry_run && ! allow_unverified )); then
     echo "Usage: $0 --allow-unverified" >&2
+    echo "Per-replica GaMD state handling with Amber 26 multipmemd is unverified; see README.md before opting in." >&2
     exit 2
 fi
 
@@ -105,6 +110,73 @@ stage_status() {
     echo missing
 }
 
+# Paths written by one stage, including its completion marker.
+stage_candidates() {
+    local stage=$1
+    local replica
+    case "$stage" in
+        shared_*)
+            printf '%s\n' "work/.$stage.complete" "work/shared/${stage#shared_}."{out,rst7,nc,info}
+            return
+            ;;
+        gamd_prepare)
+            printf '%s\n' work/.gamd_prepare.complete "work/$gamd_reference_replica/restraint.gamd_prepare.dat" \
+                "work/$gamd_reference_replica/prepared.gamd.rst" "${gamd_required[@]}"
+            return
+            ;;
+    esac
+    printf '%s\n' "work/.$stage.complete"
+    if [[ "$stage" == production ]]; then
+        printf '%s\n' work/exchange.log
+    fi
+    while IFS=$'\t' read -r replica _; do
+        if [[ "$replica" == replica ]]; then
+            continue
+        fi
+        printf '%s\n' "work/$replica/$stage."{out,rst7,nc,info} \
+            "work/$replica/gamd.$stage.log" "work/$replica/restraint.$stage.dat"
+    done < work/states.tsv
+}
+
+# Retained output is never moved here; print the manual recovery instead.
+# All windows of a stage rerun together, so the list spans every window.
+die_partial() {
+    local stage=$1
+    local label=${stage/#shared_/shared }
+    local path
+    local retained=()
+    while IFS= read -r path; do
+        if [[ -e "$path" || -L "$path" ]]; then
+            retained+=("$path")
+        fi
+    done < <(stage_candidates "$stage")
+    die "Partial $label output is retained in work. Move these files out of work, keeping their directories, and rerun ./run.sh --allow-unverified:
+  for file in ${retained[*]:-}; do mkdir -p \"work.failed/\${file%/*}\"; mv \"\$file\" \"work.failed/\$file\"; done"
+}
+
+# After a failed multipmemd run, show the MPI log and windows whose AMBER
+# output lacks the final timing block.
+report_replica_failure() {
+    local stage=$1
+    local mpirun_log=$2
+    local replica output
+    if [[ -s "$mpirun_log" ]]; then
+        echo "Last 20 lines of $mpirun_log:" >&2
+        tail -n 20 "$mpirun_log" >&2
+    fi
+    while IFS=$'\t' read -r replica _; do
+        if [[ "$replica" == replica ]]; then
+            continue
+        fi
+        output="work/$replica/$stage.out"
+        if [[ ! -s "$output" ]]; then
+            echo "Missing window output: $output" >&2
+        elif ! grep -q 'Total wall time' "$output"; then
+            echo "Unfinished window output: $output" >&2
+        fi
+    done < work/states.tsv
+}
+
 mark_stage_complete() {
     local stage=$1
     stage_outputs_complete "$stage" --require-complete
@@ -167,7 +239,7 @@ run_shared_stage() {
         return
     fi
     if [[ "$status" == partial ]]; then
-        die "Partial shared $stage output retained in work/shared. Inspect the files before retrying."
+        die_partial "shared_$stage"
     fi
 
     echo "Running: shared $stage"
@@ -203,7 +275,7 @@ run_window_stage() {
         return
     fi
     if [[ "$status" == partial ]]; then
-        die "Partial $stage output retained in work. Inspect the files before retrying."
+        die_partial "$stage"
     fi
 
     echo "Running: $stage"
@@ -270,7 +342,7 @@ prepare_gamd_state() {
         return
     fi
     if [[ "$status" == partial ]]; then
-        die "Partial GaMD preparation output retained: $reference_dir"
+        die_partial gamd_prepare
     fi
     echo "Running: GaMD parameter preparation in window $gamd_reference_replica"
     if ! (
@@ -402,7 +474,7 @@ for stage in shared_minimize shared_heat shared_equilibrate equilibrate gamd_pre
         *) status=$(stage_status "$stage") ;;
     esac
     if [[ "$status" == partial ]]; then
-        die "Partial or unmarked $stage output retained in work; inspect the files before retrying."
+        die_partial "$stage"
     fi
     if [[ "$status" == missing ]]; then
         missing_stage=$stage
@@ -459,15 +531,18 @@ while IFS=$'\t' read -r replica _; do
         >> "$group_file"
 done < work/states.tsv
 
-echo "Running: 1 ns GaREUS production"
+mpirun_log=work/mpirun.production.log
+echo "Running: 1 ns GaREUS production (MPI output: $mpirun_log)"
 if ! "$mpi_launcher" \
     -np "$replica_count" \
     "$amber_mpi_engine" \
     -ng "$replica_count" \
     -groupfile "$group_file" \
     -rem 3 \
-    -remlog work/exchange.log; then
-    die "GaREUS production failed: work/exchange.log"
+    -remlog work/exchange.log \
+    >> "$mpirun_log" 2>&1; then
+    report_replica_failure production "$mpirun_log"
+    die "GaREUS production failed: $mpirun_log, work/exchange.log"
 fi
 
 mark_stage_complete production

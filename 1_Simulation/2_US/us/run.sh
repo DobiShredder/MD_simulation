@@ -31,6 +31,34 @@ die() {
     exit 1
 }
 
+show_engine_output() {
+    local output=$1
+    if [[ -s "$output" ]]; then
+        echo "Last 20 lines of $output:" >&2
+        tail -n 20 "$output" >&2
+    fi
+}
+
+# Partial output is never removed or overwritten; the user moves it out of work.
+die_partial() {
+    local reason=$1
+    local window_dir=$2
+    local label=$3
+    shift 3
+    local window_id=${window_dir##*/}
+    local leftover_files=()
+    local path
+    for path in "$@"; do
+        if [[ -e "$path" ]]; then
+            leftover_files+=("$path")
+        fi
+    done
+    if (( ${#leftover_files[@]} == 0 )); then
+        die "${reason}No $label output was written for window $window_id. Fix the cause and rerun $rerun_command."
+    fi
+    die "${reason}Partial $label output is retained for window $window_id: ${leftover_files[*]}. Move these files out of work (for example: mkdir -p work.failed/$window_id && mv ${leftover_files[*]} work.failed/$window_id/) and rerun $rerun_command."
+}
+
 run_stage() {
     local window_dir=$1
     local stage=$2
@@ -44,10 +72,27 @@ run_stage() {
         return
     fi
 
+    local window_id=${window_dir##*/}
+    local stage_outputs=(
+        "$window_dir/$stage.out"
+        "$window_dir/$stage.rst7"
+        "$window_dir/$stage.nc"
+        "$window_dir/$stage.info"
+    )
     "${PYTHON:-python3}" helpers/input_identity.py --verify "$window_dir"
     "${PYTHON:-python3}" helpers/input_identity.py \
         --record "$window_dir/.$stage.identity.json" --stage "$label" \
         --directory "$window_dir" --input "$window_dir/restraint.RST" -- "$@"
+
+    # Output without completion evidence comes from a failed or interrupted run.
+    if [[ ! -e "$window_dir/.$stage.success.json" ]]; then
+        local output
+        for output in "${stage_outputs[@]}"; do
+            if [[ -e "$output" ]]; then
+                die_partial "" "$window_dir" "$label" "${stage_outputs[@]}"
+            fi
+        done
+    fi
 
     local completion_state
     completion_state=$("${PYTHON:-python3}" helpers/input_identity.py \
@@ -61,22 +106,25 @@ run_stage() {
     fi
 
     if [[ "${#window_dirs[@]}" -eq 1 ]]; then
-        echo "Running: US window ${window_dir##*/} - $label"
+        echo "Running: US window $window_id - $label"
     fi
     if ! (
         cd "$window_dir"
         "$@"
     ); then
-        die "Window ${window_dir##*/} $label failed. Expected output (if created): $window_dir/$stage.out"
+        show_engine_output "$window_dir/$stage.out"
+        die_partial "Window $window_id $label failed. " "$window_dir" "$label" "${stage_outputs[@]}"
     fi
-    local output
-    for output in "$window_dir/$stage.out" "$window_dir/$stage.rst7"; do
-        if [[ ! -s "$output" ]]; then
-            die "Window ${window_dir##*/} $label output was not created: $output"
+    local required_output
+    for required_output in "$window_dir/$stage.out" "$window_dir/$stage.rst7"; do
+        if [[ ! -s "$required_output" ]]; then
+            die_partial "Window $window_id $label output was not created: $required_output. " \
+                "$window_dir" "$label" "${stage_outputs[@]}"
         fi
     done
     if [[ "$stage" == production && ! -s "$window_dir/production.nc" ]]; then
-        die "Window ${window_dir##*/} production trajectory was not created: $window_dir/production.nc"
+        die_partial "Window $window_id production trajectory was not created: $window_dir/production.nc. " \
+            "$window_dir" "$label" "${stage_outputs[@]}"
     fi
     "${PYTHON:-python3}" helpers/input_identity.py \
         --finish-completion "$window_dir/.$stage.identity.json" --directory "$window_dir"
@@ -85,6 +133,17 @@ run_stage() {
 
 run_window() {
     local window_dir=$1
+    local window_id=${window_dir##*/}
+
+    # A completed window is skipped, never rerun. Manual continuation files
+    # (continue.in) in that window are left alone.
+    if (( ! dry_run )) && [[ -e "$window_dir/.production.success.json" ]]; then
+        "${PYTHON:-python3}" helpers/input_identity.py \
+            --check-completion "$window_dir/.production.identity.json" >/dev/null
+        echo "Skipping completed window $window_id"
+        skipped_window_count=$((skipped_window_count + 1))
+        return
+    fi
 
     run_stage "$window_dir" min minimization \
         "$engine" -O -i ../../inputs/min.in -o min.out \
@@ -117,6 +176,11 @@ if (( ! dry_run )) && ! command -v "$engine" >/dev/null 2>&1; then
 fi
 if [[ ! -d work ]]; then
     die "Run ./build.sh first."
+fi
+
+rerun_command="./run.sh"
+if [[ -n "$selected_window" ]]; then
+    rerun_command+=" --window $selected_window"
 fi
 
 window_dirs=()
@@ -154,12 +218,10 @@ for window_dir in "${window_dirs[@]}"; do
             die "Required input is missing: $window_dir/$required_file"
         fi
     done
-    if (( ! dry_run )) && [[ -e "$window_dir/production.out" ]]; then
-        die "Production output already exists: $window_dir/production.out"
-    fi
 done
 
 reused_stage_count=0
+skipped_window_count=0
 if (( ! dry_run )); then
     echo "Running: ${#window_dirs[@]} umbrella-window workflows (minimization, heating, equilibration, production): work"
 fi
@@ -168,6 +230,9 @@ for window_dir in "${window_dirs[@]}"; do
 done
 
 if (( ! dry_run )); then
+    if (( skipped_window_count > 0 )); then
+        echo "Skipped completed windows: $skipped_window_count (work)"
+    fi
     if (( reused_stage_count > 0 )); then
         echo "Reused completed stages: $reused_stage_count (work)"
     fi

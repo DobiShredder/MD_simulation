@@ -46,6 +46,9 @@ alanine φ/ψ atom 번호는 다른 topology에 적용하지 않습니다. 기�
 `opes.state`를 만들고, 이후 segment는 `RESTART`와 `STATE_RFILE`로 두 state를
 이어받습니다. Root `COLVAR`도 append됩니다. State file이 하나라도 없으면 다음
 segment를 시작하지 않습니다.
+`state_write_interval_steps`는 `pace_steps`로 나누어떨어져야 하고, segment당
+step 수(`production_steps / production_segments`)도 이 값으로 나누어떨어져야
+합니다. 그래야 마지막 `opes.state`가 segment 끝 상태가 됩니다.
 
 `anal.py`는 CV와 bias 범위, final effective sample 수와 kernel 수를 기록합니다.
 이 값은 convergence 판정 자체가 아니며 CV coverage와 독립 run을 함께 봅니다.
@@ -136,7 +139,8 @@ adaptive state.
 CV labels must match `cv.dat`; the supplied alanine atom numbers are examples.
 Defaults are a 50 kJ/mol barrier, 500-step pace, and 0.15 rad sigma per CV. Ten
 segments share root-level `KERNELS`, `opes.state`, and `COLVAR`; continuations
-use both `RESTART` and `STATE_RFILE`. `download.sh` retrieves an optional source
+use both `RESTART` and `STATE_RFILE`. `state_write_interval_steps` must be a multiple of `pace_steps` and must divide the steps per segment (`production_steps / production_segments`), so the last `opes.state` matches the segment end.
+`download.sh` retrieves an optional source
 PDB, while `build.sh`, `run.sh`, and `anal.py` create, propagate, and analyze
 the configured workflow.
 

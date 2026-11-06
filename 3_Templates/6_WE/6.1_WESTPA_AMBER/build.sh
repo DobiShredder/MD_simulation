@@ -289,10 +289,13 @@ done
 
 echo "Calculating basis progress coordinate: $work_dir/bstates/basis.rst7 -> $work_dir/basis_pcoord.txt"
 WORK_DIR="$work_dir" CPPTRAJ="$cpptraj" \
-    ./westpa_scripts/calc_pcoord.sh "$work_dir/bstates/basis.rst7" > "$work_dir/basis_pcoord.txt"
+    ./westpa_scripts/calc_pcoord.sh "$work_dir/bstates/basis.rst7" "$work_dir/basis_pcoord.cpptraj.log" \
+    > "$work_dir/basis_pcoord.txt"
 if [[ ! -s "$work_dir/basis_pcoord.txt" ]]; then
     die "Basis progress coordinate was not created: $work_dir/basis_pcoord.txt"
 fi
+# WESTPA recycles walkers in a target bin, so the basis must start outside it.
+"$python" helpers/check_we_states.py "$work_dir"
 touch "$work_dir/.basis.complete"
 remove_build_tmp
 

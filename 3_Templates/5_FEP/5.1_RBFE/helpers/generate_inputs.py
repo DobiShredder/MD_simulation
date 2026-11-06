@@ -37,6 +37,16 @@ def float_list(values: dict[str, object], key: str) -> list[float]:
     return result
 
 
+def heating_seed_base(run: dict[str, object]) -> int | None:
+    """Return the integer heating-seed base, or None for AMBER's random ig=-1."""
+    seed = run.get("random_seed")
+    if seed == "random":
+        return None
+    if isinstance(seed, bool) or not isinstance(seed, int) or seed <= 0:
+        raise ValueError("random_seed must be 'random' or a positive integer")
+    return seed
+
+
 def selected_indices(topology: object, mask: str) -> list[int]:
     from parmed.amber.mask import AmberMask
 
@@ -177,6 +187,7 @@ def main() -> None:
         mbar_interval = positive_int(run, "mbar_interval_steps")
         temperature = positive_float(run, "temperature")
         pressure = positive_float(run, "pressure")
+        seed_base = heating_seed_base(run)
     except ValueError as error:
         raise SystemExit(f"Config error: {error}") from None
 
@@ -236,6 +247,8 @@ def main() -> None:
     for environment in ("complex", "solvent"):
         for window_index, lambda_value in enumerate(lambdas):
             state_index += 1
+            # Only heating starts new velocities; later stages restart with ig=-1.
+            heating_seed = -1 if seed_base is None else seed_base + state_index
             window = f"{window_index:03d}"
             directory = args.work_dir / environment / window
             directory.mkdir(parents=True, exist_ok=True)
@@ -244,11 +257,11 @@ def main() -> None:
             replacements = {
                 **common,
                 "@LAMBDA@": f"{lambda_value:.6f}",
-                "@RANDOM_SEED@": str(51000 + state_index),
+                "@RANDOM_SEED@": str(heating_seed),
             }
             for stage in ("minimize", "heat", "equilibrate", "production"):
                 render(args.input_dir / f"{stage}.in.template", directory / f"{stage}.in", replacements)
-            states.append(f"{environment}\t{window}\t{lambda_value:.6f}\t{51000 + state_index}\t{directory}")
+            states.append(f"{environment}\t{window}\t{lambda_value:.6f}\t{heating_seed}\t{directory}")
 
     (args.work_dir / "states.tsv").write_text("\n".join(states) + "\n", encoding="utf-8")
     (args.work_dir / "atom_mapping.resolved.tsv").write_text(

@@ -47,6 +47,23 @@ die() {
     exit 1
 }
 
+# Print this block's WESTPA log section and the newest segment log, then stop.
+report_westpa_failure() {
+    local message=$1
+    local block_log=$2
+    local log_start_line=$3
+    echo "Last 20 lines of this run in $block_log:" >&2
+    tail -n "+$log_start_line" "$block_log" | tail -n 20 >&2
+    # Segment logs are named ITERATION-SEGMENT, so the last name is the newest.
+    local segment_logs=("$WORK_DIR"/seg_logs/*.log)
+    local latest_segment_log=${segment_logs[${#segment_logs[@]}-1]}
+    if [[ -f "$latest_segment_log" ]]; then
+        echo "Last 20 lines of the most recent segment log $latest_segment_log:" >&2
+        tail -n 20 "$latest_segment_log" >&2
+    fi
+    die "$message: $block_log"
+}
+
 export WEST_SIM_ROOT=${WEST_SIM_ROOT:-$PWD}
 case "$WEST_SIM_ROOT" in
     /*) ;;
@@ -146,27 +163,44 @@ for config in "$WORK_DIR"/configs/west.[0-9][0-9][0-9].cfg; do
         printf '\n'
         continue
     fi
-    echo "Running: WE block $block_text"
-    if ! "${command[@]}" > "$WORK_DIR/west.$block_text.log" 2>&1; then
-        die "WESTPA block failed: $WORK_DIR/west.$block_text.log"
+    # A rerun of an unfinished block appends to its log after a timestamped header.
+    block_log="$WORK_DIR/west.$block_text.log"
+    log_start_line=1
+    if [[ -f "$block_log" ]]; then
+        log_start_line=$(( $(wc -l < "$block_log") + 1 ))
     fi
-    if grep -q -- '-- ERROR' "$WORK_DIR/west.$block_text.log"; then
-        die "WESTPA reported an error: $WORK_DIR/west.$block_text.log"
+    echo "===== w_run started $(date '+%Y-%m-%d %H:%M:%S') =====" >> "$block_log"
+    echo "Running: WE block $block_text; log: $block_log"
+    if ! "${command[@]}" >> "$block_log" 2>&1; then
+        report_westpa_failure "WESTPA block $block_text failed" "$block_log" "$log_start_line"
+    fi
+    if awk -v start="$log_start_line" 'NR >= start && /-- ERROR/ {found = 1} END {exit !found}' "$block_log"; then
+        report_westpa_failure "WESTPA block $block_text reported an error" "$block_log" "$log_start_line"
     fi
     requested_iteration=$(awk '/^[[:space:]]*max_total_iterations:/ {print $2; exit}' "$config")
-    current_iteration=$("$python" - "$WORK_DIR/west.h5" <<'PY'
-import sys
-import h5py
-
-with h5py.File(sys.argv[1], "r") as handle:
-    print(int(handle.attrs["west_current_iteration"]))
-PY
-)
     if [[ ! "$requested_iteration" =~ ^[1-9][0-9]*$ ]]; then
         die "Could not read max_total_iterations: $config"
     fi
+    if ! current_iteration=$("$python" - "$WORK_DIR/west.h5" <<'PY'
+import numbers
+import sys
+import h5py
+
+try:
+    with h5py.File(sys.argv[1], "r") as handle:
+        current = handle.attrs.get("west_current_iteration")
+        if not isinstance(current, numbers.Integral) or current < 1:
+            raise ValueError("invalid west_current_iteration")
+        print(current)
+except (OSError, ValueError) as error:
+    print(f"Error: WESTPA progress check: {sys.argv[1]}; {error}", file=sys.stderr)
+    raise SystemExit(1) from None
+PY
+    ); then
+        exit 1
+    fi
     if [[ "$current_iteration" -le "$requested_iteration" ]]; then
-        die "WESTPA stopped before block completion: $WORK_DIR/west.$block_text.log"
+        die "WESTPA stopped before block $block_text completion (iteration $current_iteration of $requested_iteration): $block_log"
     fi
     touch "$marker"
     echo "Completed: WE block $block_text ($WORK_DIR/west.h5)"
