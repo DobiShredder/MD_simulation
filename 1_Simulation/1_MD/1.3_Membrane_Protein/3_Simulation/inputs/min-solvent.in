@@ -2,7 +2,6 @@ Relax water and bulk ions while restraining protein, lipids, and filter K+
 &cntrl
  imin=1,
  maxcyc=10000,
- ncyc=5000,
  ntmin=2,
  dx0=0.0001,
 

@@ -83,7 +83,7 @@ weight는 `w = exp(metad.rbias / kT)`이고 300 K에서 `kT = 2.494 kJ/mol`입�
 | `BIASFACTOR` | 10 | – | Well-tempered tempering. 같은 위치를 다시 방문할수록 hill이 작아집니다. |
 | `TEMP` | 300 | K | Thermostat 온도와 같아야 합니다. |
 | `GRID_MIN`, `GRID_MAX`, `GRID_BIN` | -π, π, 200 | rad, bin | Periodic torsion 전체를 덮는 bias grid |
-| `CALC_RCT` | 사용 | – | c(t)를 계산해 `metad.rct`, `metad.rbias`를 출력합니다. |
+| `CALC_RCT` | 사용 | – | c(t)를 `metad.rct`로 계산하고, `COLVAR`에는 `metad.rbias`를 기록합니다. |
 | `PRINT STRIDE` | 5000 | step(10 ps) | `COLVAR` 출력 간격 |
 | Production `nstlim`, `dt` | 500000, 0.002 | step, ps | 1 ns production |
 | Production `temp0`, `gamma_ln` | 300, 1.0 | K, ps⁻¹ | Langevin thermostat |
@@ -203,7 +203,7 @@ samples in 1 ns.
 | `BIASFACTOR` | 10 | – | Well-tempered tempering; hills shrink as a position is revisited. |
 | `TEMP` | 300 | K | Must match the thermostat temperature. |
 | `GRID_MIN`, `GRID_MAX`, `GRID_BIN` | -π, π, 200 | rad, bins | Bias grid covering the periodic torsions |
-| `CALC_RCT` | On | – | Computes c(t) and prints `metad.rct` and `metad.rbias`. |
+| `CALC_RCT` | On | – | Computes c(t) as `metad.rct`; `COLVAR` records `metad.rbias`. |
 | `PRINT STRIDE` | 5000 | step (10 ps) | `COLVAR` interval |
 | Production `nstlim`, `dt` | 500000, 0.002 | step, ps | 1 ns production |
 | Production `temp0`, `gamma_ln` | 300, 1.0 | K, ps⁻¹ | Langevin thermostat |

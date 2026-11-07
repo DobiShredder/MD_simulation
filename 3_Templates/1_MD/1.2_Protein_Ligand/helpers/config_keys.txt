@@ -21,6 +21,7 @@ run.heating_steps
 run.minimization_steepest_steps
 run.minimization_steps
 run.pressure
+run.pressure_coupling
 run.production_ensemble
 run.production_segments
 run.production_steps

@@ -145,7 +145,7 @@ config 값을 그대로 쓰므로 네 값을 함께 정합니다. Window directo
 | `pressure` | `1.0` | bar | NPT stage | `pres0` |
 | `timestep` | `2.0` | fs | MD stage | `dt`. 2 fs보다 크면 build가 거부합니다. |
 | `minimization_steps` | `5000` | cycles | Minimization | `maxcyc` |
-| `minimization_steepest_steps` | `2500` | cycles | Minimization | RBFE input은 `ntmin=2`(전부 steepest descent)이고 `ncyc`가 없어 적용되지 않습니다. |
+| `minimization_steepest_steps` | `2500` | cycles | 사용 안 함 | Softcore(`ifsc=1`) minimization은 pmemd.cuda에서 steepest descent만 허용하므로 RBFE input은 `ntmin=2`이고 이 값은 적용되지 않습니다. 공통 config 검사 때문에 key만 남아 있습니다. |
 | `heating_initial_temperature` | `0.0` | K | Heating | `tempi` |
 | `heating_steps` | `250000` | steps | Heating | NVT 500 ps |
 | `equilibration_steps` | `500000` | steps | Equilibration | 1 ns |
@@ -327,7 +327,7 @@ It has no auto/file mode. `production_segments` supports only `1`.
 | `pressure` | `1.0` | bar | NPT stages | `pres0` |
 | `timestep` | `2.0` | fs | MD stages | `dt`; values above 2 fs are rejected by the build. |
 | `minimization_steps` | `5000` | cycles | Minimization | `maxcyc` |
-| `minimization_steepest_steps` | `2500` | cycles | Minimization | Not applied: the RBFE input uses `ntmin=2` (steepest descent throughout) without `ncyc`. |
+| `minimization_steepest_steps` | `2500` | cycles | Not used | Softcore (`ifsc=1`) minimization on pmemd.cuda allows steepest descent only, so the RBFE input uses `ntmin=2` and ignores this value. The key remains for the shared config checker. |
 | `heating_initial_temperature` | `0.0` | K | Heating | `tempi` |
 | `heating_steps` | `250000` | steps | Heating | 500 ps NVT |
 | `equilibration_steps` | `500000` | steps | Equilibration | 1 ns |

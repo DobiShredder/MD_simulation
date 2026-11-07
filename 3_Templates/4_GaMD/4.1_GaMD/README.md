@@ -150,7 +150,7 @@ template이며, runner가 각 segment directory의 `production.in`을 생성해 
 | --- | --- |
 | `Config error: production steps must be divisible by production_segments` | `production_steps`를 `production_segments`의 배수로 맞춥니다. |
 | `GaMD statistics in config.toml: NAME (V) must be a multiple of averaging_interval_steps (A)` | 네 statistics 길이를 `averaging_interval_steps`의 배수로 맞춥니다. |
-| `Warning: averaging_interval_steps (A) is below 4 x topology atoms (...). ...` | Build는 계속됩니다. 아래 averaging window section을 보고 값을 정합니다. |
+| `Warning: averaging_interval_steps (A) is below 4 x topology atoms (...). ...` | Build는 계속됩니다. 위 "Boost 상한과 averaging window" section을 보고 값을 정합니다. |
 | `Completed GaMD parameter preparation is required for production: ...` | `--production-only` 전에 `--preparation-only` 또는 전체 `run.sh`로 preparation을 끝냅니다. |
 | `Previous production segment is incomplete: work/00N` | `--segments START-END`의 START 앞 segment가 완료되지 않았습니다. 앞 segment부터 실행합니다. |
 
@@ -308,7 +308,7 @@ invokes `helpers/config_utils.py` automatically to read this setting.
 | --- | --- |
 | `Config error: production steps must be divisible by production_segments` | Make `production_steps` a multiple of `production_segments`. |
 | `GaMD statistics in config.toml: NAME (V) must be a multiple of averaging_interval_steps (A)` | Make all four statistics lengths multiples of `averaging_interval_steps`. |
-| `Warning: averaging_interval_steps (A) is below 4 x topology atoms (...). ...` | The build continues. Choose the value using the averaging-window section below. |
+| `Warning: averaging_interval_steps (A) is below 4 x topology atoms (...). ...` | The build continues. Choose the value using the "Boost limits and averaging window" section above. |
 | `Completed GaMD parameter preparation is required for production: ...` | Finish preparation with `--preparation-only` or a full `run.sh` before `--production-only`. |
 | `Previous production segment is incomplete: work/00N` | The segment before START in `--segments START-END` is not complete. Run the earlier segment first. |
 

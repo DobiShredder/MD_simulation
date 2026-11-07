@@ -137,7 +137,7 @@ Window overlap은 `restraint_sampling.tsv`에서 인접 window의 `distance_max_
 | Message 또는 증상 | 원인 | 조치 |
 | --- | --- | --- |
 | `ParmEd is required: ...` | `make_restraints.py`가 사용할 ParmEd가 없습니다. | `python3 -m pip install -r requirements.txt`를 실행합니다. |
-| `Replica exchange requires at least two and an even number of windows` | `inputs/states.tsv`의 window 수가 홀수입니다. | Window를 하나 더하거나 빼서 짝수로 맞춥니다. |
+| `Replica exchange requires at least two and an even number of windows`(build) 또는 `... states`(run) | `inputs/states.tsv`의 window 수가 홀수입니다. | Window를 하나 더하거나 빼서 짝수로 맞춥니다. |
 | `Executable not found: pmemd.cuda.MPI` | AMBER environment가 load되지 않았거나 MPI build가 없습니다. | AMBER의 `amber.sh`를 source하거나 `AMBER_MPI_ENGINE`, `MPI_LAUNCHER`를 지정합니다. |
 | `REUS production failed: work/mpirun.production.log, work/exchange.log` | 20 rank를 띄우지 못했거나 일부 window가 중단되었습니다. | 출력된 `Missing/Unfinished window output`과 `mpirun.production.log`를 보고 할당한 rank·GPU 수를 맞춥니다. |
 | `Exchange analysis: incomplete exchange block in work/exchange.log` | Production이 중간에 끊겨 마지막 block이 불완전합니다. | Production을 끝까지 다시 실행한 뒤 `anal.py`를 실행합니다. |
@@ -314,7 +314,7 @@ kcal/mol.
 | Message or symptom | Cause | Action |
 | --- | --- | --- |
 | `ParmEd is required: ...` | ParmEd for `make_restraints.py` is missing. | Run `python3 -m pip install -r requirements.txt`. |
-| `Replica exchange requires at least two and an even number of windows` | `inputs/states.tsv` has an odd window count. | Add or remove one window. |
+| `Replica exchange requires at least two and an even number of windows` (build) or `... states` (run) | `inputs/states.tsv` has an odd window count. | Add or remove one window. |
 | `Executable not found: pmemd.cuda.MPI` | AMBER is not loaded or has no MPI build. | Source AMBER's `amber.sh` or set `AMBER_MPI_ENGINE` and `MPI_LAUNCHER`. |
 | `REUS production failed: work/mpirun.production.log, work/exchange.log` | The 20 ranks did not start, or some windows stopped. | Read the printed `Missing/Unfinished window output` lines and `mpirun.production.log`, then match the allocated ranks and GPUs. |
 | `Exchange analysis: incomplete exchange block in work/exchange.log` | Production stopped early and left a truncated block. | Finish production, then run `anal.py`. |

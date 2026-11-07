@@ -30,7 +30,7 @@ receptor와 ligand topology는 모두 `mbondi2` PBRadii를 사용합니다. MMPB
 `energy_summary.tsv`, `running_mean.tsv`, `block_summary.tsv`,
 `decomposition_summary.tsv`로 요약하고 model별 frame 수를 `Frames: N (GB)`처럼
 출력합니다. Block 수는 `anal.py` 상단의 `BLOCK_COUNT`에서
-바꾸며 frame이 `BLOCK_COUNT`보다 적으면 중단합니다.
+바꾸며 frame이 `max(2, BLOCK_COUNT)`보다 적으면 중단합니다.
 
 | Output | Column | 단위 |
 | --- | --- | --- |
@@ -89,7 +89,7 @@ topologies. MMPBSA.py writes `final_results.dat`, `final_decomposition.dat`,
 decomposition in `energy_summary.tsv`, `running_mean.tsv`, `block_summary.tsv`,
 and `decomposition_summary.tsv`. It prints the frame count per model, e.g.
 `Frames: N (GB)`. Set the block count with `BLOCK_COUNT` at the top of
-`anal.py`; fewer frames than `BLOCK_COUNT` stop the run.
+`anal.py`; fewer frames than `max(2, BLOCK_COUNT)` stop the run.
 
 | Output | Columns | Unit |
 | --- | --- | --- |

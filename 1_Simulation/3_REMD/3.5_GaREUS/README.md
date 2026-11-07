@@ -93,8 +93,9 @@ GaMD parameter는 15 Å reference window `009`에서 4 ns NVT로 한 번 준비�
 window의 GaMD state를 `prepared.gamd.rst`로 보존하고 같은 `gamd-restart.dat`를
 모든 window에 복사합니다. 각 window는 자기 `equilibrate.rst7`을
 `production_start.rst7`로 사용합니다. Production은 이 state를
-`irest_gamd=1`로 이어받아 1 ns NVT GaREUS를 실행합니다. 계속 갱신되는
-`gamd-restart.dat`가 아니라 `prepared.gamd.rst`가 production의 고정 input입니다.
+`irest_gamd=1`로 이어받아 1 ns NVT GaREUS를 실행합니다. Engine은 각 window에 복사된
+`gamd-restart.dat`를 읽습니다. `prepared.gamd.rst`는 준비 직후 state의 보존 copy이고,
+input identity는 이 file로 production 시작 state가 바뀌었는지 검사합니다.
 
 각 window는 고유한 positive seed를 사용합니다. Langevin restart마다 다른 `ig`를
 쓰도록 window equilibration은 seed+1,000,000, GaMD preparation은
@@ -172,7 +173,7 @@ Boost 분포의 anharmonicity와 reweighting 조건은
 | --- | --- | --- |
 | `Per-replica GaMD state handling with Amber 26 multipmemd is unverified; see README.md before opting in.` | `--allow-unverified` 없이 실행했습니다(exit 2). | 위 실행 절의 제한을 읽고 `./run.sh --allow-unverified`로 실행합니다. |
 | `ParmEd is required: ...` | `make_restraints.py`가 사용할 ParmEd가 없습니다. | `python3 -m pip install -r requirements.txt`를 실행합니다. |
-| `Replica exchange requires at least two and an even number of windows` | `inputs/states.tsv`의 window 수가 홀수입니다. | Window를 하나 더하거나 빼서 짝수로 맞춥니다. |
+| `Replica exchange requires at least two and an even number of windows`(build) 또는 `... states`(run) | `inputs/states.tsv`의 window 수가 홀수입니다. | Window를 하나 더하거나 빼서 짝수로 맞춥니다. |
 | `GaMD parameter preparation failed: work/009/gamd_prepare.out` | 4 ns GaMD preparation이 중단되었습니다. | `work/009/gamd_prepare.out`과 `engine.gamd_prepare.log`의 마지막 error를 확인합니다. |
 | `GaREUS production failed: work/mpirun.production.log, work/exchange.log` | 20 rank를 띄우지 못했거나 일부 window가 중단되었습니다. | 출력된 `Missing/Unfinished window output`과 `mpirun.production.log`를 보고 할당한 rank·GPU 수를 맞춥니다. |
 | `Boost analysis: dual-boost header missing in ...` | `gamd.production.log` header에 `Boost-Energy-Potential`, `Boost-Energy-Dihedral`이 없습니다. | 사용한 AMBER build의 `-gamd` log 형식과 `igamd=3` 설정을 확인합니다. |
@@ -295,8 +296,10 @@ window `009`, with `igamd=3` and `sigma0P=sigma0D=6.0`. The prepared GaMD state
 is kept as `prepared.gamd.rst` in the reference window, and the same
 `gamd-restart.dat` is copied to every window. Each window starts production from
 its own `equilibrate.rst7`, copied to `production_start.rst7`. Production continues that
-state with `irest_gamd=1` for a 1 ns NVT GaREUS run. Production's fixed input is
-`prepared.gamd.rst`, not the evolving `gamd-restart.dat`.
+state with `irest_gamd=1` for a 1 ns NVT GaREUS run. The engine reads the
+`gamd-restart.dat` copied to each window. `prepared.gamd.rst` is the saved copy of
+the prepared state, and the input identity check uses it to detect changes to the
+production starting state.
 
 Each window has a unique positive seed. Langevin dynamics needs a different
 `ig` on each restart, so window equilibration adds 1,000,000 to the window seed,
@@ -374,7 +377,7 @@ Check boost anharmonicity and reweighting conditions in the
 | --- | --- | --- |
 | `Per-replica GaMD state handling with Amber 26 multipmemd is unverified; see README.md before opting in.` | Run without `--allow-unverified` (exit 2). | Read the limits in the Run section and use `./run.sh --allow-unverified`. |
 | `ParmEd is required: ...` | ParmEd for `make_restraints.py` is missing. | Run `python3 -m pip install -r requirements.txt`. |
-| `Replica exchange requires at least two and an even number of windows` | `inputs/states.tsv` has an odd window count. | Add or remove one window. |
+| `Replica exchange requires at least two and an even number of windows` (build) or `... states` (run) | `inputs/states.tsv` has an odd window count. | Add or remove one window. |
 | `GaMD parameter preparation failed: work/009/gamd_prepare.out` | The 4 ns GaMD preparation stopped. | Read the last error in `work/009/gamd_prepare.out` and `engine.gamd_prepare.log`. |
 | `GaREUS production failed: work/mpirun.production.log, work/exchange.log` | The 20 ranks did not start, or some windows stopped. | Read the printed `Missing/Unfinished window output` lines and `mpirun.production.log`, then match the allocated ranks and GPUs. |
 | `Boost analysis: dual-boost header missing in ...` | The `gamd.production.log` header lacks `Boost-Energy-Potential` and `Boost-Energy-Dihedral`. | Check the `-gamd` log format of the AMBER build and the `igamd=3` setting. |

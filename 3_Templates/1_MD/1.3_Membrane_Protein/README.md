@@ -152,7 +152,7 @@ area·두께와 protein 상태를 확인하면서 system에 맞게 equilibration
 | `temperature` | 300.0 | K | Heating 목표, equilibration, production | `temp0`를 바꿉니다. |
 | `pressure` | 1.0 | bar | NPT stage | `pres0`를 바꿉니다. |
 | `minimization_steps` | 10000 | cycle | 두 minimization | `maxcyc`를 바꿉니다. |
-| `minimization_steepest_steps` | 5000 | cycle | 두 minimization | `ncyc`로 기록하지만 `ntmin=2`(steepest descent만 사용)이므로 결과에 영향이 없습니다(Amber26 manual `ntmin`). |
+| `minimization_steepest_steps` | 5000 | cycle | 사용 안 함 | 두 minimization은 `ntmin=2`(steepest descent만 사용)라 적용되지 않습니다(Amber26 manual `ntmin`). 공통 config 검사 때문에 key만 남아 있습니다. |
 | `heating_initial_temperature` | 20.0 | K | Heating | `tempi`와 `TEMP0` ramp 시작값입니다. |
 | `heating_steps` | 250000 | step | Heating | Ramp 길이입니다(2 fs에서 500 ps). |
 | `production_steps` | 50000000 | step | Production 전체 | 총 production 길이입니다(100 ns). `production_segments`로 나누어떨어져야 합니다. |
@@ -340,7 +340,7 @@ above.
 | `temperature` | 300.0 | K | Heating target, equilibration, production | Sets `temp0`. |
 | `pressure` | 1.0 | bar | NPT stages | Sets `pres0`. |
 | `minimization_steps` | 10000 | cycles | Both minimizations | Sets `maxcyc`. |
-| `minimization_steepest_steps` | 5000 | cycles | Both minimizations | Written as `ncyc`, but has no effect because `ntmin=2` uses steepest descent only (Amber26 manual, `ntmin`). |
+| `minimization_steepest_steps` | 5000 | cycles | Not used | Both minimizations use `ntmin=2` (steepest descent only), so it is not applied (Amber26 manual, `ntmin`). The key remains for the shared config checker. |
 | `heating_initial_temperature` | 20.0 | K | Heating | `tempi` and the start of the `TEMP0` ramp. |
 | `heating_steps` | 250000 | steps | Heating | Ramp length (500 ps at 2 fs). |
 | `production_steps` | 50000000 | steps | All production | Total production length (100 ns); must be divisible by `production_segments`. |

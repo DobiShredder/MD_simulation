@@ -33,6 +33,9 @@ cutoff = 12.0
 lj_force_switch = 10.0
 constraint_mode = "h-bonds"
 minimization_steps = 10000
+# Ignored here: the protein inserted into the bilayer by build_membrane.py can keep
+# close contacts, so minimization uses steepest descent only (ntmin=2). The shared
+# config checker still requires the key.
 minimization_steepest_steps = 5000
 heating_initial_temperature = 20.0
 heating_steps = 250000

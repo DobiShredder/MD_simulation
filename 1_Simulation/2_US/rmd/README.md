@@ -5,7 +5,7 @@
 PDB 1UAO 첫 NMR model의 residue 1–10 Cα distance를 PLUMED `ABMD` ratchet MD로
 증가시키고, 그 trajectory에서 umbrella window seed를 추출합니다.
 
-PLUMED `ABMD`는 목표값과 CV 차이로 정의한 ρ를 이용합니다. 목표 방향으로 ρ가 줄어드는
+PLUMED `ABMD`는 목표값과 CV 차이의 제곱으로 정의한 ρ를 이용합니다. 목표 방향으로 ρ가 줄어드는
 thermal fluctuation은 그대로 두고, 반대 방향 움직임에만 bias를 겁니다. 기본값은
 `TO=3.0 nm`, `KAPPA=100`입니다. `KAPPA`는 일반 harmonic restraint와 definition이
 다릅니다. `ratchet.end_to_end_min`도 distance가 아니라 PLUMED의 ρ minimum입니다.
@@ -98,7 +98,7 @@ ABMD trajectory는 seed 생성에만 사용합니다. Equilibrium PMF와 kinetic
 | --- | --- |
 | `NPT density is outside 0.90-1.10 g/cm^3` | `work/equil.out`의 `Density` 추세와 상위 `inputs/tleap.in`의 box를 확인합니다. |
 | `1 ns ratchet MD failed.` | `work/ratchet.out`과 `work/engine.ratchet.log`를 봅니다. PLUMED가 연결되지 않은 engine이면 이 stage에서 실패합니다. |
-| `No frame is within the 0.750 Å tolerance of center ...` | Ratchet MD가 해당 distance에 도달하지 못했습니다. `work/ratchet.dat`의 distance 범위를 확인합니다. |
+| `No frame is within the 0.750 Å tolerance of center ...` | Ratchet MD가 해당 distance에 도달하지 못했습니다. `work/ratchet.dat`의 distance 범위를 확인합니다(PLUMED 단위 nm). |
 | `Output directory already exists: work/seeds` | 기존 seed를 쓰려면 그대로 `../us/`로 진행하고, 다시 만들려면 `work/seeds`를 옮깁니다. |
 
 ## English
@@ -203,5 +203,5 @@ Shared messages are listed in the [parent README](../README.md#common-problems).
 | --- | --- |
 | `NPT density is outside 0.90-1.10 g/cm^3` | Check the `Density` trend in `work/equil.out` and the box in the parent `inputs/tleap.in`. |
 | `1 ns ratchet MD failed.` | Read `work/ratchet.out` and `work/engine.ratchet.log`. An engine without PLUMED fails at this stage. |
-| `No frame is within the 0.750 Å tolerance of center ...` | Ratchet MD did not reach that distance. Check the distance range in `work/ratchet.dat`. |
+| `No frame is within the 0.750 Å tolerance of center ...` | Ratchet MD did not reach that distance. Check the distance range in `work/ratchet.dat` (PLUMED unit nm). |
 | `Output directory already exists: work/seeds` | To use the existing seeds, continue to `../us/`; to regenerate them, move `work/seeds` aside. |

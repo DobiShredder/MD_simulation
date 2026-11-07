@@ -146,8 +146,8 @@ def write_md_inputs(output: Path, values: dict[str, object]) -> None:
         render_cntrl(
             "Minimize solvent while restraining protein and lipid heavy atoms",
             [
-                "imin=1", "maxcyc=10000", "ncyc=5000", "ntmin=2",
-                "dx0=0.0001", "ntb=1", "ntc=1", "ntf=1", cut_setting, fswitch_setting,
+                "imin=1", "maxcyc=10000", "ntmin=2", "dx0=0.0001",
+                "ntb=1", "ntc=1", "ntf=1", cut_setting, fswitch_setting,
                 "ntr=1", "restraint_wt=10.0",
                 f"restraintmask='{values['solvent_mask']}'",
             ],
@@ -157,7 +157,7 @@ def write_md_inputs(output: Path, values: dict[str, object]) -> None:
         render_cntrl(
             "Minimize lipids and solvent while restraining protein heavy atoms",
             [
-                "imin=1", "maxcyc=10000", "ncyc=5000", "ntmin=2", "dx0=0.0001",
+                "imin=1", "maxcyc=10000", "ntmin=2", "dx0=0.0001",
                 "ntb=1", "ntc=1", "ntf=1", cut_setting, fswitch_setting, "ntr=1",
                 "restraint_wt=10.0", f"restraintmask='{heavy_mask}'",
             ],

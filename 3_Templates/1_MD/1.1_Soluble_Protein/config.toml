@@ -16,6 +16,8 @@ temperature = 300.0
 pressure = 1.0
 equilibration_ensemble = "NPT"
 production_ensemble = "NPT"
+# NPT box scaling: "isotropic" (ntp=1) or "anisotropic" (ntp=2)
+pressure_coupling = "isotropic"
 timestep = 2.0
 constraint_mode = "h-bonds"
 minimization_steps = 5000

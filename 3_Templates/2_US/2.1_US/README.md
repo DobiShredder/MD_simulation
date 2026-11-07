@@ -74,7 +74,7 @@ harmonic distance force constant와 같은 양이 아닙니다.
 | `box_shape` | `rectangular`, `octahedral` | `rectangular` | 각각 `solvatebox`, `solvateoct`를 사용합니다. |
 | `salt_type` | `NaCl`, `KCl`, `MgCl2`, `CaCl2` | `NaCl` | Neutralization 뒤 추가할 bulk salt를 선택합니다. |
 | `equilibration_ensemble` | `NVT`, `NPT` | `NPT` | Seed와 window equilibration의 `ntb`와 `ntp`를 설정합니다. |
-| `production_ensemble` | `NVT`, `NPT` | `NPT` | Window production의 `ntb`와 `ntp`를 설정합니다. |
+| `production_ensemble` | `NVT`, `NPT` | `NPT` | Ratchet MD와 window production의 `ntb`와 `ntp`를 설정합니다. |
 | `constraint_mode` | `h-bonds`만 지원 | `h-bonds` | Hydrogen-containing bond에 SHAKE를 적용합니다. |
 | `random_seed` | `"random"` 또는 양의 정수 | `"random"` | rMD와 모든 window의 heating `ig`입니다. `"random"`은 `ig=-1`입니다. 이후 equilibration, ratchet MD와 production은 `ig=-1`로 실행할 때마다 새 seed를 사용합니다. |
 
@@ -150,7 +150,7 @@ GPU와 atom 수에 따라 달라집니다.
 | `Run ../build.sh first: ../work/resolved_config.toml` | Leaf root에서 `build.sh`를 먼저 실행합니다. |
 | `rMD input generation failed; see the Config error above.` | Atom mask가 atom을 고르지 못했거나 두 mask가 겹칩니다. Message의 순서대로 `../work`를 옮기고 다시 build합니다. |
 | `Equilibration density is outside ...` | `rmd/work/equil.out`의 `Density` 추세와 box 크기를 확인합니다. |
-| `No ordered frame is within 0.750 Å of ...` | `rmd/work/ratchet.dat`에서 distance가 그 center에 도달했는지 봅니다. 도달했다면 `[ratchet_md] output_interval_steps`를 줄여 새 copy에서 다시 계산합니다. |
+| `No ordered frame is within 0.750 Å of ...` | `rmd/work/ratchet.dat`에서 distance가 그 center에 도달했는지 봅니다(PLUMED 단위 nm, Å의 1/10). 도달했다면 `[ratchet_md] output_interval_steps`를 줄여 새 copy에서 다시 계산합니다. |
 | `Window table changed since seed extraction` | Seed를 만든 뒤 `windows.tsv`를 고쳤습니다. 새 copy에서 seed generation부터 다시 합니다. |
 | `Partial ... output is retained` | Message의 `mv` command로 남은 파일을 옮긴 뒤 같은 command를 다시 실행합니다. |
 
@@ -229,7 +229,7 @@ force constant.
 | `box_shape` | `rectangular`, `octahedral` | `rectangular` | Uses `solvatebox` or `solvateoct`, respectively. |
 | `salt_type` | `NaCl`, `KCl`, `MgCl2`, `CaCl2` | `NaCl` | Selects bulk salt added after neutralization. |
 | `equilibration_ensemble` | `NVT`, `NPT` | `NPT` | Sets `ntb` and `ntp` for seed and window equilibration. |
-| `production_ensemble` | `NVT`, `NPT` | `NPT` | Sets window-production `ntb` and `ntp`. |
+| `production_ensemble` | `NVT`, `NPT` | `NPT` | Sets `ntb` and `ntp` for ratchet MD and window production. |
 | `constraint_mode` | `h-bonds` only | `h-bonds` | Applies SHAKE to bonds involving hydrogen. |
 | `random_seed` | `"random"` or a positive integer | `"random"` | Sets the heating `ig` for rMD and every window; `"random"` maps to `ig=-1`. Later equilibration, ratchet MD, and production use `ig=-1` and receive a new seed per invocation. |
 
@@ -312,6 +312,6 @@ Handle retained files as described in the
 | `Run ../build.sh first: ../work/resolved_config.toml` | Run `build.sh` in the leaf root first. |
 | `rMD input generation failed; see the Config error above.` | An atom mask selected no atoms or the two masks overlap. Move `../work` aside and rebuild as the message describes. |
 | `Equilibration density is outside ...` | Check the `Density` trend in `rmd/work/equil.out` and the box size. |
-| `No ordered frame is within 0.750 Å of ...` | Check in `rmd/work/ratchet.dat` whether the distance reached that center. If it did, lower `[ratchet_md] output_interval_steps` and rerun in a fresh copy. |
+| `No ordered frame is within 0.750 Å of ...` | Check in `rmd/work/ratchet.dat` whether the distance reached that center (PLUMED unit nm, 1/10 of Å). If it did, lower `[ratchet_md] output_interval_steps` and rerun in a fresh copy. |
 | `Window table changed since seed extraction` | `windows.tsv` was edited after seed extraction. Start again from seed generation in a fresh copy. |
 | `Partial ... output is retained` | Move the retained files with the `mv` command in the message and rerun the same command. |

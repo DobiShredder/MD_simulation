@@ -30,7 +30,7 @@ effective-temperature ladder를 구성할 수 있습니다.
 | `validate_states.py` | 생성된 state table의 각 row와 λ 관계를 검사하고 잘못된 column을 표시합니다. |
 | `net_charge.py` | `_` marker atom의 charge와 `lambda_pp`로 replica별 예상 net charge를 `work/net_charge.tsv`에 기록합니다. `build.sh`가 자동 호출합니다. |
 | `grompp_utils.bash` | `run.sh`가 source하는 `run_grompp`입니다. 예상 net-charge warning 하나만 `-maxwarn 1`로 허용합니다. |
-| `build.sh` | Temperature file을 state table로 변환하고 row마다 scaled topology와 MDP input을 만듭니다. TPR은 scale-one energy 검사용으로만 만들며, 계산용 TPR은 `run.sh`가 만듭니다. |
+| `build.sh` | Temperature file을 state table로 변환하고 row마다 scaled topology와 MDP input을 만듭니다. Build의 TPR은 processed topology를 만드는 preprocessing용과 scale-one energy 검사용이며, 계산용 TPR은 `run.sh`가 만듭니다. |
 | `compare_energy.py` | 원본과 scale 1.0 rerun potential 차이를 허용 오차와 비교합니다. |
 | `run.sh` | 300 K pre-production과 PLUMED-patched GROMACS HREX를 실행합니다. |
 | `anal.py` | Exchange, occupancy와 effective-temperature별 구조 지표를 계산합니다. |
@@ -39,7 +39,7 @@ effective-temperature ladder를 구성할 수 있습니다.
 
 준비 사항: [family README의 준비 사항](../README.md#준비-사항)에 있는
 PLUMED-patched `GROMACS 2024.3`(`gmx`, `gmx_mpi`)과 MPI launcher, AMBER 26
-`tleap`, PLUMED CLI `plumed`, `gawk`, `requirements.txt`의 ParmEd·MDAnalysis가
+`tleap`, PLUMED CLI `plumed`, `requirements.txt`의 ParmEd·MDAnalysis·numpy가
 필요합니다.
 
 ```bash
@@ -168,6 +168,11 @@ pair당 시도가 약 250회뿐이므로 ratio는 경향만 보여줍니다.
 Temperature는 comma, semicolon, vertical bar, space, tab 또는 newline으로
 구분할 수 있고 `#` 뒤에는 comment를 쓸 수 있습니다.
 
+아래는 구분자 형식을 보여 주는 예시이며, 실제 file의 값을 소수 셋째 자리로 줄였습니다.
+
+The example below shows the separator format; the values are the bundled ones
+rounded to three decimals.
+
 ```text
 # REST2 effective temperatures in K
 300.000, 317.890, 336.847, 356.935
@@ -251,7 +256,7 @@ replicas than T-REMD, without heating the full solvent box.
 | `validate_states.py` | Checks each row and the λ relations of the state table and reports the invalid column. |
 | `net_charge.py` | Writes each replica's expected net charge from the `_`-marked charges and `lambda_pp` to `work/net_charge.tsv`. Called by `build.sh`. |
 | `grompp_utils.bash` | Provides `run_grompp`, sourced by `run.sh`. Allows only the expected net-charge warning through `-maxwarn 1`. |
-| `build.sh` | Converts the temperature file into a state table and writes scaled topology and MDP inputs for each row. It creates TPRs only for the scale-one energy check; `run.sh` creates the run-stage TPRs. |
+| `build.sh` | Converts the temperature file into a state table and writes scaled topology and MDP inputs for each row. Its TPRs are only for topology preprocessing and the scale-one energy check; `run.sh` creates the run-stage TPRs. |
 | `compare_energy.py` | Compares the original and scale-1.0 rerun potentials against the tolerance. |
 | `run.sh` | Runs 300 K pre-production and PLUMED-patched GROMACS HREX. |
 | `anal.py` | Computes exchange, occupancy and structure metrics per effective temperature. |
@@ -260,8 +265,8 @@ replicas than T-REMD, without heating the full solvent box.
 
 Prerequisites: the PLUMED-patched GROMACS 2024.3 (`gmx`, `gmx_mpi`) and MPI
 launcher described in the [family README prerequisites](../README.md#prerequisites),
-AMBER 26 `tleap`, the PLUMED CLI `plumed`, `gawk`, and ParmEd and MDAnalysis
-from `requirements.txt`.
+AMBER 26 `tleap`, the PLUMED CLI `plumed`, and ParmEd, MDAnalysis and
+numpy from `requirements.txt`.
 
 ```bash
 python3 -m pip install -r requirements.txt

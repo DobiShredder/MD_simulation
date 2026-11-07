@@ -11,7 +11,7 @@ method이며 별도 config mode가 아닙니다. Amber 26 serial `pmemd.cuda`가
 ### 필요한 input
 
 - `build.sh`에 넘길 reviewed complex PDB
-- Boost 대상 peptide를 지정하는 `config.toml`의 `peptide_mask`
+- Boost 대상 peptide를 지정하는 `config.toml`의 `peptide_mask`. 기본값이 비어 있어 build 전에 지정해야 합니다.
 
 Build가 `peptide_mask`의 실제 atom selection을 확인합니다.
 
@@ -151,11 +151,12 @@ template이며, runner가 각 segment directory의 `production.in`을 생성해 
 
 | Message | 원인과 조치 |
 | --- | --- |
-| `peptide_mask does not select any atoms: :PEP` | 기본값 `:PEP`는 placeholder입니다. Final topology의 peptide residue 번호(예: `:58-65`)로 바꿉니다. AMBER mask는 PDB 번호가 아니라 topology의 순차 residue 번호를 사용합니다. |
-| `Error: LiGaMD3 and Pep-GaMD require the serial pmemd.cuda engine: ...` | `AMBER_ENGINE` 또는 `run.engine`을 serial `pmemd.cuda`로 바꿉니다. |
+| `peptide_mask is empty in config.toml [gamd]. ...` | 기본값은 비어 있습니다. Build 전에 peptide residue를 AMBER mask로 지정합니다(예: `:58-65`). tleap은 input PDB의 residue 순서대로 1부터 번호를 매기며 PDB residue 번호는 쓰지 않습니다. |
+| `peptide_mask does not select any atoms: ...` | Mask가 final topology에서 atom을 고르지 못했습니다. `work/system.parm7`이 이미 만들어졌으므로 `work`를 다른 이름으로 옮긴 뒤 mask를 고쳐 다시 build합니다. |
+| `Engine configuration error (...): Unsupported engine '...'; expected: pmemd.cuda` | `AMBER_ENGINE` 또는 `run.engine`을 serial `pmemd.cuda`로 바꿉니다. |
 | `Config error: production steps must be divisible by production_segments` | `production_steps`를 `production_segments`의 배수로 맞춥니다. |
 | `GaMD statistics in config.toml: NAME (V) must be a multiple of averaging_interval_steps (A)` | 네 statistics 길이를 `averaging_interval_steps`의 배수로 맞춥니다. |
-| `Warning: averaging_interval_steps (A) is below 4 x topology atoms (...). ...` | Build는 계속됩니다. 아래 averaging window section을 보고 값을 정합니다. |
+| `Warning: averaging_interval_steps (A) is below 4 x topology atoms (...). ...` | Build는 계속됩니다. 위 "Boost 상한과 averaging window" section을 보고 값을 정합니다. |
 | `Completed GaMD parameter preparation is required for production: ...` | `--production-only` 전에 `--preparation-only` 또는 전체 `run.sh`로 preparation을 끝냅니다. |
 | `Previous production segment is incomplete: work/00N` | `--segments START-END`의 START 앞 segment가 완료되지 않았습니다. 앞 segment부터 실행합니다. |
 
@@ -172,7 +173,7 @@ and is not a config mode. Amber 26 serial `pmemd.cuda` is required.
 ### Required inputs
 
 - A reviewed complex PDB passed to `build.sh`
-- `peptide_mask` in `config.toml`, selecting the peptide to boost
+- `peptide_mask` in `config.toml`, selecting the peptide to boost. It is empty by default and must be set before the build.
 
 The build verifies that `peptide_mask` selects atoms.
 
@@ -185,7 +186,7 @@ programs and the default computation.
 ### Run
 
 ```bash
-./build.sh prepared.pdb
+./build.sh prepared_complex.pdb
 ./run.sh --dry-run
 ./run.sh
 ```
@@ -315,11 +316,12 @@ invokes `helpers/config_utils.py` automatically to read this setting.
 
 | Message | Cause and fix |
 | --- | --- |
-| `peptide_mask does not select any atoms: :PEP` | The default `:PEP` is a placeholder. Use the peptide residue numbers in the final topology (for example `:58-65`); AMBER masks use sequential topology residue numbers, not PDB numbering. |
-| `Error: LiGaMD3 and Pep-GaMD require the serial pmemd.cuda engine: ...` | Set `AMBER_ENGINE` or `run.engine` to serial `pmemd.cuda`. |
+| `peptide_mask is empty in config.toml [gamd]. ...` | The default is empty. Set the peptide residues as an AMBER mask before building (for example `:58-65`). tleap numbers residues from 1 in input-PDB order, not by PDB residue number. |
+| `peptide_mask does not select any atoms: ...` | The mask selects no atoms in the final topology. `work/system.parm7` already exists, so move `work` aside, fix the mask and build again. |
+| `Engine configuration error (...): Unsupported engine '...'; expected: pmemd.cuda` | Set `AMBER_ENGINE` or `run.engine` to serial `pmemd.cuda`. |
 | `Config error: production steps must be divisible by production_segments` | Make `production_steps` a multiple of `production_segments`. |
 | `GaMD statistics in config.toml: NAME (V) must be a multiple of averaging_interval_steps (A)` | Make all four statistics lengths multiples of `averaging_interval_steps`. |
-| `Warning: averaging_interval_steps (A) is below 4 x topology atoms (...). ...` | The build continues. Choose the value using the averaging-window section below. |
+| `Warning: averaging_interval_steps (A) is below 4 x topology atoms (...). ...` | The build continues. Choose the value using the "Boost limits and averaging window" section above. |
 | `Completed GaMD parameter preparation is required for production: ...` | Finish preparation with `--preparation-only` or a full `run.sh` before `--production-only`. |
 | `Previous production segment is incomplete: work/00N` | The segment before START in `--segments START-END` is not complete. Run the earlier segment first. |
 

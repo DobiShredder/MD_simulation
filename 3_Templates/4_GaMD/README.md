@@ -30,7 +30,7 @@ LiGaMD3와 Pep-GaMD는 Amber 26의 serial `pmemd.cuda`가 필요합니다. 두 i
 
 | Program | 사용하는 script |
 | --- | --- |
-| Amber 26 `pmemd.cuda` | `run.sh`. 4.2와 4.3은 다른 executable을 거부합니다. |
+| Amber 26 `pmemd.cuda` | `run.sh`. 세 template 모두 다른 executable을 거부합니다. |
 | AmberTools 26 `tleap` (`TLEAP`로 변경 가능) | `build.sh` |
 | Python 3와 leaf의 `requirements.txt`(ParmEd, NumPy, Python 3.11 미만에서는 `tomli`) | `build.sh`와 `run.sh`가 호출하는 `helpers/` |
 
@@ -89,7 +89,7 @@ engine runs require `--allow-unverified`.
 
 | Program | Used by |
 | --- | --- |
-| Amber 26 `pmemd.cuda` | `run.sh`. 4.2 and 4.3 reject any other executable. |
+| Amber 26 `pmemd.cuda` | `run.sh`. All three templates reject any other executable. |
 | AmberTools 26 `tleap` (override with `TLEAP`) | `build.sh` |
 | Python 3 and the leaf's `requirements.txt` (ParmEd, NumPy, `tomli` below Python 3.11) | `helpers/` called by `build.sh` and `run.sh` |
 

@@ -134,7 +134,8 @@ grid도 재사용하지 않습니다. Parse-only 검사에서 `HILLS`와 `COLVAR
 | `PLUMED action FUNNEL_PS is unavailable` | PLUMED 2.10을 `--enable-modules=funnel`로 다시 build합니다. |
 | `antechamber failed`, `parmchk2 failed` | `work/antechamber.log`, `work/parmchk2.log`. BEN SDF가 `download.sh`로 받은 파일인지 봅니다. |
 | `Funnel setup did not create: ...` | `prepare.py`가 axis residue mapping을 만들었는지와 `build.sh` 출력의 `setup_funnel.py` error를 봅니다. |
-| `PLUMED input check failed`, `PLUMED setup did not create the funnel grid` | `work/plumed.parse.log` |
+| `PLUMED input check failed` | `work/plumed.parse.log` |
+| `PLUMED setup did not create the funnel grid` | Parse는 통과했지만 `work/FUNNEL_GRID`가 없습니다. 성공한 parse의 log는 지워지므로 `work/plumed.dat`의 `FUNNEL` line과 PLUMED funnel module build를 확인합니다. |
 | `production failed. Engine output: .../production.out` | PLUMED error는 `work/engine.production.log`에 있습니다. |
 | `Partial production output already exists and is retained` | Error에 출력된 `mv` command로 partial output을 옮기고 `./run.sh`를 다시 실행합니다. |
 
@@ -281,7 +282,8 @@ check renames `HILLS` and `COLVAR` to temporary `plumed.parse.HILLS` and
 | `PLUMED action FUNNEL_PS is unavailable` | Rebuild PLUMED 2.10 with `--enable-modules=funnel`. |
 | `antechamber failed`, `parmchk2 failed` | `work/antechamber.log`, `work/parmchk2.log`; confirm the BEN SDF came from `download.sh`. |
 | `Funnel setup did not create: ...` | Check that `prepare.py` wrote the axis residue mapping and read the `setup_funnel.py` error in the `build.sh` output. |
-| `PLUMED input check failed`, `PLUMED setup did not create the funnel grid` | `work/plumed.parse.log` |
+| `PLUMED input check failed` | `work/plumed.parse.log` |
+| `PLUMED setup did not create the funnel grid` | The parse passed but `work/FUNNEL_GRID` is missing. The log of a successful parse is removed, so check the `FUNNEL` line in `work/plumed.dat` and the PLUMED funnel-module build. |
 | `production failed. Engine output: .../production.out` | PLUMED errors are in `work/engine.production.log`. |
 | `Partial production output already exists and is retained` | Move the partial output with the printed `mv` command and rerun `./run.sh`. |
 

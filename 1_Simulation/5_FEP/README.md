@@ -61,7 +61,7 @@ command -v edgembar
 
 `run.sh`는 `work/states.tsv` 순서대로 window를 하나씩 실행하므로 GPU 하나를
 사용합니다. Tutorial `run.sh`에는 window 선택 option이 없습니다. Window를 나누어
-동시에 실행하려면 template의 `--system`, `--stage`, `--windows`를 사용합니다.
+동시에 실행하려면 template의 `--system`, `--stage`(ABFE만), `--windows`를 사용합니다.
 
 ### 결과 해석
 
@@ -147,7 +147,7 @@ Every window runs the same four stages. MD stages use `dt=0.002` ps (2 fs).
 
 `run.sh` runs the windows one after another in `work/states.tsv` order, so it
 uses one GPU. The tutorial `run.sh` has no window selection. To split windows
-across concurrent runs, use the template options `--system`, `--stage` and
+across concurrent runs, use the template options `--system`, `--stage` (ABFE only) and
 `--windows`.
 
 ### Interpreting the results

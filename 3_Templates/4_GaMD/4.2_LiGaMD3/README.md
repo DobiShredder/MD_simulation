@@ -173,12 +173,12 @@ template이며, runner가 각 segment directory의 `production.in`을 생성해 
 | Message | 원인과 조치 |
 | --- | --- |
 | `Error: LiGaMD3 on the Amber 26 GPU engine is unverified; rerun with --allow-unverified after reading README.md.` | 위 미검증 설명을 읽은 뒤 `--allow-unverified`를 붙입니다. `--dry-run`에는 필요하지 않습니다. |
-| `Error: LiGaMD3 and Pep-GaMD require the serial pmemd.cuda engine: ...` | `AMBER_ENGINE` 또는 `run.engine`을 serial `pmemd.cuda`로 바꿉니다. |
-| `LiGaMD3 receptor_mask must select one contiguous atom range` 또는 `ligand_mask and receptor_mask overlap` | `receptor_mask`가 water, ion과 ligand를 모두 제외해야 합니다. `salt_type`을 바꾸면 해당 ion residue 이름도 제외합니다. |
+| `Engine configuration error (...): Unsupported engine '...'; expected: pmemd.cuda` | `AMBER_ENGINE` 또는 `run.engine`을 serial `pmemd.cuda`로 바꿉니다. |
+| `LiGaMD3 receptor_mask must select one contiguous atom range` 또는 `ligand_mask and receptor_mask overlap` | `receptor_mask`가 water, ion과 ligand를 모두 제외해야 합니다. 기본 mask의 `Na+,Cl-`는 `salt_type`에 맞게 자동으로 바뀝니다. 직접 쓴 mask에서는 ion residue 이름을 함께 고칩니다. |
 | `Config error: ligand MOL2 charge does not match ligand_net_charge: X` | `ligand_net_charge`를 MOL2 charge 합과 맞추거나 charge를 다시 fitting합니다. |
 | `Config error: production steps must be divisible by production_segments` | `production_steps`를 `production_segments`의 배수로 맞춥니다. |
 | `GaMD statistics in config.toml: NAME (V) must be a multiple of averaging_interval_steps (A)` | 네 statistics 길이를 `averaging_interval_steps`의 배수로 맞춥니다. |
-| `Warning: averaging_interval_steps (A) is below 4 x topology atoms (...). ...` | Build는 계속됩니다. 아래 averaging window section을 보고 값을 정합니다. |
+| `Warning: averaging_interval_steps (A) is below 4 x topology atoms (...). ...` | Build는 계속됩니다. 위 "Boost 상한과 averaging window" section을 보고 값을 정합니다. |
 | `Completed GaMD parameter preparation is required for production: ...` | `--production-only` 전에 `--preparation-only` 또는 전체 `run.sh`로 preparation을 끝냅니다. |
 | `Previous production segment is incomplete: work/00N` | `--segments START-END`의 START 앞 segment가 완료되지 않았습니다. 앞 segment부터 실행합니다. |
 
@@ -358,12 +358,12 @@ invokes `helpers/config_utils.py` automatically to read this setting.
 | Message | Cause and fix |
 | --- | --- |
 | `Error: LiGaMD3 on the Amber 26 GPU engine is unverified; rerun with --allow-unverified after reading README.md.` | Read the unverified note above, then add `--allow-unverified`. `--dry-run` does not need it. |
-| `Error: LiGaMD3 and Pep-GaMD require the serial pmemd.cuda engine: ...` | Set `AMBER_ENGINE` or `run.engine` to serial `pmemd.cuda`. |
-| `LiGaMD3 receptor_mask must select one contiguous atom range` or `ligand_mask and receptor_mask overlap` | `receptor_mask` must exclude water, ions and the ligand. When changing `salt_type`, exclude that ion residue name too. |
+| `Engine configuration error (...): Unsupported engine '...'; expected: pmemd.cuda` | Set `AMBER_ENGINE` or `run.engine` to serial `pmemd.cuda`. |
+| `LiGaMD3 receptor_mask must select one contiguous atom range` or `ligand_mask and receptor_mask overlap` | `receptor_mask` must exclude water, ions and the ligand. The default mask's `Na+,Cl-` follows `salt_type` automatically; in a custom mask, update the ion residue names yourself. |
 | `Config error: ligand MOL2 charge does not match ligand_net_charge: X` | Match `ligand_net_charge` to the MOL2 charge sum or refit the charges. |
 | `Config error: production steps must be divisible by production_segments` | Make `production_steps` a multiple of `production_segments`. |
 | `GaMD statistics in config.toml: NAME (V) must be a multiple of averaging_interval_steps (A)` | Make all four statistics lengths multiples of `averaging_interval_steps`. |
-| `Warning: averaging_interval_steps (A) is below 4 x topology atoms (...). ...` | The build continues. Choose the value using the averaging-window section below. |
+| `Warning: averaging_interval_steps (A) is below 4 x topology atoms (...). ...` | The build continues. Choose the value using the "Boost limits and averaging window" section above. |
 | `Completed GaMD parameter preparation is required for production: ...` | Finish preparation with `--preparation-only` or a full `run.sh` before `--production-only`. |
 | `Previous production segment is incomplete: work/00N` | The segment before START in `--segments START-END` is not complete. Run the earlier segment first. |
 

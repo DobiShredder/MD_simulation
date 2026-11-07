@@ -97,7 +97,7 @@ process로 실행하고, 각 process가 쓸 GPU를 scheduler나 `CUDA_VISIBLE_DE
 다음은 US 결과를 볼 때 일반적으로 쓰는 확인 항목입니다([Kästner, 2011](https://doi.org/10.1002/wcms.66);
 [Grossfield et al., 2018](https://doi.org/10.33011/livecoms.1.1.5067)).
 
-- `rmd/work/ratchet.dat`의 distance가 6–24 Å window 범위를 모두 지나가야 seed를 고를 수 있습니다.
+- `rmd/work/ratchet.dat`의 distance가 6–24 Å window 범위를 모두 지나가야 seed를 고를 수 있습니다. 이 file은 PLUMED 단위인 nm로 기록하므로 0.6–2.4 nm 범위를 봅니다.
 - 각 window의 `distance.dat` 분포가 center 근처에 있고, 인접 window histogram이 겹치는지 analysis의 `overlap.tsv`로 봅니다.
 - Production 앞·뒤 절반으로 각각 계산한 PMF가 비슷한지 비교합니다. 차이가 크면 window당 sampling이 부족합니다.
 
@@ -106,7 +106,7 @@ process로 실행하고, 각 process가 쓸 GPU를 scheduler나 `CUDA_VISIBLE_DE
 | Message | 조치 |
 | --- | --- |
 | `AMBER engine not found: pmemd.cuda` | Amber 환경을 불러오거나 `AMBER_ENGINE`에 executable을 지정합니다. |
-| `Run ../prepare.sh first.` | 상위 directory에서 `prepare.sh`를 먼저 실행합니다. |
+| `Run ../prepare.sh first.`(rmd), `Shared topology not found`(us) | 상위 directory에서 `prepare.sh`를 먼저 실행합니다. |
 | `Partial <stage> output is retained` | Message의 `mv` command로 남은 파일을 옮긴 뒤 같은 command를 다시 실행합니다. |
 | `input changed` | 실행 뒤 input이나 topology를 고쳤습니다. 해당 `work`를 옮기고 그 단계부터 다시 실행합니다. |
 
@@ -209,7 +209,7 @@ These are common checks for umbrella sampling
 ([Kästner, 2011](https://doi.org/10.1002/wcms.66);
 [Grossfield et al., 2018](https://doi.org/10.33011/livecoms.1.1.5067)).
 
-- The distance in `rmd/work/ratchet.dat` must pass through the whole 6–24 Å window range before seeds can be selected.
+- The distance in `rmd/work/ratchet.dat` must pass through the whole 6–24 Å window range before seeds can be selected. The file uses the PLUMED unit nm, so look for 0.6–2.4 nm.
 - Each window's `distance.dat` stays near its center, and neighboring histograms overlap; check `overlap.tsv` from the analysis.
 - PMFs computed separately from the first and second halves of production agree. A large difference means each window needs more sampling.
 
@@ -218,7 +218,7 @@ These are common checks for umbrella sampling
 | Message | Action |
 | --- | --- |
 | `AMBER engine not found: pmemd.cuda` | Load the Amber environment or set `AMBER_ENGINE` to an executable. |
-| `Run ../prepare.sh first.` | Run `prepare.sh` in the parent directory first. |
+| `Run ../prepare.sh first.` (rmd), `Shared topology not found` (us) | Run `prepare.sh` in the parent directory first. |
 | `Partial <stage> output is retained` | Move the retained files with the `mv` command in the message and rerun the same command. |
 | `input changed` | An input or the topology was edited after a run. Move that `work` aside and restart that step. |
 

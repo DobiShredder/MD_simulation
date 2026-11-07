@@ -74,14 +74,14 @@ trajectory에서는 조정합니다. MM/GBSA·MM/PBSA는 모든 frame을 계산�
 
 다른 system을 분석할 때는 수정 위치가 나뉘어 있습니다.
 
-- Simulation 경로: `run.sh` 상단의 `simulation_dir`, `topology`, `trajectory`
+- Simulation 경로: `run.sh` 상단의 `simulation_dir`, `topology`(6번은 `solvated_topology`), `trajectory`
 - Atom mask, cutoff와 cpptraj option: `inputs/cpptraj.in`
 - MM/GBSA·MM/PBSA: `inputs/mmpbsa.in`과 `run.sh`의 `ligand_mask`
 - Dimension reduction과 clustering parameter: `anal.py` 상단의 상수
 
 ### Segment로 나뉜 trajectory
 
-1–6번 `run.sh`는 cpptraj `-y`로 trajectory 하나만 읽습니다. `3_Templates`처럼
+1–6번 `run.sh`는 `trajectory` 변수에 지정한 trajectory file 하나만 읽습니다. `3_Templates`처럼
 production이 `work/001/production.nc`, `work/002/production.nc`로 나뉘어 있으면
 먼저 하나로 합칩니다. 아래 command는 template leaf directory에서 실행합니다.
 
@@ -165,8 +165,8 @@ each `inputs/mmpbsa.in`.
 
 To analyze another system, edit:
 
-- Simulation paths: `simulation_dir`, `topology`, and `trajectory` at the top
-  of `run.sh`
+- Simulation paths: `simulation_dir`, `topology` (`solvated_topology` in
+  category 6), and `trajectory` at the top of `run.sh`
 - Atom masks, cutoffs, and cpptraj options: `inputs/cpptraj.in`
 - MM/GBSA and MM/PBSA: `inputs/mmpbsa.in` and `ligand_mask` in `run.sh`
 - Dimensionality-reduction and clustering parameters: constants at the top of
@@ -174,7 +174,8 @@ To analyze another system, edit:
 
 ### Segmented trajectories
 
-The category 1–6 `run.sh` scripts read a single trajectory with cpptraj `-y`.
+The category 1–6 `run.sh` scripts read the single trajectory file named by
+`trajectory`.
 When production is split into segments such as `work/001/production.nc` and
 `work/002/production.nc` (as in `3_Templates`), join them first. Run this from
 the template leaf directory:

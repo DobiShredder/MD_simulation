@@ -112,7 +112,7 @@ Template에는 `anal.py`가 없습니다. Segment별 engine log를 직접 읽습
 
 | Engine | 읽을 log | Acceptance 위치 |
 | --- | --- | --- |
-| AMBER (T-REMD, REUS, GaREUS) | `work/exchange.NNN.log` remlog | `# exchange N` block의 replica별 `Success_rate` |
+| AMBER (T-REMD, REUS, GaREUS) | `work/exchange.NNN.log` remlog | `# exchange N` block의 replica별 `Success rate (i,i+1)` |
 | GROMACS (REST2, REST3) | 각 replica의 `production*.log` | `Repl ex` line과 log 끝의 `Repl average probabilities` |
 
 Column 의미와 leaf별 주의점은 leaf README의 Exchange 품질 해석 section에
@@ -235,7 +235,7 @@ The templates have no `anal.py`; read each segment's engine log directly.
 
 | Engine | Log | Where acceptance appears |
 | --- | --- | --- |
-| AMBER (T-REMD, REUS, GaREUS) | `work/exchange.NNN.log` remlog | Per-replica `Success_rate` in each `# exchange N` block |
+| AMBER (T-REMD, REUS, GaREUS) | `work/exchange.NNN.log` remlog | Per-replica `Success rate (i,i+1)` in each `# exchange N` block |
 | GROMACS (REST2, REST3) | Each replica's `production*.log` | `Repl ex` lines and `Repl average probabilities` at the end of the log |
 
 Leaf READMEs give the columns and leaf-specific notes in their exchange-quality

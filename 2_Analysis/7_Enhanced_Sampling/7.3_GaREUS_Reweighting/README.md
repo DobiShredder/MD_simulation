@@ -51,6 +51,8 @@ GaMD bias는 남아 있습니다. 각 distance bin에서 MBAR weight를 사용�
 | `output/mbar_weights.tsv` | `window`, `frame`, `distance_A`, `boost_kcal_mol`, `mbar_weight`: window와 frame별 unbiased MBAR weight | Å, kcal/mol |
 | `output/overlap_matrix.tsv` | `window`와 state별 column: sampled umbrella state 사이의 MBAR overlap matrix | 0–1 |
 | `output/mbar_diagnostics.tsv` | `pymbar_version`, `frames`, `weight_sum`, `effective_sample_size`, `maximum_weight` | — |
+| `output/summary.tsv`(`prepare.py`) | `window`, `center_A`, `amber_rk_kcal_mol_A2`, `frames` | Å, kcal·mol⁻¹·Å⁻² |
+| `output/series/window_NNN.tsv`(`prepare.py`) | `frame`, `segment`, `distance_A`, `boost_kcal_mol` | Å, kcal/mol |
 
 `weight_sum`은 1입니다. Overlap matrix에서 인접 state 사이 값이 0에 가까우면
 MBAR가 그 state들을 연결할 sample이 부족합니다. 빈 bin의 PMF는 `nan`입니다.
@@ -61,7 +63,8 @@ MBAR가 그 state들을 연결할 sample이 부족합니다. 빈 bin의 PMF는 `
 계산을 중단합니다.
 
 Input과 output 경로는 `prepare.py`의 `SIMULATION_WORK`와 `OUTPUT_DIR`에서
-설정합니다. AMBER GaMD log 형식이 달라지면 `prepare.py`의 `read_boost()`에서
+설정합니다. `prepare.py`의 `RESTRAINT_FORCE_KCAL_MOL_A2`(AMBER rk, 1.0)는 GaREUS
+`make_restraints.py`의 값과 같아야 합니다. 다르면 error 없이 MBAR 결과가 틀립니다. AMBER GaMD log 형식이 달라지면 `prepare.py`의 `read_boost()`에서
 component column을 확인합니다.
 
 이 계산은 모든 replica에 같은 GaMD parameter가 적용되고 umbrella restraint만
@@ -116,6 +119,8 @@ the GaMD bias.
 | `output/mbar_weights.tsv` | `window`, `frame`, `distance_A`, `boost_kcal_mol`, `mbar_weight`: unbiased MBAR weight per window and frame | Å, kcal/mol |
 | `output/overlap_matrix.tsv` | `window` and one column per state: MBAR overlap matrix between sampled umbrella states | 0–1 |
 | `output/mbar_diagnostics.tsv` | `pymbar_version`, `frames`, `weight_sum`, `effective_sample_size`, `maximum_weight` | — |
+| `output/summary.tsv` (`prepare.py`) | `window`, `center_A`, `amber_rk_kcal_mol_A2`, `frames` | Å, kcal·mol⁻¹·Å⁻² |
+| `output/series/window_NNN.tsv` (`prepare.py`) | `frame`, `segment`, `distance_A`, `boost_kcal_mol` | Å, kcal/mol |
 
 `weight_sum` is 1. Near-zero overlap between neighboring states means MBAR has
 too few samples to connect them. Empty bins have `nan` PMFs.
@@ -126,7 +131,9 @@ GaREUS `inputs/production.in`. The PMF grid spans `PMF_MIN_ANGSTROM` to
 it stop the calculation.
 
 Set input and output paths with `SIMULATION_WORK` and `OUTPUT_DIR` in
-`prepare.py`. If the AMBER GaMD log format changes, check the component columns
+`prepare.py`. `RESTRAINT_FORCE_KCAL_MOL_A2` in `prepare.py` (AMBER rk, 1.0) must
+match the GaREUS `make_restraints.py` value; a mismatch gives wrong MBAR results
+without an error. If the AMBER GaMD log format changes, check the component columns
 in `read_boost()` in `prepare.py`.
 
 The reduced-potential construction assumes that all replicas share the same

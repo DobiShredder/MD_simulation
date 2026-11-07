@@ -115,6 +115,19 @@ if (( ! dry_run )); then
     if ! command -v "$python" >/dev/null 2>&1; then
         die "Python not found: $python"
     fi
+
+    # The peptide depends on the input complex, so there is no usable default.
+    peptide_mask=$("$python" - "$config" <<'PY'
+import sys
+sys.path.insert(0, "helpers")
+from pathlib import Path
+from config_utils import load_config
+print(load_config(Path(sys.argv[1])).get("gamd", {}).get("peptide_mask", "").strip())
+PY
+)
+    if [[ -z "$peptide_mask" ]]; then
+        die "peptide_mask is empty in $config [gamd]. Set the peptide residues by their order in $input, for example \":58-65\"."
+    fi
 fi
 
 if (( dry_run )); then

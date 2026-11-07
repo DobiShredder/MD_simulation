@@ -233,7 +233,7 @@ dynamics(`ntt=3`)는 restart마다 다른 `ig`를 써야 하므로 stage마다 1
 | Message 또는 증상 | 원인 | 조치 |
 | --- | --- | --- |
 | `Mask must select at least one atom: ...` 또는 `The two reaction-coordinate masks must not select the same atom` | Mask가 비었거나 두 mask가 겹칩니다. | `work/system.parm7` 기준 residue 번호와 atom 이름으로 mask를 고치고 새 `WORK_DIR`에서 build합니다. |
-| `Replica exchange requires at least two and an even number of windows: ...` 또는 `window centers must be non-empty, unique, and increasing` | `windows.tsv`의 center 수가 홀수이거나 순서가 틀립니다. | Center를 오름차순 짝수 개로 맞춥니다. |
+| `Replica exchange requires at least two and an even number of windows: ...`(build), `... states: ...`(run) 또는 `window centers must be non-empty, unique, and increasing` | `windows.tsv`의 center 수가 홀수이거나 순서가 틀립니다. | Center를 오름차순 짝수 개로 맞춥니다. |
 | `Build did not complete: work/build.done is missing; ...` | Build가 중간에 실패했습니다. | Build error를 확인하고 `mv work work.old` 후 다시 build합니다. |
 | `MPI_PROCESSES must equal the window count: N` | Rank 수가 window 수와 다릅니다. | `MPI_PROCESSES`를 지우거나 N으로 둡니다. |
 | `REUS segment N failed: work/mpirun.production.NNN.log, work/exchange.NNN.log` | MPI, GPU 또는 engine error입니다. | `run.sh`가 출력한 log 끝부분과 각 window의 `production.NNN.out`을 확인합니다. 남은 partial output은 [GUIDE.md 부록](../../../GUIDE.md#4-부록-실행-상태와-복구) 절차로 옮깁니다. |
@@ -474,7 +474,7 @@ heating +0, equilibration +1,000,000, and production segment N
 | Message or symptom | Cause | Action |
 | --- | --- | --- |
 | `Mask must select at least one atom: ...` or `The two reaction-coordinate masks must not select the same atom` | A mask is empty or the masks overlap. | Fix the masks using residue numbers and atom names in `work/system.parm7`, then build in a new `WORK_DIR`. |
-| `Replica exchange requires at least two and an even number of windows: ...` or `window centers must be non-empty, unique, and increasing` | `windows.tsv` has an odd count or bad order. | Provide an even number of increasing centers. |
+| `Replica exchange requires at least two and an even number of windows: ...` (build), `... states: ...` (run), or `window centers must be non-empty, unique, and increasing` | `windows.tsv` has an odd count or bad order. | Provide an even number of increasing centers. |
 | `Build did not complete: work/build.done is missing; ...` | The build failed partway. | Read the build error, `mv work work.old`, and rebuild. |
 | `MPI_PROCESSES must equal the window count: N` | The rank count differs from the window count. | Unset `MPI_PROCESSES` or set it to N. |
 | `REUS segment N failed: work/mpirun.production.NNN.log, work/exchange.NNN.log` | MPI, GPU or engine error. | Read the log tail printed by `run.sh` and each window's `production.NNN.out`. Move retained partial output as described in the [GUIDE.md appendix](../../../GUIDE.md#4-appendix-run-state-and-recovery). |

@@ -45,8 +45,8 @@ python3 anal.py
 | 단계 | 길이 | 실행 횟수 |
 | --- | --- | --- |
 | Basis state 준비(`build.sh`) | Minimization 5000 cycles, heating 50,000 steps(100 ps), NPT equilibration 50,000 steps(100 ps) | 1회 |
-| WE segment(`run.sh`) | 500 steps(τ = 1 ps) | 첫 iteration 4개, 이후 occupied bin 수 × 4개(bin 11개 × 4 = 최대 44개) |
-| 전체 WE run | 20 iterations | 최대 880 segments, MD 합계 최대 880 ps |
+| WE segment(`run.sh`) | 500 steps(τ = 1 ps) | 첫 iteration 4개, 이후 occupied bin 수 × 4개(최대 40개: bin 11개 중 target bin `[3.0, inf)`은 recycle되어 전파하지 않음) |
+| 전체 WE run | 20 iterations | 최대 764 segments(4 + 19 × 40), MD 합계 최대 764 ps |
 
 Segment는 serial work manager로 한 GPU에서 하나씩 실행합니다.
 
@@ -221,8 +221,8 @@ python3 anal.py
 | Stage | Length | Runs |
 | --- | --- | --- |
 | Basis-state preparation (`build.sh`) | 5000 minimization cycles, 50,000-step heating (100 ps), 50,000-step NPT equilibration (100 ps) | Once |
-| WE segment (`run.sh`) | 500 steps (τ = 1 ps) | 4 in the first iteration, then occupied bins × 4 (at most 11 bins × 4 = 44) |
-| Whole WE run | 20 iterations | At most 880 segments, at most 880 ps of MD in total |
+| WE segment (`run.sh`) | 500 steps (τ = 1 ps) | 4 in the first iteration, then occupied bins × 4 (at most 40: of the 11 bins, the target bin `[3.0, inf)` is recycled and never propagated) |
+| Whole WE run | 20 iterations | At most 764 segments (4 + 19 × 40), at most 764 ps of MD in total |
 
 Segments run one at a time on one GPU through the serial work manager.
 

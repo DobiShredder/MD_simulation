@@ -36,8 +36,8 @@ python3 anal.py
 | 단계 | 기본 길이 | 실행 횟수 |
 | --- | --- | --- |
 | Basis state 준비(`build.sh`) | Minimization 5000 cycles, heating 250,000 steps(500 ps), NPT equilibration 500,000 steps(1 ns) | 1회 |
-| WE segment | `tau_steps=5000`(10 ps) | 첫 iteration `initial_walkers`(4)개, 이후 occupied bin 수 × `walkers_per_bin`(기본 bin 11개 × 4 = 최대 44개) |
-| 전체 WE run | 10,000 iterations(1,000 iterations × 10 blocks) | 최대 440,000 segments, MD 합계 최대 4.4 μs |
+| WE segment | `tau_steps=5000`(10 ps) | 첫 iteration `initial_walkers`(4)개, 이후 occupied bin 수 × `walkers_per_bin`(최대 40개: 기본 bin 11개 중 target bin `[3.0, inf)`은 recycle되어 전파하지 않음) |
+| 전체 WE run | 10,000 iterations(1,000 iterations × 10 blocks) | 최대 399,964 segments(4 + 9,999 × 40), MD 합계 최대 약 4.0 μs |
 
 기본 serial 실행은 한 GPU에서 segment를 하나씩 전파합니다.
 `WESTPA_WORK_MANAGER=processes`와 `WE_GPU_IDS`를 쓰면 worker 수만큼 segment를
@@ -283,8 +283,8 @@ python3 anal.py
 | Stage | Default length | Runs |
 | --- | --- | --- |
 | Basis-state preparation (`build.sh`) | 5000 minimization cycles, 250,000-step heating (500 ps), 500,000-step NPT equilibration (1 ns) | Once |
-| WE segment | `tau_steps=5000` (10 ps) | `initial_walkers` (4) in the first iteration, then occupied bins × `walkers_per_bin` (at most 11 default bins × 4 = 44) |
-| Whole WE run | 10,000 iterations (1,000 iterations × 10 blocks) | At most 440,000 segments, at most 4.4 μs of MD in total |
+| WE segment | `tau_steps=5000` (10 ps) | `initial_walkers` (4) in the first iteration, then occupied bins × `walkers_per_bin` (at most 40: of the 11 default bins, the target bin `[3.0, inf)` is recycled and never propagated) |
+| Whole WE run | 10,000 iterations (1,000 iterations × 10 blocks) | At most 399,964 segments (4 + 9,999 × 40), about 4.0 μs of MD in total at most |
 
 The default serial run propagates one segment at a time on one GPU. With
 `WESTPA_WORK_MANAGER=processes` and `WE_GPU_IDS`, as many segments as workers

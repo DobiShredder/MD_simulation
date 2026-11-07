@@ -66,7 +66,7 @@ Production이 완료된 `work`에서 다시 실행하면 engine을 실행하지 
 | Stage | Input | 길이 | Positional restraint | Trajectory |
 | --- | --- | --- | --- | --- |
 | Solvent minimization | `min-solvent.in` | `maxcyc=5000`, 처음 `ncyc=2500`은 steepest descent | Protein·JZ4 heavy atom, 10 kcal·mol⁻¹·Å⁻² | 없음 |
-| Whole-system minimization | `min-all.in` | `maxcyc=5000` | 없음 | 없음 |
+| Whole-system minimization | `min-all.in` | `maxcyc=5000`, 처음 `ncyc=2500`은 steepest descent | 없음 | 없음 |
 | NVT heating | `heat.in` | `nstlim=100000`, 200 ps, 20→300 K | 5 kcal·mol⁻¹·Å⁻² | `heat.nc` 20 frame |
 | NPT equilibration | `equil.in` | `nstlim=50000`, 100 ps | 1 kcal·mol⁻¹·Å⁻² | `equil.nc` 10 frame |
 | NPT production | `production.in` | `nstlim=500000`, 1 ns | 없음 | `production.nc` 100 frame |
@@ -191,7 +191,7 @@ concurrent-run protection.
 | Stage | Input | Length | Positional restraint | Trajectory |
 | --- | --- | --- | --- | --- |
 | Solvent minimization | `min-solvent.in` | `maxcyc=5000`, first `ncyc=2500` steepest descent | Protein and JZ4 heavy atoms, 10 kcal·mol⁻¹·Å⁻² | None |
-| Whole-system minimization | `min-all.in` | `maxcyc=5000` | None | None |
+| Whole-system minimization | `min-all.in` | `maxcyc=5000`, first `ncyc=2500` steepest descent | None | None |
 | NVT heating | `heat.in` | `nstlim=100000`, 200 ps, 20→300 K | 5 kcal·mol⁻¹·Å⁻² | `heat.nc`, 20 frames |
 | NPT equilibration | `equil.in` | `nstlim=50000`, 100 ps | 1 kcal·mol⁻¹·Å⁻² | `equil.nc`, 10 frames |
 | NPT production | `production.in` | `nstlim=500000`, 1 ns | None | `production.nc`, 100 frames |

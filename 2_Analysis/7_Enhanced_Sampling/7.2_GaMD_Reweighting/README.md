@@ -16,7 +16,7 @@ cd 2_Analysis/7_Enhanced_Sampling/7.2_GaMD_Reweighting
 ./run.sh pepgamd ../../../1_Simulation/4_GaMD/4.3_Pep-GaMD/work
 ~~~
 
-Profile별 CV는 Chignolin terminal Cα distance, BEN–Asp189 side-chain COM
+Profile별 CV는 Chignolin terminal Cα distance, BEN heavy-atom COM–Asp189 carboxylate(OD1, OD2) COM
 distance와 receptor alignment 후 peptide backbone RMSD입니다. `cv.dat` frame
 수와 GaMD log의 boost record 수가 같아야 합니다. 기본 1 ns example은 둘 다
 100입니다.
@@ -74,8 +74,8 @@ simulation's `work` directory, for example
 `./run.sh chignolin ../../../1_Simulation/4_GaMD/4.1_GaMD/work`. It requires
 cpptraj, Python 3, and NumPy.
 
-The profile CVs are the Chignolin terminal Cα distance, the BEN–Asp189
-side-chain COM distance, and the peptide backbone RMSD after receptor
+The profile CVs are the Chignolin terminal Cα distance, the BEN heavy-atom
+COM to Asp189 carboxylate (OD1, OD2) COM distance, and the peptide backbone RMSD after receptor
 alignment. The `cv.dat` frame count must match the GaMD boost record count
 (100 each in the default 1 ns example).
 

@@ -60,7 +60,8 @@ pmemd 안에서 난 PLUMED error도 `work/engine.production.log`에 남습니다
 
 ### AMBER와 PLUMED 연결
 
-`run.sh`는 `inputs/plumed.dat.template`에서 `work/plumed.dat`을 만듭니다.
+`run.sh`는 `inputs/plumed.dat.template`에서 `work/plumed.dat`을 만듭니다. Funnel MetaD는
+`build.sh`가 `setup_funnel.py`로 만듭니다.
 Production input의 `&cntrl`에 있는 `plumed=1`, `plumedfile='plumed.dat'`가
 AMBER에서 PLUMED를 호출합니다. Minimization, heating과 equilibration에는 PLUMED를
 쓰지 않습니다. 이 두 keyword는 Amber 26 manual에서 확인하지 못했으며 실제
@@ -70,8 +71,8 @@ PLUMED input은 PLUMED 기본 unit인 energy kJ/mol, length nm, time ps를 씁�
 AMBER의 kcal/mol과 Å은 MD engine interface가 변환하므로 `COLVAR`, `HILLS`,
 `fes.dat`의 energy도 kJ/mol입니다.
 
-Tutorial production은 한 번만 실행합니다. `run.sh`가 template의 `@RESTART@`와
-`@STATE_RFILE@` 자리를 비워 빈 bias에서 시작합니다. `RESTART`, `HILLS`/`KERNELS`와
+Tutorial production은 한 번만 실행합니다. `run.sh`(Funnel은 `setup_funnel.py`)가
+template의 `@RESTART@`와 `@STATE_RFILE@` 자리를 비워 빈 bias에서 시작합니다. `RESTART`, `HILLS`/`KERNELS`와
 `STATE_RFILE`/`STATE_WFILE`로 bias를 이어받는 segment 실행은
 [MetaD template](../../3_Templates/7_MetaD/README.md)에 있습니다.
 
@@ -148,7 +149,8 @@ Confirm with a short coupled run that the installed engine supports PLUMED.
 
 ### How AMBER and PLUMED connect
 
-`run.sh` writes `work/plumed.dat` from `inputs/plumed.dat.template`.
+`run.sh` writes `work/plumed.dat` from `inputs/plumed.dat.template`; for Funnel
+MetaD, `build.sh` writes it through `setup_funnel.py`.
 `plumed=1` and `plumedfile='plumed.dat'` in the production `&cntrl` namelist make
 AMBER call PLUMED. Minimization, heating and equilibration do not use PLUMED.
 These two keywords were not found in the Amber 26 manual, and a real coupled run
@@ -158,8 +160,8 @@ PLUMED inputs use PLUMED's default units: energy kJ/mol, length nm, time ps.
 The MD-engine interface converts AMBER's kcal/mol and Å, so energies in
 `COLVAR`, `HILLS` and `fes.dat` are in kJ/mol.
 
-The tutorial production runs once. `run.sh` blanks the `@RESTART@` and
-`@STATE_RFILE@` placeholders, so the bias starts empty. Segmented runs that
+The tutorial production runs once. `run.sh` (`setup_funnel.py` for Funnel)
+blanks the `@RESTART@` and `@STATE_RFILE@` placeholders, so the bias starts empty. Segmented runs that
 continue the bias through `RESTART`, `HILLS`/`KERNELS` and
 `STATE_RFILE`/`STATE_WFILE` are in the
 [MetaD template](../../3_Templates/7_MetaD/README.md).

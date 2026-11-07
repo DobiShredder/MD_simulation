@@ -39,7 +39,7 @@ input, output과 주요 option을 설명합니다.
 | Bash 4.4 이상, `curl`, Python 3 | 모든 `download.sh`, `prepare.py`와 자동 호출되는 `helpers/` |
 | AmberTools 26 `tleap`, `cpptraj` | 모든 topology build와 이후 analysis |
 | AmberTools 26 `antechamber`, `parmchk2` | 1.2 `prepare.sh`의 JZ4 parameter |
-| NumPy | 1.3 `1_Coordinate_Build/run.sh` |
+| NumPy | 1.3 `1_Coordinate_Build/prepare.py`, `run.sh` |
 | Amber 26 `pmemd.cuda`와 NVIDIA GPU | 기본 MD engine입니다. 다른 executable은 `AMBER_ENGINE`으로 지정합니다. |
 
 설치는 [저장소 README](../../README.md)의 AmberTools 26 설치 section을 따릅니다.
@@ -119,7 +119,7 @@ Each system README documents its scripts, inputs, outputs, and key options.
 | Bash 4.4 or newer, `curl`, Python 3 | Every `download.sh`, `prepare.py`, and the automatically called `helpers/` |
 | AmberTools 26 `tleap`, `cpptraj` | Every topology build and the later analysis |
 | AmberTools 26 `antechamber`, `parmchk2` | JZ4 parameters in 1.2 `prepare.sh` |
-| NumPy | 1.3 `1_Coordinate_Build/run.sh` |
+| NumPy | 1.3 `1_Coordinate_Build/prepare.py`, `run.sh` |
 | Amber 26 `pmemd.cuda` and an NVIDIA GPU | Default MD engine; `AMBER_ENGINE` selects another executable. |
 
 Follow the AmberTools 26 installation section of the

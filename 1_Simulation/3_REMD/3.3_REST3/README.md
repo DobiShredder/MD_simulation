@@ -59,13 +59,13 @@ temperature가 아니며 system과 force field에 맞춰 정해야 하는 schedu
 
 준비 사항: [family README의 준비 사항](../README.md#준비-사항)에 있는
 PLUMED-patched `GROMACS 2024.3`(`gmx`, `gmx_mpi`)과 MPI launcher, AMBER 26
-`tleap`, ParmEd·MDAnalysis·numpy와 `download.sh`가 받는
+`tleap`, `requirements.txt`의 ParmEd·MDAnalysis·numpy와 `download.sh`가 받는
 `repex-topology-parser==0.2.2` source가 필요합니다. `build.sh`는 `TLEAP`,
 `GROMACS`를, `run.sh`는 `GROMACS`, `GROMACS_MPI`, `MPI_LAUNCHER`를 executable
 override로 읽습니다.
 
 ```bash
-python3 -m pip install parmed MDAnalysis numpy
+python3 -m pip install -r requirements.txt
 ./download.sh
 python3 prepare.py structure/1UAO.raw.pdb structure/chignolin.pdb
 ./build.sh structure/chignolin.pdb
@@ -201,6 +201,11 @@ pair당 시도가 약 250회뿐이므로 ratio는 경향만 보여줍니다.
 bundled file을 읽습니다. 두 file 모두 comma, semicolon, vertical bar, space,
 tab 또는 newline으로 값을 구분할 수 있고 `#` 뒤에는 comment를 쓸 수 있습니다.
 
+아래는 구분자 형식을 보여 주는 예시이며, 실제 file의 값을 소수 셋째 자리로 줄였습니다.
+
+The example below shows the separator format; the temperatures are the bundled
+values rounded to three decimals.
+
 ```text
 # temperatures.txt
 300.000, 317.890, 336.847, 356.935
@@ -212,7 +217,7 @@ tab 또는 newline으로 값을 구분할 수 있고 `#` 뒤에는 comment를 �
 ```
 
 첫 temperature는 300 K이고 이후 값은 증가해야 합니다. κ는 모두 1.0 이상이어야
-하며 첫 값은 1.0이어야 합니다. `3_Templates/3_REMD/3.3_REST3`와 같은 규칙입니다. 두 목록의 값 개수는 같아야 합니다. Temperature만으로
+하며 첫 값은 1.0이어야 합니다. Template은 첫 값을 검사하지 않습니다. 두 목록의 값 개수는 같아야 합니다. Temperature만으로
 κ가 결정되지는 않습니다. `build.sh`는 λ와 deterministic seed를 계산해
 `work/states.tsv`를 만들며 `run.sh`는 data row 수를 replica 수로 사용합니다.
 
@@ -274,8 +279,8 @@ GROMACS로 실행하지 않았습니다(미검증).
 ## English
 
 This example runs eight-state solvent-scaled REST3 for ff19SB/OPC Chignolin.
-It uses a geometric 300–450 K effective-temperature ladder, the fixed kappa
-schedule shown above and a 300 K physical thermostat. Equilibration is 100 ps,
+It uses a geometric 300–450 K effective-temperature ladder, a fixed kappa
+schedule (1.000 for replicas 0–3, then 1.005, 1.010, 1.015 and 1.020) and a 300 K physical thermostat. Equilibration is 100 ps,
 production is one 1 ns segment per replica, and exchanges are attempted every
 2 ps.
 
@@ -319,13 +324,13 @@ solvent temperature or universal value.
 
 Prerequisites: the PLUMED-patched GROMACS 2024.3 (`gmx`, `gmx_mpi`) and MPI
 launcher described in the [family README prerequisites](../README.md#prerequisites),
-AMBER 26 `tleap`, ParmEd, MDAnalysis and numpy, and the
+AMBER 26 `tleap`, ParmEd, MDAnalysis and numpy from `requirements.txt`, and the
 `repex-topology-parser==0.2.2` source fetched by `download.sh`. `build.sh` reads
 `TLEAP` and `GROMACS`, and `run.sh` reads `GROMACS`, `GROMACS_MPI` and
 `MPI_LAUNCHER` as executable overrides.
 
 ```bash
-python3 -m pip install parmed MDAnalysis numpy
+python3 -m pip install -r requirements.txt
 ./download.sh
 python3 prepare.py structure/1UAO.raw.pdb structure/chignolin.pdb
 ./build.sh structure/chignolin.pdb
@@ -473,8 +478,8 @@ is ignored.
 ```
 
 The first temperature must be 300 K and subsequent temperatures must increase.
-Every kappa must be at least 1.0 and the first must be exactly 1.0, the same
-rule as `3_Templates/3_REMD/3.3_REST3`. Both lists must contain
+Every kappa must be at least 1.0 and the first must be exactly 1.0 (the template
+does not check the first value). Both lists must contain
 the same number of values. Temperature determines the lambdas but not kappa.
 `build.sh` assigns deterministic seeds and writes `work/states.tsv`; `run.sh`
 uses its row count as the replica count.

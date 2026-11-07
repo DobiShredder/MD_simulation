@@ -32,7 +32,9 @@ random_seed = "random"
 
 [gamd]
 # AMBER unit: sigma0P, sigma0D kcal/mol (upper limits of boost-potential standard deviations)
-peptide_mask = ":PEP"
+# Required: AMBER mask of the boosted peptide. tleap numbers residues 1..N in the
+# order of the build input PDB (not by PDB residue number), for example ":58-65".
+peptide_mask = ""
 conventional_preparation_steps = 200000
 conventional_statistics_steps = 1000000
 boost_preparation_steps = 200000
