@@ -170,7 +170,8 @@ if names != {expected_name}:
         f"Ligand validation: MOL2 residue name mismatch: expected {expected_name}, found {sorted(names)}"
     )
 observed_charge = sum(float(atom.charge) for atom in ligand.atoms)
-if abs(observed_charge - expected_charge) > 1.0e-4:
+# Same 0.01 e tolerance as the other ligand templates; antechamber MOL2 sums are rounded.
+if abs(observed_charge - expected_charge) > 0.01:
     raise SystemExit(
         f"Ligand validation: MOL2 charge mismatch: expected {expected_charge}, found {observed_charge:.6f}"
     )
