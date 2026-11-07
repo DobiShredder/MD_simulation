@@ -53,6 +53,9 @@ if (( ! ${dry_run:-0} )) && [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_E
 fi
 tleap=${TLEAP:-tleap}
 python=${PYTHON:-python3}
+
+# Unknown config keys are usually typos; warn before any expensive step.
+"$python" helpers/check_config_keys.py "$config" helpers/config_keys.txt
 build_tmp=""
 
 report_build_tmp() {
@@ -76,6 +79,30 @@ remove_build_tmp() {
 }
 
 trap report_build_tmp EXIT
+
+# Run one basis-state engine attempt in work_dir. stdout/stderr are appended
+# to engine_log after a header line; the log is not a stage output.
+run_basis_engine() {
+    local label=$1
+    local engine_output=$2
+    local engine_log=$3
+    shift 3
+    {
+        printf '== %s' "$(date '+%Y-%m-%d %H:%M:%S %Z')"
+        printf ' %q' "$@"
+        printf '\n'
+    } >> "$engine_log"
+    if ! (cd "$work_dir"; "$@") >> "$engine_log" 2>&1; then
+        local log_file
+        for log_file in "$engine_output" "$engine_log"; do
+            if [[ -s "$log_file" ]]; then
+                echo "Last 20 lines of $log_file:" >&2
+                tail -n 20 "$log_file" >&2
+            fi
+        done
+        die "Basis-state $label failed: $engine_output. Engine stdout/stderr: $engine_log"
+    fi
+}
 
 if [[ -d "$work_dir" ]]; then
     existing=$(find "$work_dir" -type f \( -name 'west.h5' -o -name '.block.*.complete' \) -print -quit)
@@ -202,10 +229,9 @@ if [[ ! -f "$work_dir/.minimize.complete" ]]; then
         fi
     done
     echo "Running: WE basis-state minimization"
-    if ! (cd "$work_dir"; "$engine" -O -i inputs/minimize.in -o minimize.out \
-        -p system.parm7 -c system.rst7 -r minimize.rst7 -inf minimize.info); then
-        die "Basis-state minimization failed: $work_dir/minimize.out"
-    fi
+    run_basis_engine minimization "$work_dir/minimize.out" "$work_dir/engine.minimize.log" \
+        "$engine" -O -i inputs/minimize.in -o minimize.out \
+        -p system.parm7 -c system.rst7 -r minimize.rst7 -inf minimize.info
     if [[ ! -s "$work_dir/minimize.out" || ! -s "$work_dir/minimize.rst7" ]]; then
         die "Basis-state minimization output is incomplete: $work_dir"
     fi
@@ -233,11 +259,10 @@ if [[ ! -f "$work_dir/.heat.complete" ]]; then
         fi
     done
     echo "Running: WE basis-state heating"
-    if ! (cd "$work_dir"; "$engine" -O -i inputs/heat.in -o heat.out \
+    run_basis_engine heating "$work_dir/heat.out" "$work_dir/engine.heat.log" \
+        "$engine" -O -i inputs/heat.in -o heat.out \
         -p system.parm7 -c minimize.rst7 -r heat.rst7 -x heat.nc \
-        -inf heat.info -ref minimize.rst7); then
-        die "Basis-state heating failed: $work_dir/heat.out"
-    fi
+        -inf heat.info -ref minimize.rst7
     for output in heat.out heat.rst7 heat.info heat.nc; do
         if [[ ! -s "$work_dir/$output" ]]; then
             die "Basis-state heating output is incomplete: $work_dir/$output"
@@ -263,11 +288,10 @@ if [[ ! -f "$work_dir/.equilibrate.complete" ]]; then
         fi
     done
     echo "Running: WE basis-state equilibration"
-    if ! (cd "$work_dir"; "$engine" -O -i inputs/equilibrate.in -o equilibrate.out \
+    run_basis_engine equilibration "$work_dir/equilibrate.out" "$work_dir/engine.equilibrate.log" \
+        "$engine" -O -i inputs/equilibrate.in -o equilibrate.out \
         -p system.parm7 -c heat.rst7 -r bstates/basis.rst7 \
-        -x equilibrate.nc -inf equilibrate.info); then
-        die "Basis-state equilibration failed: $work_dir/equilibrate.out"
-    fi
+        -x equilibrate.nc -inf equilibrate.info
     for output in equilibrate.out equilibrate.info equilibrate.nc bstates/basis.rst7; do
         if [[ ! -s "$work_dir/$output" ]]; then
             die "Basis-state equilibration output is incomplete: $work_dir/$output"

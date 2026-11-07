@@ -83,12 +83,21 @@ run_basis_stage() {
     local output_restart=$3
     shift 3
     local output_file="$build_dir/$stage.out"
+    local engine_log="$build_dir/engine.$stage.log"
+    local command=(
+        "$AMBER_ENGINE"
+        -O
+        -i "$WEST_SIM_ROOT/inputs/$stage.in"
+        -o "$output_file"
+        -p "$build_dir/system.parm7"
+        -c "$input_restart"
+        -r "$output_restart"
+        -inf "$build_dir/$stage.info"
+        "$@"
+    )
 
     "${PYTHON:-python3}" helpers/input_identity.py \
-        --record "$build_dir/.$stage.identity.json" --stage "WE basis $stage" -- "$AMBER_ENGINE" \
-        -O -i "$WEST_SIM_ROOT/inputs/$stage.in" -o "$output_file" \
-        -p "$build_dir/system.parm7" -c "$input_restart" -r "$output_restart" \
-        -inf "$build_dir/$stage.info" "$@"
+        --record "$build_dir/.$stage.identity.json" --stage "WE basis $stage" -- "${command[@]}"
     local completion_state
     completion_state=$("${PYTHON:-python3}" helpers/input_identity.py \
         --check-completion "$build_dir/.$stage.identity.json")
@@ -98,16 +107,21 @@ run_basis_stage() {
     fi
 
     echo "Running: $stage"
-    if ! "$AMBER_ENGINE" \
-        -O \
-        -i "$WEST_SIM_ROOT/inputs/$stage.in" \
-        -o "$output_file" \
-        -p "$build_dir/system.parm7" \
-        -c "$input_restart" \
-        -r "$output_restart" \
-        -inf "$build_dir/$stage.info" \
-        "$@"; then
-        die "Basis-state $stage failed: $output_file"
+    # Engine stdout/stderr are appended per attempt; the log is not a stage output.
+    {
+        printf '== %s' "$(date '+%Y-%m-%d %H:%M:%S %Z')"
+        printf ' %q' "${command[@]}"
+        printf '\n'
+    } >> "$engine_log"
+    if ! "${command[@]}" >> "$engine_log" 2>&1; then
+        local log_file
+        for log_file in "$output_file" "$engine_log"; do
+            if [[ -s "$log_file" ]]; then
+                echo "Last 20 lines of $log_file:" >&2
+                tail -n 20 "$log_file" >&2
+            fi
+        done
+        die "Basis-state $stage failed: $output_file. Engine stdout/stderr: $engine_log"
     fi
     local output
     for output in "$output_file" "$output_restart"; do

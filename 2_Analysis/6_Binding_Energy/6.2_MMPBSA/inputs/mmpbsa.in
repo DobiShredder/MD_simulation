@@ -1,7 +1,9 @@
 MM/GBSA and MM/PBSA comparison for T4 lysozyme-JZ4
 &general
+# Frame range: endframe=9999999 is the MMPBSA.py default and reads to the
+# last frame. Set startframe/endframe/interval to analyse a subset.
  startframe=1,
- endframe=100,
+ endframe=9999999,
  interval=1,
  keep_files=0,
  netcdf=1,

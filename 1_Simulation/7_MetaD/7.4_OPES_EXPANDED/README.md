@@ -4,7 +4,6 @@
 
 *Potential-energy sample로 `ΔF_n(T)`를 추정한 뒤 300–500 K expanded target에 필요한 bias를 계산합니다. / Potential-energy samples estimate `ΔF_n(T)`, from which the bias for a 300–500 K expanded target is calculated.*
 
-
 ## 한국어
 
 OPES_EXPANDED와 `ECV_MULTITHERMAL`을 연결해 300–500 K의 potential-energy
@@ -14,6 +13,28 @@ OPES_METAD처럼 CV probability distribution을 kernel density estimate로
 구성하지 않습니다. Potential-energy data로 temperature state별 free-energy
 offset `ΔF_n(T)`를 추정하고, 이 state들을 잇는 multithermal bias를 계산합니다.
 
+준비할 software와 AMBER–PLUMED 연결 방식은 [상위 README](../README.md)에 있습니다.
+
+### Script 역할
+
+| 파일 | 역할 |
+|---|---|
+| `build.sh` | Argument로 받은 capped alanine PDB에서 ff19SB/OPC system을 생성합니다. |
+| `check_topology.py` | `build.sh`가 자동 호출하며 capped peptide atom ordering을 검사합니다. |
+| `run.sh` | NPT equilibration 후 fixed-volume multithermal production을 1 ns로 실행합니다. |
+| `anal.py` | potential energy, expanded CV, bias 범위와 `DELTAFS` state 수를 기록합니다. |
+
+### 실행
+
+PLUMED 2.10은 `opes` module을 기본으로 build하지 않습니다. PLUMED configure에
+`--enable-modules=opes`를 추가하고 실행 전에 두 action을 확인합니다. `run.sh`도
+같은 검사를 수행합니다.
+
+```bash
+plumed manual --action ECV_MULTITHERMAL
+plumed manual --action OPES_EXPANDED
+```
+
 ```bash
 cd 1_Simulation/7_MetaD/7.4_OPES_EXPANDED
 ./build.sh structure/alanine-dipeptide.pdb
@@ -21,43 +42,68 @@ cd 1_Simulation/7_MetaD/7.4_OPES_EXPANDED
 python3 anal.py
 ```
 
-### Script 역할
+### 주요 output
 
-| File | 역할 |
+| 파일 | 내용 |
 |---|---|
-| `build.sh` | Argument로 받은 capped alanine PDB에서 ff19SB/OPC system을 생성합니다. |
-| `check_topology.py` | `build.sh`가 자동 호출하며 capped peptide atom ordering을 검사합니다. |
-| `run.sh` | NPT equilibration 후 fixed-volume multithermal production을 1 ns로 실행합니다. |
-| `anal.py` | potential energy, expanded CV, bias 범위와 `DELTAFS` state 수를 기록합니다. |
+| `work/COLVAR` | Potential energy `ene`, expanded CV `ecv.ene`, `opes.bias` |
+| `work/DELTAFS` | Temperature state별 `ΔF_n(T)` |
+| `work/opes.state` | 마지막 adaptive state(`STATE_WFILE`) |
+| `work/analysis/production_summary.tsv` | Energy, `ecv.ene`, bias 범위와 `DELTAFS` state 수 |
+
+`ecv.ene`는 expanded CV이며 instantaneous physical temperature가 아닙니다.
+`anal.py`는 `COLVAR`의 header와 finite 값을 확인하고, 잘못된 input이면 기존
+analysis 결과를 교체하지 않습니다.
+
+### 결과 확인과 해석
+
+`run.sh`는 `1 ns OPES Expanded production completed: .../work/production.nc`로
+끝나고 `python3 anal.py`는 `OPES Expanded diagnostics results: .../work/analysis`로
+끝납니다. 처음 100 ps는 PLUMED 기본 observation 구간이라 `opes.bias`가 0입니다.
+
+Temperature `T`의 observable은 `COLVAR`의 `ene`와 `opes.bias`(둘 다 kJ/mol)로
+reweight합니다(Invernizzi, Piaggi & Parrinello, *Phys. Rev. X* 10:041034, 2020).
+안내용 식이며 이 repository는 구현하지 않았습니다.
+
+```text
+w_T ∝ exp(β₀ · opes.bias − (β_T − β₀) · ene)
+β = 1 / (k_B T), k_B = 0.0083144626 kJ mol⁻¹ K⁻¹, T₀ = 300 K
+```
+
+Observation 구간은 제외하고, `T`는 300–500 K 안에서만 고릅니다. 1 ns와
+10 ps 간격 `COLVAR`(약 100행)로는 온도별 평균의 오차가 큽니다.
 
 ### 주요 option
 
-`TEMP=300` K는 실제 thermostat 온도입니다. `TEMP_MIN=300` K와
-`TEMP_MAX=500` K는 target multithermal range이며 production은 `ntb=1`,
-`ntp=0`으로 box volume을 고정합니다. `PACE=500`은 1 ps마다 OPES estimate를
-갱신합니다. 자동 temperature grid를 사용하므로 state 수는 생성된 `DELTAFS`에서
-확인합니다.
+| Keyword | 값 | Unit | 의미 |
+| --- | --- | --- | --- |
+| `ECV_MULTITHERMAL TEMP` | 300 | K | 실제 thermostat 온도 |
+| `TEMP_MIN`, `TEMP_MAX` | 300, 500 | K | Multithermal target 범위 |
+| `TEMP_STEPS` | 미지정 | – | PLUMED가 temperature 수를 자동으로 정합니다. State 수는 `DELTAFS`에서 확인합니다. |
+| `PACE` | 500 | step(1 ps) | `ΔF_n(T)`와 bias update 간격 |
+| `OBSERVATION_STEPS` | 미지정(PLUMED 기본 100) | `PACE` 단위 | Bias 없이 grid를 준비하는 처음 100 ps |
+| `STATE_WSTRIDE` | 50000 | step(100 ps) | `opes.state` 쓰기 간격 |
+| `PRINT STRIDE` | 5000 | step(10 ps) | `COLVAR` 출력 간격 |
+| Production `ntb`, `ntp` | 1, 0 | – | Box volume을 고정한 NVT |
+| Production `nstlim`, `dt` | 500000, 0.002 | step, ps | 1 ns production |
 
 Production 전 100 ps NPT equilibration은 `skinnb=5.0 Å`로 GPU pair-list 여유를
 늘립니다. 같은 solvent box를 사용하는 WT-MetaD에서 확인한 설정이며 실제
 cutoff는 `cut=10.0 Å`로 유지됩니다.
 
-Production은 `work/`에서 1 ns를 실행하며 `opes.state`와
-`DELTAFS`를 같은 directory에 저장합니다. `anal.py`가 출력하는 `ecv.ene`는
-expanded CV이며 instantaneous physical temperature가 아닙니다.
-Temperature별 observable은 별도 reweighting이 필요합니다.
+Parse-only 검사는 별도 임시 filename을 사용하므로 production의 `DELTAFS`,
+`opes.state`와 `COLVAR`를 생성하거나 partial production으로 판정하지 않습니다.
 
-PLUMED 2.10은 `opes` module을 기본으로 build하지 않습니다. PLUMED configure에
-`--enable-modules=opes`를 추가하고 실행 전에 두 action을 확인합니다.
+### 문제 해결
 
-```bash
-plumed manual --action ECV_MULTITHERMAL
-plumed manual --action OPES_EXPANDED
-```
+| Error message | 확인할 것 |
+| --- | --- |
+| `PLUMED action ECV_MULTITHERMAL is unavailable`, `PLUMED action OPES_EXPANDED is unavailable` | PLUMED 2.10을 `--enable-modules=opes`로 다시 build합니다. |
+| `PLUMED input check failed: .../plumed.parse.dat` | `work/plumed.parse.log` |
+| `production failed. Engine output: .../production.out` | PLUMED error는 `work/engine.production.log`에 있습니다. |
+| `Partial production output already exists and is retained` | Error에 출력된 `mv` command로 `DELTAFS`, `opes.state`를 포함한 partial output을 옮기고 `./run.sh`를 다시 실행합니다. |
 
-`run.sh`는 같은 검사를 수행합니다. Parse-only 검사는 별도 임시 filename을
-사용하므로 production의 `DELTAFS`, `opes.state`와 `COLVAR`를 생성하거나
-partial production으로 판정하지 않습니다.
+### 주의
 
 1 ns는 state 파일과 fixed-volume workflow를 학습하기 위한 길이입니다.
 Keyword는 PLUMED 2.10
@@ -65,72 +111,121 @@ Keyword는 PLUMED 2.10
 [`ECV_MULTITHERMAL`](https://www.plumed.org/doc-v2.10/user-doc/html/_e_c_v__m_u_l_t_i_t_h_e_r_m_a_l.html)을
 기준으로 작성했습니다.
 
-Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 중단하고 파일을 보존합니다. 새 build 전에는 기존 `work/`를 다른 위치에 보관하거나 별도 tutorial 사본을 사용합니다.
-
-Analysis는 COLVAR의 column 수, field name과 finite 값을 확인합니다. 같은 header의 반복은 허용하지만 header 변경, 중복 field와 NaN/Inf는 거부합니다. 잘못된 input을 읽으면 기존 analysis 결과를 교체하지 않습니다. 음수 CV 값은 method의 범위에 따라 사용할 수 있습니다.
-
-공개 analysis entry는 자동으로 `helpers/writer_guard.py`를 호출해 같은 output의 동시 writer를 거부합니다. Engine 실행부터 결과 게시까지 보호하며, signal 종료 시 child가 멈춘 뒤 lock을 해제합니다. Lock을 임의로 삭제해 실행을 재개하지 않습니다.
+실행 상태, 실패 후 재실행, 동시 실행 보호는 [GUIDE.md 부록](../../../GUIDE.md#4-부록-실행-상태와-복구)을
+참고합니다.
 
 ## English
 
-`build.sh structure/alanine-dipeptide.pdb` builds the solvated system from the
-supplied PDB. This example combines OPES_EXPANDED with `ECV_MULTITHERMAL` to sample a
-300–500 K potential-energy target using one walker. The thermostat remains at
-300 K. Unlike OPES_METAD, OPES_EXPANDED does not construct a kernel-density
-estimate of a CV probability distribution. It estimates the temperature-state
+This example combines OPES_EXPANDED with `ECV_MULTITHERMAL` to sample the
+300–500 K potential-energy distribution in one simulation. Unlike REMD, which
+creates temperature replicas, a single walker follows the expanded target
+distribution. OPES_EXPANDED does not build a kernel-density estimate of a CV
+probability distribution as OPES_METAD does. It estimates the temperature-state
 free-energy offsets `ΔF_n(T)` from potential-energy samples and calculates the
-multithermal bias that connects those states. The 100 ps NPT equilibration uses `skinnb=5.0 Å` to enlarge the GPU
-pair-list margin while retaining `cut=10.0 Å`; production then uses a fixed box
-(`ntb=1`, `ntp=0`). The
-1 ns production writes its restart, trajectory, `COLVAR`, `opes.state`, and
-`DELTAFS` directly under `work/`. `ecv.ene` is an expanded CV, not an
-instantaneous physical temperature; temperature-resolved observables require
-separate reweighting. PLUMED 2.10 must be configured with
-`--enable-modules=opes`; verify `ECV_MULTITHERMAL` and `OPES_EXPANDED` with
-`plumed manual --action ACTION`. The parse-only check uses separate temporary
-filenames and cannot be mistaken for partial production. The 1 ns run is a
-workflow example.
+multithermal bias that connects those states.
 
-Build stops before changing inputs when topology/restart files already exist, preserving those files. Preserve the existing `work/` elsewhere or use a separate tutorial copy before a new build.
+Required software and the AMBER–PLUMED coupling are described in the
+[parent README](../README.md).
 
-### 동시 실행과 input 변경
+### Script roles
 
-Build와 run은 `work.writers/` registry를 공유합니다. 같은 output/state를 쓰는 작업은 동시에 실행하지 않습니다. `prepare.py`가 있는 경우 structure를 생성하는 작업도 input을 읽는 build와 충돌하면 거부합니다.
+| File | Role |
+|---|---|
+| `build.sh` | Builds the ff19SB/OPC system from the capped alanine PDB given as an argument. |
+| `check_topology.py` | Called by `build.sh`; checks the capped peptide atom ordering. |
+| `run.sh` | Runs NPT equilibration and then 1 ns of fixed-volume multithermal production. |
+| `anal.py` | Records potential energy, expanded CV, bias ranges and the number of `DELTAFS` states. |
 
-Run은 재사용할 결과의 input을 SHA256으로 비교합니다. Topology, 최초 coordinate file, stage input, predecessor restart와 restraint가 바뀌거나 기존 결과에 identity 기록이 없으면 파일을 보존하고 거부합니다. 이 tutorial은 고정 경로를 사용하므로 변경된 계산은 새 directory에 tutorial을 복사해 시작합니다.
+### Run
 
-정상 종료, command 실패와 INT/TERM에서는 자식 process의 종료를 확인한 뒤 자기 lock만 해제합니다. SIGKILL이나 node 장애로 남은 lock은 자동 삭제하지 않습니다. Error에 표시된 lock과 `owner.json`의 host, PID, command, scope를 확인하고 scheduler와 해당 host에서 모든 writer와 자식 process가 종료됐는지 확인한 뒤 그 lock directory만 수동 제거합니다. PID가 로컬에서 보이지 않는다는 이유만으로 제거하지 않습니다. `.gate/`도 같은 확인이 필요합니다.
+PLUMED 2.10 does not build the `opes` module by default. Configure PLUMED with
+`--enable-modules=opes` and check both actions before running. `run.sh` performs
+the same check.
 
-지원하는 `--dry-run`과 `--help`는 보호나 identity 파일을 생성하지 않습니다. 진행 중인 work를 이동하거나 identity를 수정해 재사용하지 않습니다. 보호는 로컬 filesystem과 로컬 자식 process로 검증했으며 network filesystem, remote MPI와 다른 node의 writer 종료는 미검증입니다.
+```bash
+plumed manual --action ECV_MULTITHERMAL
+plumed manual --action OPES_EXPANDED
+```
 
-### Concurrent runs and input changes
+```bash
+cd 1_Simulation/7_MetaD/7.4_OPES_EXPANDED
+./build.sh structure/alanine-dipeptide.pdb
+./run.sh
+python3 anal.py
+```
 
-Build and run share the `work.writers/` registry and reject concurrent writers to the same output/state. Where present, `prepare.py` also rejects structure writes that overlap an active build reader.
+### Main outputs
 
-Run compares inputs for result reuse with SHA256. Changed topology, initial coordinates, stage input, predecessor restart or restraint, and results without identity records, are preserved and rejected. This tutorial uses fixed paths; start changed calculations in a new tutorial copy.
+| File | Content |
+|---|---|
+| `work/COLVAR` | Potential energy `ene`, expanded CV `ecv.ene`, `opes.bias` |
+| `work/DELTAFS` | `ΔF_n(T)` per temperature state |
+| `work/opes.state` | Final adaptive state (`STATE_WFILE`) |
+| `work/analysis/production_summary.tsv` | Energy, `ecv.ene` and bias ranges and the number of `DELTAFS` states |
 
-Normal exit, command failure and INT/TERM release only the owned lock after child termination is verified. Locks left by SIGKILL or node failure are retained. Inspect the reported lock and its `owner.json` host, PID, command and scopes; confirm through the scheduler and owning host that all writers and children stopped before manually removing only that lock directory. A PID missing locally is not sufficient. Apply the same checks to `.gate/`.
+`ecv.ene` is an expanded CV, not an instantaneous physical temperature.
+`anal.py` checks the `COLVAR` header and finite values and leaves previous
+analysis results in place on invalid input.
 
-Supported `--dry-run` and `--help` do not create writer or identity files. Do not move active work trees or edit identities to reuse results. Protection was tested on a local filesystem with local child processes; network filesystems, remote MPI and termination of writers on other nodes remain unverified.
+### Success check and interpretation
 
-### Stage 완료 판정 / Stage completion
+`run.sh` ends with
+`1 ns OPES Expanded production completed: .../work/production.nc`, and
+`python3 anal.py` ends with
+`OPES Expanded diagnostics results: .../work/analysis`. The first 100 ps are
+PLUMED's default observation period, so `opes.bias` is zero there.
 
-Input identity는 입력이 같은지 확인하며 engine의 성공 종료를 증명하지 않습니다.
-Runner가 engine의 성공 종료와 필수 output을 확인한 뒤 만든 완료 증거가 있어야
-stage를 재사용합니다. Output이 남았지만 완료 증거가 없거나 필수 output이
-누락·비어 있으면 기존 결과를 보존하고 중단합니다. 기존 결과를 소급 인증하지
-않습니다. 새 계산은 생성된 `work/`를 포함하지 않는 새 tutorial copy에서 시작합니다.
-`ntwx=0`인 AMBER stage는 trajectory를 완료 조건으로 요구하지 않습니다.
-지원되는 continuation은 기존 restart/state 전달 방식을 따릅니다.
+Reweight observables at temperature `T` with `ene` and `opes.bias` from
+`COLVAR`, both in kJ/mol (Invernizzi, Piaggi & Parrinello, *Phys. Rev. X*
+10:041034, 2020). The formula is guidance; this repository does not implement
+it.
 
-Input identity checks unchanged inputs; it does not prove a successful engine exit.
-A stage is reused only with completion evidence written after a successful engine
-exit and required-output checks. Outputs without that evidence, or missing/empty
-required outputs, are preserved and rejected. Existing results are not certified
-retroactively. Start a new tutorial copy without generated `work/` directories for
-a new calculation. AMBER stages with `ntwx=0` do not require a trajectory for
-completion. Supported continuation retains its existing restart/state handoff.
+```text
+w_T ∝ exp(β₀ · opes.bias − (β_T − β₀) · ene)
+β = 1 / (k_B T), k_B = 0.0083144626 kJ mol⁻¹ K⁻¹, T₀ = 300 K
+```
 
-Analysis checks COLVAR column counts, field names, and finite values. Repeated identical headers are allowed; changed headers, duplicate fields, and NaN/Inf are rejected. Invalid input leaves previous analysis results intact. Negative CV values remain valid where the method permits them.
+Exclude the observation period and choose `T` only within 300–500 K. With 1 ns
+and a 10 ps `COLVAR` interval (about 100 rows), temperature averages carry large
+errors.
 
-Public analysis entries automatically use `helpers/writer_guard.py` to reject concurrent writers to the same output. Protection covers engine execution through publication, and signal cleanup drains children before releasing the lock. Do not delete a lock to force a retry.
+### Key options
+
+| Keyword | Value | Unit | Meaning |
+| --- | --- | --- | --- |
+| `ECV_MULTITHERMAL TEMP` | 300 | K | Actual thermostat temperature |
+| `TEMP_MIN`, `TEMP_MAX` | 300, 500 | K | Multithermal target range |
+| `TEMP_STEPS` | Not set | – | PLUMED chooses the number of temperatures; read the state count from `DELTAFS`. |
+| `PACE` | 500 | step (1 ps) | `ΔF_n(T)` and bias-update interval |
+| `OBSERVATION_STEPS` | Not set (PLUMED default 100) | `PACE` units | First 100 ps without bias while the grid is prepared |
+| `STATE_WSTRIDE` | 50000 | step (100 ps) | `opes.state` write interval |
+| `PRINT STRIDE` | 5000 | step (10 ps) | `COLVAR` interval |
+| Production `ntb`, `ntp` | 1, 0 | – | NVT at fixed box volume |
+| Production `nstlim`, `dt` | 500000, 0.002 | step, ps | 1 ns production |
+
+The 100 ps NPT equilibration before production uses `skinnb=5.0 Å` to enlarge
+the GPU pair-list margin. The setting was checked with WT-MetaD on the same
+solvent box, and the physical cutoff stays at `cut=10.0 Å`.
+
+The parse-only check uses separate temporary filenames, so it neither creates
+production `DELTAFS`, `opes.state` or `COLVAR` nor counts as partial production.
+
+### Troubleshooting
+
+| Error message | What to check |
+| --- | --- |
+| `PLUMED action ECV_MULTITHERMAL is unavailable`, `PLUMED action OPES_EXPANDED is unavailable` | Rebuild PLUMED 2.10 with `--enable-modules=opes`. |
+| `PLUMED input check failed: .../plumed.parse.dat` | `work/plumed.parse.log` |
+| `production failed. Engine output: .../production.out` | PLUMED errors are in `work/engine.production.log`. |
+| `Partial production output already exists and is retained` | Move the partial output, including `DELTAFS` and `opes.state`, with the printed `mv` command and rerun `./run.sh`. |
+
+### Cautions
+
+The 1 ns run teaches the state files and the fixed-volume workflow. Keywords
+follow PLUMED 2.10
+[`OPES_EXPANDED`](https://www.plumed.org/doc-v2.10/user-doc/html/_o_p_e_s__e_x_p_a_n_d_e_d.html)
+and
+[`ECV_MULTITHERMAL`](https://www.plumed.org/doc-v2.10/user-doc/html/_e_c_v__m_u_l_t_i_t_h_e_r_m_a_l.html).
+
+See [GUIDE.md appendix](../../../GUIDE.md#4-appendix-run-state-and-recovery) for run state, reruns after failure and
+concurrent-run protection.

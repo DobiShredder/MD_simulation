@@ -37,7 +37,7 @@ restart_interval_steps = 5000
 random_seed = "random"
 
 [gamd]
-# AMBER unit: sigma0 kcal/mol
+# AMBER unit: sigma0P, sigma0D, sigma0B kcal/mol (upper limits of boost-potential standard deviations)
 ligand_mask = ":LIG"
 receptor_mask = "!:WAT,Na+,Cl-,LIG"
 conventional_preparation_steps = 200000
@@ -45,4 +45,6 @@ conventional_statistics_steps = 1000000
 boost_preparation_steps = 200000
 boost_statistics_steps = 1000000
 averaging_interval_steps = 50000
-sigma0 = 6.0
+sigma0P = 6.0
+sigma0D = 6.0
+sigma0B = 6.0

@@ -15,12 +15,14 @@ GAS_CONSTANT = 0.00198720425864083
 
 
 def arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--cv", required=True, type=Path)
     parser.add_argument("--log-directory", required=True, type=Path)
     parser.add_argument("--components", required=True, type=int, choices=(2, 3))
-    parser.add_argument("--temperature", type=float, default=300.0)
-    parser.add_argument("--bin-width", type=float, default=0.25)
+    parser.add_argument("--temperature", type=float, default=300.0,
+                        help="simulation temp0 in K (default: 300)")
+    parser.add_argument("--bin-width", type=float, default=0.25,
+                        help="CV bin width in the CV unit, Å here (default: 0.25)")
     parser.add_argument("--output", required=True, type=Path)
     return parser.parse_args()
 
@@ -122,6 +124,7 @@ def main() -> None:
         )
     if not np.all(np.isfinite(cv)) or not np.all(np.isfinite(boosts)):
         raise SystemExit("CV or boost data contains non-finite values.")
+    print(f"Frames: {len(cv)}")
 
     low = math.floor(float(np.min(cv)) / args.bin_width) * args.bin_width
     high = math.ceil(float(np.max(cv)) / args.bin_width) * args.bin_width

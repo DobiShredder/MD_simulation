@@ -59,6 +59,9 @@ fi
 build_dir="$work_dir/build"
 tleap=${TLEAP:-tleap}
 python=${PYTHON:-python3}
+
+# Unknown config keys are usually typos; warn before any expensive step.
+"$python" helpers/check_config_keys.py "$config" helpers/config_keys.txt
 build_tmp=""
 
 report_build_tmp() {

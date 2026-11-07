@@ -39,6 +39,15 @@ show_engine_output() {
     fi
 }
 
+# Keep engine stdout/stderr in engine.<stage>.log beside <stage>.out.
+# Each attempt appends a header, so earlier attempts stay readable.
+run_engine() {
+    local engine_log=$1
+    shift
+    echo "== $(date '+%Y-%m-%d %H:%M:%S') $*" >> "$engine_log"
+    "$@" >> "$engine_log" 2>&1
+}
+
 # Partial output is never removed or overwritten; the user moves it out of work.
 die_partial() {
     local reason=$1
@@ -110,9 +119,10 @@ run_stage() {
     fi
     if ! (
         cd "$window_dir"
-        "$@"
+        run_engine "engine.$stage.log" "$@"
     ); then
         show_engine_output "$window_dir/$stage.out"
+        show_engine_output "$window_dir/engine.$stage.log"
         die_partial "Window $window_id $label failed. " "$window_dir" "$label" "${stage_outputs[@]}"
     fi
     local required_output

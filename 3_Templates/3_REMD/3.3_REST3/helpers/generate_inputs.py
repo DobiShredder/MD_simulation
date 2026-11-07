@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import sys
 from pathlib import Path
 
@@ -21,6 +22,7 @@ from config_utils import (  # noqa: E402
 )
 from force_field_profiles import resolve_force_field_profile  # noqa: E402
 from generate_states import read_number_list, read_temperatures  # noqa: E402
+from tempered_selection import tempered_settings  # noqa: E402
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -108,10 +110,8 @@ def resolve(config_path: Path, method: str) -> dict[str, object]:
         values["engine"] = string_value(run, "engine")
         values["mpi_engine"] = string_value(run, "mpi_engine")
     else:
-        # The hot-region helpers implement only the solute choice; reject other
-        # values instead of silently tempering the solute.
-        if string_value(build, "tempered_region") != "solute":
-            raise ValueError("tempered_region currently supports only solute")
+        # The mask itself is evaluated on system.parm7 by tempered_selection.py.
+        values["tempered_region"], values["tempered_mask"] = tempered_settings(build)
         values["equilibration_engine"] = string_value(run, "equilibration_engine")
         values["production_engine"] = string_value(run, "production_engine")
         values["threads_per_replica"] = positive_int(
@@ -371,6 +371,7 @@ def write_replica_inputs(
 def write_resolved(output: Path, method: str, values: dict[str, object], replicas: int, salt_pairs: int) -> None:
     random_seed = values["random_seed"]
     seed_literal = f'"{random_seed}"' if isinstance(random_seed, str) else str(random_seed)
+    tempered_text = ""
     if method == "remd":
         engine_text = (
             f'engine = "{values["engine"]}"\n'
@@ -388,6 +389,9 @@ def write_resolved(output: Path, method: str, values: dict[str, object], replica
             f"gpu_count = {values['gpu_count']}\n"
         )
         heating_text = ""
+        tempered_text = f"tempered_region = {json.dumps(values['tempered_region'])}\n"
+        if values["tempered_mask"]:
+            tempered_text += f"tempered_mask = {json.dumps(values['tempered_mask'])}\n"
     text = f"""[build]
 method = \"{method}\"
 protein_force_field = \"{values['force_field']}\"
@@ -395,7 +399,7 @@ water_model = \"{values['water_model']}\"
 solute_box_distance = {values['box_distance']:.3f}
 salt_concentration_molar = {values['salt_concentration']:.6f}
 salt_pairs = {salt_pairs}
-
+{tempered_text}
 [run]
 {engine_text}
 temperature = {values['base_temperature']:.6f}

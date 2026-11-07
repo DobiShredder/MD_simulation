@@ -31,7 +31,7 @@ internal rearrangement와 binding/unbinding motion을 함께 가속합니다. `V
 essential peptide component를 제외한 receptor와 environment potential입니다.
 두 번째 boost는 receptor conformational sampling과 peptide rebinding을 돕습니다.
 `timask1`과 `scmask1`은 단순한 analysis selection이 아니라 이 두 potential의
-경계를 정하므로 generated `:58-65` mask를 확인해야 합니다.
+경계를 정하므로 generated `:58-65` mask를 확인합니다.
 
 ### Script 역할
 
@@ -55,8 +55,28 @@ python3 anal.py
 
 `prepare.py`는 chain A 57 residues와 chain B의 PPPVPPRR sequence를 검사합니다.
 `build.sh`는 생성된 residue 범위로 `timask1`과 `scmask1`을 채웁니다.
-`igamd=15`는 peptide potential과 나머지 system potential에 dual boost를
-적용합니다. Preparation stage의 핵심 output과 성공 완료 증거가 모두 있으면 건너뛰고, 완료 증거가 없거나 필수 output이 누락되면 기존 결과를 보존하고 중단합니다. Production output은 덮어쓰지 않습니다.
+
+필요한 program과 stage별 계산량은 [GaMD README](../README.md#필요한-program)에
+정리되어 있습니다.
+
+### 성공 확인
+
+| Command | 마지막 출력 | 확인할 파일 |
+| --- | --- | --- |
+| `./build.sh` | `Pep-GaMD topology, restart, and generated inputs: work` | `work/inputs/gamd_prepare.in`의 `timask1='...'`(직전 `Pep-GaMD peptide mask: ...` 출력과 같은 값) |
+| `./run.sh` | `1 ns Pep-GaMD production completed: work/production.nc` | `work/gamd_prepare.gamd.rst`, `work/production.gamd.log`(header 뒤 100 records) |
+| `python3 anal.py` | `Pep-GaMD boost diagnostics: work/boost_summary.tsv` | `work/boost_summary.tsv`, `work/boost_frames.tsv` |
+
+`boost_1`과 `boost_2`는 `gamd.log`의 `Boost-Energy-Potential`과
+`Boost-Energy-Dihedral` column입니다. `igamd=15`에서 두 column이 peptide와 나머지
+system boost에 각각 대응하는지는 manual에서 확인하지 않았습니다(미검증).
+Reweighting에는 합계인 `total`을 사용합니다. 해석 기준은 [GaMD README](../README.md#결과-해석)에 있습니다. 다음 단계는 PMF
+reweighting입니다.
+
+~~~bash
+cd ../../../2_Analysis/7_Enhanced_Sampling/7.2_GaMD_Reweighting
+./run.sh pepgamd ../../../1_Simulation/4_GaMD/4.3_Pep-GaMD/work
+~~~
 
 ### 주요 option
 
@@ -72,118 +92,169 @@ python3 anal.py
 
 Amber 26 manual은 Pep-GaMD를 serial GPU `pmemd.cuda` 전용으로 설명합니다.
 `AMBER_ENGINE`을 CPU 또는 MPI executable로 바꾸면 `run.sh`가 계산 전에
-중단합니다.
+중단합니다. System별 설정과 independent run은 `3_Templates/4_GaMD/4.3_Pep-GaMD`에서
+구성합니다.
+
+### Production 재실행
+
+Production은 시작할 때 `work/.production.started`를 남깁니다. Production이 실패한
+뒤 다시 실행하면 남은 output과 engine이 바꾼 `work/gamd-restart.dat`을
+preparation state로 덮어쓰지 않고 중단합니다. Error에 나온 파일을 `work` 밖으로
+옮긴 뒤 다시 실행합니다. Preparation state는 `work/gamd_prepare.gamd.rst`에
+남아 있으므로 production은 이 state에서 다시 시작합니다.
+
+~~~bash
+mkdir -p work.failed
+mv work/production.* work/.production.started work/gamd-restart.dat work.failed/
+./run.sh
+~~~
+
+완료된 production은 다시 실행하지 않습니다. Engine을 실행하지 않고
+`Skipping completed production`과 다음 command `python3 anal.py`를 출력한 뒤
+정상 종료합니다. 그 밖의 실행 상태, 실패 후 재실행, 동시 실행 보호는 [GUIDE.md 부록](../../../GUIDE.md#4-부록-실행-상태와-복구)을 참고합니다.
+
+### 문제 해결
+
+| Message | 원인과 조치 |
+| --- | --- |
+| `1CKB chain A must contain 57 resolved residues: N` 또는 `Resolved 1CKB peptide differs from PPPVPPRR: ...` | `prepare.py` input이 `download.sh`가 받은 `structure/1CKB.raw.pdb`가 아닙니다. 다시 다운로드합니다. |
+| `Error: Executable not found: tleap` | AmberTools 26 environment를 activate하거나 `TLEAP`에 경로를 지정합니다. |
+| `Error: Pep-GaMD input generation failed: ...` | 앞줄의 `Pep-GaMD peptide metadata does not match the 8-residue PPPVPPRR peptide.`를 확인하고 `prepare.py`부터 다시 실행합니다. |
+| `Error: Amber 26 Pep-GaMD supports only the serial GPU pmemd.cuda engine: ...` | `AMBER_ENGINE`을 serial `pmemd.cuda`로 바꿉니다. |
+| `Error: Run build.sh first: work/inputs/gamd_prepare.in` | Build가 generated input까지 만들지 못했습니다. Build error를 해결하고 `mv work work.old` 뒤 `./build.sh`를 다시 실행합니다. |
+| `work/production.gamd.log: 100 GaMD records is required: N` | Production이 끝나지 않았거나 `ntwx`/`nstlim`을 바꿨습니다. |
 
 1 ns에서 peptide dissociation·rebinding, binding free energy 또는 kinetics가
-수렴할 것으로 기대하지 않습니다. System별 설정과 independent run은
-`3_Templates/4_GaMD/4.3_Pep-GaMD`에서 구성합니다.
-
-Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 중단하고 파일을 보존합니다. 새 build 전에는 기존 `work/`를 다른 위치에 보관하거나 별도 tutorial 사본을 사용합니다.
-
-공개 analysis entry는 자동으로 `helpers/writer_guard.py`를 호출해 같은 output의 동시 writer를 거부합니다. Engine 실행부터 결과 게시까지 보호하며, signal 종료 시 child가 멈춘 뒤 lock을 해제합니다. Lock을 임의로 삭제해 실행을 재개하지 않습니다.
-
-`download.sh`는 모든 asset과 `SHA256SUMS`를 staging에서 확인한 뒤 `helpers/publish_download.py`로 게시합니다. Transfer, checksum 또는 일반 publication 실패에서는 기존 파일을 보존하며, 관련 없는 preparation 파일도 유지합니다. `structure/.download.pending`가 남으면 prepare/build와 새 download가 거부됩니다. 보존된 staging과 marker를 점검하고, marker만 삭제해 이전 파일과 새 파일을 섞어 사용하지 않습니다.
+수렴할 것으로 기대하지 않습니다.
 
 ## English
 
-PDB 1CKB supplies the C-crk N-terminal SH3 domain and the eight resolved
-PPPVPPRR peptide residues. The PDB entity contains ten peptide residues, but
-only residues with coordinates are retained. The generated peptide range is
-used for the `igamd=15` dual boost.
-The fixed tutorial preserves the GaMD preparation state used by production.
+PDB 1CKB supplies the C-crk N-terminal SH3 domain and the resolved SOS peptide
+PPPVPPRR, built with ff19SB/OPC. The PDB entity contains ten peptide residues,
+but only the eight residues with coordinates are used.
 
-Pep-GaMD separates peptide-essential and remaining-system potentials to
-accelerate flexible peptide rearrangement and motion. `prepare.py` validates
-the resolved PPPVPPRR sequence, `build.sh` creates the system,
-`render_inputs.py` inserts the peptide mask, `run.sh` performs preparation and
-production, and `anal.py` reports both boost components.
+Pep-GaMD separates peptide-essential and remaining-system potentials and applies
+a dual boost to accelerate internal rearrangement of the flexible peptide and its
+motion on the receptor. A peptide selection that includes receptor residues
+defines a different Hamiltonian, so the build checks the sequence and the
+generated mask.
 
-For `igamd=15`, the essential component contains peptide bond, angle, and
-dihedral terms, peptide self-nonbonded energy, and peptide interactions with
-the protein and environment. The remaining component is the total system
-potential minus this essential peptide potential. The first boost therefore
-accelerates both internal peptide rearrangement and binding/unbinding motion;
-the second enhances receptor/environment sampling and facilitates rebinding.
-The applied total is `ΔV_total = ΔV_L + ΔV_D`. Because `timask1` and `scmask1`
-define this energy boundary rather than an analysis-only selection, the
-generated `:58-65` mask must match the resolved peptide.
+For `igamd=15`, this example uses the following energy partition.
 
-`igamd=15` with `iEP=iED=1` selects lower-bound peptide dual boost.
-Generated `timask1`/`scmask1=':58-65'` identify the resolved peptide;
-`sigma0P/D=6.0` limit boost fluctuations. The `ntcmd*`/`nteb*` controls define
-overlapping conventional-statistics and GaMD-equilibration schedules rather
-than four durations to sum; `ntave=50000` gives a 100 ps average.
-Heating passes `minimize.rst7` to `-ref` for the `ntr=1` positional restraint.
-Amber 26 documents Pep-GaMD only for serial GPU `pmemd.cuda`; `run.sh` rejects
-CPU and MPI engine overrides.
-The fixed heating seed is `43001`.
+```text
+V_L = peptide bonded + peptide self nonbonded
+      + peptide-protein nonbonded + peptide-environment nonbonded
+V_D = V_system,total - V_L
+ΔV_total = ΔV_L + ΔV_D
+```
 
-The 1 ns example demonstrates preparation, restart, and reweighting data flow;
-it cannot establish peptide binding thermodynamics or kinetics. Preparation
-stages are reused only with successful completion evidence and all required outputs;
-partial results are preserved and rejected, and existing production output is protected. Use
-`3_Templates/4_GaMD/4.3_Pep-GaMD` for independent runs.
+`V_L` contains peptide bond, angle and dihedral terms, peptide self-nonbonded
+energy, and peptide interactions with the protein and solvent. The first boost
+therefore accelerates both internal peptide rearrangement and binding/unbinding
+motion. `V_D` is the receptor and environment potential without the essential
+peptide component; the second boost enhances receptor conformational sampling
+and peptide rebinding. Because `timask1` and `scmask1` define this energy
+boundary rather than an analysis-only selection, check the generated `:58-65`
+mask.
+
+### Script roles
+
+| File | Role |
+| --- | --- |
+| `download.sh` | Saves 1CKB PDB/mmCIF and checksums. |
+| `prepare.py` | Prepares chain A receptor and resolved chain B PPPVPPRR and writes residue metadata. |
+| `build.sh` | Creates the ff19SB/OPC topology and calls the peptide mask renderer. |
+| `render_inputs.py` | Writes residues 58–65 from the metadata into `timask1`/`scmask1`. |
+| `run.sh` | Runs the conventional stages, Pep-GaMD preparation and production. |
+| `anal.py` | Saves statistics of both boost components and the total boost. |
+
+~~~bash
+cd 1_Simulation/4_GaMD/4.3_Pep-GaMD
+./download.sh
+python3 prepare.py structure/1CKB.raw.pdb structure/sh3-peptide.pdb
+./build.sh structure/sh3-peptide.pdb
+./run.sh
+python3 anal.py
+~~~
+
+`prepare.py` checks the 57 chain A residues and the chain B PPPVPPRR sequence.
+`build.sh` fills `timask1` and `scmask1` with the generated residue range.
+
+Required programs and per-stage computation are listed in the
+[GaMD README](../README.md#required-programs).
+
+### Success check
+
+| Command | Last line | Files to check |
+| --- | --- | --- |
+| `./build.sh` | `Pep-GaMD topology, restart, and generated inputs: work` | `timask1='...'` in `work/inputs/gamd_prepare.in` (same as the preceding `Pep-GaMD peptide mask: ...` line) |
+| `./run.sh` | `1 ns Pep-GaMD production completed: work/production.nc` | `work/gamd_prepare.gamd.rst`, `work/production.gamd.log` (100 records after the header) |
+| `python3 anal.py` | `Pep-GaMD boost diagnostics: work/boost_summary.tsv` | `work/boost_summary.tsv`, `work/boost_frames.tsv` |
+
+`boost_1` and `boost_2` are the `Boost-Energy-Potential` and
+`Boost-Energy-Dihedral` columns of `gamd.log`. Whether they correspond to the
+peptide and remaining-system boosts for `igamd=15` has not been checked in the
+manual (unverified). Reweighting uses their sum, `total`. See the
+[GaMD README](../README.md#interpreting-the-results) for interpretation. The
+next step is PMF reweighting.
+
+~~~bash
+cd ../../../2_Analysis/7_Enhanced_Sampling/7.2_GaMD_Reweighting
+./run.sh pepgamd ../../../1_Simulation/4_GaMD/4.3_Pep-GaMD/work
+~~~
+
+### Key options
+
+| Option | Meaning |
+| --- | --- |
+| `igamd=15` | Selects the peptide-selective dual-boost mode. |
+| `iEP=1`, `iED=1` | Uses lower-bound thresholds for the peptide-essential and remaining potentials. |
+| `timask1`, `scmask1=':58-65'` | Selects the resolved PPPVPPRR peptide in the prepared topology. Check it in the generated input. |
+| `sigma0P=sigma0D=6.0` | Upper limits (kcal/mol) on the target standard deviation of the two boost components. |
+| `ntcmd*`, `nteb*`, `ntave=50000` | Define the initial conventional-statistics and GaMD-equilibration schedules and a 100 ps averaging interval. The `*prep` and total step values overlap and are not summed. |
+| Heating seed `43001` | Initial velocity seed of this fixed example. |
+| `ntr=1`, `-ref minimize.rst7` | Uses the minimization restart as the heating restraint reference. |
+
+Amber 26 documents Pep-GaMD only for serial GPU `pmemd.cuda`; `run.sh` stops
+before computing if `AMBER_ENGINE` is set to a CPU or MPI executable. Use
+`3_Templates/4_GaMD/4.3_Pep-GaMD` for system-specific settings and independent
+runs.
+
+### Rerunning production
+
+Production leaves an attempt record, `work/.production.started`. After a failed
+production, a rerun stops instead of overwriting the leftover output or the
+engine-modified `work/gamd-restart.dat` with the prepared state. Move the files
+named in the error out of `work` and rerun. The prepared state remains in
+`work/gamd_prepare.gamd.rst`, so production restarts from it.
+
+~~~bash
+mkdir -p work.failed
+mv work/production.* work/.production.started work/gamd-restart.dat work.failed/
+./run.sh
+~~~
+
+A completed production is not rerun: `run.sh` skips the engine, prints
+`Skipping completed production` and the next command, `python3 anal.py`, and
+exits 0. See [GUIDE.md appendix](../../../GUIDE.md#4-appendix-run-state-and-recovery) for
+other run state, reruns after failure and concurrent-run protection.
+
+### Troubleshooting
+
+| Message | Cause and fix |
+| --- | --- |
+| `1CKB chain A must contain 57 resolved residues: N` or `Resolved 1CKB peptide differs from PPPVPPRR: ...` | The `prepare.py` input is not the `structure/1CKB.raw.pdb` from `download.sh`. Download it again. |
+| `Error: Executable not found: tleap` | Activate the AmberTools 26 environment or set `TLEAP`. |
+| `Error: Pep-GaMD input generation failed: ...` | Check the preceding `Pep-GaMD peptide metadata does not match the 8-residue PPPVPPRR peptide.` line and rerun from `prepare.py`. |
+| `Error: Amber 26 Pep-GaMD supports only the serial GPU pmemd.cuda engine: ...` | Set `AMBER_ENGINE` to serial `pmemd.cuda`. |
+| `Error: Run build.sh first: work/inputs/gamd_prepare.in` | The build did not reach the generated inputs. Fix the build error, run `mv work work.old` and rerun `./build.sh`. |
+| `work/production.gamd.log: 100 GaMD records is required: N` | Production did not finish, or `ntwx`/`nstlim` was changed. |
+
+The 1 ns example demonstrates preparation, restart and reweighting data flow; it
+cannot establish peptide dissociation/rebinding, binding thermodynamics or
+kinetics.
 
 ## References / 참고 자료
 
 - [RCSB PDB 1CKB](https://www.rcsb.org/structure/1CKB)
 - [Pep-GaMD](https://pmc.ncbi.nlm.nih.gov/articles/PMC7575327/)
-
-Build stops before changing inputs when topology/restart files already exist, preserving those files. Preserve the existing `work/` elsewhere or use a separate tutorial copy before a new build.
-
-### 동시 실행과 input 변경
-
-Build와 run은 `work.writers/` registry를 공유합니다. 같은 output/state를 쓰는 작업은 동시에 실행하지 않습니다. `prepare.py`가 있는 경우 structure를 생성하는 작업도 input을 읽는 build와 충돌하면 거부합니다.
-
-Run은 재사용할 결과의 input을 SHA256으로 비교합니다. Topology, 최초 coordinate file, stage input, predecessor restart와 restraint가 바뀌거나 기존 결과에 identity 기록이 없으면 파일을 보존하고 거부합니다. 이 tutorial은 고정 경로를 사용하므로 변경된 계산은 새 directory에 tutorial을 복사해 시작합니다.
-
-정상 종료, command 실패와 INT/TERM에서는 자식 process의 종료를 확인한 뒤 자기 lock만 해제합니다. SIGKILL이나 node 장애로 남은 lock은 자동 삭제하지 않습니다. Error에 표시된 lock과 `owner.json`의 host, PID, command, scope를 확인하고 scheduler와 해당 host에서 모든 writer와 자식 process가 종료됐는지 확인한 뒤 그 lock directory만 수동 제거합니다. PID가 로컬에서 보이지 않는다는 이유만으로 제거하지 않습니다. `.gate/`도 같은 확인이 필요합니다.
-
-지원하는 `--dry-run`과 `--help`는 보호나 identity 파일을 생성하지 않습니다. 진행 중인 work를 이동하거나 identity를 수정해 재사용하지 않습니다. 보호는 로컬 filesystem과 로컬 자식 process로 검증했으며 network filesystem, remote MPI와 다른 node의 writer 종료는 미검증입니다.
-
-### Concurrent runs and input changes
-
-Build and run share the `work.writers/` registry and reject concurrent writers to the same output/state. Where present, `prepare.py` also rejects structure writes that overlap an active build reader.
-
-Run compares inputs for result reuse with SHA256. Changed topology, initial coordinates, stage input, predecessor restart or restraint, and results without identity records, are preserved and rejected. This tutorial uses fixed paths; start changed calculations in a new tutorial copy.
-
-Normal exit, command failure and INT/TERM release only the owned lock after child termination is verified. Locks left by SIGKILL or node failure are retained. Inspect the reported lock and its `owner.json` host, PID, command and scopes; confirm through the scheduler and owning host that all writers and children stopped before manually removing only that lock directory. A PID missing locally is not sufficient. Apply the same checks to `.gate/`.
-
-Supported `--dry-run` and `--help` do not create writer or identity files. Do not move active work trees or edit identities to reuse results. Protection was tested on a local filesystem with local child processes; network filesystems, remote MPI and termination of writers on other nodes remain unverified.
-
-### Stage 완료 판정 / Stage completion
-
-Input identity는 입력이 같은지 확인하며 engine의 성공 종료를 증명하지 않습니다.
-Runner가 engine의 성공 종료와 필수 output을 확인한 뒤 만든 완료 증거가 있어야
-stage를 재사용합니다. Output이 남았지만 완료 증거가 없거나 필수 output이
-누락·비어 있으면 기존 결과를 보존하고 중단합니다. 기존 결과를 소급 인증하지
-않습니다. 새 계산은 생성된 `work/`를 포함하지 않는 새 tutorial copy에서 시작합니다.
-`ntwx=0`인 AMBER stage는 trajectory를 완료 조건으로 요구하지 않습니다.
-지원되는 continuation은 기존 restart/state 전달 방식을 따릅니다.
-
-Input identity checks unchanged inputs; it does not prove a successful engine exit.
-A stage is reused only with completion evidence written after a successful engine
-exit and required-output checks. Outputs without that evidence, or missing/empty
-required outputs, are preserved and rejected. Existing results are not certified
-retroactively. Start a new tutorial copy without generated `work/` directories for
-a new calculation. AMBER stages with `ntwx=0` do not require a trajectory for
-completion. Supported continuation retains its existing restart/state handoff.
-
-Production은 시작 기록 `work/.production.started`를 남깁니다. Production이
-실패하면 rerun은 남은 output과 engine이 바꾼 `work/gamd-restart.dat`을 preparation
-state로 덮어쓰지 않고 중단합니다. Error message에 나온 file을 `work` 밖으로 옮긴 뒤
-`./run.sh`를 다시 실행합니다. 예를 들어 `mkdir -p work.failed`와
-`mv work/production.* work/.production.started work/gamd-restart.dat work.failed/`를
-사용합니다. 완료된 production은 다시 실행하지 않습니다.
-
-Production leaves an attempt record, `work/.production.started`. After a failed
-production, a rerun stops instead of overwriting the leftover output or the
-engine-modified `work/gamd-restart.dat` with the prepared state. Move the files named
-in the error message out of `work` and rerun `./run.sh`, for example with
-`mkdir -p work.failed` and
-`mv work/production.* work/.production.started work/gamd-restart.dat work.failed/`.
-A completed production is not rerun.
-
-Public analysis entries automatically use `helpers/writer_guard.py` to reject concurrent writers to the same output. Protection covers engine execution through publication, and signal cleanup drains children before releasing the lock. Do not delete a lock to force a retry.
-
-`download.sh` validates every asset and `SHA256SUMS` in staging before publishing through `helpers/publish_download.py`. Transfer, checksum and ordinary publication failures preserve existing files, including unrelated preparation files. A retained `structure/.download.pending` blocks source readers and new downloads. Inspect the retained staging and marker; deleting only the marker can expose a mixed generation.

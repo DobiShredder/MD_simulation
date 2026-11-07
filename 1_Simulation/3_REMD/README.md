@@ -7,15 +7,13 @@
 
 ## 한국어
 
-T-REMD, REST2, REST3, REUS와 GaREUS는 최소 2개·짝수 replica만 지원합니다. 일반 US의 독립 window에는 이 제한을 적용하지 않습니다.
-
-다섯 예제 모두 Chignolin(PDB 1UAO)을 ff19SB/OPC로 만들며 다른 tutorial의
-output을 사용하지 않습니다.
-
 Replica exchange는 서로 다른 thermodynamic state 또는 Hamiltonian을 병렬로
 계산하고 주기적으로 state 교환을 시도합니다. Metropolis criterion을 만족하는
 교환은 각 replica가 barrier를 우회하도록 돕지만, replica 수·state 간격·교환
 빈도와 round trip을 함께 점검해야 합니다.
+
+다섯 예제 모두 Chignolin(PDB 1UAO)을 ff19SB/OPC로 만들며 다른 tutorial의
+output을 사용하지 않습니다. Production은 replica당 1 ns를 한 번 실행합니다.
 
 | 순서 | Method | Replica/state | Engine |
 | ---: | --- | ---: | --- |
@@ -24,6 +22,24 @@ Replica exchange는 서로 다른 thermodynamic state 또는 Hamiltonian을 병�
 | 3.3 | [REST3](3.3_REST3/README.md) | 기본 8 λ/κ states | GROMACS/PLUMED HREX |
 | 3.4 | [REUS](3.4_REUS/README.md) | 20 distance windows | `pmemd.cuda.MPI -rem 3` |
 | 3.5 | [GaREUS](3.5_GaREUS/README.md) | 20 distance windows | `pmemd.cuda.MPI -rem 3` |
+
+다섯 method 모두 최소 2개·짝수 replica만 지원합니다. 일반 US의 독립 window에는
+이 제한을 적용하지 않습니다.
+
+### 준비 사항
+
+모든 예제는 CUDA GPU용 engine을 사용합니다. Python package는 각 leaf의
+`requirements.txt`로 설치합니다(T-REMD는 표준 library만 사용).
+
+| Method | 필요한 executable | Executable override |
+| --- | --- | --- |
+| T-REMD, REUS, GaREUS | AMBER 26 `tleap`, `pmemd.cuda`, `pmemd.cuda.MPI`, MPI launcher | `TLEAP`, `AMBER_ENGINE`, `AMBER_MPI_ENGINE`, `MPI_LAUNCHER` |
+| REST2, REST3 | AMBER 26 `tleap`, GROMACS `gmx`, PLUMED-patched `gmx_mpi`, MPI launcher. REST2 `build.sh`는 PLUMED CLI `plumed`도 확인합니다. | `TLEAP`, `GROMACS`, `GROMACS_MPI`, `MPI_LAUNCHER`, REST2의 `PLUMED` |
+
+REST2/REST3의 `gmx`는 `grompp`와 replica별 pre-production에, `gmx_mpi`는 HREX
+production에 사용합니다. PLUMED version 검사는 `gmx_mpi`에만 적용됩니다.
+
+#### REST2/REST3 GROMACS build
 
 REST2와 REST3는 PLUMED 2.10.2 이상으로 patch한 `GROMACS 2024.3`
 external-MPI build가 필요합니다. 서로 다른 scaled topology를 `-hrex`로 교차
@@ -34,15 +50,27 @@ exchange가 거의 accept되지 않습니다. 이 문제는 2.10.2에서 수정�
 ([PLUMED issue #1326](https://github.com/plumed/plumed2/issues/1326)).
 
 GROMACS source root에서 PLUMED patch를 적용한 뒤 external MPI로 build합니다.
+`-DGMX_GPU=CUDA`는 GPU build에만 붙입니다.
 
 ```bash
 plumed patch -p -e gromacs-2024.3
+mkdir build
+cd build
+cmake .. -DGMX_MPI=ON -DGMX_THREAD_MPI=OFF -DGMX_GPU=CUDA
+make
+make install
 ```
+
+`GMX_MPI=ON` build는 `gmx_mpi`라는 이름으로 설치됩니다. GROMACS 기본값인
+thread-MPI는 multi-simulation을 지원하지 않으므로 `-multidir` HREX에는 external
+MPI가 필요합니다(GROMACS 2026.3 manual 2.2.2와 p. 20).
 
 REST2와 REST3 `run.sh`는 `gmx_mpi --version`에 들어 있는 `plumed_X.Y.Z`를
 읽고 2.10.2보다 낮으면 계산 전에 중단합니다. GROMACS 2024.6처럼 다른 2024
 bugfix release에 2024.3 patch를 적용하는 조합과, 2.10.2 build의 실제
 GPU/external-MPI HREX 실행은 미검증입니다.
+
+### 실행
 
 각 폴더에서 다음 순서로 실행합니다.
 
@@ -54,8 +82,11 @@ python3 prepare.py structure/1UAO.raw.pdb structure/chignolin.pdb
 python3 anal.py
 ```
 
-REST2/REST3는 실행할 때 `./run.sh --cpus N --gpus N`으로 resource를 지정합니다.
-GaREUS는 검증 범위를 읽고 `./run.sh --allow-unverified`로 실행합니다.
+| Method | `run.sh` 실행 방식 |
+| --- | --- |
+| T-REMD, REUS | `./run.sh`; state 수만큼 MPI rank를 사용합니다. |
+| REST2, REST3 | `./run.sh --cpus N --gpus N`; replica별 preproduction은 GPU별로 병렬 실행하며 각 process를 `-ntmpi 1`로 제한하고, production은 replica당 external-MPI rank 하나를 사용합니다. |
+| GaREUS | 검증 범위를 읽고 `./run.sh --allow-unverified`로 실행합니다. State 수만큼 MPI rank를 사용합니다. |
 
 공통으로 `download.sh`는 source structure를 받고, `prepare.py`는 첫 NMR model을
 정리합니다. `build.sh`는 topology와 replica별 input을 만들며, `run.sh`는
@@ -63,23 +94,28 @@ pre-production과 replica exchange를 실행합니다. `anal.py`는 exchange log
 acceptance, state 방문, occupancy와 round trip을 계산합니다. REST2/REST3에는
 scaled topology를 만드는 추가 helper가 있습니다.
 
-Production은 replica당 1 ns를 한 번 실행합니다. T-REMD, REUS와 GaREUS는
-state 수만큼 MPI rank를 사용합니다. REST2/REST3는 아래 resource argument와
-최소 executable environment variable만 제공합니다.
+Production이 완료된 `work`에서 `run.sh`를 다시 실행하면 engine을 호출하지
+않습니다. `Skipping completed production`과 `Next: python3 anal.py`를 출력하고
+0으로 종료합니다.
 
-REST2/REST3는 `run.sh --cpus N --gpus N`으로 할당 resource를 받습니다.
-Replica별 preproduction은 GPU별로 병렬 실행하면서 한 process를
-`-ntmpi 1`로 제한하고, production은 replica당 external-MPI rank 하나를
-사용합니다.
+T-REMD, REUS, GaREUS의 단일-replica AMBER stage는 engine stdout/stderr를
+`<stage>.out` 옆의 `engine.<stage>.log`에 시도마다 header를 붙여 이어서
+기록합니다. REST2/REST3 pre-production은 `<stage>.grompp.log`와
+`<stage>.mdrun.log`에 기록합니다. Stage가 실패하면 `run.sh`가 이 log의 경로와
+마지막 20줄을 출력합니다.
 
-Minimization, heating과 equilibration은 completion marker, 필요한 output과 input
-identity가 일치하면 건너뜁니다. Partial output이나 변경된 input은 기존 파일을
-보존하고 거부합니다. Production 완료 후 재실행 동작은 각 method README를 따릅니다.
-
-Exchange acceptance, state 방문과 occupancy는 `anal.py`에서 계산합니다.
-REUS/GaREUS PMF처럼 더 긴 후처리는
+실행 상태, 실패 후 재실행, 동시 실행 보호는 [GUIDE.md 부록](../../GUIDE.md#4-부록-실행-상태와-복구)을
+참고합니다. REUS/GaREUS PMF처럼 더 긴 후처리는
 [analysis tutorial](../../2_Analysis/7_Enhanced_Sampling/README.md)에서
 다룹니다.
+
+### State schedule
+
+REST2와 REST3의 `inputs/temperatures.txt`에는 Chignolin용 기본 ladder가 들어
+있으며 `build.sh`가 lambda와 seed를 포함한 `work/states.tsv`를 생성합니다.
+REST3는 temperature와 별도로 `inputs/kappa.txt`도 읽습니다. T-REMD, REUS와
+GaREUS는 `inputs/states.tsv`를 사용합니다. State 수가 replica 수가 됩니다. 다른
+system과 schedule은 `3_Templates/3_REMD/`에서 구성합니다.
 
 새 system의 T-REMD temperature ladder는
 [remd-temperature-generator](https://virtualchemistry.org/remd-temperature-generator/)로
@@ -89,24 +125,67 @@ molecule 수를 0으로 둔 결과를 initial effective-temperature ladder로
 round trip을 확인합니다. REST3의 κ-dependent solute–water scaling은 generator에
 포함되지 않으므로 REST2 ladder를 출발점으로만 사용하고 별도로 검증합니다.
 
-REST2와 REST3의 `inputs/temperatures.txt`에는 Chignolin용 기본 ladder가 들어
-있으며 `build.sh`가 lambda와 seed를 포함한 `work/states.tsv`를 생성합니다.
-REST3는 temperature와 별도로 `inputs/kappa.txt`도 읽습니다. REUS와 GaREUS는
-`inputs/states.tsv`를 사용합니다. 다른 system과 schedule은
-`3_Templates/3_REMD/`에서 구성합니다. State 수가 replica 수가 됩니다.
+### Exchange 품질 해석
+
+각 `anal.py`는 exchange log에서 neighbour pair acceptance, walker별 state
+방문·round trip과 state occupancy를 계산합니다. File 이름과 column은 leaf
+README에 있습니다.
+
+| 지표 | 확인할 점 | 문제가 보이면 |
+| --- | --- | --- |
+| Neighbour acceptance | 0에 가까운 인접 pair가 없고, pair 사이 값이 크게 치우치지 않아야 합니다. | 낮은 pair 구간에 state를 추가하거나 간격을 좁힙니다. |
+| Walker 방문과 round trip | 각 walker가 ladder 양 끝 state를 모두 방문하고 한 번 이상 왕복해야 합니다. | Acceptance가 고른데 왕복이 없으면 계산 길이를 늘리거나 state 수를 다시 봅니다. |
+| State occupancy | 한 walker가 ladder 일부에만 머물지 않아야 합니다. | 한 pair의 bottleneck이나 서로 분리된 conformational state를 의심합니다. |
+
+Acceptance는 높을수록 좋은 값이 아닙니다. 간격을 좁히면 acceptance는 오르지만
+replica가 늘어나고 ladder를 건너는 시간도 길어집니다.
+[Rathore et al. (2005)](https://doi.org/10.1063/1.1831273)는 T-REMD에서
+인접 acceptance 약 20%가 효율적인 replica 배치라고 보고했습니다. 3.1 T-REMD
+ladder는 [Patriksson & van der Spoel (2008)](https://doi.org/10.1039/b716554d)
+temperature predictor에 목표 확률 0.20을 넣어 만들었습니다. REST와 REUS에서는
+이 값을 출발 기준으로만 사용합니다.
+
+REUS/GaREUS에서는 이웃 window의 reaction-coordinate 분포가 겹쳐야 exchange가
+accept되고 PMF도 이어집니다. Acceptance와 window별 distance 분포의 overlap을
+함께 봅니다.
 
 ## English
 
-T-REMD, REST2, REST3, REUS and GaREUS support only even replica counts of at least two. Independent windows in ordinary US are outside this restriction.
-
-All five examples independently build ff19SB/OPC Chignolin. They cover
-18-temperature T-REMD, eight-state REST2, eight-state REST3, 20-window REUS,
-and 20-window GaREUS with the engines listed in the table above.
-
 Replica exchange propagates parallel thermodynamic states or Hamiltonians and
-periodically proposes state swaps using a Metropolis criterion. Useful mixing
-depends on state spacing, exchange acceptance, state visits, and round trips,
-not on exchange attempts alone.
+periodically proposes state swaps using a Metropolis criterion. Accepted swaps
+help each replica bypass barriers, but useful mixing depends on the replica
+count, state spacing, exchange frequency and round trips, not on exchange
+attempts alone.
+
+All five examples independently build ff19SB/OPC Chignolin (PDB 1UAO) without
+using outputs from other tutorials. Production is one 1 ns run per replica.
+
+| Order | Method | Replicas/states | Engine |
+| ---: | --- | ---: | --- |
+| 3.1 | [T-REMD](3.1_REMD/README.md) | 18 temperatures for OPC | `pmemd.cuda.MPI -rem 1` |
+| 3.2 | [REST2](3.2_REST2/README.md) | 8 effective temperatures by default | GROMACS/PLUMED HREX |
+| 3.3 | [REST3](3.3_REST3/README.md) | 8 λ/κ states by default | GROMACS/PLUMED HREX |
+| 3.4 | [REUS](3.4_REUS/README.md) | 20 distance windows | `pmemd.cuda.MPI -rem 3` |
+| 3.5 | [GaREUS](3.5_GaREUS/README.md) | 20 distance windows | `pmemd.cuda.MPI -rem 3` |
+
+All five methods support only even replica counts of at least two. Independent
+windows in ordinary US are outside this restriction.
+
+### Prerequisites
+
+All examples use CUDA GPU engines. Install Python packages from each leaf's
+`requirements.txt`; T-REMD needs only the standard library.
+
+| Method | Required executables | Executable overrides |
+| --- | --- | --- |
+| T-REMD, REUS, GaREUS | AMBER 26 `tleap`, `pmemd.cuda`, `pmemd.cuda.MPI`, MPI launcher | `TLEAP`, `AMBER_ENGINE`, `AMBER_MPI_ENGINE`, `MPI_LAUNCHER` |
+| REST2, REST3 | AMBER 26 `tleap`, GROMACS `gmx`, PLUMED-patched `gmx_mpi`, MPI launcher. REST2 `build.sh` also checks the PLUMED CLI `plumed`. | `TLEAP`, `GROMACS`, `GROMACS_MPI`, `MPI_LAUNCHER`, `PLUMED` for REST2 |
+
+In REST2/REST3, `gmx` runs `grompp` and per-replica pre-production, and
+`gmx_mpi` runs HREX production. Only `gmx_mpi` is checked for the PLUMED
+version.
+
+#### REST2/REST3 GROMACS build
 
 REST2 and REST3 require an external-MPI build of GROMACS 2024.3 patched with
 PLUMED 2.10.2 or later. Only the PLUMED patch for GROMACS 2024 provides the
@@ -114,44 +193,103 @@ PLUMED 2.10.2 or later. Only the PLUMED patch for GROMACS 2024 provides the
 2025/2026 patches and the built-in PLUMED interface do not. The GROMACS 2024
 patch in PLUMED 2.10.0 and 2.10.1 computes a wrong swapped-coordinate energy,
 so exchanges are almost never accepted; PLUMED 2.10.2 fixes this
-([PLUMED issue #1326](https://github.com/plumed/plumed2/issues/1326)). Patch
-GROMACS with `plumed patch -p -e gromacs-2024.3` (command above). Both REST
-runners read `plumed_X.Y.Z` from `gmx_mpi --version` and stop before the
-simulation if it is older than 2.10.2. Applying the 2024.3 patch to another
+([PLUMED issue #1326](https://github.com/plumed/plumed2/issues/1326)).
+
+From the GROMACS source root, apply the PLUMED patch and build with external
+MPI. Add `-DGMX_GPU=CUDA` only for a GPU build.
+
+```bash
+plumed patch -p -e gromacs-2024.3
+mkdir build
+cd build
+cmake .. -DGMX_MPI=ON -DGMX_THREAD_MPI=OFF -DGMX_GPU=CUDA
+make
+make install
+```
+
+A `GMX_MPI=ON` build installs binaries named `gmx_mpi`. The default thread-MPI
+build does not support multi-simulation runs, so `-multidir` HREX needs external
+MPI (GROMACS 2026.3 manual, section 2.2.2 and p. 20).
+
+Both REST runners read `plumed_X.Y.Z` from `gmx_mpi --version` and stop before
+the simulation if it is older than 2.10.2. Applying the 2024.3 patch to another
 2024 bugfix release such as 2024.6, and an actual GPU/external-MPI HREX run
 with a 2.10.2 build, are unverified.
 
-Use `download.sh`, `prepare.py`, `build.sh`, `run.sh`, and `anal.py` in order.
-For REST2/REST3, supply resources with `./run.sh --cpus N --gpus N`.
-For GaREUS, read its validation limits and use `./run.sh --allow-unverified`.
-Production is one 1 ns run per replica. T-REMD, REUS, and GaREUS use one MPI
-rank per state; REST2/REST3 expose only their resource arguments and minimal
-executable settings.
+### Run
 
-REST2/REST3 accept allocated resources through `run.sh --cpus N --gpus N`.
-Per-replica preproduction runs concurrently across GPUs with `-ntmpi 1` per
-process, while production uses one external-MPI rank per replica.
+Run these steps in each folder.
 
-Minimization, heating, and equilibration are skipped when completion markers,
-required outputs, and input identities agree. Partial outputs and changed
-inputs are rejected with existing files retained. Each method README describes
-the behavior when production is already complete.
+```bash
+./download.sh
+python3 prepare.py structure/1UAO.raw.pdb structure/chignolin.pdb
+./build.sh structure/chignolin.pdb
+./run.sh
+python3 anal.py
+```
 
-In every folder, download and preparation handle the source structure, build
-creates topology/state inputs, run performs pre-production and exchange, and
-analysis parses exchange and occupancy statistics. REST2/REST3 add topology-
-scaling helpers documented in their local READMEs.
+| Method | How to run `run.sh` |
+| --- | --- |
+| T-REMD, REUS | `./run.sh`; one MPI rank per state. |
+| REST2, REST3 | `./run.sh --cpus N --gpus N`; per-replica preproduction runs concurrently across GPUs with `-ntmpi 1` per process, and production uses one external-MPI rank per replica. |
+| GaREUS | Read its validation limits and run `./run.sh --allow-unverified`. One MPI rank per state. |
+
+In every folder, `download.sh` fetches the source structure, `prepare.py` cleans
+the first NMR model, `build.sh` creates the topology and per-replica inputs,
+`run.sh` performs pre-production and exchange, and `anal.py` computes
+acceptance, state visits, occupancy and round trips from the exchange log.
+REST2/REST3 add topology-scaling helpers documented in their own READMEs.
+
+Rerunning `run.sh` in a `work` with completed production calls no engine. It
+prints `Skipping completed production` and `Next: python3 anal.py` and exits 0.
+
+Single-replica AMBER stages in T-REMD, REUS and GaREUS append engine
+stdout/stderr to `engine.<stage>.log` beside `<stage>.out`, with a header line
+per attempt. REST2/REST3 pre-production writes `<stage>.grompp.log` and
+`<stage>.mdrun.log`. When a stage fails, `run.sh` prints the log path and its
+last 20 lines.
+
+See [GUIDE.md appendix](../../GUIDE.md#4-appendix-run-state-and-recovery) for run state, reruns after failure and
+concurrent-run protection. Longer post-processing such as the REUS/GaREUS PMF
+is covered in the [analysis tutorial](../../2_Analysis/7_Enhanced_Sampling/README.md).
+
+### State schedule
+
+REST2 and REST3 store their precomputed Chignolin ladders in
+`inputs/temperatures.txt`; each `build.sh` generates `work/states.tsv` with
+lambdas and seeds. REST3 also reads a separate `inputs/kappa.txt`. T-REMD, REUS
+and GaREUS use `inputs/states.tsv`. The state count sets the replica count.
+Configure a different system or schedule under `3_Templates/3_REMD/`.
 
 Use the [remd-temperature-generator](https://virtualchemistry.org/remd-temperature-generator/)
 for a new system's T-REMD ladder. For REST2, enter the hot-solute atom count as
 the protein atom count and set the water-molecule count to zero; treat the
-result as an initial effective-temperature ladder and verify adjacent
-acceptance and round trips in a pilot run. REST3 adds kappa-dependent
-solute-water scaling that the predictor does not model, so the REST2 ladder is
-only a starting point for REST3 validation.
+result as an initial effective-temperature ladder. In both cases, verify
+adjacent acceptance and round trips in a short pilot run before production.
+REST3 adds κ-dependent solute–water scaling that the generator does not model,
+so the REST2 ladder is only a starting point for REST3 validation.
 
-REST2 and REST3 store their precomputed Chignolin ladders in
-`inputs/temperatures.txt`; each `build.sh` generates `work/states.tsv` with
-lambdas and seeds. REST3 also reads a separate `inputs/kappa.txt`. REUS and
-GaREUS use `inputs/states.tsv` directly. Configure a different system or ladder
-under `3_Templates/3_REMD/`. The state count sets the replica count.
+### Reading exchange quality
+
+Each `anal.py` computes neighbour-pair acceptance, per-walker state visits and
+round trips, and state occupancy from the exchange log. Leaf READMEs list the
+files and columns.
+
+| Metric | What to check | If it fails |
+| --- | --- | --- |
+| Neighbour acceptance | No adjacent pair near zero and no large imbalance between pairs. | Add a state or narrow the spacing around the low pair. |
+| Walker visits and round trips | Every walker reaches both ladder ends and completes at least one round trip. | If acceptance is even but no walker returns, run longer or revisit the state count. |
+| State occupancy | No walker stays confined to part of the ladder. | Suspect a single-pair bottleneck or disconnected conformational states. |
+
+Higher acceptance is not automatically better: narrower spacing raises
+acceptance but adds replicas and lengthens ladder crossings.
+[Rathore et al. (2005)](https://doi.org/10.1063/1.1831273) reported that about
+20% neighbour acceptance gives an efficient T-REMD replica allocation. The 3.1
+T-REMD ladder was generated with the
+[Patriksson & van der Spoel (2008)](https://doi.org/10.1039/b716554d)
+temperature predictor at a target probability of 0.20. Treat this value only as
+a starting point for REST and REUS.
+
+In REUS/GaREUS, exchanges are accepted and the PMF connects only when
+neighbouring windows have overlapping reaction-coordinate distributions. Check
+the per-window distance distributions alongside acceptance.

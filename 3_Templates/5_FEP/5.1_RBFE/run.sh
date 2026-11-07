@@ -131,11 +131,15 @@ report_engine_failure() {
     local label=$1
     local exit_status=$2
     local output_file=$3
-    if [[ -s "$output_file" ]]; then
-        echo "Last 20 lines of $output_file:" >&2
-        tail -n 20 "$output_file" >&2
-    fi
-    die "$label calculation failed with exit status $exit_status: $output_file"
+    local engine_log=$4
+    local log_file
+    for log_file in "$output_file" "$engine_log"; do
+        if [[ -s "$log_file" ]]; then
+            echo "Last 20 lines of $log_file:" >&2
+            tail -n 20 "$log_file" >&2
+        fi
+    done
+    die "$label calculation failed with exit status $exit_status: $output_file. Engine stdout/stderr: $engine_log"
 }
 
 run_stage() {
@@ -205,13 +209,21 @@ run_stage() {
         fi
         workflow_started=1
     fi
+    # Engine stdout/stderr are appended per attempt beside $stage.out; the log is
+    # not a stage output, so it never marks a window as partial.
+    local engine_log="$directory/engine.$stage.log"
+    {
+        printf '== %s' "$(date '+%Y-%m-%d %H:%M:%S %Z')"
+        printf ' %q' "${command[@]}"
+        printf '\n'
+    } >> "$engine_log"
     local engine_status=0
     (
         cd "$directory"
         "${command[@]}"
-    ) || engine_status=$?
+    ) >> "$engine_log" 2>&1 || engine_status=$?
     if (( engine_status != 0 )); then
-        report_engine_failure "$calculation $stage" "$engine_status" "$prefix.out"
+        report_engine_failure "$calculation $stage" "$engine_status" "$prefix.out" "$engine_log"
     fi
     for output in "${required[@]}"; do
         if [[ ! -s "$output" ]]; then

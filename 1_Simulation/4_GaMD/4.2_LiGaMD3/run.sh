@@ -39,6 +39,15 @@ show_engine_output() {
     fi
 }
 
+# Keep engine stdout/stderr in engine.<stage>.log beside <stage>.out.
+# Each attempt appends a header, so earlier attempts stay readable.
+run_engine() {
+    local engine_log=$1
+    shift
+    echo "== $(date '+%Y-%m-%d %H:%M:%S') $*" >> "$engine_log"
+    "$@" >> "$engine_log" 2>&1
+}
+
 # Partial output is never removed or overwritten; the user moves it out of work.
 # Called after cd work, so paths are relative to work.
 die_partial() {
@@ -146,7 +155,8 @@ run_preparation_stage() {
     fi
 
     echo "Running: $stage"
-    if ! "$engine" \
+    if ! run_engine "engine.$stage.log" \
+        "$engine" \
         -O \
         -i "$input_file" \
         -o "$stage.out" \
@@ -156,6 +166,7 @@ run_preparation_stage() {
         -inf "$stage.info" \
         "$@"; then
         show_engine_output "$stage.out"
+        show_engine_output "engine.$stage.log"
         die_partial "$stage calculation failed. " "$stage" "${stage_outputs[@]}"
     fi
     local output
@@ -196,7 +207,8 @@ if [[ "$gamd_state" == complete && -s gamd_prepare.gamd.log && -s gamd_prepare.g
     echo "Skipping: gamd_prepare outputs already exist."
 else
     echo "Running: gamd_prepare"
-    if ! "$engine" \
+    if ! run_engine engine.gamd_prepare.log \
+        "$engine" \
         -O \
         -i inputs/gamd_prepare.in \
         -o gamd_prepare.out \
@@ -207,6 +219,7 @@ else
         -x gamd_prepare.nc \
         -gamd gamd_prepare.gamd.log; then
         show_engine_output gamd_prepare.out
+        show_engine_output engine.gamd_prepare.log
         die_partial "gamd_prepare calculation failed. " gamd_prepare "${prepare_outputs[@]}"
     fi
     if [[ ! -s gamd-restart.dat ]]; then
@@ -232,10 +245,13 @@ fi
     -c gamd_prepare.rst7 -r production.rst7 -inf production.info \
     -x production.nc -gamd production.gamd.log
 
+# A completed production is reused; a partial one is refused below.
 if [[ -e .production.success.json ]]; then
     "${PYTHON:-python3}" ../helpers/input_identity.py \
         --check-completion .production.identity.json >/dev/null
-    die "Production already completed: $work_dir/production.nc. Analyze it with python3 anal.py. To run a new production, move work aside (for example: mv work work.old) and rerun the build.sh and run.sh commands in README.md."
+    echo "Skipping completed production: $work_dir/production.nc"
+    echo "Next: python3 anal.py"
+    exit 0
 fi
 
 # A failed production leaves its attempt record and the engine-modified GaMD state.
@@ -256,7 +272,8 @@ production_outputs+=(gamd-restart.dat)
 : > .production.started
 cp gamd_prepare.gamd.rst gamd-restart.dat
 echo "Running: production"
-if ! "$engine" \
+if ! run_engine engine.production.log \
+    "$engine" \
     -O \
     -i inputs/production.in \
     -o production.out \
@@ -267,6 +284,7 @@ if ! "$engine" \
     -x production.nc \
     -gamd production.gamd.log; then
     show_engine_output production.out
+    show_engine_output engine.production.log
     die_partial "production calculation failed. " production "${production_outputs[@]}"
 fi
 

@@ -77,6 +77,21 @@ if ! start_pcoord=$("$WEST_SIM_ROOT/westpa_scripts/calc_pcoord.sh" "$parent_rest
     exit 1
 fi
 
+# Optional per-worker GPU. WESTPA's processes work manager exports the 0-based
+# worker index as WM_PROCESS_INDEX; run.sh has checked the WE_GPU_IDS list.
+if [[ -n "${WE_GPU_IDS:-}" ]]; then
+    if [[ ! "${WM_PROCESS_INDEX:-}" =~ ^[0-9]+$ ]]; then
+        echo "Error: WE_GPU_IDS is set but WM_PROCESS_INDEX is not; use the WESTPA processes work manager." >&2
+        exit 1
+    fi
+    IFS=, read -r -a gpu_id_list <<< "$WE_GPU_IDS"
+    if (( WM_PROCESS_INDEX >= ${#gpu_id_list[@]} )); then
+        echo "Error: WESTPA worker $WM_PROCESS_INDEX has no entry in WE_GPU_IDS=$WE_GPU_IDS" >&2
+        exit 1
+    fi
+    export CUDA_VISIBLE_DEVICES=${gpu_id_list[$WM_PROCESS_INDEX]}
+fi
+
 engine_status=0
 "$AMBER_ENGINE" \
     -O \

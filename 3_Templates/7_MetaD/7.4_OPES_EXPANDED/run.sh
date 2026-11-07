@@ -143,13 +143,16 @@ stage_state() {
     fi
 }
 
+# Engine stdout/stderr (and PLUMED messages from pmemd) are appended to
+# engine_log after one header line per attempt.
 run_command() {
     local label=$1
     local directory=$2
     local engine_output=$3
-    local plumed_log=$4  # empty for stages without PLUMED
-    local colvar=$5
-    shift 5
+    local engine_log=$4
+    local plumed_log=$5  # empty for stages without PLUMED
+    local colvar=$6
+    shift 6
     if (( dry_run )); then
         echo "Dry run: $label ($directory)"
         printf '+ (cd %q &&' "$directory"
@@ -158,16 +161,26 @@ run_command() {
         return
     fi
     echo "Running: $label"
-    if ! (cd "$directory"; "$@"); then
+    {
+        printf '== %s' "$(date '+%Y-%m-%d %H:%M:%S %Z')"
+        printf ' %q' "$@"
+        printf '\n'
+    } >> "$engine_log"
+    if ! (cd "$directory"; "$@") >> "$engine_log" 2>&1; then
         echo "Error: $label failed in $directory. Engine output: $engine_output" >&2
+        echo "Engine stdout/stderr: $engine_log" >&2
         if [[ -n "$plumed_log" ]]; then
+            echo "PLUMED errors from pmemd are in the engine stdout/stderr log." >&2
             echo "PLUMED log: $plumed_log (AMBER default name; unverified)" >&2
             echo "COLVAR: $colvar" >&2
         fi
-        if [[ -s "$engine_output" ]]; then
-            echo "Last 20 lines of $engine_output:" >&2
-            tail -n 20 "$engine_output" >&2
-        fi
+        local log_file
+        for log_file in "$engine_output" "$engine_log"; do
+            if [[ -s "$log_file" ]]; then
+                echo "Last 20 lines of $log_file:" >&2
+                tail -n 20 "$log_file" >&2
+            fi
+        done
         exit 1
     fi
 }
@@ -213,7 +226,8 @@ run_preproduction_stage() {
             die "Partial $stage output is retained: ${retained[*]}. Move these files out of $work_dir (for example: mkdir -p $work_dir.failed && mv ${retained[*]} $work_dir.failed/) and rerun ./run.sh."
         fi
     fi
-    run_command "$stage" "$work_dir" "$work_dir/$stage.out" "" "" "${command[@]}"
+    run_command "$stage" "$work_dir" "$work_dir/$stage.out" "$work_dir/engine.$stage.log" \
+        "" "" "${command[@]}"
     if (( ! dry_run )); then
         for output in "${required[@]}"; do
             if [[ ! -s "$output" ]]; then
@@ -440,7 +454,7 @@ run_production_segment() {
     fi
 
     run_command "production segment $segment_name/$segments" "$segment_dir" "$segment_dir/production.out" \
-        "$segment_dir/plumed.log" "$work_dir/COLVAR" \
+        "$segment_dir/engine.production.log" "$segment_dir/plumed.log" "$work_dir/COLVAR" \
         "$engine" "${amber_options[@]}" -O \
         -i production.in -o production.out \
         -p "$topology_path" -c "$input_restart" \

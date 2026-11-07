@@ -65,6 +65,10 @@ fi
 if [[ ! -s "$states_file" ]]; then
     die "Run ./build.sh first: $states_file"
 fi
+# build.sh writes build.done only after every build step and check passes.
+if [[ ! -f "$work_dir/build.done" ]]; then
+    die "Build did not complete: $work_dir/build.done is missing; see the ./build.sh error output and $work_dir/tleap.stdout.log. Move $work_dir aside (for example: mv $work_dir $work_dir.old) and rerun ./build.sh."
+fi
 amber_engine=$("${PYTHON:-python3}" helpers/config_utils.py "$work_dir/resolved_config.toml" engine AMBER_ENGINE pmemd.cuda)
 amber_mpi_engine=$("${PYTHON:-python3}" helpers/config_utils.py "$work_dir/resolved_config.toml" mpi_engine AMBER_MPI_ENGINE pmemd.cuda.MPI)
 mpi_launcher=${MPI_LAUNCHER:-mpirun}
@@ -163,6 +167,26 @@ report_replica_failure() {
     done < "$states_file"
 }
 
+# Run COMMAND in ENGINE_DIR and append its stdout/stderr to ENGINE_LOG, one
+# header line per attempt. The log is a diagnostic beside <stage>.out, not a
+# stage output.
+run_engine() {
+    local engine_log=$1
+    local engine_dir=$2
+    shift 2
+    echo "== $(date '+%Y-%m-%d %H:%M:%S') $*" >> "$engine_log"
+    if (
+        cd "$engine_dir"
+        "$@"
+    ) >> "$engine_log" 2>&1; then
+        return 0
+    fi
+    echo "Engine log: $engine_log" >&2
+    echo "Last 20 lines of $engine_log:" >&2
+    tail -n 20 "$engine_log" >&2
+    return 1
+}
+
 check_stage_identity() {
     local stage=$1
     local input_restart=$2
@@ -217,19 +241,17 @@ run_stage() {
             input_coordinates="../system.rst7"
         fi
 
-        if ! (
-            cd "$replica_dir"
+        if ! run_engine "$replica_dir/engine.$stage.log" "$replica_dir" \
             "$amber_engine" \
-                "${amber_options[@]}" \
-                -O \
-                -i "$stage.in" \
-                -o "$stage.out" \
-                -p ../system.parm7 \
-                -c "$input_coordinates" \
-                -r "$stage.rst7" \
-                -x "$stage.nc" \
-                -inf "$stage.info"
-        ); then
+            "${amber_options[@]}" \
+            -O \
+            -i "$stage.in" \
+            -o "$stage.out" \
+            -p ../system.parm7 \
+            -c "$input_coordinates" \
+            -r "$stage.rst7" \
+            -x "$stage.nc" \
+            -inf "$stage.info"; then
             die "$stage Calculation failed: $replica_dir/$stage.out"
         fi
     done < "$states_file"

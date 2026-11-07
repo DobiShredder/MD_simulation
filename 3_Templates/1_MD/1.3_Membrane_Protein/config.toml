@@ -28,6 +28,9 @@ equilibration_ensemble = "NPT"
 production_ensemble = "NPT"
 pressure_coupling = "anisotropic"
 timestep = 2.0
+# Lennard-Jones cutoff and force-switch start, Å (Amber26 section 3.6: MC barostat with lipids)
+cutoff = 12.0
+lj_force_switch = 10.0
 constraint_mode = "h-bonds"
 minimization_steps = 10000
 minimization_steepest_steps = 5000

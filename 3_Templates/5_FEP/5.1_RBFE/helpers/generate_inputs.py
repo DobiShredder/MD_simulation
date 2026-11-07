@@ -11,8 +11,8 @@ from pathlib import Path
 
 sys.dont_write_bytecode = True
 sys.path.insert(0, ".")
-from apply_config import apply_config  # noqa: E402
-from config_utils import load_config, positive_float, positive_int, section, string_value  # noqa: E402
+from apply_config import apply_config, synchronize_resolved_section  # noqa: E402
+from config_utils import finite_float, load_config, positive_float, positive_int, section, string_value  # noqa: E402
 
 
 def arguments() -> argparse.Namespace:
@@ -45,6 +45,46 @@ def heating_seed_base(run: dict[str, object]) -> int | None:
     if isinstance(seed, bool) or not isinstance(seed, int) or seed <= 0:
         raise ValueError("random_seed must be 'random' or a positive integer")
     return seed
+
+
+# Soft-core values used when [alchemical] omits a key. They match the values the
+# templates wrote before these options were exposed. gti_* = 0 are pmemd.cuda
+# defaults (Amber26 manual 27.1.7.1, p. 559-560) and are not written to mdin.
+SOFTCORE_DEFAULTS: dict[str, float | int] = {
+    "scalpha": 0.5,
+    "scbeta": 12.0,
+    "gti_lam_sch": 0,
+    "gti_ele_sc": 0,
+    "gti_vdw_sc": 0,
+}
+GTI_SOFTCORE_KEYS = ("gti_lam_sch", "gti_ele_sc", "gti_vdw_sc")
+
+
+def softcore_settings(alchemical: dict[str, object]) -> dict[str, float | int]:
+    """Read and check the soft-core and lambda-scheduling options."""
+    settings: dict[str, float | int] = {}
+    for key in ("scalpha", "scbeta"):
+        value = finite_float(alchemical, key, default=SOFTCORE_DEFAULTS[key])
+        if value <= 0:
+            raise ValueError(f"{key} must be greater than zero")
+        settings[key] = value
+    for key in GTI_SOFTCORE_KEYS:
+        value = alchemical.get(key, SOFTCORE_DEFAULTS[key])
+        if isinstance(value, bool) or not isinstance(value, int) or value not in (0, 1):
+            raise ValueError(f"{key} must be integer 0 or 1")
+        settings[key] = value
+    return settings
+
+
+def gti_softcore_lines(settings: dict[str, float | int]) -> str:
+    """Return the gti_* mdin lines, or nothing when all three keep the default 0.
+
+    With gti_lam_sch=1 pmemd changes the default of gti_ele_sc and gti_vdw_sc
+    to 1, so all three are written as soon as one of them is enabled.
+    """
+    if not any(settings[key] for key in GTI_SOFTCORE_KEYS):
+        return ""
+    return "".join(f"\n  {key}={settings[key]}," for key in GTI_SOFTCORE_KEYS)
 
 
 def selected_indices(topology: object, mask: str) -> list[int]:
@@ -188,6 +228,7 @@ def main() -> None:
         temperature = positive_float(run, "temperature")
         pressure = positive_float(run, "pressure")
         seed_base = heating_seed_base(run)
+        softcore = softcore_settings(alchemical)
     except ValueError as error:
         raise SystemExit(f"Config error: {error}") from None
 
@@ -231,6 +272,9 @@ def main() -> None:
         "@MASK_B@": mask_b,
         "@SCMASK_A@": scmask_a,
         "@SCMASK_B@": scmask_b,
+        "@SCALPHA@": repr(softcore["scalpha"]),
+        "@SCBETA@": repr(softcore["scbeta"]),
+        "@GTI_SOFTCORE_OPTIONS@": gti_softcore_lines(softcore),
         "@TIMESTEP_PS@": f"{timestep_ps:.6f}",
         "@TEMPERATURE@": f"{temperature:.3f}",
         "@PRESSURE@": f"{pressure:.3f}",
@@ -268,7 +312,13 @@ def main() -> None:
         "ligand_a_atom\tligand_b_atom\n" + "".join(f"{left}\t{right}\n" for left, right in mapping),
         encoding="utf-8",
     )
-    (args.work_dir / "resolved_config.toml").write_text(args.config.read_text(encoding="utf-8"), encoding="utf-8")
+    # The resolved config records the soft-core values actually written to mdin.
+    resolved_text = synchronize_resolved_section(
+        args.config.read_text(encoding="utf-8"),
+        "alchemical",
+        softcore,
+    )
+    (args.work_dir / "resolved_config.toml").write_text(resolved_text, encoding="utf-8")
     apply_config(args.config, args.work_dir)
 
 

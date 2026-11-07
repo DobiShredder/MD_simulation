@@ -5,23 +5,22 @@
 PDB 3HTB의 T4 lysozyme L99A/M102Q–JZ4 complex를 사용합니다.
 JZ4는 T4 lysozyme의 hydrophobic cavity에 결합한 중성 2-propylphenol입니다.
 Protein은 ff19SB, ligand는 GAFF2/AM1-BCC, water model은 OPC를 사용합니다.
+계산은 두 minimization, 200 ps heating, 100 ps equilibration, 1 ns production 순입니다.
 
 System은 Lemkul의 GROMACS protein–ligand tutorial과 같지만 force field는 다릅니다.
 Lemkul tutorial은 CHARMM36/CGenFF를 사용하고, 이 예제는 AMBER ff19SB/GAFF2로 구성합니다.
 두 parameter set의 결과가 같다고 가정하지 않습니다.
 
-Protein-Ligand complex simulation에서 주의할 점은 Ligand atom들의 partial charge를 어떻게 계산하느냐입니다.
-일반적으로는 *ab initio* 양자 계산을 통하여 분자 주변의 electrostatic potential을 계산하고,
-이를 재현하도록 atom-centered partial charge를 RESP 등의 방법으로 fitting합니다.
-이는 양자 계산 프로그램인 `Gaussian`, `GAMESS` 등을 사용하여 수행하지만, 이 튜토리얼에서는 다루지 않습니다.
-여기서는 계산의 편의성과 비용을 줄이기 위해 semi-empirical 방법인 `AM1-BCC`를 사용하여 partial charge를 정의합니다.
-하지만, 실제로 학습자가 Protein-Ligand complex system을 building 할 때에는 양자 계산을 수행하는 것을 추천합니다.
-
-Protein–ligand MD는 conventional MD와 같은 방식으로 coordinate를 적분합니다.
+Protein–ligand MD는 conventional MD와 같은 방식으로 좌표를 적분합니다.
 다만 ligand의 bond order, protonation, net charge와 atom mapping이 추가됩니다.
 이 정보가 달라지면 trajectory가 정상 종료해도 다른 chemical system을 계산합니다.
 
-
+Ligand atom의 partial charge 계산 방식에 주의합니다.
+일반적으로는 *ab initio* 양자 계산으로 분자 주변의 electrostatic potential을 계산하고,
+이를 재현하도록 atom-centered partial charge를 RESP 등의 방법으로 fitting합니다.
+이 계산은 `Gaussian`, `GAMESS` 같은 양자 계산 program으로 수행하며 이 tutorial에서는 다루지 않습니다.
+여기서는 비용을 줄이기 위해 semi-empirical 방법인 AM1-BCC로 partial charge를 정의합니다.
+새 protein–ligand system을 만들 때는 양자 계산 기반 charge를 권장합니다.
 
 ### Script 역할
 
@@ -29,9 +28,11 @@ Protein–ligand MD는 conventional MD와 같은 방식으로 coordinate를 적�
 | --- | --- | --- |
 | `download.sh` | 3HTB PDB/mmCIF와 JZ4 ideal SDF download | `structure/`의 source file과 `SHA256SUMS` |
 | `prepare.py` | Protein과 JZ4 선택, alternate conformer A 선택, HIE31 지정 | `structure/complex.pdb` |
-| `prepare.sh` | JZ4에 GAFF2 atom type과 AM1-BCC charge 생성 | `work/jz4.mol2`, `work/jz4.frcmod` |
+| `prepare.sh` | JZ4에 GAFF2 atom type과 AM1-BCC charge 생성, `parmchk2`로 누락 parameter 생성 | `work/jz4.mol2`, `work/jz4.frcmod` |
 | `build.sh` | Complex solvation, neutralization과 topology build | `work/system.parm7`, `system.rst7`, `system.pdb` |
 | `run.sh` | 두 minimization, heating, equilibration과 production 실행 | `work/*.out`, `*.info`, `*.rst7`, `*.nc` |
+
+### 실행
 
 ```bash
 cd 1_Simulation/1_MD/1.2_Protein_Ligand
@@ -47,12 +48,39 @@ PDB에서 보이지 않는 C-terminal Leu164는 복원하지 않으며 resolved 
 His31은 neutral-pH baseline으로 `HIE`를 사용합니다.
 다른 pH나 chemical state를 계산하려면 build 전에 다시 결정합니다.
 
+`prepare.sh`는 같은 SDF와 net charge로 완료한 parameter(`sqm.out`, `jz4.mol2`,
+`jz4.frcmod`)를 재사용합니다. Input이 바뀌거나 완료 기록 없는 output이 있으면
+파일을 보존하고 거부합니다.
 
+필요한 program과 계산량은 [상위 README](../README.md#준비-사항)에 있습니다.
+기본 engine은 `pmemd.cuda`이며 `AMBER_ENGINE`으로 바꿉니다.
+`build.sh` 뒤에는 `leap.log`에서 JZ4 atom mapping, net charge, 추가된 parameter와
+system charge를 확인합니다.
 
-`prepare.sh`는 SDF와 net charge의 identity를 parameter 생성 전에 기록합니다.
-`sqm.out`, `jz4.mol2`, `jz4.frcmod`가 생성되고 두 program이 성공하면 완료 증거를 남깁니다.
-같은 input의 완료 parameter는 재사용합니다. Input 변경, 기록 없는 기존 output이나
-누락된 완료 output은 파일을 보존하고 거부합니다. 새 parameter 계산은 별도 tutorial 사본에서 시작합니다.
+Production이 완료된 `work`에서 다시 실행하면 engine을 실행하지 않고
+`Skipping completed production`을 출력한 뒤 정상 종료합니다.
+실행 상태, 실패 후 재실행, 동시 실행 보호는 [GUIDE.md 부록](../../../GUIDE.md#4-부록-실행-상태와-복구)을 참고합니다.
+
+### 주요 output과 완료 확인
+
+| Stage | Input | 길이 | Positional restraint | Trajectory |
+| --- | --- | --- | --- | --- |
+| Solvent minimization | `min-solvent.in` | `maxcyc=5000`, 처음 `ncyc=2500`은 steepest descent | Protein·JZ4 heavy atom, 10 kcal·mol⁻¹·Å⁻² | 없음 |
+| Whole-system minimization | `min-all.in` | `maxcyc=5000` | 없음 | 없음 |
+| NVT heating | `heat.in` | `nstlim=100000`, 200 ps, 20→300 K | 5 kcal·mol⁻¹·Å⁻² | `heat.nc` 20 frame |
+| NPT equilibration | `equil.in` | `nstlim=50000`, 100 ps | 1 kcal·mol⁻¹·Å⁻² | `equil.nc` 10 frame |
+| NPT production | `production.in` | `nstlim=500000`, 1 ns | 없음 | `production.nc` 100 frame |
+
+Trajectory frame과 energy는 10 ps(`ntwx=ntpr=5000`)마다, restart는 100 ps(`ntwr=50000`)마다
+기록합니다. 정상 종료하면 terminal 마지막 두 줄이 다음과 같습니다.
+
+```text
+Completed: 1 ns production (work/production.out)
+Production trajectory: work/production.nc
+```
+
+`cpptraj -p work/system.parm7 -y work/production.nc -tl`은 `Frames: 100`을
+출력합니다. 다음은 [MM/GBSA analysis](../../../2_Analysis/6_Binding_Energy/6.1_MMGBSA/README.md)입니다.
 
 ### 주요 option
 
@@ -63,123 +91,162 @@ His31은 neutral-pH baseline으로 `HIE`를 사용합니다.
 | `ntt=3`, `gamma_ln=1.0` | Heating 이후 300 K Langevin thermostat를 사용합니다. |
 | `ntb=2`, `ntp=1`, `barostat=2` | Equilibration과 production을 isotropic Monte Carlo-barostat NPT로 실행합니다. |
 | `ntc=2`, `ntf=2`, `dt=0.002` | 수소 bond에 SHAKE를 적용하고 2 fs timestep을 사용합니다. |
-| `restraintmask` | Production 전 stage에서 solvent/ion을 제외한 solute heavy atom을 restraint합니다. |
+| `restraintmask` | Solvent minimization, heating과 equilibration에서 solvent/ion을 제외한 solute heavy atom을 restraint합니다. |
+| `restraint_wt` | 10 → 5 → 1 kcal·mol⁻¹·Å⁻²로 줄이고 production은 `ntr=0`입니다. |
+| `pres0=1.0`, `taup=2.0`, `cut=10.0` | 목표 압력 1 bar, pressure relaxation time 2 ps, nonbonded cutoff 10 Å입니다. |
 
-Heating은 200 ps, equilibration은 100 ps, production은 1 ns입니다.
+### 결과 확인
+
 Equilibration 중 volume이 지속적으로 발산하거나 box가 collapse하면 시간을
 늘리기 전에 `leap.log`, `heat.out`, `equil.out`과 `equil.info`를 확인합니다.
 Volume fluctuation 자체는 작은 NPT system에서 예상되지만 density runaway,
 NaN 또는 SHAKE failure는 정상 equilibration이 아닙니다.
 
 Production trajectory는 interaction analysis와 MM/GBSA·MM/PBSA input으로
-사용할 수 있습니다. 1 ns 결과는 binding affinity 수렴을 의미하지
-않습니다. `leap.log`에서 JZ4 atom mapping, net charge, 추가된 parameter와
-system charge를 확인합니다. 기본 engine은 `pmemd.cuda`입니다.
+사용할 수 있습니다. 1 ns 결과는 binding affinity 수렴을 의미하지 않습니다.
 
-Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 중단하고 파일을 보존합니다. 새 build 전에는 기존 `work/`를 다른 위치에 보관하거나 별도 tutorial 사본을 사용합니다.
+공통 확인 항목은 [상위 README](../README.md#결과-판단)에 있습니다. 이 system에서는
+protein backbone에 맞춘 뒤 계산한 JZ4 heavy-atom RMSD로 ligand가 cavity 안에
+머무는지 함께 봅니다.
 
-`download.sh`는 모든 asset과 `SHA256SUMS`를 staging에서 확인한 뒤 `helpers/publish_download.py`로 게시합니다. Transfer, checksum 또는 일반 publication 실패에서는 기존 파일을 보존하며, 관련 없는 preparation 파일도 유지합니다. `structure/.download.pending`가 남으면 prepare/build와 새 download가 거부됩니다. 보존된 staging과 marker를 점검하고, marker만 삭제해 이전 파일과 새 파일을 섞어 사용하지 않습니다.
+### 자주 생기는 문제
+
+`run.sh` message는 [상위 README](../README.md#자주-생기는-문제)에 정리했습니다.
+
+| Message | 조치 |
+| --- | --- |
+| `antechamber not found.`, `parmchk2 not found.` | AmberTools 26 환경을 불러옵니다. |
+| `antechamber run failed. See log: work/antechamber.log` | Log와 `work/sqm.out`에서 AM1 계산 오류를 확인합니다. SDF의 수소, bond order와 net charge를 먼저 봅니다. |
+| `Topology build requires ligand parameters` | `prepare.sh`를 먼저 실행합니다. |
+| `tleap failed. See work/tleap.stdout.log and work/leap.log` | `leap.log`에서 JZ4 atom 이름이 `jz4.mol2`와 맞는지 확인합니다. |
 
 ## English
 
 This example uses the T4 lysozyme L99A/M102Q–JZ4 complex from PDB 3HTB.
 JZ4 is neutral 2-propylphenol bound in the hydrophobic cavity. The model uses
-ff19SB for the protein, GAFF2/AM1-BCC for JZ4, and OPC water.
+ff19SB for the protein, GAFF2/AM1-BCC for JZ4, and OPC water. The workflow runs
+two minimizations, 200 ps heating, 100 ps equilibration, and 1 ns production.
 
 The molecular system follows the Lemkul GROMACS protein–ligand tutorial, but
 the parameterization does not: that tutorial uses CHARMM36/CGenFF, whereas this
 one uses AMBER ff19SB/GAFF2. Results from the two parameter sets should not be
 assumed to be equivalent.
 
-Ligand partial charges require particular attention when building a
-protein–ligand system. A common protocol calculates the molecular
-electrostatic potential with an *ab initio* quantum-chemistry method and fits
-atom-centered partial charges, for example with RESP. Programs such as
-Gaussian or GAMESS can perform the quantum calculation, but that workflow is
-outside this tutorial. This example instead uses the lower-cost
-semi-empirical AM1-BCC method. For a new protein–ligand system, consider a
-quantum-chemistry charge protocol and validate the selected chemical model.
-
 Protein–ligand MD integrates the coordinates in the same way as conventional
 MD. The ligand additionally requires a defined bond order, protonation state,
 net charge, and atom mapping. Changing any of these describes a different
 chemical system even if the trajectory finishes normally.
 
+Ligand partial charges require particular attention. A common protocol
+calculates the molecular electrostatic potential with an *ab initio*
+quantum-chemistry method and fits atom-centered partial charges, for example
+with RESP. Programs such as Gaussian or GAMESS can perform the quantum
+calculation, but that workflow is outside this tutorial. This example instead
+uses the lower-cost semi-empirical AM1-BCC method. For a new protein–ligand
+system, a quantum-chemistry charge protocol is recommended.
+
 ### Script roles
 
-| File | Role |
+| File | Role | Main inputs and outputs |
+| --- | --- | --- |
+| `download.sh` | Downloads 3HTB PDB/mmCIF and the JZ4 ideal SDF with checksums. | source files and `SHA256SUMS` in `structure/` |
+| `prepare.py` | Selects protein/JZ4, conformer A, and neutral HIE31. | `structure/complex.pdb` |
+| `prepare.sh` | Generates GAFF2 atom types, AM1-BCC charges, and missing parameters with `parmchk2`. | `work/jz4.mol2`, `work/jz4.frcmod` |
+| `build.sh` | Solvates and neutralizes the complex and writes AMBER topology files. | `work/system.parm7`, `system.rst7`, `system.pdb` |
+| `run.sh` | Runs two minimizations, heating, equilibration, and production. | `work/*.out`, `*.info`, `*.rst7`, `*.nc` |
+
+### Running
+
+```bash
+cd 1_Simulation/1_MD/1.2_Protein_Ligand
+./download.sh
+python3 prepare.py structure/3HTB.raw.pdb structure/complex.pdb
+./prepare.sh structure/JZ4_ideal.sdf
+./build.sh structure/complex.pdb
+./run.sh
+```
+
+`prepare.py` removes phosphate, BME, and crystallographic waters. It keeps
+resolved residues 1–163 and does not model unresolved C-terminal Leu164. His31
+uses `HIE` as the neutral-pH baseline; decide again before the build for another
+pH or chemical state.
+
+`prepare.sh` reuses parameters (`sqm.out`, `jz4.mol2`, `jz4.frcmod`) completed
+with the same SDF and net charge. Changed inputs or outputs without a completion
+record are preserved and rejected.
+
+Required programs and the computational cost are listed in the
+[parent README](../README.md#prerequisites). `run.sh` defaults to
+`pmemd.cuda`; set `AMBER_ENGINE` to use another executable.
+After `build.sh`, check the JZ4 atom mapping, net charge, added parameters, and
+total system charge in `leap.log`.
+
+Rerunning after a completed production skips the engine, prints
+`Skipping completed production`, and exits 0.
+See [GUIDE.md appendix](../../../GUIDE.md#4-appendix-run-state-and-recovery) for run state, reruns after failure and
+concurrent-run protection.
+
+### Main outputs and completion check
+
+| Stage | Input | Length | Positional restraint | Trajectory |
+| --- | --- | --- | --- | --- |
+| Solvent minimization | `min-solvent.in` | `maxcyc=5000`, first `ncyc=2500` steepest descent | Protein and JZ4 heavy atoms, 10 kcal·mol⁻¹·Å⁻² | None |
+| Whole-system minimization | `min-all.in` | `maxcyc=5000` | None | None |
+| NVT heating | `heat.in` | `nstlim=100000`, 200 ps, 20→300 K | 5 kcal·mol⁻¹·Å⁻² | `heat.nc`, 20 frames |
+| NPT equilibration | `equil.in` | `nstlim=50000`, 100 ps | 1 kcal·mol⁻¹·Å⁻² | `equil.nc`, 10 frames |
+| NPT production | `production.in` | `nstlim=500000`, 1 ns | None | `production.nc`, 100 frames |
+
+Frames and energies are written every 10 ps (`ntwx=ntpr=5000`) and restarts
+every 100 ps (`ntwr=50000`). A successful run ends with these two lines:
+
+```text
+Completed: 1 ns production (work/production.out)
+Production trajectory: work/production.nc
+```
+
+`cpptraj -p work/system.parm7 -y work/production.nc -tl` prints
+`Frames: 100`. Continue with the
+[MM/GBSA analysis](../../../2_Analysis/6_Binding_Energy/6.1_MMGBSA/README.md).
+
+### Key options
+
+| Option | Meaning |
 | --- | --- |
-| `download.sh` | Downloads 3HTB and the JZ4 ideal SDF with checksums. |
-| `prepare.py` | Selects protein/JZ4, conformer A, and neutral HIE31. |
-| `prepare.sh` | Generates GAFF2 atom types, AM1-BCC charges, and missing parameters. |
-| `build.sh` | Solvates and neutralizes the complex and writes AMBER topology files. |
-| `run.sh` | Runs minimization, heating, equilibration, and production. |
+| `antechamber -nc 0` | Net charge of the neutral JZ4 used here. Prepare other chemical states as separate systems in the template. |
+| `-at gaff2`, `-c bcc` | Selects GAFF2 atom types and the AM1-BCC charge method. |
+| `ntt=3`, `gamma_ln=1.0` | 300 K Langevin thermostat after heating. |
+| `ntb=2`, `ntp=1`, `barostat=2` | Isotropic Monte Carlo-barostat NPT for equilibration and production. |
+| `ntc=2`, `ntf=2`, `dt=0.002` | SHAKE on bonds to hydrogen with a 2 fs timestep. |
+| `restraintmask` | Restrains solute heavy atoms, excluding solvent and ions, during solvent minimization, heating, and equilibration. |
+| `restraint_wt` | Reduced 10 → 5 → 1 kcal·mol⁻¹·Å⁻²; production uses `ntr=0`. |
+| `pres0=1.0`, `taup=2.0`, `cut=10.0` | 1 bar target pressure, 2 ps pressure relaxation time, and 10 Å nonbonded cutoff. |
 
-The preparation removes phosphate, BME, and crystallographic waters. It keeps
-resolved residues 1–163 and does not model unresolved C-terminal Leu164.
-`prepare.sh` passes the neutral JZ4 charge as `antechamber -nc 0`. The MD controls use a 2 fs SHAKE timestep,
-Langevin thermostat, and isotropic Monte Carlo-barostat NPT. Initial
-solute-heavy-atom restraints are removed for production.
+### Checking results
 
-Heating is 200 ps, equilibration is 100 ps, and production is 1 ns. Persistent
-box divergence, density runaway, NaNs, or SHAKE failure should be diagnosed
-from `leap.log`, `heat.out`, `equil.out`, and `equil.info`; a longer run does not
-repair an unstable starting system.
+Persistent box divergence, density runaway, NaNs, or SHAKE failure should be
+diagnosed from `leap.log`, `heat.out`, `equil.out`, and `equil.info`; a longer
+run does not repair an unstable starting system. Volume fluctuations alone are
+expected in a small NPT system.
 
-The trajectory can supply interaction and MM/GBSA or MM/PBSA examples, but it
-does not establish a converged binding affinity. Check the JZ4 atom mapping,
-net charge, missing parameters, and total system charge in `leap.log`.
-`run.sh` defaults to `pmemd.cuda`; set `AMBER_ENGINE` to use another executable.
+The production trajectory can supply interaction and MM/GBSA or MM/PBSA
+examples, but 1 ns does not establish a converged binding affinity.
 
-`prepare.sh` records the SDF and net-charge identity before parameter generation.
-Completion requires successful antechamber/parmchk2 exits and nonempty `sqm.out`,
-`jz4.mol2`, and `jz4.frcmod`. Completed parameters with unchanged inputs are reused.
-Changed inputs, existing outputs without records, and missing completed outputs are
-preserved and rejected. Use a separate tutorial copy for new parameter calculations.
+General checks are listed in the [parent README](../README.md#judging-the-result).
+For this system, also check that JZ4 stays in the cavity, using the JZ4
+heavy-atom RMSD after fitting the protein backbone.
+
+### Common problems
+
+`run.sh` messages are listed in the [parent README](../README.md#common-problems).
+
+| Message | Action |
+| --- | --- |
+| `antechamber not found.`, `parmchk2 not found.` | Load the AmberTools 26 environment. |
+| `antechamber run failed. See log: work/antechamber.log` | Check the log and `work/sqm.out` for AM1 errors. Review the SDF hydrogens, bond orders, and net charge first. |
+| `Topology build requires ligand parameters` | Run `prepare.sh` first. |
+| `tleap failed. See work/tleap.stdout.log and work/leap.log` | Check in `leap.log` that the JZ4 atom names match `jz4.mol2`. |
 
 ## References / 참고 자료
 
 - [Lemkul protein–ligand tutorial](https://www.mdtutorials.com/gmx/complex/index.html)
 - [RCSB PDB 3HTB](https://www.rcsb.org/structure/3HTB)
-
-Build stops before changing inputs when topology/restart files already exist, preserving those files. Preserve the existing `work/` elsewhere or use a separate tutorial copy before a new build.
-
-### 동시 실행과 input 변경
-
-Build와 run은 `work.writers/` registry를 공유합니다. 같은 output/state를 쓰는 작업은 동시에 실행하지 않습니다. `prepare.py`가 있는 경우 structure를 생성하는 작업도 input을 읽는 build와 충돌하면 거부합니다.
-
-Run은 재사용할 결과의 input을 SHA256으로 비교합니다. Topology, 최초 coordinate file, stage input, predecessor restart와 restraint가 바뀌거나 기존 결과에 identity 기록이 없으면 파일을 보존하고 거부합니다. 이 tutorial은 고정 경로를 사용하므로 변경된 계산은 새 directory에 tutorial을 복사해 시작합니다.
-
-정상 종료, command 실패와 INT/TERM에서는 자식 process의 종료를 확인한 뒤 자기 lock만 해제합니다. SIGKILL이나 node 장애로 남은 lock은 자동 삭제하지 않습니다. Error에 표시된 lock과 `owner.json`의 host, PID, command, scope를 확인하고 scheduler와 해당 host에서 모든 writer와 자식 process가 종료됐는지 확인한 뒤 그 lock directory만 수동 제거합니다. PID가 로컬에서 보이지 않는다는 이유만으로 제거하지 않습니다. `.gate/`도 같은 확인이 필요합니다.
-
-`run.sh --dry-run`은 보호나 identity 파일을 생성하지 않습니다. 진행 중인 work를 이동하거나 identity를 수정해 재사용하지 않습니다. 보호는 로컬 filesystem과 로컬 자식 process로 검증했으며 network filesystem, remote MPI와 다른 node의 writer 종료는 미검증입니다.
-
-### Concurrent runs and input changes
-
-Build and run share the `work.writers/` registry and reject concurrent writers to the same output/state. Where present, `prepare.py` also rejects structure writes that overlap an active build reader.
-
-Run compares inputs for result reuse with SHA256. Changed topology, initial coordinates, stage input, predecessor restart or restraint, and results without identity records, are preserved and rejected. This tutorial uses fixed paths; start changed calculations in a new tutorial copy.
-
-Normal exit, command failure and INT/TERM release only the owned lock after child termination is verified. Locks left by SIGKILL or node failure are retained. Inspect the reported lock and its `owner.json` host, PID, command and scopes; confirm through the scheduler and owning host that all writers and children stopped before manually removing only that lock directory. A PID missing locally is not sufficient. Apply the same checks to `.gate/`.
-
-`run.sh --dry-run` does not create writer or identity files. Do not move active work trees or edit identities to reuse results. Protection was tested on a local filesystem with local child processes; network filesystems, remote MPI and termination of writers on other nodes remain unverified.
-
-### Stage 완료 판정 / Stage completion
-
-Input identity는 입력이 같은지 확인하며 engine의 성공 종료를 증명하지 않습니다.
-Runner가 engine의 성공 종료와 필수 output을 확인한 뒤 만든 완료 증거가 있어야
-stage를 재사용합니다. Output이 남았지만 완료 증거가 없거나 필수 output이
-누락·비어 있으면 기존 결과를 보존하고 중단합니다. 기존 결과를 소급 인증하지
-않습니다. 새 계산은 생성된 `work/`를 포함하지 않는 새 tutorial copy에서 시작합니다.
-`ntwx=0`인 AMBER stage는 trajectory를 완료 조건으로 요구하지 않습니다.
-지원되는 continuation은 기존 restart/state 전달 방식을 따릅니다.
-
-Input identity checks unchanged inputs; it does not prove a successful engine exit.
-A stage is reused only with completion evidence written after a successful engine
-exit and required-output checks. Outputs without that evidence, or missing/empty
-required outputs, are preserved and rejected. Existing results are not certified
-retroactively. Start a new tutorial copy without generated `work/` directories for
-a new calculation. AMBER stages with `ntwx=0` do not require a trajectory for
-completion. Supported continuation retains its existing restart/state handoff.
-
-`download.sh` validates every asset and `SHA256SUMS` in staging before publishing through `helpers/publish_download.py`. Transfer, checksum and ordinary publication failures preserve existing files, including unrelated preparation files. A retained `structure/.download.pending` blocks source readers and new downloads. Inspect the retained staging and marker; deleting only the marker can expose a mixed generation.

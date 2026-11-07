@@ -4,11 +4,9 @@
 
 *인접 window의 histogram이 겹쳐야 CV 구간 사이의 PMF를 연결할 수 있습니다. / Neighboring histograms must overlap to connect the PMF across the CV range.*
 
-
-
 ## 한국어
 
-Chignolin terminal Cα distance를 CV로 사용합니다.
+Chignolin terminal Cα distance를 CV로 사용해 umbrella sampling을 실행합니다.
 
 Umbrella sampling은 하나의 trajectory가 넘기 어려운 reaction-coordinate 영역을
 여러 harmonic window로 나누어 sampling합니다.
@@ -20,15 +18,25 @@ Window마다 biased distribution을 얻은 뒤 overlap을 확인하고 WHAM 같�
 
 Ratchet MD는 target-directed simulation이지만 constant-velocity pulling과는 다릅니다.
 목표 방향의 thermal fluctuation은 허용하고 반대 방향 fluctuation은 ratchet-and-pawl bias로 억제합니다.
-Conventional Steered MD는 이 튜토리얼에서는 다루지 않습니다.
+Conventional Steered MD는 이 tutorial에서 다루지 않습니다.
 
+### 준비 사항
 
+| 필요한 것 | 사용하는 곳 |
+| --- | --- |
+| Bash 4.4 이상, `curl`, Python 3 | `download.sh`, `prepare.py`, `rmd/anal.py`와 자동 호출되는 `helpers/` |
+| AmberTools 26 `tleap`, `cpptraj` | `prepare.sh`, `rmd/anal.py` |
+| `plumed=1`을 지원하도록 PLUMED와 연결한 AMBER engine | `rmd/run.sh`. PLUMED input은 PLUMED 2.10 manual 기준입니다. |
+| Amber 26 `pmemd.cuda`와 NVIDIA GPU | `us/run.sh`(PLUMED 불필요)와 `rmd/run.sh`의 기본 engine. 다른 executable은 `AMBER_ENGINE`으로 지정합니다. |
+| NumPy | PMF analysis(`2_Analysis/7_Enhanced_Sampling/7.1_Umbrella_Sampling`) |
+
+설치는 [저장소 README](../../README.md)의 AmberTools 26 설치 section을 따릅니다.
 
 ### Script 흐름
 
 | 위치 | 역할 |
 | --- | --- |
-| `download.sh` | 1UAO PDB/mmCIF와 checksum을 저장합니다. |
+| `download.sh` | RCSB에서 1UAO PDB/mmCIF를 받고 checksum을 저장합니다. |
 | `prepare.py` | 첫 NMR model을 선택해 Chignolin PDB를 만듭니다. |
 | `prepare.sh` | Ratchet MD와 모든 window가 공유할 ff19SB/OPC topology를 만듭니다. |
 | `rmd/run.sh` | ABMD pathway를 생성합니다. |
@@ -51,95 +59,173 @@ cd ../us
 ./run.sh
 ```
 
-`download.sh`는 RCSB에서 PDB와 mmCIF를 받고 checksum을 기록합니다.
-`prepare.py`는 1UAO의 첫 NMR model을 선택합니다. `prepare.sh`가 만든
-ff19SB/OPC `system.parm7`을 ratchet MD와 모든 umbrella
+- [Ratchet MD와 seed 추출](rmd/README.md)
+- [Umbrella window](us/README.md)
+
+실행 상태, 실패 후 재실행, 동시 실행 보호는 [GUIDE.md 부록](../../GUIDE.md#4-부록-실행-상태와-복구)을
+참고합니다. 서로 다른 window의 `us/run.sh`는 함께 실행할 수 있습니다.
+
+### 공통 topology
+
+`prepare.sh`가 만든 ff19SB/OPC `system.parm7`을 ratchet MD와 모든 umbrella
 window가 공유합니다. Window별 solvation은 하지 않습니다. CV, atom index,
 ABMD target, window 범위와 force constant는 chignolin용 설정입니다.
 
-성공 완료 증거가 있는 stage와 umbrella window는 건너뜁니다. 완료 증거 없이
-output이 남은 stage는 다시 실행하거나 덮어쓰지 않고 중단합니다. Error message에
-나온 file을 `work` 밖으로 옮긴 뒤 같은 command를 다시 실행합니다. 완료된
-ratchet MD는 다시 실행하지 않습니다.
-
-`tleap.in`은 20 Å OPC buffer를 추가한 뒤 atom center로 계산한 box에
+`inputs/tleap.in`은 20 Å OPC buffer를 추가한 뒤 atom center로 계산한 box에
 0.25 Å padding을 둡니다. AmberTools 26에서 초기 density는 약
 0.93 g/cm³였고, 0.8 Å 미만의 periodic overlap은 없었습니다. Padding을
 제거하거나 box를 더 줄이면 반대편 water가 겹칠 수 있습니다.
-
-- [Ratchet MD와 seed 추출](rmd/README.md)
-- [Umbrella window](us/README.md)
 
 Histogram overlap, PMF와 uncertainty는
 [`2_Analysis/7_Enhanced_Sampling/`](../../2_Analysis/7_Enhanced_Sampling/README.md)에서
 계산합니다.
 
-`download.sh`는 모든 asset과 `SHA256SUMS`를 staging에서 확인한 뒤 `helpers/publish_download.py`로 게시합니다. Transfer, checksum 또는 일반 publication 실패에서는 기존 파일을 보존하며, 관련 없는 preparation 파일도 유지합니다. `structure/.download.pending`가 남으면 prepare/build와 새 download가 거부됩니다. 보존된 staging과 marker를 점검하고, marker만 삭제해 이전 파일과 새 파일을 섞어 사용하지 않습니다.
+### 계산량
+
+| 단계 | Engine 실행 | Dynamics 길이 |
+| --- | --- | --- |
+| `rmd/run.sh` | 5회: minimization 2, heating, equilibration, ratchet MD | 0.2 + 0.1 + 1.0 = 1.3 ns |
+| `us/run.sh` | Window 19개 × 4회(minimization, heating, equilibration, production) = 76회 | Window당 0.2 + 0.1 + 1.0 = 1.3 ns, 합계 24.7 ns(production 19 ns) |
+
+각 engine 실행은 `pmemd.cuda` process 하나가 GPU 하나로 계산합니다. `us/run.sh`는
+window를 차례로 실행합니다. GPU가 여러 개이면 `./run.sh --window N`을 별도
+process로 실행하고, 각 process가 쓸 GPU를 scheduler나 `CUDA_VISIBLE_DEVICES`로
+정합니다. 실행 시간은 GPU에 따라 달라집니다.
+
+### 결과 판단
+
+다음은 US 결과를 볼 때 일반적으로 쓰는 확인 항목입니다([Kästner, 2011](https://doi.org/10.1002/wcms.66);
+[Grossfield et al., 2018](https://doi.org/10.33011/livecoms.1.1.5067)).
+
+- `rmd/work/ratchet.dat`의 distance가 6–24 Å window 범위를 모두 지나가야 seed를 고를 수 있습니다.
+- 각 window의 `distance.dat` 분포가 center 근처에 있고, 인접 window histogram이 겹치는지 analysis의 `overlap.tsv`로 봅니다.
+- Production 앞·뒤 절반으로 각각 계산한 PMF가 비슷한지 비교합니다. 차이가 크면 window당 sampling이 부족합니다.
+
+### 자주 생기는 문제
+
+| Message | 조치 |
+| --- | --- |
+| `AMBER engine not found: pmemd.cuda` | Amber 환경을 불러오거나 `AMBER_ENGINE`에 executable을 지정합니다. |
+| `Run ../prepare.sh first.` | 상위 directory에서 `prepare.sh`를 먼저 실행합니다. |
+| `Partial <stage> output is retained` | Message의 `mv` command로 남은 파일을 옮긴 뒤 같은 command를 다시 실행합니다. |
+| `input changed` | 실행 뒤 input이나 topology를 고쳤습니다. 해당 `work`를 옮기고 그 단계부터 다시 실행합니다. |
+
+`rmd/`와 `us/`에만 해당하는 message는 각 README에 있습니다.
 
 ## English
 
-The terminal Cα distance of chignolin is used as the CV. PLUMED ABMD generates
-a ratchet-MD pathway, and ordered frames seed AMBER umbrella windows.
+The terminal Cα distance of chignolin is the CV for umbrella sampling.
 
 Umbrella sampling partitions a difficult reaction-coordinate range into
 harmonically restrained windows. Overlapping biased distributions are later
-combined to recover an unbiased PMF. Ratchet MD supplies only starting
-structures here; PMF estimation uses umbrella production data.
+combined, for example with WHAM, to recover an unbiased PMF. Ratchet MD supplies
+only starting structures here; PMF estimation uses umbrella production data.
+
+1. PLUMED ABMD ratchet MD generates a pathway along which thermal fluctuations
+   increase the end-to-end distance.
+2. Ordered seeds are extracted from that trajectory and run as umbrella windows
+   that all share one AMBER topology.
 
 Ratchet MD belongs broadly to target-directed or steered simulations, but it
 is not constant-velocity pulling. The ratchet-and-pawl bias permits motion
 toward the target and damps backward fluctuations. This repository does not
 provide a separate conventional Steered-MD tutorial.
 
-`download.sh` retrieves the PDB and mmCIF files from RCSB and records their
-checksums. `prepare.py` selects the first NMR model. Run
-`./prepare.sh structure/chignolin.pdb` to create
-one ff19SB/OPC topology shared by ratchet MD and every
-umbrella window. Seed frames are not resolvated. The CV, atom indices, target,
-window range, and restraint strength are specific to chignolin.
+### Prerequisites
 
-Stages and umbrella windows with successful completion evidence are skipped. A
-stage that left output without that evidence is neither rerun nor overwritten;
-the run stops. Move the files named in the error message out of `work` and rerun
-the same command. Completed ratchet MD is not rerun.
+| Requirement | Used by |
+| --- | --- |
+| Bash 4.4 or newer, `curl`, Python 3 | `download.sh`, `prepare.py`, `rmd/anal.py`, and the automatically called `helpers/` |
+| AmberTools 26 `tleap`, `cpptraj` | `prepare.sh`, `rmd/anal.py` |
+| AMBER engine linked with PLUMED so that `plumed=1` works | `rmd/run.sh`; the PLUMED input follows the PLUMED 2.10 manual. |
+| Amber 26 `pmemd.cuda` and an NVIDIA GPU | Default engine for `us/run.sh` (no PLUMED needed) and `rmd/run.sh`; `AMBER_ENGINE` selects another executable. |
+| NumPy | PMF analysis (`2_Analysis/7_Enhanced_Sampling/7.1_Umbrella_Sampling`) |
 
-The tleap build adds a 20 Å OPC buffer and defines the periodic box from
-atom centers with 0.25 Å padding. With AmberTools 26 this produced an initial
-density of about 0.93 g/cm³ without periodic contacts below 0.8 Å. Removing
-the padding or shrinking the box further can overlap waters across opposite
-box faces.
+Follow the AmberTools 26 installation section of the
+[repository README](../../README.md).
 
-The root scripts download, prepare, and build one shared ff19SB/OPC system.
-`rmd/run.sh` generates the pathway, `rmd/anal.py` extracts ordered seeds,
-`us/build.sh` creates 19 windows, and `us/run.sh` propagates them.
+### Script flow
+
+| Location | Role |
+| --- | --- |
+| `download.sh` | Downloads the 1UAO PDB/mmCIF from RCSB and records checksums. |
+| `prepare.py` | Selects the first NMR model as the chignolin PDB. |
+| `prepare.sh` | Builds the ff19SB/OPC topology shared by ratchet MD and every window. |
+| `rmd/run.sh` | Generates the ABMD pathway. |
+| `rmd/anal.py` | Extracts ordered first-crossing frames as umbrella seeds. |
+| `us/build.sh` | Creates 19 windows from the seeds, shared topology, and restraints. |
+| `us/run.sh` | Runs the restrained simulation of each window. |
+
+```bash
+cd 1_Simulation/2_US
+./download.sh
+python3 prepare.py structure/1UAO.raw.pdb structure/chignolin.pdb
+./prepare.sh structure/chignolin.pdb
+
+cd rmd
+./run.sh
+python3 anal.py
+
+cd ../us
+./build.sh
+./run.sh
+```
+
+- [Ratchet MD and seed extraction](rmd/README.md)
+- [Umbrella windows](us/README.md)
+
+See [GUIDE.md appendix](../../GUIDE.md#4-appendix-run-state-and-recovery) for run state, reruns after failure and
+concurrent-run protection. `us/run.sh` for different windows can run together.
+
+### Shared topology
+
+The ff19SB/OPC `system.parm7` created by `prepare.sh` is shared by ratchet MD and
+every umbrella window. Seed frames are not resolvated. The CV, atom indices,
+ABMD target, window range, and restraint strength are specific to chignolin.
+
+`inputs/tleap.in` adds a 20 Å OPC buffer and defines the periodic box from atom
+centers with 0.25 Å padding. With AmberTools 26 this produced an initial density
+of about 0.93 g/cm³ without periodic contacts below 0.8 Å. Removing the padding
+or shrinking the box further can overlap waters across opposite box faces.
 
 Histogram overlap, PMF estimation, and uncertainty are handled under
-`2_Analysis/7_Enhanced_Sampling/`.
+[`2_Analysis/7_Enhanced_Sampling/`](../../2_Analysis/7_Enhanced_Sampling/README.md).
+
+### Computational cost
+
+| Step | Engine runs | Dynamics length |
+| --- | --- | --- |
+| `rmd/run.sh` | 5: two minimizations, heating, equilibration, ratchet MD | 0.2 + 0.1 + 1.0 = 1.3 ns |
+| `us/run.sh` | 19 windows × 4 (minimization, heating, equilibration, production) = 76 | 1.3 ns per window, 24.7 ns in total (19 ns production) |
+
+Each engine run is one `pmemd.cuda` process on one GPU. `us/run.sh` runs the
+windows one after another. With several GPUs, start `./run.sh --window N` as
+separate processes and assign each process its GPU through the scheduler or
+`CUDA_VISIBLE_DEVICES`. Run time depends on the GPU.
+
+### Judging the result
+
+These are common checks for umbrella sampling
+([Kästner, 2011](https://doi.org/10.1002/wcms.66);
+[Grossfield et al., 2018](https://doi.org/10.33011/livecoms.1.1.5067)).
+
+- The distance in `rmd/work/ratchet.dat` must pass through the whole 6–24 Å window range before seeds can be selected.
+- Each window's `distance.dat` stays near its center, and neighboring histograms overlap; check `overlap.tsv` from the analysis.
+- PMFs computed separately from the first and second halves of production agree. A large difference means each window needs more sampling.
+
+### Common problems
+
+| Message | Action |
+| --- | --- |
+| `AMBER engine not found: pmemd.cuda` | Load the Amber environment or set `AMBER_ENGINE` to an executable. |
+| `Run ../prepare.sh first.` | Run `prepare.sh` in the parent directory first. |
+| `Partial <stage> output is retained` | Move the retained files with the `mv` command in the message and rerun the same command. |
+| `input changed` | An input or the topology was edited after a run. Move that `work` aside and restart that step. |
+
+Messages specific to `rmd/` and `us/` are listed in their READMEs.
 
 ## References / 참고 자료
 
 - [PLUMED 2.10 ABMD](https://www.plumed.org/doc-v2.10/user-doc/html/_a_b_m_d.html)
 - [PLUMED 2.10 DISTANCE](https://www.plumed.org/doc-v2.10/user-doc/html/_d_i_s_t_a_n_c_e.html)
 - [RCSB PDB 1UAO](https://www.rcsb.org/structure/1UAO)
-
-### 동시 실행과 input 변경
-
-Preparation, rMD, seed analysis, window build와 window run은 상위 `work.writers/` registry를 공유합니다. 같은 window나 seed output을 쓰는 작업은 거부하고, 서로 다른 window의 run은 함께 실행할 수 있습니다.
-
-Run은 재사용할 결과의 input을 SHA256으로 비교합니다. Topology, 최초 coordinate file, stage input, predecessor restart와 restraint가 바뀌거나 기존 결과에 identity 기록이 없으면 파일을 보존하고 거부합니다. 이 tutorial은 고정 경로를 사용하므로 변경된 계산은 새 directory에 tutorial을 복사해 시작합니다.
-
-정상 종료, command 실패와 INT/TERM에서는 자식 process의 종료를 확인한 뒤 자기 lock만 해제합니다. SIGKILL이나 node 장애로 남은 lock은 자동 삭제하지 않습니다. Error에 표시된 lock과 `owner.json`의 host, PID, command, scope를 확인하고 scheduler와 해당 host에서 모든 writer와 자식 process가 종료됐는지 확인한 뒤 그 lock directory만 수동 제거합니다. PID가 로컬에서 보이지 않는다는 이유만으로 제거하지 않습니다. `.gate/`도 같은 확인이 필요합니다.
-
-지원하는 `--dry-run`과 `--help`는 보호나 identity 파일을 생성하지 않습니다. 진행 중인 work를 이동하거나 identity를 수정해 재사용하지 않습니다. 보호는 로컬 filesystem과 로컬 자식 process로 검증했으며 network filesystem, remote MPI와 다른 node의 writer 종료는 미검증입니다.
-
-### Concurrent runs and input changes
-
-Preparation, rMD, seed analysis, window build and window runs share the parent `work.writers/` registry. Writers to the same window or seed output are rejected; independent windows may run concurrently.
-
-Run compares inputs for result reuse with SHA256. Changed topology, initial coordinates, stage input, predecessor restart or restraint, and results without identity records, are preserved and rejected. This tutorial uses fixed paths; start changed calculations in a new tutorial copy.
-
-Normal exit, command failure and INT/TERM release only the owned lock after child termination is verified. Locks left by SIGKILL or node failure are retained. Inspect the reported lock and its `owner.json` host, PID, command and scopes; confirm through the scheduler and owning host that all writers and children stopped before manually removing only that lock directory. A PID missing locally is not sufficient. Apply the same checks to `.gate/`.
-
-Supported `--dry-run` and `--help` do not create writer or identity files. Do not move active work trees or edit identities to reuse results. Protection was tested on a local filesystem with local child processes; network filesystems, remote MPI and termination of writers on other nodes remain unverified.
-
-`download.sh` validates every asset and `SHA256SUMS` in staging before publishing through `helpers/publish_download.py`. Transfer, checksum and ordinary publication failures preserve existing files, including unrelated preparation files. A retained `structure/.download.pending` blocks source readers and new downloads. Inspect the retained staging and marker; deleting only the marker can expose a mixed generation.

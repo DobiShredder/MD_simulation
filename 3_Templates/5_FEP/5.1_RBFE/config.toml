@@ -46,3 +46,16 @@ random_seed = "random"
 ligand_a_mask = ":LGA"
 ligand_b_mask = ":LGB"
 lambda_values = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+# Soft-core potential (Amber26 manual 27.1.6-27.1.7, p. 556-560): scalpha is
+# unitless and scbeta is in Å^2. Both are written to every window input.
+scalpha = 0.5
+scbeta = 12.0
+# pmemd.cuda smoothstep lambda scheduling: integer 0 or 1. All 0 keeps the
+# pmemd defaults and writes no gti_* line; if any is 1, all three are written.
+# gti_lam_sch = 1 makes pmemd's own defaults gti_ele_sc = 1, gti_vdw_sc = 1,
+# scalpha = 0.2 and scbeta = 50.0, but the values in this file are always
+# written, so set all of them. pmemd reads lambda.sch from the window
+# directory or uses its built-in smooth_step2 schedule.
+gti_lam_sch = 0
+gti_ele_sc = 0
+gti_vdw_sc = 0

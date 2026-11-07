@@ -102,6 +102,9 @@ for output_file in sampled.nc sampled.dcd first_frame.pdb; do
     fi
 done
 
+# cpptraj ends the run with "Read N frames and processed N frames."
+awk '/^Read .* frames and processed/ { print "Frames: " $6 }' cpptraj.log
+
 )
 
 python3 result_generation.py "$generation_dir" output

@@ -7,21 +7,10 @@
 
 ## 한국어
 
-최소 2개·짝수 replica만 지원합니다. `build.sh`와 `run.sh`는 홀수 schedule을 자동 조정하지 않고 거부합니다. `run.sh --dry-run`도 실제 state table의 count를 검사합니다. 기존 홀수 결과는 새 work directory에서 다시 준비합니다.
-
-기본 center는 6–24 Å 양 끝을 포함하는 20개이며 spacing은 `18/19 ≈ 0.947368 Å`입니다. State table과 restraint center는 소수점 8자리로 기록합니다.
-
-`run.sh`는 minimization, heating과 equilibration을 각 replica directory에서 실행합니다. `DISANG=distance.RST`와 `DUMPAVE=restraint.<stage>.dat`도 그 directory에서 읽고 저장합니다. Production groupfile은 tutorial directory에서 사용하는 `work/<replica>/...` 경로를 유지합니다.
-
 Chignolin의 residue 1과 10 Cα distance를 CV로 사용하는 REUS 예제입니다.
 6–24 Å 양 끝을 포함하는 20개 window를 같은 온도에서 교환합니다.
 `rk2=rk3=1.0 kcal mol⁻¹ Å⁻²`이며, heating 200 ps, equilibration 100 ps,
 production은 window당 1 ns입니다. 교환은 1 ps마다 시도합니다.
-
-AMBER restraint energy는 `rk(r − r₀)²`입니다. 300 K에서 window 분포 폭은 약 0.55 Å이고,
-0.95 Å 간격에서 예상되는 인접 window 교환 확률은 약 0.22입니다. 이 값은 분포를
-Gaussian으로 가정한 예측이며 실제 run으로 확인하지 않았습니다(미검증). 이전 값
-`rk=10`은 분포 폭 약 0.17 Å로 인접 window가 거의 겹치지 않았습니다.
 
 REUS는 umbrella restraint가 다른 Hamiltonian 사이에서 configuration을
 교환합니다. 일반 US가 각 window 안에서만 움직이는 것과 달리, accepted
@@ -49,7 +38,9 @@ replica는 한 state의 Hamiltonian으로 MD를 진행합니다. Exchange가 acc
 
 ### 실행
 
-AMBER 26, ParmEd와 20개 MPI process가 필요합니다.
+Engine과 MPI 준비는 [family README의 준비 사항](../README.md#준비-사항)을
+따릅니다. Python package는 `requirements.txt`의 ParmEd(`make_restraints.py`)와
+NumPy(`anal.py`)입니다.
 
 ```bash
 python3 -m pip install -r requirements.txt
@@ -60,18 +51,99 @@ python3 prepare.py structure/1UAO.raw.pdb structure/chignolin.pdb
 python3 anal.py
 ```
 
-`make_restraints.py`는 ff19SB/OPC topology에서 `:1@CA`와
-`:10@CA`의 atom index를 찾습니다. 각 window의 `distance.RST`에 실제
-index와 restraint center를 기록하므로 다른 system에 적용할 때 selection과
-window 범위를 먼저 바꿉니다.
-
 기본 engine은 단일-window stage에 `pmemd.cuda`, replica exchange에
 `pmemd.cuda.MPI -rem 3`입니다. `AMBER_ENGINE`,
 `AMBER_MPI_ENGINE`과 `MPI_LAUNCHER`로 executable을 지정합니다.
 
-Production은 1 ns입니다. Preparation output이 모든 window에 있으면 해당
-stage를 건너뛰고, 실패하거나 일부만 있으면 기존 결과를 보존하고 중단합니다. Production output은
-덮어쓰지 않습니다.
+`run.sh`는 minimization, heating과 equilibration을 각 replica directory에서
+실행합니다. `DISANG=distance.RST`와 `DUMPAVE=restraint.<stage>.dat`도 그
+directory에서 읽고 저장합니다. Production groupfile은 tutorial directory에서
+사용하는 `work/<replica>/...` 경로를 유지합니다.
+
+실행 상태, 실패 후 재실행, 동시 실행 보호는 [GUIDE.md 부록](../../../GUIDE.md#4-부록-실행-상태와-복구)을
+참고합니다.
+
+### 계산 resource와 길이
+
+| Stage | 실행 방식 | Window당 길이 | 20 window 합계 |
+| --- | --- | --- | --- |
+| minimization | `pmemd.cuda`, window를 하나씩 순서대로 | 5,000 cycles | — |
+| heating 20 → 300 K (NVT) | `pmemd.cuda`, 순서대로 | 100,000 steps = 200 ps | 4 ns |
+| equilibration (NPT) | `pmemd.cuda`, 순서대로 | 50,000 steps = 100 ps | 2 ns |
+| production (NPT, `-rem 3`) | `mpirun -np 20 pmemd.cuda.MPI -ng 20` | 500 steps × 1,000 exchanges = 1 ns | 20 ns |
+
+Window restraint는 minimization부터 모든 stage에 걸립니다. Pre-production은
+GPU 하나로 window를 차례로 계산합니다. Production은 window당 MPI rank 하나,
+즉 20 rank가 동시에 필요합니다. `run.sh`는 rank를 GPU에 배정하지 않으므로
+scheduler, MPI launcher 설정 또는 `CUDA_VISIBLE_DEVICES`가 GPU 배치를 정합니다.
+GPU 하나로도 test할 수 있지만 20 rank가 같은 GPU를 나눠 쓰므로 느립니다.
+
+### Output
+
+- `work/NNN/production.nc`
+- `work/exchange_summary.tsv`, `replica_visits.tsv`,
+  `window_occupancy.tsv`
+- `work/restraint_sampling.tsv`
+
+정상 종료하면 `run.sh`가 `Completed 1 ns REUS: work`를 출력하고
+`work/.production.complete`를 만듭니다. AMBER H-REMD는 configuration을
+교환하므로 `work/NNN/`의 output은 window `NNN` Hamiltonian에서 얻은 sample입니다.
+Window마다 `production.nc`에는 100 frame(500,000 steps ÷ `ntwx=5000`),
+`restraint.production.dat`에는 1 ps 간격의 distance 약 1,000개가 있습니다.
+`python3 anal.py`는 마지막에 `REUS Analysis results: work`를 출력합니다.
+
+`round_trips`는 처음 도달한 endpoint에서 반대 endpoint를 방문한 뒤 처음
+endpoint로 돌아온 cycle 수입니다. 편도 이동과 같은 endpoint의 반복 방문은
+왕복으로 세지 않습니다.
+
+`anal.py`는 AMBER H-REMD의 `# exchange N` block을 읽습니다. 1-based replica
+번호와 `Success`의 `T/F`를 해석하고, 서로를 기록한 두 partner row를 pair당 한
+번 처리합니다. `state_a=... state_b=... accepted=...` 형식은 0-based index를
+사용하며 한 line이 한 exchange event입니다.
+
+Window overlap과 PMF는
+[umbrella-sampling analysis](../../../2_Analysis/7_Enhanced_Sampling/README.md)에서
+계산합니다.
+
+### Exchange 품질 해석
+
+일반 기준은 [family README](../README.md#exchange-품질-해석)에 있습니다. 이
+예제에서는 다음 file을 봅니다.
+
+| File | Column | 확인할 내용 |
+| --- | --- | --- |
+| `exchange_summary.tsv` | `state_a`, `state_b`, `attempts`, `accepted`, `ratio` | 실제로 시도한 0-based window pair별 acceptance입니다. 인접 pair는 각각 약 500회 시도합니다. 0에 가까운 인접 pair가 없어야 합니다. |
+| `replica_visits.tsv` | `replica`, `min_state`, `max_state`, `round_trips` | Configuration(walker)별 최저·최고 window와 왕복 횟수입니다. `replica`는 walker가 처음 시작한 window 번호입니다. |
+| `window_occupancy.tsv` | `replica`, `state`, `window_center_A`, `visits`, `fraction` | Walker가 각 window에 머문 exchange 기록의 비율입니다. |
+| `restraint_sampling.tsv` | `state`, `window_center_A`, `samples`, `distance_mean_A`, `distance_std_A`, `distance_min_A`, `distance_max_A` | Window별 실제 distance 분포(Å)입니다. Window overlap을 봅니다. |
+
+`exchange_summary.tsv`에는 `0`–`19` pair도 나옵니다. AMBER H-REMD의 기본값
+`gremd_acyc=0`이 첫 replica와 마지막 replica의 교환도 시도하기 때문입니다(Amber
+26 manual p. 575). 6 Å와 24 Å window는 겹치지 않으므로 이 pair의 acceptance는
+0에 가깝고, ladder 문제로 보지 않습니다.
+
+Window overlap은 `restraint_sampling.tsv`에서 인접 window의 `distance_max_A`와
+다음 window의 `distance_min_A`가 겹치는지로 먼저 확인합니다.
+`distance_std_A`는 예측값 약 0.55 Å와 비교합니다. `distance_mean_A`가 center에서
+크게 벗어나 분포가 끊긴 구간은 window를 추가하거나 force constant를 조정할
+곳입니다. Histogram과 PMF는 analysis tutorial에서 계산합니다.
+
+`work/exchange.log`의 column은 `Rep#`, `Neibr#`, `Temp0`, `PotE(x_1)`,
+`PotE(x_2)`, `left_fe`, `right_fe`, `Success`, `Success rate (i,i+1)`입니다.
+`Success`가 `T`면 accept, `F`면 reject이며 energy unit은 kcal/mol입니다.
+
+### 문제 해결
+
+| Message 또는 증상 | 원인 | 조치 |
+| --- | --- | --- |
+| `ParmEd is required: ...` | `make_restraints.py`가 사용할 ParmEd가 없습니다. | `python3 -m pip install -r requirements.txt`를 실행합니다. |
+| `Replica exchange requires at least two and an even number of windows` | `inputs/states.tsv`의 window 수가 홀수입니다. | Window를 하나 더하거나 빼서 짝수로 맞춥니다. |
+| `Executable not found: pmemd.cuda.MPI` | AMBER environment가 load되지 않았거나 MPI build가 없습니다. | AMBER의 `amber.sh`를 source하거나 `AMBER_MPI_ENGINE`, `MPI_LAUNCHER`를 지정합니다. |
+| `REUS production failed: work/mpirun.production.log, work/exchange.log` | 20 rank를 띄우지 못했거나 일부 window가 중단되었습니다. | 출력된 `Missing/Unfinished window output`과 `mpirun.production.log`를 보고 할당한 rank·GPU 수를 맞춥니다. |
+| `Exchange analysis: incomplete exchange block in work/exchange.log` | Production이 중간에 끊겨 마지막 block이 불완전합니다. | Production을 끝까지 다시 실행한 뒤 `anal.py`를 실행합니다. |
+| 인접 pair의 `ratio`가 0에 가까움 | 그 구간의 window 분포가 겹치지 않습니다. | Window 사이에 center를 추가하거나 `RESTRAINT_FORCE_KCAL_MOL_A2`를 낮춥니다. |
+
+그 밖의 partial output과 lock 처리는 GUIDE 부록을 따릅니다.
 
 ### 주요 option
 
@@ -83,54 +155,43 @@ stage를 건너뛰고, 실패하거나 일부만 있으면 기존 결과를 보�
 | `r1=0`, `r4=99` | Restraint가 선형으로 바뀌는 경계입니다. 표본 범위 전체에서 harmonic으로 유지되어 WHAM의 bias 식과 맞습니다. |
 | `nmropt=1`, `DISANG` | AMBER NMR-style restraint input을 활성화합니다. |
 | `nstlim=500`, `numexchg=1000` | AMBER REMD 의미에 따라 500 steps마다 1,000회 교환하여 총 1 ns를 계산합니다. |
-| `DUMPFREQ=500`, `DUMPAVE` | 2 fs timestep 기준 1 ps마다 restraint coordinate를 기록합니다. |
+| `DUMPFREQ=500`, `DUMPAVE` | Production에서 2 fs timestep 기준 1 ps마다 restraint coordinate를 기록합니다. Equilibration은 `DUMPFREQ=5000`(10 ps)입니다. |
+| `dt=0.002` | Timestep 2 fs입니다. `ntc=2`, `ntf=2`로 hydrogen bond length를 고정합니다. |
+| `temp0=300.0`, `ntt=3`, `gamma_ln=1.0` | 모든 window가 300 K Langevin thermostat(collision frequency 1.0 ps⁻¹)를 사용합니다. |
+| `ntb=2`, `ntp=1`, `barostat=2`, `pres0=1.0` | Equilibration과 production을 Monte Carlo barostat, 1 bar NPT로 계산합니다. |
+| `ntwx=5000` | 10 ps마다 frame을 기록합니다. Production은 window당 100 frame입니다. |
 | `ig=@SEED@` | `states.tsv`의 window seed로 치환됩니다. Langevin restart마다 다른 `ig`를 쓰도록 heating은 seed, equilibration은 seed+1,000,000, production은 seed+3,000,000을 사용합니다. |
 
-### Output
+### Window와 restraint
 
-- `work/NNN/production.nc`
-- `work/exchange_summary.tsv`, `replica_visits.tsv`,
-  `window_occupancy.tsv`
-- `work/restraint_sampling.tsv`
+기본 center는 6–24 Å 양 끝을 포함하는 20개이며 spacing은
+`18/19 ≈ 0.947368 Å`입니다. State table과 restraint center는 소수점 8자리로
+기록합니다. Replica 수는 2 이상의 짝수여야 하며 `build.sh`와 `run.sh`는 홀수
+schedule을 자동 조정하지 않고 거부합니다. `run.sh --dry-run`도 같은 검사를
+합니다.
 
-Window overlap과 PMF는
-[umbrella-sampling analysis](../../../2_Analysis/7_Enhanced_Sampling/README.md)에서
-계산합니다.
+`make_restraints.py`는 ff19SB/OPC topology에서 `:1@CA`와
+`:10@CA`의 atom index를 찾습니다. 각 window의 `distance.RST`에 실제
+index와 restraint center를 기록하므로 다른 system에 적용할 때 selection과
+window 범위를 먼저 바꿉니다.
 
-Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 중단하고 파일을 보존합니다. 새 build 전에는 기존 `work/`를 다른 위치에 보관하거나 별도 tutorial 사본을 사용합니다.
-
-`run.sh`가 partial output으로 중단하면 오류 메시지가 나열한 파일을 `work.failed/`처럼 `work` 밖으로 옮긴 뒤 같은 command를 다시 실행합니다. 완료된 앞 stage는 건너뜁니다. Production의 MPI 출력은 `work/mpirun.production.log`에 이어서 기록합니다.
-
-`download.sh`는 모든 asset과 `SHA256SUMS`를 staging에서 확인한 뒤 `helpers/publish_download.py`로 게시합니다. Transfer, checksum 또는 일반 publication 실패에서는 기존 파일을 보존하며, 관련 없는 preparation 파일도 유지합니다. `structure/.download.pending`가 남으면 prepare/build와 새 download가 거부됩니다. 보존된 staging과 marker를 점검하고, marker만 삭제해 이전 파일과 새 파일을 섞어 사용하지 않습니다.
-
-### Exchange 진단
-
-`round_trips`는 처음 도달한 endpoint에서 반대 endpoint를 방문한 뒤 처음 endpoint로 돌아온 cycle 수입니다. 편도 이동과 같은 endpoint의 반복 방문은 왕복으로 세지 않습니다.
-
-REUS/GaREUS parser는 AMBER H-REMD의 `# exchange N` block을 읽습니다. 1-based replica 번호와 `Success`의 `T/F`를 해석하고, 서로를 기록한 두 partner row를 pair당 한 번 처리합니다. `state_a=... state_b=... accepted=...` 형식은 0-based index를 사용하며 한 line이 한 exchange event입니다.
+AMBER restraint energy는 `rk(r − r₀)²`입니다. 300 K에서 window 분포 폭은 약
+0.55 Å이고, 0.95 Å 간격에서 예상되는 인접 window 교환 확률은 약 0.22입니다.
+이 값은 분포를 Gaussian으로 가정한 예측이며 실제 run으로 확인하지
+않았습니다(미검증). 이전 값 `rk=10`은 분포 폭 약 0.17 Å로 인접 window가 거의
+겹치지 않았습니다.
 
 ## English
 
-Only even replica counts of at least two are supported. `build.sh` and `run.sh` reject odd schedules without adjusting them. `run.sh --dry-run` checks the actual state-table count too. Prepare a new work directory for results built with an odd schedule.
-
-The default has 20 centers including both 6 and 24 Å, spaced by `18/19 ≈ 0.947368 Å`. State tables and restraint centers use eight decimal places.
-
-`run.sh` executes minimization, heating, and equilibration inside each replica directory. It reads `DISANG=distance.RST` and writes `DUMPAVE=restraint.<stage>.dat` there. The production groupfile retains its `work/<replica>/...` paths relative to the tutorial directory.
-
 This REUS example exchanges 20 windows along the Chignolin residue 1–10 Cα
-distance. Centers span 6–24 Å at 18/19 Å spacing, with
+distance at one temperature. Centers span 6–24 Å including both ends, with
 `rk2=rk3=1.0 kcal mol⁻¹ Å⁻²`. Heating is 200 ps, equilibration is 100 ps,
-production is 1 ns per window, and exchanges are attempted every
-1 ps.
-
-AMBER restraint energy is `rk(r − r₀)²`. At 300 K each window is about 0.55 Å
-wide, and the predicted neighbor exchange acceptance at 0.95 Å spacing is about
-0.22. This is a Gaussian estimate, not a measured rate (unverified). The
-previous `rk=10` gave about 0.17 Å windows with almost no neighbor overlap.
+production is 1 ns per window, and exchanges are attempted every 1 ps.
 
 REUS exchanges configurations among Hamiltonians with different umbrella
-centers. Accepted swaps allow a walker to visit multiple CV regions, but PMF
-analysis must retain the window state associated with each sampled frame.
+centers. Unlike ordinary US, where each window stays in its own region,
+accepted swaps let a walker visit multiple CV regions. PMF analysis without the
+restraints must retain the window state associated with each sampled frame.
 
 Each selected point `ξᵢ` on the reaction coordinate is an umbrella state defined
 by its restraint center and force constant, rather than just a sampling
@@ -141,71 +202,157 @@ Repeated swaps let a walker diffuse across the state ladder. Poor overlap
 between neighboring window distributions reduces both exchange acceptance and
 the connectivity of the reconstructed PMF.
 
-Run the build as `./build.sh structure/chignolin.pdb`. It resolves the two Cα
-atom indices from the ff19SB/OPC topology and writes one restraint per window.
-The run uses `pmemd.cuda` for individual
-stages and `pmemd.cuda.MPI -rem 3` for exchange. Complete preparation stages
-are skipped; partial window sets are preserved and rejected. Production is not overwritten.
+### Script roles
 
-`make_restraints.py` resolves `iat` and writes `r2=r3` centers with
-`rk2=rk3=1.0` (`RESTRAINT_FORCE_KCAL_MOL_A2`). `r1=0` and `r4=99` keep the
-sampled range harmonic, as the WHAM bias assumes. `nmropt=1`/`DISANG` activate the restraint; `nstlim=500` and
-`numexchg=1000` attempt exchange every 1 ps for a 1 ns run. `DUMPAVE` records the restraint coordinate at
-the same interval. The runner launches 20 MPI processes. `ig` uses the
-`states.tsv` window seed for heating; equilibration adds 1,000,000 and
-production adds 3,000,000, so each Langevin restart gets a different seed.
+| File | Role |
+| --- | --- |
+| `download.sh` | Downloads the 1UAO PDB/mmCIF and records checksums. |
+| `prepare.py` | Cleans the first 1UAO NMR model into a simulation PDB. |
+| `make_restraints.py` | Finds the terminal Cα indices in the topology and writes 20 `distance.RST` files. |
+| `build.sh` | Places the shared topology and `states.tsv` into the replica directories. |
+| `run.sh` | Runs per-window pre-production and `pmemd.cuda.MPI -rem 3` exchange. |
+| `anal.py` | Summarizes exchange, window visits, occupancy and sampled distance ranges. |
 
-Analysis writes acceptance, state visits, window occupancy, and sampled
-restraint-distance ranges as TSV files. Window trajectories are written to
-`work/NNN/production.nc`. Use the linked analysis tutorial for overlap and
-PMF calculation.
+### Run
 
-Build stops before changing inputs when topology/restart files already exist, preserving those files. Preserve the existing `work/` elsewhere or use a separate tutorial copy before a new build.
+Follow the [family README prerequisites](../README.md#prerequisites) for the
+engine and MPI. Python packages in `requirements.txt` are ParmEd
+(`make_restraints.py`) and NumPy (`anal.py`).
 
-When `run.sh` stops on partial output, move the files listed in the error out of `work` (for example, to `work.failed/`) and rerun the same command; completed earlier stages are skipped. Production MPI output is appended to `work/mpirun.production.log`.
+```bash
+python3 -m pip install -r requirements.txt
+./download.sh
+python3 prepare.py structure/1UAO.raw.pdb structure/chignolin.pdb
+./build.sh structure/chignolin.pdb
+./run.sh
+python3 anal.py
+```
 
-### 동시 실행과 input 변경
+The default engines are `pmemd.cuda` for single-window stages and
+`pmemd.cuda.MPI -rem 3` for exchange. `AMBER_ENGINE`, `AMBER_MPI_ENGINE` and
+`MPI_LAUNCHER` set the executables.
 
-Build와 run은 `work.writers/` registry를 공유합니다. 같은 output/state를 쓰는 작업은 동시에 실행하지 않습니다. `prepare.py`가 있는 경우 structure를 생성하는 작업도 input을 읽는 build와 충돌하면 거부합니다.
+`run.sh` executes minimization, heating and equilibration inside each replica
+directory. It reads `DISANG=distance.RST` and writes
+`DUMPAVE=restraint.<stage>.dat` there. The production groupfile keeps its
+`work/<replica>/...` paths relative to the tutorial directory.
 
-Run은 재사용할 결과의 input을 SHA256으로 비교합니다. Topology, 최초 coordinate file, stage input, predecessor restart와 restraint가 바뀌거나 기존 결과에 identity 기록이 없으면 파일을 보존하고 거부합니다. 이 tutorial은 고정 경로를 사용하므로 변경된 계산은 새 directory에 tutorial을 복사해 시작합니다.
+See [GUIDE.md appendix](../../../GUIDE.md#4-appendix-run-state-and-recovery) for run state, reruns after failure and
+concurrent-run protection.
 
-정상 종료, command 실패와 INT/TERM에서는 자식 process의 종료를 확인한 뒤 자기 lock만 해제합니다. SIGKILL이나 node 장애로 남은 lock은 자동 삭제하지 않습니다. Error에 표시된 lock과 `owner.json`의 host, PID, command, scope를 확인하고 scheduler와 해당 host에서 모든 writer와 자식 process가 종료됐는지 확인한 뒤 그 lock directory만 수동 제거합니다. PID가 로컬에서 보이지 않는다는 이유만으로 제거하지 않습니다. `.gate/`도 같은 확인이 필요합니다.
+### Resources and length
 
-`run.sh --dry-run`은 보호나 identity 파일을 생성하지 않습니다. 진행 중인 work를 이동하거나 identity를 수정해 재사용하지 않습니다. 보호는 로컬 filesystem과 로컬 자식 process로 검증했으며 network filesystem, remote MPI와 다른 node의 writer 종료는 미검증입니다.
+| Stage | How it runs | Per window | 20-window total |
+| --- | --- | --- | --- |
+| minimization | `pmemd.cuda`, one window after another | 5,000 cycles | — |
+| heating 20 → 300 K (NVT) | `pmemd.cuda`, sequential | 100,000 steps = 200 ps | 4 ns |
+| equilibration (NPT) | `pmemd.cuda`, sequential | 50,000 steps = 100 ps | 2 ns |
+| production (NPT, `-rem 3`) | `mpirun -np 20 pmemd.cuda.MPI -ng 20` | 500 steps × 1,000 exchanges = 1 ns | 20 ns |
 
-### Concurrent runs and input changes
+The window restraint is active from minimization onward. Pre-production runs
+the windows one at a time on one GPU. Production needs one MPI rank per window,
+20 ranks at once. `run.sh` does not assign ranks to GPUs; the scheduler, MPI
+launcher settings or `CUDA_VISIBLE_DEVICES` decide the placement. A single GPU
+works for testing, but all 20 ranks then share it and the run is slow.
 
-Build and run share the `work.writers/` registry and reject concurrent writers to the same output/state. Where present, `prepare.py` also rejects structure writes that overlap an active build reader.
+### Outputs
 
-Run compares inputs for result reuse with SHA256. Changed topology, initial coordinates, stage input, predecessor restart or restraint, and results without identity records, are preserved and rejected. This tutorial uses fixed paths; start changed calculations in a new tutorial copy.
+- `work/NNN/production.nc`
+- `work/exchange_summary.tsv`, `replica_visits.tsv`,
+  `window_occupancy.tsv`
+- `work/restraint_sampling.tsv`
 
-Normal exit, command failure and INT/TERM release only the owned lock after child termination is verified. Locks left by SIGKILL or node failure are retained. Inspect the reported lock and its `owner.json` host, PID, command and scopes; confirm through the scheduler and owning host that all writers and children stopped before manually removing only that lock directory. A PID missing locally is not sufficient. Apply the same checks to `.gate/`.
+On success `run.sh` prints `Completed 1 ns REUS: work` and creates
+`work/.production.complete`. AMBER H-REMD swaps configurations, so the outputs
+in `work/NNN/` are samples from the window `NNN` Hamiltonian. Each window's
+`production.nc` holds 100 frames (500,000 steps ÷ `ntwx=5000`), and
+`restraint.production.dat` holds about 1,000 distances at 1 ps intervals.
+`python3 anal.py` ends with `REUS Analysis results: work`.
 
-`run.sh --dry-run` creates no writer or identity files. Do not move active work trees or edit identities to reuse results. Protection was tested on a local filesystem with local child processes; network filesystems, remote MPI and termination of writers on other nodes remain unverified.
+`round_trips` counts complete cycles from the first endpoint reached, through
+the opposite endpoint, and back to the starting endpoint. One-way movement and
+repeated visits to the same endpoint do not count.
 
-### Stage 완료 판정 / Stage completion
+`anal.py` reads AMBER H-REMD `# exchange N` blocks, converts 1-based replica
+indices and `T/F` success values, and counts the two reciprocal partner rows
+once per pair. The explicit `state_a=... state_b=... accepted=...` format uses
+0-based indices and one exchange event per line.
 
-Input identity는 입력이 같은지 확인하며 engine의 성공 종료를 증명하지 않습니다.
-Runner가 engine의 성공 종료와 필수 output을 확인한 뒤 만든 완료 증거가 있어야
-stage를 재사용합니다. Output이 남았지만 완료 증거가 없거나 필수 output이
-누락·비어 있으면 기존 결과를 보존하고 중단합니다. 기존 결과를 소급 인증하지
-않습니다. 새 계산은 생성된 `work/`를 포함하지 않는 새 tutorial copy에서 시작합니다.
-`ntwx=0`인 AMBER stage는 trajectory를 완료 조건으로 요구하지 않습니다.
-지원되는 continuation은 기존 restart/state 전달 방식을 따릅니다.
+Use the [umbrella-sampling analysis](../../../2_Analysis/7_Enhanced_Sampling/README.md)
+for window overlap and PMF calculation.
 
-Input identity checks unchanged inputs; it does not prove a successful engine exit.
-A stage is reused only with completion evidence written after a successful engine
-exit and required-output checks. Outputs without that evidence, or missing/empty
-required outputs, are preserved and rejected. Existing results are not certified
-retroactively. Start a new tutorial copy without generated `work/` directories for
-a new calculation. AMBER stages with `ntwx=0` do not require a trajectory for
-completion. Supported continuation retains its existing restart/state handoff.
+### Reading exchange quality
 
-`download.sh` validates every asset and `SHA256SUMS` in staging before publishing through `helpers/publish_download.py`. Transfer, checksum and ordinary publication failures preserve existing files, including unrelated preparation files. A retained `structure/.download.pending` blocks source readers and new downloads. Inspect the retained staging and marker; deleting only the marker can expose a mixed generation.
+General criteria are in the [family README](../README.md#reading-exchange-quality).
+This example writes:
 
-### Exchange diagnostics
+| File | Columns | What to check |
+| --- | --- | --- |
+| `exchange_summary.tsv` | `state_a`, `state_b`, `attempts`, `accepted`, `ratio` | Acceptance of each attempted 0-based window pair. Each neighboring pair gets about 500 attempts. No neighboring pair should be near zero. |
+| `replica_visits.tsv` | `replica`, `min_state`, `max_state`, `round_trips` | Lowest and highest window and round trips per configuration (walker). `replica` is the window where the walker started. |
+| `window_occupancy.tsv` | `replica`, `state`, `window_center_A`, `visits`, `fraction` | Fraction of exchange records a walker spent in each window. |
+| `restraint_sampling.tsv` | `state`, `window_center_A`, `samples`, `distance_mean_A`, `distance_std_A`, `distance_min_A`, `distance_max_A` | Sampled distance distribution (Å) per window, used for window overlap. |
 
-`round_trips` counts complete cycles from the first endpoint reached, through the opposite endpoint, and back to the starting endpoint. One-way movement and repeated visits to the same endpoint do not count as round trips.
+`exchange_summary.tsv` also lists the `0`–`19` pair. AMBER H-REMD's default
+`gremd_acyc=0` also attempts exchanges between the first and last replicas
+(Amber 26 manual p. 575). The 6 Å and 24 Å windows do not overlap, so this
+pair's near-zero acceptance is expected and does not indicate a ladder problem.
 
-The REUS/GaREUS parser reads AMBER H-REMD `# exchange N` blocks, converts 1-based replica indices and `T/F` success values, and counts the two reciprocal partner rows once per pair. The explicit `state_a=... state_b=... accepted=...` format uses 0-based indices and one exchange event per line.
+Check window overlap first in `restraint_sampling.tsv`: each window's
+`distance_max_A` should overlap the next window's `distance_min_A`. Compare
+`distance_std_A` with the predicted 0.55 Å. Where `distance_mean_A` drifts far
+from the center and the distributions break, add windows or adjust the force
+constant. Histograms and the PMF are computed in the analysis tutorial.
+
+`work/exchange.log` columns are `Rep#`, `Neibr#`, `Temp0`, `PotE(x_1)`,
+`PotE(x_2)`, `left_fe`, `right_fe`, `Success` and `Success rate (i,i+1)`.
+`Success` is `T` for accepted and `F` for rejected swaps; energies are in
+kcal/mol.
+
+### Troubleshooting
+
+| Message or symptom | Cause | Action |
+| --- | --- | --- |
+| `ParmEd is required: ...` | ParmEd for `make_restraints.py` is missing. | Run `python3 -m pip install -r requirements.txt`. |
+| `Replica exchange requires at least two and an even number of windows` | `inputs/states.tsv` has an odd window count. | Add or remove one window. |
+| `Executable not found: pmemd.cuda.MPI` | AMBER is not loaded or has no MPI build. | Source AMBER's `amber.sh` or set `AMBER_MPI_ENGINE` and `MPI_LAUNCHER`. |
+| `REUS production failed: work/mpirun.production.log, work/exchange.log` | The 20 ranks did not start, or some windows stopped. | Read the printed `Missing/Unfinished window output` lines and `mpirun.production.log`, then match the allocated ranks and GPUs. |
+| `Exchange analysis: incomplete exchange block in work/exchange.log` | Production stopped early and left a truncated block. | Finish production, then run `anal.py`. |
+| Neighboring-pair `ratio` near zero | The window distributions there do not overlap. | Insert centers between those windows or lower `RESTRAINT_FORCE_KCAL_MOL_A2`. |
+
+Other partial-output and lock cases follow the GUIDE appendix.
+
+### Key options
+
+| Option | Meaning |
+| --- | --- |
+| `-rem 3` | Exchanges window restraint states in AMBER Hamiltonian REMD mode. |
+| `iat`, `r2=r3` | Define the terminal Cα atom pair and the window center. |
+| `rk2=rk3=1.0` | Force constant of each harmonic window (kcal mol⁻¹ Å⁻²). Change it with `RESTRAINT_FORCE_KCAL_MOL_A2` in `make_restraints.py`. |
+| `r1=0`, `r4=99` | Bounds where the restraint turns linear. The sampled range stays harmonic, as the WHAM bias assumes. |
+| `nmropt=1`, `DISANG` | Activate the AMBER NMR-style restraint input. |
+| `nstlim=500`, `numexchg=1000` | In AMBER REMD, 1,000 exchange attempts every 500 steps give 1 ns. |
+| `DUMPFREQ=500`, `DUMPAVE` | Record the restraint coordinate every 1 ps in production with a 2 fs timestep; equilibration uses `DUMPFREQ=5000` (10 ps). |
+| `dt=0.002` | 2 fs timestep; `ntc=2`, `ntf=2` constrain bonds to hydrogen. |
+| `temp0=300.0`, `ntt=3`, `gamma_ln=1.0` | Every window uses a 300 K Langevin thermostat with a 1.0 ps⁻¹ collision frequency. |
+| `ntb=2`, `ntp=1`, `barostat=2`, `pres0=1.0` | Equilibration and production run NPT at 1 bar with the Monte Carlo barostat. |
+| `ntwx=5000` | Write a frame every 10 ps; production gives 100 frames per window. |
+| `ig=@SEED@` | Replaced by the window seed from `states.tsv`. Heating uses the seed, equilibration adds 1,000,000 and production adds 3,000,000, so each Langevin restart gets a different `ig`. |
+
+### Windows and restraints
+
+The default has 20 centers including both 6 and 24 Å, spaced by
+`18/19 ≈ 0.947368 Å`. State tables and restraint centers use eight decimal
+places. The replica count must be even and at least two; `build.sh` and
+`run.sh` reject odd schedules without adjusting them, and `run.sh --dry-run`
+applies the same check.
+
+`make_restraints.py` resolves the `:1@CA` and `:10@CA` atom indices from the
+ff19SB/OPC topology and writes the actual indices and center into each window's
+`distance.RST`. Change the selection and window range first when applying it to
+another system.
+
+AMBER restraint energy is `rk(r − r₀)²`. At 300 K each window is about 0.55 Å
+wide, and the predicted neighbor exchange acceptance at 0.95 Å spacing is about
+0.22. This is a Gaussian estimate, not a measured rate (unverified). The
+previous `rk=10` gave about 0.17 Å windows with almost no neighbor overlap.

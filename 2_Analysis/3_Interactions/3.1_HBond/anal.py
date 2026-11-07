@@ -3,12 +3,21 @@
 
 from __future__ import annotations
 
+import argparse
 from pathlib import Path
 
 from result_generation import verify_generation
 
 import matplotlib.pyplot as plt
 import numpy as np
+
+
+# Number of most occupied intraprotein hydrogen bonds shown in the bar chart.
+TOP_OCCUPANCY_COUNT = 10
+
+# Used only with --save-figure DIR.
+FIGURE_NAME = "hbond.png"
+FIGURE_DPI = 150
 
 
 def read_hbond_occupancy(path: Path) -> list[tuple[str, float]]:
@@ -43,8 +52,32 @@ def read_hbond_counts(path: Path, numeric_columns: int) -> np.ndarray:
     return np.asarray(rows, dtype=float)
 
 
+def save_figure(figure: plt.Figure, figure_dir: Path) -> None:
+    figure_dir.mkdir(parents=True, exist_ok=True)
+    figure_path = figure_dir / FIGURE_NAME
+    figure.savefig(figure_path, dpi=FIGURE_DPI)
+    print(f"Saved figure: {figure_path}")
+
+
+def parse_arguments() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--save-figure",
+        metavar="DIR",
+        type=Path,
+        help="also save the figure as PNG in DIR (outside output/); "
+        "by default the figure is only displayed",
+    )
+    return parser.parse_args()
+
+
 def main() -> int:
+    args = parse_arguments()
     output_dir = Path(__file__).resolve().parent / "output"
+    figure_dir = args.save_figure
+    if figure_dir is not None and figure_dir.resolve().is_relative_to(output_dir):
+        # Extra files in output/ would invalidate its recorded generation hashes.
+        raise SystemExit(f"Error: --save-figure DIR must be outside {output_dir}")
     from writer_guard import protect_python_entry
     protect_python_entry("output", reads=(output_dir,))
     generation = verify_generation(output_dir)
@@ -58,8 +91,10 @@ def main() -> int:
         raise ValueError("Hydrogen-bond count output has too few columns.")
     if not np.array_equal(protein[:, 0], water[:, 0]):
         raise ValueError("Frame indices in the hydrogen-bond outputs do not match.")
+    print(f"Frames: {len(protein)}")
 
-    occupancy = read_hbond_occupancy(output_dir / "protein_hbond_average.dat")[:10]
+    occupancy = read_hbond_occupancy(output_dir / "protein_hbond_average.dat")
+    occupancy = occupancy[:TOP_OCCUPANCY_COUNT]
 
     figure, axes = plt.subplots(2, 1, figsize=(9, 8))
     axes[0].plot(protein[:, 0], protein[:, 1], label="Protein–protein")
@@ -80,9 +115,11 @@ def main() -> int:
         axes[1].set_axis_off()
 
     figure.tight_layout()
-    print("Displaying HBond analysis figure.")
     if verify_generation(output_dir) != generation:
         raise ValueError(f"Analysis generation changed while reading: {output_dir}")
+    if figure_dir is not None:
+        save_figure(figure, figure_dir)
+    print("Displaying HBond analysis figure.")
     plt.show()
     print("Completed: HBond analysis (interactive figure).")
     return 0

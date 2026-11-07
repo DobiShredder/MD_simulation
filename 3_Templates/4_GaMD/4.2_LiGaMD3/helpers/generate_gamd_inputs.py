@@ -20,6 +20,20 @@ METHOD_SETTINGS = {
     "pepgamd": {"igamd": 15, "selection": "peptide", "thresholds": "iE=1, iEP=1, iED=1"},
 }
 
+# Amber 26 manual section 26.3 (PDF p. 526): sigma0P limits the first boost,
+# sigma0D the second boost of dual-boost schemes and sigma0B the third boost of
+# the igamd=28 triple boost. Config keys use the AMBER keyword names.
+SIGMA_KEYS = {
+    "gamd": ("sigma0P", "sigma0D"),
+    "ligamd3": ("sigma0P", "sigma0D", "sigma0B"),
+    "pepgamd": ("sigma0P", "sigma0D"),
+}
+ALL_SIGMA_KEYS = ("sigma0", "sigma0P", "sigma0D", "sigma0B")
+
+# Amber 26 manual section 26.3 (PDF p. 526) recommends ntave of about four
+# times the total number of atoms.
+NTAVE_ATOMS_FACTOR = 4
+
 
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -46,6 +60,18 @@ def amber_mask_indices(topology: Path, mask: str) -> list[int]:
     structure = parmed.load_file(str(topology))
     selection = AmberMask(structure, mask).Selection()
     return [index + 1 for index, selected in enumerate(selection) if selected]
+
+
+def topology_atom_count(topology: Path) -> int:
+    """Return NATOM, the first value of the parm7 POINTERS section (10I8)."""
+    lines = topology.read_text(encoding="utf-8").splitlines()
+    for index, line in enumerate(lines[:-2]):
+        if line.startswith("%FLAG POINTERS"):
+            first_value = lines[index + 2][:8].strip()
+            if first_value.isdigit() and int(first_value) > 0:
+                return int(first_value)
+            break
+    raise SystemExit(f"GaMD ntave check: NATOM was not found in the POINTERS section of {topology}")
 
 
 def render(title: str, values: list[str]) -> str:
@@ -97,15 +123,42 @@ def main() -> None:
         ("boost_preparation_steps", boost_preparation),
         ("boost_statistics_steps", boost_statistics),
     ):
+        # Amber 26 requires ntcmdprep, ntcmd, ntebprep and nteb to be multiples of ntave.
         if value % averaging != 0:
-            raise SystemExit(f"{name} must be a multiple of averaging_interval_steps")
+            raise SystemExit(
+                f"GaMD statistics in {args.config}: {name} ({value}) must be a multiple of "
+                f"averaging_interval_steps ({averaging})"
+            )
 
     # Each restart uses a different deterministic Langevin sequence.
     heating_seed = random_seed
     equilibration_seed = -1 if random_seed == -1 else random_seed + 1
     preparation_seed = -1 if random_seed == -1 else random_seed + 2
     production_seed_base = -1 if random_seed == -1 else random_seed + 3
-    sigma = positive_float(gamd, "sigma0")
+
+    sigma_keys = SIGMA_KEYS[args.method]
+    unused_sigma_keys = [key for key in ALL_SIGMA_KEYS if key in gamd and key not in sigma_keys]
+    if unused_sigma_keys:
+        raise SystemExit(
+            f"GaMD sigma0 settings in {args.config}: {args.method} uses only "
+            f"{', '.join(sigma_keys)}; remove {', '.join(unused_sigma_keys)}"
+        )
+    sigma_values = {key: positive_float(gamd, key) for key in sigma_keys}
+    sigma_lines = [f"{key}={value:.3f}" for key, value in sigma_values.items()]
+
+    atom_count = topology_atom_count(args.topology)
+    recommended_averaging = NTAVE_ATOMS_FACTOR * atom_count
+    print(
+        f"GaMD averaging window: {atom_count} topology atoms; "
+        f"averaging_interval_steps (ntave) = {averaging}; "
+        f"Amber 26 recommends about {NTAVE_ATOMS_FACTOR} x atoms = {recommended_averaging} steps."
+    )
+    if averaging < recommended_averaging:
+        print(
+            f"Warning: averaging_interval_steps ({averaging}) is below {NTAVE_ATOMS_FACTOR} x topology atoms "
+            f"({recommended_averaging}). Consider a larger value that divides the four GaMD statistics lengths.",
+            file=sys.stderr,
+        )
     method_lines: list[str] = []
     resolved_lines: list[str] = []
     selection = settings["selection"]
@@ -160,8 +213,7 @@ def main() -> None:
                 f"nstlim={preparation_steps}", *common, f"ig={preparation_seed}", "irest_gamd=0",
                 f"ntcmdprep={conventional_preparation}", f"ntcmd={conventional_statistics}",
                 f"ntebprep={boost_preparation}", f"nteb={boost_statistics}",
-                f"ntave={averaging}", f"sigma0P={sigma:.3f}", f"sigma0D={sigma:.3f}",
-                *( [f"sigma0B={sigma:.3f}"] if args.method == "ligamd3" else [] ),
+                f"ntave={averaging}", *sigma_lines,
             ],
         ),
         encoding="utf-8",
@@ -172,8 +224,7 @@ def main() -> None:
             [
                 f"nstlim={production_steps // segments}", *common, f"ig={production_seed_base}", "irest_gamd=1",
                 "ntcmdprep=0", "ntcmd=0", "ntebprep=0", "nteb=0",
-                f"ntave={averaging}", f"sigma0P={sigma:.3f}", f"sigma0D={sigma:.3f}",
-                *( [f"sigma0B={sigma:.3f}"] if args.method == "ligamd3" else [] ),
+                f"ntave={averaging}", *sigma_lines,
             ],
         ),
         encoding="utf-8",
@@ -205,7 +256,7 @@ def main() -> None:
             f"boost_preparation_steps = {boost_preparation}\n"
             f"boost_statistics_steps = {boost_statistics}\n"
             f"averaging_interval_steps = {averaging}\n"
-            f"sigma0 = {sigma:.3f}\n"
+            + "".join(f"{key} = {value:.3f}\n" for key, value in sigma_values.items())
             + "\n".join(resolved_lines)
             + ("\n" if resolved_lines else "")
         )

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import os
 from pathlib import Path
 
@@ -25,9 +26,15 @@ except (ModuleNotFoundError, RuntimeError) as error:
     ) from error
 
 
+# Defaults assume the 100-frame example trajectory.
+# N_NEIGHBORS must be smaller than the frame count.
 N_NEIGHBORS = 15
 MIN_DIST = 0.1
 RANDOM_STATE = 20260809
+
+# Used only with --save-figure DIR.
+FIGURE_NAME = "umap.png"
+FIGURE_DPI = 150
 
 
 def read_features(path: Path) -> tuple[np.ndarray, np.ndarray]:
@@ -39,18 +46,44 @@ def read_features(path: Path) -> tuple[np.ndarray, np.ndarray]:
     return data[:, 0], StandardScaler().fit_transform(features)
 
 
+def save_figure(figure: plt.Figure, figure_dir: Path) -> None:
+    figure_dir.mkdir(parents=True, exist_ok=True)
+    figure_path = figure_dir / FIGURE_NAME
+    figure.savefig(figure_path, dpi=FIGURE_DPI)
+    print(f"Saved figure: {figure_path}")
+
+
+def parse_arguments() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--save-figure",
+        metavar="DIR",
+        type=Path,
+        help="also save the figure as PNG in DIR (outside output/); "
+        "by default the figure is only displayed",
+    )
+    return parser.parse_args()
+
+
 def main() -> int:
+    args = parse_arguments()
     output_dir = Path(__file__).resolve().parent / "output"
+    figure_dir = args.save_figure
+    if figure_dir is not None and figure_dir.resolve().is_relative_to(output_dir):
+        # Extra files in output/ would invalidate its recorded generation hashes.
+        raise SystemExit(f"Error: --save-figure DIR must be outside {output_dir}")
     from writer_guard import protect_python_entry
     protect_python_entry("output", writes=(output_dir,))
     completed_output_dir = output_dir
     with input_generation(output_dir) as output_dir:
         print(f"Running: UMAP analysis; input directory: {output_dir}")
         frames, features = read_features(output_dir / "phi_psi.dat")
-        if len(frames) <= N_NEIGHBORS:
-            raise ValueError(
-                f"UMAP requires more frames than the n_neighbors value: "
-                f"frames={len(frames)}, n_neighbors={N_NEIGHBORS}"
+        frame_count = len(frames)
+        print(f"Frames: {frame_count}")
+        if frame_count <= N_NEIGHBORS:
+            raise SystemExit(
+                f"Error: UMAP N_NEIGHBORS ({N_NEIGHBORS}) must be smaller than "
+                f"the frame count ({frame_count}); lower N_NEIGHBORS in anal.py."
             )
 
         model = umap.UMAP(
@@ -80,16 +113,20 @@ def main() -> int:
             encoding="utf-8",
         )
 
-        figure, axis = plt.subplots(figsize=(7, 5.5))
-        scatter = axis.scatter(embedding[:, 0], embedding[:, 1], c=frames, s=14)
-        axis.set_xlabel("UMAP 1")
-        axis.set_ylabel("UMAP 2")
-        figure.colorbar(scatter, ax=axis, label="Frame")
-        figure.tight_layout()
-        print("Displaying UMAP analysis figure.")
-        plt.show()
     output_dir = completed_output_dir
-    print(f"Completed: UMAP analysis; results: {output_dir} (figure displayed interactively)")
+    # Tables are published before the figure window opens.
+    print(f"Completed: UMAP analysis; results: {output_dir}")
+
+    figure, axis = plt.subplots(figsize=(7, 5.5))
+    scatter = axis.scatter(embedding[:, 0], embedding[:, 1], c=frames, s=14)
+    axis.set_xlabel("UMAP 1")
+    axis.set_ylabel("UMAP 2")
+    figure.colorbar(scatter, ax=axis, label="Frame")
+    figure.tight_layout()
+    if figure_dir is not None:
+        save_figure(figure, figure_dir)
+    print("Displaying UMAP analysis figure.")
+    plt.show()
     return 0
 
 

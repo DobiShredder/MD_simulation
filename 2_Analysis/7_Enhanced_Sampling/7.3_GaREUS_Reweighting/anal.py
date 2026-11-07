@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import csv
 from importlib.metadata import version
 from pathlib import Path
@@ -16,12 +17,17 @@ import numpy as np
 TUTORIAL_DIR = Path.cwd()
 OUTPUT_DIR = TUTORIAL_DIR / "output"
 
+# Must match temp0 in 1_Simulation/3_REMD/3.5_GaREUS/inputs/production.in.
 TEMPERATURE_KELVIN = 300.0
 # rk = 1.0 windows are about 0.55 A wide, so the grid extends about 5 sigma past
 # the outer centers (6 and 25 A). Frames outside the grid stop the analysis.
 PMF_MIN_ANGSTROM = 3.0
 PMF_MAX_ANGSTROM = 28.0
 BIN_WIDTH_ANGSTROM = 0.2
+
+# Used only with --save-figure DIR.
+FIGURE_NAME = "gareus_pmf.png"
+FIGURE_DPI = 150
 
 GAS_CONSTANT_KCAL_MOL_K = 0.00198720425864083
 
@@ -302,17 +308,41 @@ def plot_pmf(
     bin_centers: np.ndarray,
     mbar_pmf: np.ndarray,
     reweighted_pmf: np.ndarray,
+    figure_dir: Path | None,
 ) -> None:
-    plt.plot(bin_centers, mbar_pmf, label="REUS bias removed")
-    plt.plot(bin_centers, reweighted_pmf, label="REUS + GaMD biases removed")
-    plt.xlabel("Terminal Cα distance (Å)")
-    plt.ylabel("Relative PMF (kcal/mol)")
-    plt.legend()
-    plt.tight_layout()
+    figure, axis = plt.subplots()
+    axis.plot(bin_centers, mbar_pmf, label="REUS bias removed")
+    axis.plot(bin_centers, reweighted_pmf, label="REUS + GaMD biases removed")
+    axis.set_xlabel("Terminal Cα distance (Å)")
+    axis.set_ylabel("Relative PMF (kcal/mol)")
+    axis.legend()
+    figure.tight_layout()
+    if figure_dir is not None:
+        figure_dir.mkdir(parents=True, exist_ok=True)
+        figure_path = figure_dir / FIGURE_NAME
+        figure.savefig(figure_path, dpi=FIGURE_DPI)
+        print(f"Saved figure: {figure_path}")
     plt.show()
 
 
+def parse_arguments() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--save-figure",
+        metavar="DIR",
+        type=Path,
+        help="also save the figure as PNG in DIR (outside output/); "
+        "by default the figure is only displayed",
+    )
+    return parser.parse_args()
+
+
 def main() -> None:
+    args = parse_arguments()
+    figure_dir = args.save_figure
+    if figure_dir is not None and figure_dir.resolve().is_relative_to(OUTPUT_DIR.resolve()):
+        # Extra files in output/ would invalidate its recorded generation hashes.
+        raise SystemExit(f"Error: --save-figure DIR must be outside {OUTPUT_DIR}")
     from writer_guard import protect_python_entry
     protect_python_entry("output", writes=(OUTPUT_DIR,))
     print(f"Running: GaREUS reweighting analysis; input directory: {OUTPUT_DIR}")
@@ -320,6 +350,7 @@ def main() -> None:
         with result_generation(OUTPUT_DIR) as generation_dir:
             copy_prepared_inputs(OUTPUT_DIR, generation_dir)
             centers, forces, sample_counts, distances, boosts = read_inputs(generation_dir)
+            print(f"Frames: {sample_counts.sum()} ({len(sample_counts)} states)")
             weights, overlap = umbrella_weights(centers, forces, sample_counts, distances)
             _, rows = calculate_pmf(distances, boosts, weights)
             bin_centers, mbar_pmf, reweighted_pmf = write_outputs(
@@ -336,7 +367,7 @@ def main() -> None:
         raise SystemExit(f"GaREUS reweighting failed: {error}") from error
 
     print(f"GaREUS 1D PMF calculated: {OUTPUT_DIR}/pmf.tsv")
-    plot_pmf(bin_centers, mbar_pmf, reweighted_pmf)
+    plot_pmf(bin_centers, mbar_pmf, reweighted_pmf, figure_dir)
 
 
 if __name__ == "__main__":

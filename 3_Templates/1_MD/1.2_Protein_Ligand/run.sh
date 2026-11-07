@@ -77,6 +77,15 @@ show_engine_log() {
     fi
 }
 
+# Keep engine stdout/stderr in engine.<stage>.log beside <stage>.out.
+# Each attempt appends a header, so earlier attempts stay readable.
+run_engine() {
+    local engine_log=$1
+    shift
+    echo "== $(date '+%Y-%m-%d %H:%M:%S') $*" >> "$engine_log"
+    "$@" >> "$engine_log" 2>&1
+}
+
 run_stage() {
     local stage=$1
     local label=$2
@@ -129,9 +138,11 @@ run_stage() {
         die_retained "$stage" "$label" "" "${required[@]}" "$marker"
     fi
 
+    local engine_log="$directory/engine.$stage.log"
     echo "Running: $label"
-    if ! "$@"; then
+    if ! run_engine "$engine_log" "$@"; then
         show_engine_log "${required[0]}"
+        show_engine_log "$engine_log"
         die_retained "$stage" "$label" "$label failed in $directory; engine output: ${required[0]}. " "${required[@]}"
     fi
     for output in "${required[@]}"; do

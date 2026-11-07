@@ -44,12 +44,30 @@ restraint_lambdas = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 charge_lambdas = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 vdw_lambdas = [0.0, 0.01, 0.025, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.975, 1.0]
 standard_state_concentration = 1.0
+# vdW-stage soft-core potential (Amber26 manual 27.1.6-27.1.7, p. 556-560):
+# scalpha is unitless and scbeta is in Å^2. Both are written to the vdW heating,
+# equilibration and production inputs. The charge stage (ifsc=0) ignores them.
+scalpha = 0.5
+scbeta = 12.0
+# pmemd.cuda smoothstep lambda scheduling: integer 0 or 1. All 0 keeps the
+# pmemd defaults and writes no gti_* keyword; if any is 1, all three are written.
+# gti_lam_sch = 1 makes pmemd's own defaults gti_ele_sc = 1, gti_vdw_sc = 1,
+# scalpha = 0.2 and scbeta = 50.0, but the values in this file are always
+# written, so set all of them. pmemd reads lambda.sch from the window
+# directory or uses its built-in smooth_step2 schedule.
+gti_lam_sch = 0
+gti_ele_sc = 0
+gti_vdw_sc = 0
 
 [restraints]
 # AMBER units: distance force kcal mol^-1 Å^-2; angle and torsion force kcal mol^-1 rad^-2
-protein_anchor_1 = ":1@CA"
-protein_anchor_2 = ":2@CA"
-protein_anchor_3 = ":3@CA"
+# Protein anchors depend on the system and have no default. Set three rigid
+# protein atoms near the pocket (for example backbone CA) that are not collinear.
+# build.sh stops while they are empty and when a Boresch angle (P2-P1-L1 or
+# P1-L1-L2) is outside 30-150 degrees. See "Choosing Boresch anchors" in README.md.
+protein_anchor_1 = ""
+protein_anchor_2 = ""
+protein_anchor_3 = ""
 ligand_anchor_1 = ":LIG@C1"
 ligand_anchor_2 = ":LIG@C2"
 ligand_anchor_3 = ":LIG@C3"

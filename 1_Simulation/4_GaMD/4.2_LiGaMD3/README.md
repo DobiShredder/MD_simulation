@@ -59,9 +59,7 @@ python3 anal.py
 `work/inputs/`에 `bgpro2atm`과 `edpro2atm`이 채워진 input을 생성합니다.
 기본 charge가 +1이면 RCSB neutral SDF의 imine N에 H 하나와 formal charge를
 추가한 뒤 GAFF2/AM1-BCC를 적용합니다.
-`igamd=28`은 ligand essential nonbonded, 나머지 nonbonded와 system bonded
-potential에 세 boost를 적용합니다. Preparation stage의 핵심 output과 성공 완료 증거가 모두 있으면 건너뛰고, 완료 증거가 없거나 필수 output이 누락되면 기존 결과를 보존하고 중단합니다. Production
-output은 덮어쓰지 않습니다.
+
 Amber 26의 LiGaMD3 `gamd.log`는 세 물리적 boost를 각각 별도 column으로
 기록하지 않습니다. 기존 형식의 `Boost-Energy-Potential`과
 `Boost-Energy-Dihedral` 두 aggregate column을 기록합니다. `anal.py`는 두 값을
@@ -69,6 +67,28 @@ Amber 26의 LiGaMD3 `gamd.log`는 세 물리적 boost를 각각 별도 column으
 `logged_potential_column`과 `logged_dihedral_column`은 이 두 log column을
 가리키며 `ΔV_L`, `ΔV_D`, `ΔV_B`를 각각 분리한 값이 아닙니다. 기본
 production log의 103줄은 header 3줄과 GaMD record 100개입니다.
+
+필요한 program과 stage별 계산량은 [GaMD README](../README.md#필요한-program)에
+정리되어 있습니다.
+
+### 성공 확인
+
+| Command | 마지막 출력 | 확인할 파일 |
+| --- | --- | --- |
+| `./build.sh` | `LiGaMD3 topology, restart, and generated inputs: work` | `work/inputs/gamd_prepare.in`의 `bgpro2atm`/`edpro2atm`(직전 `LiGaMD3 receptor atoms: 1-N` 출력과 같은 값) |
+| `./run.sh --allow-unverified` | `1 ns LiGaMD3 production completed: work/production.nc` | `work/gamd_prepare.gamd.rst`, `work/production.gamd.log` |
+| `python3 anal.py` | `LiGaMD3 boost diagnostics: work/boost_summary.tsv` | `work/boost_summary.tsv`, `work/boost_frames.tsv` |
+
+두 logged column이 세 boost를 어떻게 나누어 담는지는 확인하지 않았습니다(미검증).
+따라서 column별 `std`를 `sigma0P/D/B`와 일대일로 비교하지 않고, `total` 행의
+anharmonicity와 effective sample size로 reweighting 가능성을 판단합니다. 해석
+기준은 [GaMD README](../README.md#결과-해석)에 있습니다. 다음 단계는 PMF
+reweighting입니다.
+
+~~~bash
+cd ../../../2_Analysis/7_Enhanced_Sampling/7.2_GaMD_Reweighting
+./run.sh ligamd3 ../../../1_Simulation/4_GaMD/4.2_LiGaMD3/work
+~~~
 
 ### 주요 option
 
@@ -84,34 +104,104 @@ production log의 103줄은 header 3줄과 GaMD record 100개입니다.
 | BEN net charge `+1` | AM1-BCC parameterization에 사용하는 고정 charge입니다. |
 | `--allow-unverified` | Amber26 GPU 검증 전 실제 실행을 의도적으로 opt-in합니다. |
 | `ntr=1`, `-ref minimize.rst7` | Heating restraint의 reference로 minimization restart를 사용합니다. |
-
-Amber26의 LiGaMD3 동작은 아직 실제 GPU에서 검증하지 않았습니다. 위 opt-in은
-이 상태를 확인하기 위한 것이며 호환성을 보장하지 않습니다. GaMD parameter와
-state, 기록된 total boost, `gamd-restart.dat`, DV/DL output과 짧은
-continuation을 확인하기 전에는 결과를 해석하지 않습니다. 1 ns는 binding
-thermodynamics나 kinetics 계산 길이가 아닙니다.
+| Heating seed `42001` | 이 고정 example의 initial velocity seed입니다. |
 
 Amber 26 manual은 LiGaMD3를 serial GPU `pmemd.cuda` 전용으로 설명합니다.
 `AMBER_ENGINE`을 `pmemd`, `sander` 또는 MPI executable로 바꾸면 `run.sh`가
-계산 전에 중단합니다.
+계산 전에 중단합니다. System별 production 설정은
+`3_Templates/4_GaMD/4.2_LiGaMD3`에서 구성합니다.
 
-Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 중단하고 파일을 보존합니다. 새 build 전에는 기존 `work/`를 다른 위치에 보관하거나 별도 tutorial 사본을 사용합니다.
+Amber26의 LiGaMD3 동작은 아직 실제 GPU에서 검증하지 않았습니다(미검증).
+`--allow-unverified`는 이 상태를 확인하기 위한 opt-in이며 호환성을 보장하지
+않습니다. GaMD parameter와 state, 기록된 total boost, `gamd-restart.dat`, DV/DL
+output과 짧은 continuation을 확인하기 전에는 결과를 해석하지 않습니다.
 
-공개 analysis entry는 자동으로 `helpers/writer_guard.py`를 호출해 같은 output의 동시 writer를 거부합니다. Engine 실행부터 결과 게시까지 보호하며, signal 종료 시 child가 멈춘 뒤 lock을 해제합니다. Lock을 임의로 삭제해 실행을 재개하지 않습니다.
+### Production 재실행
 
-`download.sh`는 모든 asset과 `SHA256SUMS`를 staging에서 확인한 뒤 `helpers/publish_download.py`로 게시합니다. Transfer, checksum 또는 일반 publication 실패에서는 기존 파일을 보존하며, 관련 없는 preparation 파일도 유지합니다. `structure/.download.pending`가 남으면 prepare/build와 새 download가 거부됩니다. 보존된 staging과 marker를 점검하고, marker만 삭제해 이전 파일과 새 파일을 섞어 사용하지 않습니다.
+Production은 시작할 때 `work/.production.started`를 남깁니다. Production이 실패한
+뒤 다시 실행하면 남은 output과 engine이 바꾼 `work/gamd-restart.dat`을
+preparation state로 덮어쓰지 않고 중단합니다. Error에 나온 파일을 `work` 밖으로
+옮긴 뒤 다시 실행합니다. Preparation state는 `work/gamd_prepare.gamd.rst`에
+남아 있으므로 production은 이 state에서 다시 시작합니다.
+
+~~~bash
+mkdir -p work.failed
+mv work/production.* work/.production.started work/gamd-restart.dat work.failed/
+./run.sh --allow-unverified
+~~~
+
+완료된 production은 다시 실행하지 않습니다. Engine을 실행하지 않고
+`Skipping completed production`과 다음 command `python3 anal.py`를 출력한 뒤
+정상 종료합니다. 그 밖의 실행 상태, 실패 후 재실행, 동시 실행 보호는 [GUIDE.md 부록](../../../GUIDE.md#4-부록-실행-상태와-복구)을 참고합니다.
+
+### 문제 해결
+
+| Message | 원인과 조치 |
+| --- | --- |
+| `Usage: ./run.sh --allow-unverified` | 실제 engine 실행에 opt-in argument가 없습니다. 위 미검증 설명을 읽은 뒤 `--allow-unverified`를 붙입니다. |
+| `Error: Amber 26 LiGaMD3 supports only the serial GPU pmemd.cuda engine: ...` | `AMBER_ENGINE`이 `pmemd.cuda`가 아닙니다. Serial GPU executable로 바꿉니다. |
+| `Error: Executable not found: antechamber` | AmberTools 26 environment를 activate하거나 `ANTECHAMBER`, `PARMCHK2`, `TLEAP`에 경로를 지정합니다. |
+| `Error: antechamber failed: work/antechamber.log` | AM1-BCC charge 계산이 실패했습니다. Log를 확인하고 `structure/BEN_ideal.sdf`가 `download.sh` output인지 확인합니다. |
+| `Expected exactly one BEN residue, ...` 또는 `Receptor residue count before BEN differs from the preparation metadata.` | `render_inputs.py`가 receptor atom 범위를 정하지 못했습니다. `prepare.py`부터 다시 실행해 PDB와 `system_metadata.tsv`를 맞춥니다. |
+| `work/production.gamd.log: malformed GaMD record at line N: ...` | Log가 중간에 끊겼거나 형식이 다릅니다. Production 완료 여부와 Amber version을 확인합니다. |
+
+1 ns는 binding thermodynamics나 kinetics 계산 길이가 아닙니다.
 
 ## English
 
-PDB 3PTB is built with ff19SB, GAFF2/AM1-BCC, and OPC for an experimental
-Amber26 LiGaMD3 workflow. `build.sh` resolves the receptor atom range from the
-final topology and writes complete inputs under `work/inputs/`.
-The fixed tutorial preserves the GaMD preparation state used by production.
+PDB 3PTB is built with ff19SB, GAFF2/AM1-BCC, and OPC, and the LiGaMD3 triple
+boost is applied. BEN uses AM1-BCC charges.
 
-LiGaMD3 separates ligand-essential nonbonded, remaining nonbonded, and bonded
-potentials into three boosts. `prepare.py` validates the complex metadata,
-`build.sh` parameterizes BEN and builds the system, `render_inputs.py` derives
-the receptor range from the final topology, and `run.sh` performs the stages.
+LiGaMD3 accelerates three components separately: ligand-essential nonbonded
+interactions, remaining nonbonded interactions, and the system bonded potential.
+It targets both ligand binding/unbinding barriers and receptor and ligand
+flexibility. A clean separation requires the ligand mask and receptor atom range
+to match the final topology.
+
+The potential energy is partitioned as follows.
+
+```text
+V_L = V_LL,nonbonded + V_PL,nonbonded
+V_D = V_system,nonbonded - V_L
+V_B = V_system,bond + V_system,angle + V_system,dihedral
+ΔV_total = ΔV_L + ΔV_D + ΔV_B
+```
+
+`V_L` contains BEN self-nonbonded and BEN–trypsin nonbonded interactions.
+Boosting it flattens the electrostatic and van der Waals barriers that hold the
+ligand in the pocket and promotes dissociation. `V_D` is the remaining
+nonbonded potential (protein–protein, protein–environment, ligand–environment
+and environment–environment) and facilitates diffusion and rebinding. `V_B`
+contains all-system bond, angle and dihedral terms and accelerates internal
+conformational changes of receptor and ligand. Each boost uses its own
+potential statistics and threshold before the three are summed.
+
+### Script roles
+
+| File | Role |
+| --- | --- |
+| `download.sh` | Saves 3PTB PDB/mmCIF and the BEN ideal SDF. |
+| `prepare.py` | Prepares protein/BEN/Ca2+, six disulfides and Asp189 metadata. |
+| `protonate_benzamidine.py` | Internal helper that converts the neutral RCSB SDF to BEN(+1). |
+| `build.sh` | Creates BEN GAFF2/AM1-BCC parameters, the solvated topology and generated GaMD inputs. |
+| `render_inputs.py` | Finds the receptor atom range before BEN in the final topology and fills the template markers. |
+| `run.sh` | Runs the conventional stages, triple-boost preparation and production. |
+| `anal.py` | Saves statistics of the two boost-energy columns in `gamd.log` and their sum. |
+
+~~~bash
+cd 1_Simulation/4_GaMD/4.2_LiGaMD3
+./download.sh
+python3 prepare.py structure/3PTB.raw.pdb structure/complex.pdb
+./build.sh structure/complex.pdb structure/BEN_ideal.sdf
+./run.sh --allow-unverified
+python3 anal.py
+~~~
+
+`build.sh` resolves the receptor atom range before BEN from the final topology
+and writes inputs with `bgpro2atm` and `edpro2atm` filled in under
+`work/inputs/`. The default +1 ligand path first adds one imine-N hydrogen and a
+formal charge to the neutral RCSB SDF, then applies GAFF2/AM1-BCC.
+
 Amber 26 does not write the three physical LiGaMD3 boosts as separate columns
 in `gamd.log`. It retains the legacy aggregate `Boost-Energy-Potential` and
 `Boost-Energy-Dihedral` columns. `anal.py` reports both logged values and their
@@ -119,103 +209,90 @@ sum as the per-frame total boost `ΔV`. The TSV labels `logged_potential_column`
 and `logged_dihedral_column` name these log columns; they are not separate
 `ΔV_L`, `ΔV_D`, or `ΔV_B` values. The default 103-line production log
 contains three header lines and 100 records.
-The default +1 ligand path first adds one imine-N hydrogen and a formal charge
-to the neutral RCSB SDF, then applies GAFF2/AM1-BCC.
 
-The energy partition is
-`V_L = V_LL,nonbonded + V_PL,nonbonded`,
-`V_D = V_system,nonbonded - V_L`, and
-`V_B = V_system,bond + V_system,angle + V_system,dihedral`.
-The first component contains BEN self-nonbonded and BEN–trypsin interactions
-and promotes ligand dissociation. The second contains the remaining
-protein, ligand–environment, and environment nonbonded terms and facilitates
-diffusion and rebinding. The third accelerates internal conformational changes
-through all-system bonded terms. Each component has separate statistics and a
-separate boost, and the applied total is
-`ΔV_total = ΔV_L + ΔV_D + ΔV_B`.
+Required programs and per-stage computation are listed in the
+[GaMD README](../README.md#required-programs).
 
-`igamd=28` with `iEP=2` and `iED=iEB=1` follows the Amber 26 example: the
-first boost uses the upper-bound threshold and the other boosts use lower-bound
-thresholds.
-`sigma0P/D/B=6.0` limit component fluctuations; `timask1`/`scmask1` select
-`:BEN`; `bgpro2atm`/`edpro2atm` delimit receptor atoms. `ntave=50000` is a
-100 ps averaging interval. The `ntcmd*`/`nteb*` values define overlapping
-conventional-statistics and GaMD-equilibration schedules. BEN is parameterized
-with a fixed net charge of +1, and actual runs remain gated by
-`run.sh --allow-unverified`.
-Heating passes `minimize.rst7` to `-ref` for the `ntr=1` positional restraint.
+### Success check
 
-Amber 26 documents LiGaMD3 only for serial GPU `pmemd.cuda`; `run.sh` rejects
-CPU and MPI engine overrides.
+| Command | Last line | Files to check |
+| --- | --- | --- |
+| `./build.sh` | `LiGaMD3 topology, restart, and generated inputs: work` | `bgpro2atm`/`edpro2atm` in `work/inputs/gamd_prepare.in` (same as the preceding `LiGaMD3 receptor atoms: 1-N` line) |
+| `./run.sh --allow-unverified` | `1 ns LiGaMD3 production completed: work/production.nc` | `work/gamd_prepare.gamd.rst`, `work/production.gamd.log` |
+| `python3 anal.py` | `LiGaMD3 boost diagnostics: work/boost_summary.tsv` | `work/boost_summary.tsv`, `work/boost_frames.tsv` |
 
-Preparation stages are reused only with successful completion evidence and all required outputs; partial results are preserved and rejected. Existing production output is protected.
-Use `3_Templates/4_GaMD/4.2_LiGaMD3` for system-specific production settings.
+How the two logged columns divide the three boosts has not been checked
+(unverified). Do not compare the per-column `std` one-to-one with
+`sigma0P/D/B`; judge reweighting from the anharmonicity and effective sample
+size of the `total` row, as described in the
+[GaMD README](../README.md#interpreting-the-results). The next step is PMF
+reweighting.
 
-Actual execution requires `run.sh --allow-unverified` until a short Amber26
-GPU run confirms the GaMD parameters and state, logged total boost, restart
-state, and continuation behavior. The 1 ns example is not a binding
-thermodynamics or kinetics calculation.
+~~~bash
+cd ../../../2_Analysis/7_Enhanced_Sampling/7.2_GaMD_Reweighting
+./run.sh ligamd3 ../../../1_Simulation/4_GaMD/4.2_LiGaMD3/work
+~~~
+
+### Key options
+
+| Option | Meaning |
+| --- | --- |
+| `igamd=28` | Selects the LiGaMD3 triple-boost mode. |
+| `iEP=2`, `iED=iEB=1` | Following the Amber 26 example, the first boost uses the upper-bound threshold and the other two use lower-bound thresholds. |
+| `sigma0P`, `sigma0D`, `sigma0B=6.0` | Upper limits (kcal/mol) on the target standard deviation of the three boost components. |
+| `timask1=':BEN'`, `scmask1=':BEN'` | Selects the BEN residue as the ligand for selective interactions. |
+| `bgpro2atm`, `edpro2atm` | Receptor atom range computed from the final topology. Check the generated input instead of fixing it by hand. |
+| `ntave=50000` | Triple-boost statistics averaging interval, 100 ps at 2 fs. |
+| `ntcmd*`, `nteb*` | Initial conventional-statistics and GaMD-equilibration schedules. The `*prep` and total step values overlap and are not summed. |
+| BEN net charge `+1` | Fixed charge used for AM1-BCC parameterization. |
+| `--allow-unverified` | Deliberate opt-in to actual execution before Amber26 GPU validation. |
+| `ntr=1`, `-ref minimize.rst7` | Uses the minimization restart as the heating restraint reference. |
+| Heating seed `42001` | Initial velocity seed of this fixed example. |
+
+Amber 26 documents LiGaMD3 only for serial GPU `pmemd.cuda`; `run.sh` stops
+before computing if `AMBER_ENGINE` is set to `pmemd`, `sander` or an MPI
+executable. Use `3_Templates/4_GaMD/4.2_LiGaMD3` for system-specific production
+settings.
+
+Amber26 LiGaMD3 behavior has not been validated on an actual GPU (unverified).
+`--allow-unverified` is an opt-in for checking this and does not guarantee
+compatibility. Do not interpret results until a short run confirms the GaMD
+parameters and state, the logged total boost, `gamd-restart.dat`, DV/DL output
+and continuation behavior.
+
+### Rerunning production
+
+Production leaves an attempt record, `work/.production.started`. After a failed
+production, a rerun stops instead of overwriting the leftover output or the
+engine-modified `work/gamd-restart.dat` with the prepared state. Move the files
+named in the error out of `work` and rerun. The prepared state remains in
+`work/gamd_prepare.gamd.rst`, so production restarts from it.
+
+~~~bash
+mkdir -p work.failed
+mv work/production.* work/.production.started work/gamd-restart.dat work.failed/
+./run.sh --allow-unverified
+~~~
+
+A completed production is not rerun: `run.sh` skips the engine, prints
+`Skipping completed production` and the next command, `python3 anal.py`, and
+exits 0. See [GUIDE.md appendix](../../../GUIDE.md#4-appendix-run-state-and-recovery) for
+other run state, reruns after failure and concurrent-run protection.
+
+### Troubleshooting
+
+| Message | Cause and fix |
+| --- | --- |
+| `Usage: ./run.sh --allow-unverified` | The opt-in argument for engine runs is missing. Read the unverified note above, then add `--allow-unverified`. |
+| `Error: Amber 26 LiGaMD3 supports only the serial GPU pmemd.cuda engine: ...` | `AMBER_ENGINE` is not `pmemd.cuda`. Use the serial GPU executable. |
+| `Error: Executable not found: antechamber` | Activate the AmberTools 26 environment or set `ANTECHAMBER`, `PARMCHK2` or `TLEAP`. |
+| `Error: antechamber failed: work/antechamber.log` | The AM1-BCC charge calculation failed. Read the log and check that `structure/BEN_ideal.sdf` is the `download.sh` output. |
+| `Expected exactly one BEN residue, ...` or `Receptor residue count before BEN differs from the preparation metadata.` | `render_inputs.py` could not set the receptor atom range. Rerun from `prepare.py` so the PDB and `system_metadata.tsv` match. |
+| `work/production.gamd.log: malformed GaMD record at line N: ...` | The log is truncated or has a different format. Check that production finished and which Amber version wrote it. |
+
+The 1 ns example is not a binding thermodynamics or kinetics calculation.
 
 ## References / 참고 자료
 
 - [RCSB PDB 3PTB](https://www.rcsb.org/structure/3PTB)
 - [LiGaMD3](https://doi.org/10.1021/acs.jctc.4c00502)
-
-Build stops before changing inputs when topology/restart files already exist, preserving those files. Preserve the existing `work/` elsewhere or use a separate tutorial copy before a new build.
-
-### 동시 실행과 input 변경
-
-Build와 run은 `work.writers/` registry를 공유합니다. 같은 output/state를 쓰는 작업은 동시에 실행하지 않습니다. `prepare.py`가 있는 경우 structure를 생성하는 작업도 input을 읽는 build와 충돌하면 거부합니다.
-
-Run은 재사용할 결과의 input을 SHA256으로 비교합니다. Topology, 최초 coordinate file, stage input, predecessor restart와 restraint가 바뀌거나 기존 결과에 identity 기록이 없으면 파일을 보존하고 거부합니다. 이 tutorial은 고정 경로를 사용하므로 변경된 계산은 새 directory에 tutorial을 복사해 시작합니다.
-
-정상 종료, command 실패와 INT/TERM에서는 자식 process의 종료를 확인한 뒤 자기 lock만 해제합니다. SIGKILL이나 node 장애로 남은 lock은 자동 삭제하지 않습니다. Error에 표시된 lock과 `owner.json`의 host, PID, command, scope를 확인하고 scheduler와 해당 host에서 모든 writer와 자식 process가 종료됐는지 확인한 뒤 그 lock directory만 수동 제거합니다. PID가 로컬에서 보이지 않는다는 이유만으로 제거하지 않습니다. `.gate/`도 같은 확인이 필요합니다.
-
-지원하는 `--dry-run`과 `--help`는 보호나 identity 파일을 생성하지 않습니다. 진행 중인 work를 이동하거나 identity를 수정해 재사용하지 않습니다. 보호는 로컬 filesystem과 로컬 자식 process로 검증했으며 network filesystem, remote MPI와 다른 node의 writer 종료는 미검증입니다.
-
-### Concurrent runs and input changes
-
-Build and run share the `work.writers/` registry and reject concurrent writers to the same output/state. Where present, `prepare.py` also rejects structure writes that overlap an active build reader.
-
-Run compares inputs for result reuse with SHA256. Changed topology, initial coordinates, stage input, predecessor restart or restraint, and results without identity records, are preserved and rejected. This tutorial uses fixed paths; start changed calculations in a new tutorial copy.
-
-Normal exit, command failure and INT/TERM release only the owned lock after child termination is verified. Locks left by SIGKILL or node failure are retained. Inspect the reported lock and its `owner.json` host, PID, command and scopes; confirm through the scheduler and owning host that all writers and children stopped before manually removing only that lock directory. A PID missing locally is not sufficient. Apply the same checks to `.gate/`.
-
-Supported `--dry-run` and `--help` do not create writer or identity files. Do not move active work trees or edit identities to reuse results. Protection was tested on a local filesystem with local child processes; network filesystems, remote MPI and termination of writers on other nodes remain unverified.
-
-### Stage 완료 판정 / Stage completion
-
-Input identity는 입력이 같은지 확인하며 engine의 성공 종료를 증명하지 않습니다.
-Runner가 engine의 성공 종료와 필수 output을 확인한 뒤 만든 완료 증거가 있어야
-stage를 재사용합니다. Output이 남았지만 완료 증거가 없거나 필수 output이
-누락·비어 있으면 기존 결과를 보존하고 중단합니다. 기존 결과를 소급 인증하지
-않습니다. 새 계산은 생성된 `work/`를 포함하지 않는 새 tutorial copy에서 시작합니다.
-`ntwx=0`인 AMBER stage는 trajectory를 완료 조건으로 요구하지 않습니다.
-지원되는 continuation은 기존 restart/state 전달 방식을 따릅니다.
-
-Input identity checks unchanged inputs; it does not prove a successful engine exit.
-A stage is reused only with completion evidence written after a successful engine
-exit and required-output checks. Outputs without that evidence, or missing/empty
-required outputs, are preserved and rejected. Existing results are not certified
-retroactively. Start a new tutorial copy without generated `work/` directories for
-a new calculation. AMBER stages with `ntwx=0` do not require a trajectory for
-completion. Supported continuation retains its existing restart/state handoff.
-
-Production은 시작 기록 `work/.production.started`를 남깁니다. Production이
-실패하면 rerun은 남은 output과 engine이 바꾼 `work/gamd-restart.dat`을 preparation
-state로 덮어쓰지 않고 중단합니다. Error message에 나온 file을 `work` 밖으로 옮긴 뒤
-`./run.sh --allow-unverified`를 다시 실행합니다. 예를 들어 `mkdir -p work.failed`와
-`mv work/production.* work/.production.started work/gamd-restart.dat work.failed/`를
-사용합니다. 완료된 production은 다시 실행하지 않습니다.
-
-Production leaves an attempt record, `work/.production.started`. After a failed
-production, a rerun stops instead of overwriting the leftover output or the
-engine-modified `work/gamd-restart.dat` with the prepared state. Move the files named
-in the error message out of `work` and rerun `./run.sh --allow-unverified`, for example with
-`mkdir -p work.failed` and
-`mv work/production.* work/.production.started work/gamd-restart.dat work.failed/`.
-A completed production is not rerun.
-
-Public analysis entries automatically use `helpers/writer_guard.py` to reject concurrent writers to the same output. Protection covers engine execution through publication, and signal cleanup drains children before releasing the lock. Do not delete a lock to force a retry.
-
-`download.sh` validates every asset and `SHA256SUMS` in staging before publishing through `helpers/publish_download.py`. Transfer, checksum and ordinary publication failures preserve existing files, including unrelated preparation files. A retained `structure/.download.pending` blocks source readers and new downloads. Inspect the retained staging and marker; deleting only the marker can expose a mixed generation.

@@ -21,6 +21,7 @@
    - [Metadynamics와 OPES](#17-metadynamics와-opes)
 2. [Trajectory 분석](#2-trajectory-분석)
 3. [참고 자료](#3-참고-자료)
+4. [부록: 실행 상태와 복구](#4-부록-실행-상태와-복구)
 
 ## 0. 학습 전 준비
 
@@ -67,6 +68,7 @@ structure and scientific choices
 - [시뮬레이션 튜토리얼](1_Simulation/README.md)
 - [분석 튜토리얼](2_Analysis/README.md)
 - [사용자 structure용 config template](3_Templates/README.md)
+- [실행 상태와 실패 후 재실행 규칙](#4-부록-실행-상태와-복구)
 
 `1_Simulation/`에서 method와 engine input을 익힌 뒤 같은 계산을 자신의 structure에
 적용할 때 `3_Templates/`를 사용합니다. Template는 build-ready PDB와
@@ -301,6 +303,122 @@ MM/GBSA·MM/PBSA는 `1_MD/1.2_Protein_Ligand`에서 생성 된 T4 Lysozyme-JZ4 �
 
 
 
+## 4. 부록: 실행 상태와 복구
+
+`1_Simulation`, `3_Templates`, `2_Analysis`의 `build.sh`, `run.sh`, `anal.py`가
+공통으로 따르는 결과 보존, 실패 후 재실행, 동시 실행 보호 규칙입니다. 각
+README는 method별 내용만 설명하고 이 부록을 가리킵니다.
+
+#### 결과 보존
+
+- Script는 기존 결과를 자동으로 지우거나 덮어쓰거나 다시 계산하지 않습니다.
+- 완료된 stage, window와 segment는 다시 실행할 때 재사용하거나 건너뜁니다.
+  Production까지 끝난 tutorial을 다시 실행하면 건너뛰고 다음 command를 안내한 뒤
+  정상 종료합니다.
+- 완료 판정에는 engine 성공 종료, 필수 output, 그 뒤에 기록한 완료 표시
+  (`.<stage>.complete` 또는 `.<stage>.success.json`)가 모두 필요합니다.
+- Output은 있는데 완료 표시가 없으면 partial로 보고 중단합니다.
+
+#### 실패한 뒤 다시 실행
+
+Partial output이 남으면 error가 stage, replica/window, 남은 파일과 실행할
+command를 출력합니다. 보통 남은 파일을 `work` 밖으로 옮긴 뒤 같은 command를
+다시 실행합니다.
+
+```bash
+mkdir -p work.failed
+mv work/heat.out work/heat.rst7 work/heat.info work.failed/
+./run.sh
+```
+
+- Replica와 window는 `000/production.out`처럼 파일 이름이 같습니다. Error가
+  출력하는 command는 하위 directory를 유지하며 옮기므로 그대로 실행합니다.
+- `work` 안의 다른 위치로 옮기면 기록이 없는 결과로 보고 거부합니다.
+- Tutorial은 `work` 경로가 고정입니다. 처음부터 다시 하려면
+  `mv work work.old` 후 `build.sh`부터 실행합니다. Template은 새 `WORK_DIR`을
+  지정할 수도 있습니다.
+- PLUMED bias를 이어받는 MetaD/OPES template은 segment마다
+  `bias_start/`에 시작 시점 bias file을 남깁니다. 복원 절차는
+  [3_Templates/7_MetaD/README.md](3_Templates/7_MetaD/README.md)에 있습니다.
+
+#### Build
+
+- Topology나 restart가 이미 있는 work에는 다시 build하지 않습니다.
+- Template build는 `work/.build_tmp.XXXXXX/`에서 준비합니다. 성공하면 지우고,
+  실패하면 진단용으로 남기고 경로를 출력합니다. `--keep-intermediates`는 성공한
+  build에서도 남깁니다.
+- REST2/REST3 tutorial·template과 REUS/GaREUS template은 모든 검사를 통과한 뒤
+  마지막에 `work/build.done`을 씁니다. 이 파일이 없으면 `run.sh`가 시작하지
+  않습니다.
+- Template build는 `config.toml`에 template이 모르는 key가 있으면 경고합니다.
+  대부분 오타이며, 그 key는 무시됩니다.
+
+#### Input 변경
+
+- 첫 실행 때 각 stage가 사용한 input의 SHA256을 `.*.identity.json`에 기록합니다.
+- Topology, coordinate file, engine input이나 predecessor restart가 바뀌면 실행
+  전에 거부합니다. 기록이 없는 과거 결과도 보존하고 거부합니다.
+- Template은 build가 만든 `work/resolved_config.toml`을 읽습니다. Build 뒤에
+  `config.toml`을 고쳐도 반영되지 않으므로 새 work에서 다시 build합니다.
+- 기록에 절대 경로가 들어가므로 진행 중인 work를 옮기거나 복사해서 이어서
+  실행하지 않습니다.
+
+#### 동시 실행
+
+- 같은 output이나 state를 쓰는 작업은 동시에 실행할 수 없습니다.
+  `writer_guard.py`가 lock directory(보통 `work.writers/`)에 기록하고 거부합니다.
+  서로 다른 `WORK_DIR`은 함께 실행할 수 있습니다.
+- `--help`와 `--dry-run`은 lock과 identity를 만들지 않습니다.
+- 정상 종료, 실패, Ctrl-C(INT/TERM) 뒤에는 자식 process 종료를 확인하고 자기
+  lock만 해제합니다.
+- SIGKILL이나 node 장애로 남은 lock은 자동으로 지우지 않습니다. Error에 나온
+  `owner.json`의 host, PID, command를 확인하고, 해당 host와 scheduler에서 모든
+  writer가 끝났는지 확인한 뒤 그 lock directory만 지웁니다.
+  `work.writers/.gate/`도 같습니다.
+- Network filesystem, remote MPI와 다른 node의 process 종료는 미검증입니다.
+
+#### 실패했을 때 볼 파일
+
+Engine이 실패하면 script가 아래 파일의 경로와 마지막 20줄을 출력합니다.
+
+| 상황 | 파일 |
+|---|---|
+| AMBER stage | `<stage>.out`(예: `work/heat.out`), engine stdout/stderr `engine.<stage>.log` |
+| tleap | `leap.log`, `tleap.stdout.log` |
+| REST template build | `work/build.log` |
+| AMBER REMD production | `work/mpirun.production.log` 또는 `mpirun.production.NNN.log`, 각 replica의 `production*.out` |
+| GROMACS REST 준비 단계 | 각 replica의 `<stage>.grompp.log`, `<stage>.mdrun.log` |
+| GROMACS REST production | 각 replica의 `production*.log` |
+| PLUMED input 검사 | `work/plumed.parse.log` |
+| WESTPA | `work/west.log` 또는 `west.NNN.log`, `work/seg_logs/`, `traj_segs/<iter>/<seg>/segment.out`, `west.init.log` |
+| Analysis `run.sh` | `output.failed/*.log` |
+
+#### Analysis output
+
+- `run.sh`는 빈 임시 directory에서 계산하고, 필수 output을 확인한 뒤 output
+  directory를 교체합니다. 실패하면 이전 결과를 그대로 두고 log를
+  `<output>.failed/`에 복사합니다. 기본 output directory는 `output/`이고,
+  `7.2_GaMD_Reweighting`은 `output/PROFILE/`, FEP와 MetaD `anal.py`는
+  `work/analysis/`를 씁니다.
+- 완료 파일의 hash는 `result_generation.py`(7.1, 7.3 analysis는 `prepare.py`)가
+  generation 기록 file에 남기고, `anal.py`가 확인합니다. 기록이 없는 과거 결과는
+  `run.sh`로 다시 만듭니다.
+- `.<output>.pending` marker(예: `.output.pending`, `work/.analysis.pending`)가
+  남았으면 게시가 중간에 멈춘 것입니다. Process가 끝났는지 확인한 뒤 marker에
+  적힌 이전/새 directory를 함께 검사합니다. Marker만 지우고 다시 실행하지
+  않습니다.
+
+#### Download
+
+- Tutorial `download.sh`는 파일과 `SHA256SUMS`를 staging에서 검사한 뒤
+  게시합니다. 실패해도 기존 파일은 그대로 둡니다. `structure/.download.pending`이
+  남으면 다음 download와 읽기를 거부하므로, 남은 staging과 marker를 함께
+  확인합니다.
+- Template `download.sh`는 임시 file에서 PDB atom record를 검사한 뒤
+  저장합니다.
+
+
+
 ## English
 
 This guide covers the learning order and how to choose a method. Commands and
@@ -323,6 +441,7 @@ judging convergence.
    - [Metadynamics and OPES](#17-metadynamics-and-opes)
 2. [Trajectory analysis](#2-trajectory-analysis)
 3. [References](#3-references)
+4. [Appendix: Run state and recovery](#4-appendix-run-state-and-recovery)
 
 ### 0. Before you start
 
@@ -365,6 +484,7 @@ structure and scientific choices
 - [Simulation tutorials](1_Simulation/README.md)
 - [Analysis tutorials](2_Analysis/README.md)
 - [Config templates for your own structure](3_Templates/README.md)
+- [Run state and reruns after a failure](#4-appendix-run-state-and-recovery)
 
 Learn the method and engine inputs in `1_Simulation/`, then use `3_Templates/`
 to apply the same calculation to your own structure. A template takes a
@@ -583,3 +703,123 @@ MM/GBSA and MM/PBSA use the T4 lysozyme–JZ4 trajectory from
 - [Boresch restraint formulation](https://doi.org/10.1021/jp0217839)
 - [Lipid21](https://doi.org/10.1021/acs.jctc.1c01217)
 - [ff19SB](https://doi.org/10.1021/acs.jctc.9b00591)
+
+### 4. Appendix: Run state and recovery
+
+These rules on result preservation, reruns after failure, and concurrent-run
+protection apply to `build.sh`, `run.sh` and `anal.py` in `1_Simulation`,
+`3_Templates` and `2_Analysis`. Each README covers only its method and points
+here.
+
+#### Result preservation
+
+- Scripts never delete, overwrite or recompute existing results automatically.
+- Completed stages, windows and segments are reused or skipped on rerun.
+  Rerunning a tutorial whose production is complete skips it, prints the next
+  command and exits normally.
+- Completion requires a successful engine exit, the required outputs, and a
+  completion record written afterwards (`.<stage>.complete` or
+  `.<stage>.success.json`).
+- Outputs without a completion record are treated as partial and stop the run.
+
+#### Rerunning after a failure
+
+When partial output remains, the error prints the stage, replica/window, the
+leftover files and the command to run. Usually you move those files out of
+`work` and rerun the same command.
+
+```bash
+mkdir -p work.failed
+mv work/heat.out work/heat.rst7 work/heat.info work.failed/
+./run.sh
+```
+
+- Replicas and windows share file names such as `000/production.out`. The
+  printed command keeps their subdirectories; run it as shown.
+- Moving files elsewhere inside `work` is rejected as results without a record.
+- Tutorials use a fixed `work` path. To start over, run `mv work work.old` and
+  then `build.sh`. Templates can also use a new `WORK_DIR`.
+- MetaD/OPES templates that continue PLUMED bias keep the bias files at the
+  start of each segment in `bias_start/`. See
+  [3_Templates/7_MetaD/README.md](3_Templates/7_MetaD/README.md) for the restore
+  steps.
+
+#### Build
+
+- A work directory that already has a topology or restart is not rebuilt.
+- Template builds prepare in `work/.build_tmp.XXXXXX/`. It is removed on success
+  and kept for diagnosis on failure, with its path printed.
+  `--keep-intermediates` keeps it after a successful build too.
+- REST2/REST3 (tutorials and templates) and the REUS/GaREUS templates write
+  `work/build.done` last, after every check passes. `run.sh` does not start
+  without it.
+- Template builds warn about keys in `config.toml` that the template does not
+  know. They are usually typos and are ignored.
+
+#### Input changes
+
+- On the first run, each stage records the SHA256 of its inputs in
+  `.*.identity.json`.
+- A changed topology, coordinate file, engine input or predecessor restart is
+  rejected before running. Older results without a record are preserved and
+  rejected.
+- Templates read `work/resolved_config.toml`, written by the build. Edits to
+  `config.toml` after the build are not used; rebuild in a new work directory.
+- Records contain absolute paths, so do not move or copy an active work tree to
+  continue it.
+
+#### Concurrent runs
+
+- Jobs that write the same output or state cannot run together.
+  `writer_guard.py` records locks in a lock directory (usually `work.writers/`) and rejects the second job.
+  Different `WORK_DIR`s can run together.
+- `--help` and `--dry-run` create no locks or identity records.
+- After a normal exit, a failure or Ctrl-C (INT/TERM), a script confirms that its
+  child processes stopped and releases only its own lock.
+- Locks left by SIGKILL or node failure are not removed automatically. Check the
+  host, PID and command in the reported `owner.json`, confirm on that host and in
+  the scheduler that every writer stopped, then remove only that lock directory.
+  The same applies to `work.writers/.gate/`.
+- Network filesystems, remote MPI and termination of processes on other nodes
+  are unverified.
+
+#### Where to look after a failure
+
+When an engine fails, the script prints the path and last 20 lines of these
+files.
+
+| Situation | File |
+|---|---|
+| AMBER stage | `<stage>.out` (e.g. `work/heat.out`), engine stdout/stderr in `engine.<stage>.log` |
+| tleap | `leap.log`, `tleap.stdout.log` |
+| REST template build | `work/build.log` |
+| AMBER REMD production | `work/mpirun.production.log` or `mpirun.production.NNN.log`, and each replica's `production*.out` |
+| GROMACS REST preparation | each replica's `<stage>.grompp.log`, `<stage>.mdrun.log` |
+| GROMACS REST production | each replica's `production*.log` |
+| PLUMED input check | `work/plumed.parse.log` |
+| WESTPA | `work/west.log` or `west.NNN.log`, `work/seg_logs/`, `traj_segs/<iter>/<seg>/segment.out`, `west.init.log` |
+| Analysis `run.sh` | `output.failed/*.log` |
+
+#### Analysis output
+
+- `run.sh` computes in an empty temporary directory, checks the required
+  outputs and then replaces the output directory. On failure the previous
+  results stay and the logs are copied to `<output>.failed/`. The default output
+  directory is `output/`; `7.2_GaMD_Reweighting` uses `output/PROFILE/`, and the
+  FEP and MetaD `anal.py` scripts use `work/analysis/`.
+- `result_generation.py` (`prepare.py` in analysis 7.1 and 7.3) records the
+  hashes of completed files in a generation record, and `anal.py` checks them.
+  Regenerate older results without a record with `run.sh`.
+- A leftover `.<output>.pending` marker (e.g. `.output.pending`,
+  `work/.analysis.pending`) means publication stopped midway. Confirm the
+  process ended, then inspect both the previous and new directories named in
+  the marker. Do not remove only the marker and retry.
+
+#### Download
+
+- Tutorial `download.sh` scripts check the files and `SHA256SUMS` in staging
+  before publishing. Existing files stay unchanged on failure. A leftover
+  `structure/.download.pending` blocks further downloads and reads; inspect the
+  remaining staging together with the marker.
+- Template `download.sh` scripts check the PDB atom records in a temporary file
+  before saving.

@@ -2,25 +2,23 @@
 
 ## 한국어
 
-Salt pair 수는 packed PDB의 WAT oxygen atom 수와 설정 농도로 계산합니다. Residue 번호가 반복되어도 water count는 유지합니다. 반올림한 pair 수가 0이면 neutralization만 실행하고 bulk-salt 추가 command는 생성하지 않습니다.
-
-Protein restraint는 heavy atoms → backbone → 전체 해제 순서로 진행합니다.
-Equilibration은 총 1 ns를 400 ps + 400 ps + 200 ps로 나눕니다.
-두 restrained stage의 `-ref`는 같은 `work/heat.rst7`입니다. 이 reference가
-변경되거나 누락되면 기존 stage 결과를 보존하고 실행을 거부합니다.
-
-사용자가 직접 실행하는 파일은 이 directory의 root에 있습니다. `helpers/`는 `build.sh` 또는 `run.sh`가 자동 호출하는 leaf-local 내부 code이며 직접 실행하지 않습니다.
-
-중단되거나 marker가 없는 stage output은 자동 삭제하거나 재실행하지 않고 보존한 채 중단합니다.
+Membrane-oriented protein PDB와 사용자가 준비한 equilibrated Lipid21 bilayer
+patch를 조합해 membrane system을 만들고 conventional MD를 실행합니다. 기본값은
+ff19SB/Lipid21/OPC, anisotropic Monte Carlo pressure coupling, 1 ns equilibration과
+10×10 ns production segments입니다.
 
 이 directory만 별도로 복사해 사용할 수 있습니다. Python dependency는 복사한
-directory의 `requirements.txt`를 사용해 설치합니다.
+directory의 `requirements.txt`를 사용해 설치합니다. 필요한 program은
+[상위 README](../README.md#준비-사항)에 있습니다. 사용자가 직접 실행하는 파일은
+이 directory의 root에 있습니다. `helpers/`는 `build.sh` 또는 `run.sh`가 자동 호출하는
+내부 code이며 직접 실행하지 않습니다.
 
-Membrane-oriented protein PDB와 사용자가 준비한 equilibrated Lipid21 bilayer
-patch를 조합해 membrane system을 만듭니다. Protein orientation과 protonation은
-자동으로 결정하지 않습니다. Input PDB는 OPM 좌표계처럼 membrane normal이 z축이고
-bilayer 중심이 z=0이어야 합니다. OPM의 `1/2 of bilayer thickness` REMARK는
-읽을 수 있을 때 출력에만 사용하며, 없으면 warning을 출력하고 계속합니다.
+### 필요한 input
+
+Protein orientation, protonation, pore water와 bound ion은 자동으로 결정하지 않습니다.
+Input PDB는 OPM 좌표계처럼 membrane normal이 z축이고 bilayer 중심이 z=0이어야 합니다.
+OPM의 `1/2 of bilayer thickness` REMARK는 읽을 수 있을 때 출력에만 사용하며, 없으면
+warning을 출력하고 계속합니다.
 
 `config.toml`에서 bilayer patch 경로와 조성을 지정합니다.
 
@@ -36,6 +34,8 @@ water_padding = 25.0
 Bilayer patch는 이 repository에서 재배포하지 않습니다. 각 coordinate file의
 force-field naming과 출처를 확인한 뒤 config 경로에 둡니다.
 
+### 실행
+
 ```bash
 ./download.sh 1K4C
 # Prepare an oriented, protonated protein PDB and the three bilayer patches.
@@ -44,20 +44,28 @@ force-field naming과 출처를 확인한 뒤 config 경로에 둡니다.
 ./run.sh
 ```
 
-Build는 bilayer를 복제하고 protein overlap을 제거한 뒤 ff19SB/Lipid21/OPC
-topology를 생성합니다. 기본 production은 anisotropic Monte Carlo pressure
-coupling을 사용하며 10×10 ns segments입니다. `protein_restraint_mask`는 protein
-residue만, `lipid_restraint_mask`는 lipid residue만 선택하도록 topology와 대조합니다.
-기본 protein mask는 Lipid21의 `PA,PC,PE,OL,CHL`과 water·bulk ions를 제외합니다.
-별도 ligand나 다른 lipid가 있으면 이 selection을 수정합니다. Bound ion/water
-restraint는 자동으로 추가하지 않습니다.
-`helpers/build_membrane.py`는 `build.sh`가 자동 호출하는 bilayer 배치 helper입니다.
+`download.sh`는 RCSB PDB를 `structure/`에 받으며 구조를 수정하지 않습니다. PDB atom
+record를 확인한 뒤에만 최종 파일로 교체합니다.
+
+`build.sh`는 자동 호출하는 `helpers/build_membrane.py`로 bilayer를 복제하고 protein
+overlap을 제거한 뒤 ff19SB/Lipid21/OPC topology를 생성합니다. Salt pair 수는 packed
+PDB의 WAT oxygen atom 수와 설정 농도로 계산합니다. Residue 번호가 반복되어도 water
+count는 유지합니다. 반올림한 pair 수가 0이면 neutralization만 실행하고 bulk-salt 추가
+command는 생성하지 않습니다.
+
+`AMBER_ENGINE`이 설정되어 있으면 이를 사용하며, 없으면 `work/resolved_config.toml`의
+`run.engine`을 읽습니다. 허용하는 executable 이름은 `pmemd.cuda`, `pmemd`, `sander`이며
+설치 경로를 지정할 수 있습니다. 빈 override나 지원하지 않는 executable은 기본값으로
+대체하지 않고 error로 중단합니다.
+
+실행 상태, 실패 후 재실행과 동시 실행 보호는 [GUIDE.md 부록](../../../GUIDE.md#4-부록-실행-상태와-복구)을
+참고합니다.
 
 ### 계산 단계와 restraint
 
 Water와 bulk ions는 첫 minimization부터 움직입니다. Lipid heavy-atom restraint는
-첫 minimization 뒤에 풀고, protein restraint는 마지막 equilibration까지 단계적으로
-줄입니다. Sampling은 conventional MD이며 restraint는 preparation에만 적용합니다.
+첫 minimization 뒤에 풀고, protein restraint는 heavy atoms → backbone → 전체 해제
+순서로 줄입니다. Sampling은 conventional MD이며 restraint는 preparation에만 적용합니다.
 
 | Generated input | 단계 | Positional restraint | 기본 길이 |
 | --- | --- | --- | --- |
@@ -76,17 +84,19 @@ Restrained stage는 `&ewald`의 `netfrc=0`으로 인위적인 net-force 제거�
 두 minimization은 최초 `system.rst7`을 `-ref`로 사용합니다. Heating은
 `min-lipid.rst7`에서 velocity를 생성합니다(`irest=0`, `ntx=1`). 세 equilibration은
 이전 stage의 restart를 순서대로 읽어 원자 좌표와 velocity를 이어받습니다
-(`irest=1`, `ntx=5`). Heavy-atom과 backbone stage는 `heat.rst7`을 같은 restraint
+(`irest=1`, `ntx=5`). Heavy-atom과 backbone stage는 `work/heat.rst7`을 같은 restraint
 reference로 쓰고, 마지막 unrestrained stage의 `equilibrate.rst7`이 production의
-initial restart가 됩니다. Stage별 `.out`, `.rst7`, dynamics의 `.nc`와 `.info`는
-`work/`에 남습니다.
+initial restart가 됩니다.
 
-`equilibration_steps`는 세 stage의 합계입니다. `equilibration_heavy_steps`와
-`equilibration_backbone_steps`를 지정하고, 남은 steps를 unrestrained stage에
-사용합니다. 각 stage에는 1 step 이상이 필요합니다. 두 stage 값을 생략한 config는
-각각 총 steps의 40%를 사용합니다. 생성된 값은 `resolved_config.toml`에 기록합니다.
-1 ns는 기본 실행 길이이며 membrane 수렴을 보장하지 않습니다. Membrane area·두께와
-protein 상태를 확인하면서 system에 맞게 equilibration을 늘립니다.
+### 주요 output
+
+Stage별 `.out`, `.rst7`, dynamics의 `.nc`와 `.info`는 `work/`에 남습니다. Build는
+`work/system.parm7`, `system.rst7`, `system.pdb`, `resolved_config.toml`과 `leap.log`를 만듭니다.
+Production segment가 하나이면 output을 `work/`에, 여러 개이면 `work/001`부터
+저장합니다. 처음 numbered layout으로 실행했다면 segment 수를 줄여도 첫 output은
+`work/001/`에 유지합니다. 한 segment를 root `work/production.*`로 완료한 뒤 segment
+수를 늘렸다면 첫 output은 그대로 두고 후속 output만 `work/002/`, `work/003/`에
+생성합니다.
 
 ### Config 선택값
 
@@ -103,116 +113,144 @@ protein 상태를 확인하면서 system에 맞게 equilibration을 늘립니다
 | `constraint_mode` | `h-bonds`만 지원 | `h-bonds` | Hydrogen-containing bond에 SHAKE를 적용합니다. |
 | `timestep` | 2.0 fs 이하 | `2.0` | AMBER `dt`(ps)로 기록합니다. Hydrogen mass repartitioning이 없으므로 2 fs보다 크면 build가 중단됩니다. |
 | `random_seed` | `"random"` 또는 양의 정수 | `"random"` | Heating의 seed입니다. 이후 stage는 `ig=-1`로 실행할 때마다 새 seed를 사용합니다. |
+| `cutoff` | `lj_force_switch`보다 큰 값(Å) | `12.0` | 모든 stage의 `cut`입니다. Box 최소 변의 절반이 `cut` + 2 Å(pair-list skin) 이하이면 build가 중단됩니다. |
+| `lj_force_switch` | `cutoff`보다 작은 양수(Å) | `10.0` | 모든 stage의 `fswitch`입니다. LJ force를 이 거리부터 `cut`까지 0으로 줄입니다. |
+
+Amber26 manual §3.6은 MC barostat와 hard LJ cutoff 조합이 lipid bilayer를 변형할 수
+있어 LJ force switch를 권장합니다(Gomez et al., *J. Comput. Chem.* 2022). Sander에서는
+`fswitch`가 `vdwmeth=0`(long-range dispersion correction 없음)으로 바뀝니다. Force
+switch만으로 약 20% 느려지고(manual) 12 Å cutoff는 계산량을 더 늘립니다. `pmemd.cuda`
+실행은 미검증입니다.
 
 이 leaf는 Lipid21 membrane build와 함께 검증한 `ff19SB + OPC`만 지원합니다.
 `ff99SB-ILDN + TIP3P`와 `ff14SB + TIP3P`는 membrane/Lipid21 조합을 별도로
 검증하지 않았으므로 config validation에서 거부합니다.
 
-### Engine 선택과 실행 상태
+`protein_restraint_mask`는 protein residue만, `lipid_restraint_mask`는 lipid
+residue만 선택하도록 topology와 대조합니다. 기본 protein mask는 Lipid21의
+`PA,PC,PE,OL,CHL`과 water·bulk ions를 제외합니다. 별도 ligand나 다른 lipid가 있으면
+이 selection을 수정합니다. Bound ion/water restraint는 자동으로 추가하지 않습니다.
 
-`AMBER_ENGINE`이 설정되어 있으면 이를 사용하며, 없으면 build가 기록한 `work/resolved_config.toml`의 `run.engine`을 읽습니다. 허용하는 executable 이름은 `pmemd.cuda`, `pmemd`, `sander`이며 설치 경로를 지정할 수 있습니다. 빈 override, 누락된 engine 설정과 지원하지 않는 executable은 기본값으로 대체하지 않고 error로 중단합니다. Runner가 `helpers/config_utils.py`를 자동 호출해 이 설정을 읽습니다.
+`equilibration_steps`는 세 stage의 합계입니다. `equilibration_heavy_steps`와
+`equilibration_backbone_steps`를 지정하고, 남은 steps를 unrestrained stage에
+사용합니다. 각 stage에는 1 step 이상이 필요합니다. 두 stage 값을 생략한 config는
+각각 총 steps의 40%를 사용합니다. 생성된 값은 `resolved_config.toml`에 기록합니다.
 
-Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 중단하고 파일을 보존합니다. 새 build에는 별도 `WORK_DIR`을 지정합니다.
+1 ns equilibration은 기본 실행 길이이며 membrane 수렴을 보장하지 않습니다. Membrane
+area·두께와 protein 상태를 확인하면서 system에 맞게 equilibration을 늘립니다.
 
-다운로드는 임시 파일의 PDB atom record를 확인한 뒤 최종 파일로 교체합니다. 실패하면 기존 PDB를 보존하고 임시 파일을 정리합니다.
+### 숫자 option
 
-빈 output도 기존 파일로 취급합니다. Completion marker와 필수 nonempty output이 모두 있어야 단계를 건너뛰며, partial output은 자동으로 덮어쓰지 않습니다. Error가 나열한 파일을 `WORK_DIR` 밖으로 옮긴 뒤 같은 `./run.sh` command를 다시 실행하면 그 stage부터 다시 계산합니다.
+`cutoff`, `lj_force_switch`와 equilibration 분할 key는 위에서 설명했습니다.
 
-### 동시 실행과 input 변경
+| Key | 기본값 | Unit | 적용 stage | 값을 바꾸면 |
+| --- | ---: | --- | --- | --- |
+| `xy_padding` | 20.0 | Å | Build | Protein x·y 경계와 box 경계 사이 최소 거리입니다. 키우면 lipid 수와 atom 수가 늘어납니다. |
+| `water_padding` | 25.0 | Å | Build | Protein z 경계와 box 경계 사이 최소 거리입니다. 키우면 water 층이 두꺼워집니다. |
+| `protein_lipid_distance` | 2.0 | Å | Build | Protein heavy atom과 이 거리 안에 든 lipid를 분자 단위로 제거합니다. 키우면 protein 주변 빈 공간이 커집니다. |
+| `salt_concentration` | 150.0 | mM | Build | Salt pair 수 = round(WAT 수 × 농도(M) / 55.5)입니다. |
+| `temperature` | 300.0 | K | Heating 목표, equilibration, production | `temp0`를 바꿉니다. |
+| `pressure` | 1.0 | bar | NPT stage | `pres0`를 바꿉니다. |
+| `minimization_steps` | 10000 | cycle | 두 minimization | `maxcyc`를 바꿉니다. |
+| `minimization_steepest_steps` | 5000 | cycle | 두 minimization | `ncyc`로 기록하지만 `ntmin=2`(steepest descent만 사용)이므로 결과에 영향이 없습니다(Amber26 manual `ntmin`). |
+| `heating_initial_temperature` | 20.0 | K | Heating | `tempi`와 `TEMP0` ramp 시작값입니다. |
+| `heating_steps` | 250000 | step | Heating | Ramp 길이입니다(2 fs에서 500 ps). |
+| `production_steps` | 50000000 | step | Production 전체 | 총 production 길이입니다(100 ns). `production_segments`로 나누어떨어져야 합니다. |
+| `production_segments` | 10 | 개 | Production | Engine 실행 수입니다. |
+| `trajectory_interval_steps` | 5000 | step | Heating 이후 dynamics | `ntwx`입니다. 기본값은 10 ps마다 1 frame, segment당 1,000 frame입니다. |
+| `energy_interval_steps` | 5000 | step | Heating 이후 dynamics | `ntpr`입니다. |
+| `restart_interval_steps` | 5000 | step | Heating 이후 dynamics | `ntwr`입니다. |
 
-Build와 run은 같은 work tree에 동시에 쓸 수 없습니다. 서로 다른 `WORK_DIR`은 독립 실행을 허용합니다.
-자동 호출되는 `helpers/writer_guard.py`가 scope 등록과 자식 process 종료를 관리하고,
-`helpers/input_identity.py`가 작은 계산 input의 SHA256을 비교합니다.
-`--help`와 `--dry-run`은 lock과 identity를 만들지 않습니다.
+`gamma_ln=1.0` ps⁻¹와 `taup=2.0` ps는 config에 없는 고정값입니다.
 
-첫 stage 실행 전에 사용한 input을 `.*.identity.json`에 기록합니다. 같은 input의
-완료 stage는 재사용하지만, topology, 최초 coordinate file, generated engine input
-또는 해당 stage가 소비하는 predecessor restart가 바뀌면 실행 전에 거부합니다.
-기록이 없는 기존 완료·partial 결과도 보존하고 거부합니다. Identity를 새 input으로
-덮어쓰거나 과거 결과에 소급 생성하지 않습니다. 변경된 계산은 새 `WORK_DIR`에서
-build부터 시작합니다. 완료 marker는 engine 성공과 필요한 output 확인 뒤에
-생성합니다. Output으로 갱신되는 bias/replica state와 완료한 predecessor input을
-구분하며, 기존 input을 바꾸지 않는 후속 segment 추가는 허용합니다.
+기본값에서 engine 실행은 minimization 2회, heating, equilibration 3회, production
+10회로 16회이고 dynamics는 0.5 + 1 + 100 = 101.5 ns입니다. 각 실행은 `pmemd.cuda`
+process 하나가 GPU 하나로 계산하며 순서대로 진행합니다. 실행 시간은 GPU와 atom 수에
+따라 달라집니다. 전체 실행이 끝나면 `Production segments: work/001 through work/010`이
+출력됩니다. 결과 판단은 tutorial [3_Simulation README](../../../1_Simulation/1_MD/1.3_Membrane_Protein/3_Simulation/README.md#주요-output과-완료-확인)의
+membrane 확인 항목을 참고합니다.
 
-실행 때 다시 소비하지 않는 원본 `config.toml` 변경은 이미 생성된 input에 반영되지
-않습니다. 검사 대상은 실제 실행 input과 실행 때 소비하는 설정입니다. Identity에는
-절대 경로가 들어가므로 진행 중인 work tree나 source 파일을 이동·복사한 뒤 이어서
-실행하는 방식은 지원하지 않습니다.
+### 자주 생기는 문제
 
-Lock metadata는 `work.writers/<token>/owner.json`에 host, PID, command와 scope를
-기록합니다. 등록 중에는 `work.writers/.gate/owner.json`도 사용합니다. 정상 종료,
-실패 또는 INT/TERM 후에는 자식 engine 종료를 확인하고 자신의 lock만 해제합니다.
-SIGKILL 또는 node 장애로 남은 lock은 자동으로 지우지 않습니다. Metadata를 읽고
-관련 host의 job과 모든 자식 process가 종료됐는지 확인한 뒤 해당 token의
-`owner.json`과 비어 있는 directory를 수동으로 제거합니다. `.gate`가 남았으면 모든
-등록·해제 작업의 종료도 확인합니다. PID만으로 다른 host의 작업 종료를 판단하지
-않습니다. Cluster filesystem의 atomic directory 생성과 remote/daemon process
-종료는 로컬 fixture에서 검증하지 않았습니다.
+공통 message는 [상위 README](../README.md#자주-생기는-문제)에 있습니다.
 
-처음 numbered layout으로 실행했다면 segment 수를 줄여도 첫 output은 `work/001/`에 유지합니다. 한 segment를 root `work/production.*`로 완료한 뒤 segment 수를 늘렸다면 첫 output은 그대로 두고 후속 output만 `work/002/`, `work/003/`에 생성합니다. 처음부터 여러 segment를 실행하면 `work/001/`부터 생성합니다.
-
+| Message | 조치 |
+| --- | --- |
+| `NumPy is required.` | `requirements.txt`로 NumPy를 설치합니다. |
+| `Membrane packing failed (helpers/build_membrane.py). See work/build_membrane.log` | Log의 마지막 error를 봅니다. Cholesterol 배치 실패는 `xy_padding`을 늘리거나 cholesterol 비율을 줄입니다. |
+| `Config error: box ... is too small for cutoff=...` | Box 최소 변의 절반이 `cutoff` + 2 Å보다 커지도록 padding을 늘리거나 `cutoff`를 줄입니다. |
+| `Run preflight: staged membrane input missing` | 이 template의 `build.sh`로 만든 `WORK_DIR`이 아닙니다. 새 `WORK_DIR`에서 build합니다. |
 
 ## English
 
-Salt pairs use the packed PDB WAT oxygen count and configured concentration. Repeated residue numbers do not reduce the water count. A rounded pair count of zero keeps neutralization and omits the bulk-salt command.
-
-Protein restraints progress from heavy atoms to backbone to none. The total 1 ns
-equilibration is split into 400 ps + 400 ps + 200 ps. Both restrained stages use
-the same `work/heat.rst7` reference. A changed or missing reference stops the run
-and preserves existing stage results.
-
-User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh` or `run.sh`; it is not a separate entry point.
-
-Interrupted or unmarked stage output is retained and stops the workflow instead of being deleted or rerun automatically.
-
-### Config choices
-
-| Option | Allowed values | Default | Effect |
-| --- | --- | --- | --- |
-| `protein_force_field` | `ff19SB` only | `ff19SB` | Selects the protein parameters. |
-| `lipid_force_field` | `Lipid21` only | `Lipid21` | Selects the bilayer lipid parameters. |
-| `water_model` | `OPC` only | `OPC` | Selects water and ion parameters for the Lipid21 system. |
-| `box_shape` | `rectangular` only | `rectangular` | The membrane builder creates a rectangular periodic box. |
-| `salt_type` | `NaCl`, `KCl`, `MgCl2`, `CaCl2` | `KCl` | Selects bulk salt added after neutralization. |
-| `equilibration_ensemble` | `NPT` only | `NPT` | Uses pressure coupling during membrane equilibration. |
-| `production_ensemble` | `NVT`, `NPT` | `NPT` | Sets production `ntb` and `ntp`. |
-| `pressure_coupling` | `anisotropic` only | `anisotropic` | Separates pressure scaling along the membrane box axes. |
-| `constraint_mode` | `h-bonds` only | `h-bonds` | Applies SHAKE to bonds involving hydrogen. |
-| `timestep` | 2.0 fs or less | `2.0` | Written as AMBER `dt` in ps. Values above 2 fs stop the build because hydrogen masses are not repartitioned. |
-| `random_seed` | `"random"` or a positive integer | `"random"` | Sets the heating seed; later stages use `ig=-1` and receive a new seed per invocation. |
-
-This leaf supports only `ff19SB + OPC`, the pair validated with the Lipid21
-membrane build. Config validation rejects `ff99SB-ILDN + TIP3P` and
-`ff14SB + TIP3P` because those membrane/Lipid21 combinations have not been
-validated here.
+This template combines a membrane-oriented protein PDB with user-supplied,
+equilibrated Lipid21 bilayer patches and runs conventional MD. The default uses
+ff19SB/Lipid21/OPC, anisotropic Monte Carlo pressure coupling, 1 ns
+equilibration, and ten 10 ns production segments.
 
 This directory can be copied and used on its own. Install its Python
-dependencies from the local `requirements.txt` after copying it.
+dependencies from the local `requirements.txt` after copying it. Required
+programs are listed in the [parent README](../README.md#prerequisites). User-facing
+entry points are in this directory root. `helpers/` contains internal code called
+automatically by `build.sh` or `run.sh`; do not run it directly.
 
-This template combines a membrane-oriented protein PDB with user-supplied,
-equilibrated Lipid21 bilayer patches. The PDB must be aligned with the membrane
-normal along z and the bilayer center at z=0, as in OPM coordinates. The OPM
+### Required inputs
+
+The workflow does not choose orientation, protonation, pore waters, or bound
+ions automatically. The PDB must be aligned with the membrane normal along z and
+the bilayer center at z=0, as in OPM coordinates. The OPM
 `1/2 of bilayer thickness` REMARK is only printed when present; without it the
 builder prints a warning and continues.
-The workflow does not choose orientation, protonation, pore waters, or bound
-ions automatically.
 
 Set the POPC, POPE, and cholesterol patch paths, composition, xy padding, and
-water padding in `config.toml`. Bilayer coordinate patches are not redistributed
-by this repository. The default run uses ff19SB/Lipid21/OPC, anisotropic Monte
-Carlo pressure coupling, and ten 10 ns production segments. `build.sh` calls
-`helpers/build_membrane.py` to place the bilayer and remove overlaps.
+water padding in `config.toml`.
 
-Check `protein_restraint_mask` against the protein residues and
-`lipid_restraint_mask` against the lipids. The default protein mask excludes
-Lipid21 `PA,PC,PE,OL,CHL`, water, and bulk ions. Update it for additional ligands
-or lipid types. Bound-ion/water restraints are not added automatically.
+```toml
+bilayer_composition = "POPC=90,POPE=5,CHOL=5"
+popc_bilayer_gro = "inputs/POPC.gro"
+pope_bilayer_gro = "inputs/POPE.gro"
+cholesterol_bilayer_gro = "inputs/CHOL15.gro"
+xy_padding = 20.0
+water_padding = 25.0
+```
+
+Bilayer coordinate patches are not redistributed by this repository. Check the
+force-field naming and source of each file before placing it at the configured
+path.
+
+### Running
+
+```bash
+./download.sh 1K4C
+# Prepare an oriented, protonated protein PDB and the three bilayer patches.
+./build.sh structure/1K4C.pdb
+./run.sh --dry-run
+./run.sh
+```
+
+`download.sh` retrieves the RCSB PDB into `structure/` without modifying it and
+replaces the final file only after checking its atom records.
+
+`build.sh` calls `helpers/build_membrane.py` to replicate the bilayer and remove
+protein overlaps, then builds the ff19SB/Lipid21/OPC topology. Salt pairs use the
+packed PDB WAT oxygen count and the configured concentration. Repeated residue
+numbers do not reduce the water count. A rounded pair count of zero keeps
+neutralization and omits the bulk-salt command.
+
+`AMBER_ENGINE` overrides `run.engine` in `work/resolved_config.toml`. Accepted
+executable names are `pmemd.cuda`, `pmemd`, and `sander`; installation paths are
+accepted. Empty overrides and unsupported executables fail instead of falling back
+to a default.
+
+See [GUIDE.md appendix](../../../GUIDE.md#4-appendix-run-state-and-recovery) for run state, reruns after failure and
+concurrent-run protection.
 
 ### Stages and restraints
 
 Water and bulk ions move from the first minimization. Lipid heavy-atom restraints
-end after that stage. Protein restraints are narrowed during equilibration.
-Sampling remains conventional MD; these restraints apply during preparation only.
+end after that stage. Protein restraints are narrowed from heavy atoms to backbone
+to none during equilibration. Sampling remains conventional MD; these restraints
+apply during preparation only.
 
 | Generated input | Stage | Positional restraint | Default length |
 | --- | --- | --- | --- |
@@ -232,61 +270,102 @@ artificial net-force removal.
 Both minimizations reference the initial `system.rst7`. Heating generates
 velocities from `min-lipid.rst7` (`irest=0`, `ntx=1`). All three equilibration
 stages inherit coordinates and velocities from their predecessor restart
-(`irest=1`, `ntx=5`). Heavy-atom and backbone stages share the `heat.rst7`
+(`irest=1`, `ntx=5`). Heavy-atom and backbone stages share the `work/heat.rst7`
 restraint reference. The final unrestrained `equilibrate.rst7` starts production.
-Stage `.out`, `.rst7`, dynamics `.nc`, and `.info` outputs remain in `work/`.
+
+### Main outputs
+
+Stage `.out`, `.rst7`, dynamics `.nc`, and `.info` outputs remain in `work/`. The
+build writes `work/system.parm7`, `system.rst7`, `system.pdb`, `resolved_config.toml`, and
+`leap.log`. A single production segment is stored under `work/`; multiple
+segments start at `work/001`. If the first run used numbered directories,
+reducing the count retains the first output under `work/001/`. If one segment
+completed as `work/production.*`, increasing the segment count keeps that output
+and writes later outputs under `work/002/`, `work/003/`, etc.
+
+### Config choices
+
+| Option | Allowed values | Default | Effect |
+| --- | --- | --- | --- |
+| `protein_force_field` | `ff19SB` only | `ff19SB` | Selects the protein parameters. |
+| `lipid_force_field` | `Lipid21` only | `Lipid21` | Selects the bilayer lipid parameters. |
+| `water_model` | `OPC` only | `OPC` | Selects water and ion parameters for the Lipid21 system. |
+| `box_shape` | `rectangular` only | `rectangular` | The membrane builder creates a rectangular periodic box. |
+| `salt_type` | `NaCl`, `KCl`, `MgCl2`, `CaCl2` | `KCl` | Selects bulk salt added after neutralization. |
+| `equilibration_ensemble` | `NPT` only | `NPT` | Uses pressure coupling during membrane equilibration. |
+| `production_ensemble` | `NVT`, `NPT` | `NPT` | Sets production `ntb` and `ntp`. |
+| `pressure_coupling` | `anisotropic` only | `anisotropic` | Separates pressure scaling along the membrane box axes. |
+| `constraint_mode` | `h-bonds` only | `h-bonds` | Applies SHAKE to bonds involving hydrogen. |
+| `timestep` | 2.0 fs or less | `2.0` | Written as AMBER `dt` in ps. Values above 2 fs stop the build because hydrogen masses are not repartitioned. |
+| `random_seed` | `"random"` or a positive integer | `"random"` | Sets the heating seed; later stages use `ig=-1` and receive a new seed per invocation. |
+| `cutoff` | Larger than `lj_force_switch` (Å) | `12.0` | `cut` for every stage. The build stops if half of the shortest box edge is not larger than `cut` + 2 Å (pair-list skin). |
+| `lj_force_switch` | Positive and smaller than `cutoff` (Å) | `10.0` | `fswitch` for every stage; the LJ force goes to zero between this distance and `cut`. |
+
+Amber26 manual §3.6 recommends an LJ force switch because the MC barostat with a
+hard LJ cutoff can deform lipid bilayers (Gomez et al., *J. Comput. Chem.* 2022).
+In sander, `fswitch` switches to `vdwmeth=0` (no long-range dispersion correction).
+The force switch alone costs about 20% (manual), and the 12 Å cutoff adds more.
+Not yet run with `pmemd.cuda`.
+
+This leaf supports only `ff19SB + OPC`, the pair validated with the Lipid21
+membrane build. Config validation rejects `ff99SB-ILDN + TIP3P` and
+`ff14SB + TIP3P` because those membrane/Lipid21 combinations have not been
+validated here.
+
+Check `protein_restraint_mask` against the protein residues and
+`lipid_restraint_mask` against the lipids. The default protein mask excludes
+Lipid21 `PA,PC,PE,OL,CHL`, water, and bulk ions. Update it for additional ligands
+or lipid types. Bound-ion/water restraints are not added automatically.
 
 `equilibration_steps` is the total across all three stages. Set
 `equilibration_heavy_steps` and `equilibration_backbone_steps`; the remainder is
 unrestrained. Every stage needs at least one step. If the two stage settings are
 omitted, each defaults to 40% of the total. Resolved step counts are recorded in
-`resolved_config.toml`. The default 1 ns does not establish membrane convergence.
-Extend equilibration based on membrane area, thickness, and protein-state checks.
+`resolved_config.toml`.
 
-### Engine selection and run state
+The default 1 ns equilibration does not establish membrane convergence. Extend
+equilibration based on membrane area, thickness, and protein-state checks.
 
-`AMBER_ENGINE` overrides `run.engine` in the build-generated `work/resolved_config.toml`. Accepted executable names are `pmemd.cuda`, `pmemd`, `sander`; installation paths are accepted. Empty overrides, missing engine settings and unsupported executables fail instead of falling back to a default. The runner invokes `helpers/config_utils.py` automatically to read this setting.
+### Numeric options
 
-Build stops before changing inputs when topology/restart files already exist, preserving those files. Use a separate `WORK_DIR` for a new build.
+`cutoff`, `lj_force_switch`, and the equilibration split keys are described
+above.
 
-Downloads replace the final PDB only after validating atom records in a temporary file. Failure preserves the existing PDB and removes the temporary file.
+| Key | Default | Unit | Stage | Effect of changing it |
+| --- | ---: | --- | --- | --- |
+| `xy_padding` | 20.0 | Å | Build | Minimum distance between the protein x/y bounds and the box edges; larger values add lipids and atoms. |
+| `water_padding` | 25.0 | Å | Build | Minimum distance between the protein z bounds and the box edges; larger values thicken the water layers. |
+| `protein_lipid_distance` | 2.0 | Å | Build | Lipids within this distance of protein heavy atoms are removed as whole molecules; larger values leave more empty space around the protein. |
+| `salt_concentration` | 150.0 | mM | Build | Salt pairs = round(WAT count × concentration (M) / 55.5). |
+| `temperature` | 300.0 | K | Heating target, equilibration, production | Sets `temp0`. |
+| `pressure` | 1.0 | bar | NPT stages | Sets `pres0`. |
+| `minimization_steps` | 10000 | cycles | Both minimizations | Sets `maxcyc`. |
+| `minimization_steepest_steps` | 5000 | cycles | Both minimizations | Written as `ncyc`, but has no effect because `ntmin=2` uses steepest descent only (Amber26 manual, `ntmin`). |
+| `heating_initial_temperature` | 20.0 | K | Heating | `tempi` and the start of the `TEMP0` ramp. |
+| `heating_steps` | 250000 | steps | Heating | Ramp length (500 ps at 2 fs). |
+| `production_steps` | 50000000 | steps | All production | Total production length (100 ns); must be divisible by `production_segments`. |
+| `production_segments` | 10 | count | Production | Number of engine runs. |
+| `trajectory_interval_steps` | 5000 | steps | Dynamics from heating on | Sets `ntwx`; the default writes one frame per 10 ps, 1,000 frames per segment. |
+| `energy_interval_steps` | 5000 | steps | Dynamics from heating on | Sets `ntpr`. |
+| `restart_interval_steps` | 5000 | steps | Dynamics from heating on | Sets `ntwr`. |
 
-Empty outputs also count as existing files. A stage is skipped only when its completion marker and all required nonempty outputs exist; partial outputs are not overwritten automatically. Move the files listed by the error outside `WORK_DIR` and rerun the same `./run.sh` command to recompute that stage.
+`gamma_ln=1.0` ps⁻¹ and `taup=2.0` ps are fixed values outside the config.
 
-### Concurrent runs and input changes
+With the defaults, the engine runs 16 times (two minimizations, heating, three
+equilibrations, and ten production segments) for 0.5 + 1 + 100 = 101.5 ns of
+dynamics. Each run is one `pmemd.cuda` process on one GPU, in order. Run time
+depends on the GPU and the atom count. A full run ends with
+`Production segments: work/001 through work/010`. For judging the result, see
+the membrane checks in the tutorial
+[3_Simulation README](../../../1_Simulation/1_MD/1.3_Membrane_Protein/3_Simulation/README.md#main-outputs-and-completion-check).
 
-If the first run used numbered directories, reducing the count retains the first output under `work/001/`.
+### Common problems
 
-Build and run cannot write the same work tree concurrently. Separate `WORK_DIR` trees can run independently.
-The automatically called `helpers/writer_guard.py` registers scopes and supervises
-child processes; `helpers/input_identity.py` compares SHA256 hashes of small
-calculation inputs. Help and dry-run commands create no locks or identities.
+Shared messages are listed in the [parent README](../README.md#common-problems).
 
-Inputs are recorded in `.*.identity.json` before the first stage launch. Completed
-stages can reuse identical inputs. Changes to topology, initial coordinates,
-generated engine inputs, or the predecessor restart consumed by a stage cause
-rejection before execution. Existing complete or partial results without an
-identity are also retained and rejected. Records are never replaced or created
-retroactively for old results. Start a changed calculation with a fresh
-`WORK_DIR`, beginning with the build. Completion markers are written
-after engine success and required-output checks. Mutable bias/replica outputs are
-distinguished from completed predecessor inputs; additional segments that leave
-existing inputs intact are allowed.
-
-Changes to a source `config.toml` that is not read at runtime do not update inputs
-already generated by the build. Checks cover actual execution inputs and settings
-consumed at runtime. Identities contain absolute paths: moving or copying an
-ongoing work tree or its source files and then continuing is unsupported.
-
-`work.writers/<token>/owner.json` records the host, PID, command, and scopes.
-`work.writers/.gate/owner.json` is used briefly during registration and release.
-Normal exits, failures, and INT/TERM release only the current job's lock after
-verifying child-engine termination. Locks left by SIGKILL or node failure are
-retained. Read the metadata and verify that the job and all children have stopped
-on the relevant hosts before manually removing that token's `owner.json` and its
-empty directory. A leftover `.gate` also requires checking that all registration
-and release operations have stopped. A PID alone does not establish that a job
-on another host has ended. Atomic directory operations on cluster filesystems
-and termination of remote/daemon processes were not tested by local fixtures.
-
-If one segment completed as `work/production.*`, increasing the segment count retains that first output and writes later outputs under `work/002/`, `work/003/`, etc. Runs configured with multiple segments from the start use `work/001/` onward.
+| Message | Action |
+| --- | --- |
+| `NumPy is required.` | Install NumPy from `requirements.txt`. |
+| `Membrane packing failed (helpers/build_membrane.py). See work/build_membrane.log` | Read the last error in the log. For cholesterol-placement failures, increase `xy_padding` or lower the cholesterol fraction. |
+| `Config error: box ... is too small for cutoff=...` | Increase the padding or reduce `cutoff` so that half the shortest box edge exceeds `cutoff` + 2 Å. |
+| `Run preflight: staged membrane input missing` | The `WORK_DIR` was not built by this template's `build.sh`. Build in a new `WORK_DIR`. |

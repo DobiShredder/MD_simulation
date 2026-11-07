@@ -248,6 +248,8 @@ def prepare_inputs(simulation_work: Path, output_dir: Path) -> int:
         with (generation_dir / "summary.tsv").open("w", encoding="utf-8", newline="") as handle:
             csv.writer(handle, delimiter="\t").writerows(summary)
 
+        frame_count = sum(row[3] for row in summary[1:])
+        print(f"Frames: {frame_count} ({len(states)} states)")
         window_count = len(states)
     return window_count
 

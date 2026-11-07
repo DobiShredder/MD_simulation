@@ -6,6 +6,10 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+# convert_topology.py names the C-alpha CMAP type of residues outside the
+# tempered region XU<n> (hot residues keep XC<n>). Those maps stay unscaled.
+COLD_CMAP_TYPE_PREFIX = "XU"
+
 
 def section_bounds(lines: list[str], name: str) -> tuple[int, int]:
     start = -1
@@ -64,6 +68,8 @@ def scaled_cmap_section(
                 )
             remaining = int(fields[6]) * int(fields[7])
             map_count += 1
+            central_type = fields[2].partition("-")[0]
+            entry_scale = 1.0 if central_type.startswith(COLD_CMAP_TYPE_PREFIX) else scale
             header = atom_types + fields[5:]
             if header[-1] == "\\":
                 output.append(" ".join(header[:-1]) + "\\\n")
@@ -82,7 +88,7 @@ def scaled_cmap_section(
                 continue
             if remaining == 0:
                 raise ValueError("CMAP grid contains more values than expected.")
-            values.append(f"{float(field) * scale:.12g}")
+            values.append(f"{float(field) * entry_scale:.12g}")
             remaining -= 1
 
         line = " ".join(values)

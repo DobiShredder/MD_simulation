@@ -36,3 +36,6 @@ minimum_temperature = 300.0
 maximum_temperature = 500.0
 pace_steps = 500
 state_write_interval_steps = 50000
+# Optional grid controls. Leave them commented to use the PLUMED defaults.
+# temperature_steps = 32  # ECV_MULTITHERMAL TEMP_STEPS: temperatures from minimum to maximum, >= 2
+# observation_steps = 100  # OPES_EXPANDED OBSERVATION_STEPS: unbiased initial strides, in units of pace_steps

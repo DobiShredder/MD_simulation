@@ -288,6 +288,15 @@ report_replica_logs() {
     done
 }
 
+# Print the last 20 lines of a GROMACS stdout/stderr log after a failed call.
+show_log_tail() {
+    local log=$1
+    if [[ -s "$log" ]]; then
+        echo "Last 20 lines of $log:" >&2
+        tail -n 20 "$log" >&2
+    fi
+}
+
 wait_for_batch() {
     local stage=$1
     shift
@@ -296,6 +305,9 @@ wait_for_batch() {
     for job in "$@"; do
         if ! wait "${job%%:*}"; then
             echo "Error: $stage failed: $work_dir/${job#*:}/$stage.mdrun.log" >&2
+            if (( ! failed )); then
+                show_log_tail "$work_dir/${job#*:}/$stage.mdrun.log"
+            fi
             failed=1
         fi
     done
@@ -409,6 +421,7 @@ run_preproduction_stage() {
         if ! run_grompp "replica $replica" "$replica_dir/$stage.grompp.log" "$expected_charge" \
             "${grompp_command[@]}"; then
             echo "Error: $stage tpr generation failed: $replica_dir/$stage.grompp.log" >&2
+            show_log_tail "$replica_dir/$stage.grompp.log"
             wait_for_batch "$stage" "${jobs[@]}"
             exit 1
         fi
@@ -526,6 +539,7 @@ for ((segment = segment_start; segment <= segment_end; segment++)); do
             "$gmx" grompp -f "$replica_dir/$segment_input" -p "$replica_dir/topol.top" \
             -c "$replica_dir/$previous.gro" -t "$replica_dir/$previous.cpt" \
             -o "$replica_dir/$segment_name.tpr"; then
+            show_log_tail "$replica_dir/$segment_name.grompp.log"
             die "Production tpr generation failed: $replica_dir/$segment_name.grompp.log"
         fi
     done < "$states"

@@ -11,6 +11,10 @@ simulation_dir="../../../1_Simulation/1_MD/1.2_Protein_Ligand"
 solvated_topology="$simulation_dir/work/system.parm7"
 trajectory="$simulation_dir/work/production.nc"
 ligand_mask=:JZ4
+# Water and mobile-ion residues removed before building the dry complex topology.
+strip_mask=':WAT,Na+,Cl-'
+# PB/GB radius set written into complex, receptor, and ligand topologies (igb=5 uses mbondi2).
+radii_set=mbondi2
 
 ante_mmpbsa=ante-MMPBSA.py
 mmpbsa=MMPBSA.py
@@ -90,9 +94,9 @@ if ! "$ante_mmpbsa" \
     -c complex.parm7 \
     -r receptor.parm7 \
     -l ligand.parm7 \
-    -s ':WAT,Na+,Cl-' \
+    -s "$strip_mask" \
     -n "$ligand_mask" \
-    --radii mbondi2 \
+    --radii "$radii_set" \
     > topology.log 2>&1; then
     echo "Error: MMPBSA topology generation failed: output.failed/topology.log" >&2
     exit 1

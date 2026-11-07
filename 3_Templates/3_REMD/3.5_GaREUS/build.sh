@@ -62,6 +62,9 @@ if (( ! ${dry_run:-0} )) && [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_E
 fi
 tleap=${TLEAP:-tleap}
 python=${PYTHON:-python3}
+
+# Unknown config keys are usually typos; warn before any expensive step.
+"$python" helpers/check_config_keys.py "$config" helpers/config_keys.txt
 build_tmp=""
 
 report_build_tmp() {
@@ -185,6 +188,12 @@ if ! "$python" helpers/make_window_replicas.py gareus "$config" "$work_dir/syste
     die "Window replica generation failed: $config, $work_dir/system.parm7 -> $work_dir"
 fi
 
+if [[ ! -s "$work_dir/states.tsv" ]]; then
+    die "Window state table was not created: $work_dir/states.tsv"
+fi
+
 remove_build_tmp
 
+# Last step: run.sh refuses a work directory without this marker.
+touch "$work_dir/build.done"
 echo "AMBER topology and restart: $work_dir/system.parm7, $work_dir/system.rst7"

@@ -71,8 +71,8 @@ def validate(path):
             fail(path, row_number, "lambda_pw", "must be greater than 0 and at most 1")
         if abs(lambda_pw * lambda_pw - lambda_pp) > 1.0e-5:
             fail(path, row_number, "lambda_pw", "lambda_pw squared must equal lambda_pp")
-        if kappa <= 0.0:
-            fail(path, row_number, "kappa", "must be greater than 0")
+        if kappa < 1.0:
+            fail(path, row_number, "kappa", "must be 1.0 or greater")
         if not POSITIVE_INTEGER.fullmatch(seed) or int(seed) <= 0:
             fail(path, row_number, "seed", "must be a positive integer")
 
@@ -80,7 +80,7 @@ def validate(path):
             if replica != "000" or abs(temperature - 300.0) > 1.0e-6:
                 fail(path, row_number, "replica", "the first state must be replica 000 at 300 K")
             if abs(kappa - 1.0) > 1.0e-6:
-                fail(path, row_number, "kappa", "the 300 K reference state must use kappa=1")
+                fail(path, row_number, "kappa", "the 300 K reference state must use kappa=1.0")
         previous_temperature = temperature
 
 

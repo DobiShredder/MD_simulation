@@ -99,22 +99,34 @@ die_partial() {
   for file in ${retained[*]:-}; do mkdir -p \"work.failed/\${file%/*}\"; mv \"\$file\" \"work.failed/\$file\"; done"
 }
 
-# Production is never overwritten; refuse complete or partial output.
-check_production_absent() {
-    local path
-    local existing=0
+# Production evidence: the marker plus nonempty AMBER output in every window.
+# The marker is written only after the MPI run and these output checks pass.
+production_status() {
+    local path replica suffix
+    local complete=1
+    if [[ -f work/.production.complete ]]; then
+        while IFS=$'\t' read -r replica _; do
+            if [[ "$replica" == replica ]]; then
+                continue
+            fi
+            for suffix in out rst7 nc info; do
+                if [[ ! -s "work/$replica/production.$suffix" ]]; then
+                    complete=0
+                fi
+            done
+        done < work/states.tsv
+        if (( complete )); then
+            echo complete
+            return
+        fi
+    fi
     while IFS= read -r path; do
         if [[ -e "$path" || -L "$path" ]]; then
-            existing=1
+            echo partial
+            return
         fi
     done < <(stage_candidates production)
-    if (( ! existing )); then
-        return
-    fi
-    if [[ -f work/.production.complete ]]; then
-        die "REUS production already exists and is complete in work. Files were preserved. Move work aside (for example: mv work work.old) to start a new run."
-    fi
-    die_partial production
+    echo missing
 }
 
 # After a failed multipmemd run, show the MPI log and windows whose AMBER
@@ -140,6 +152,26 @@ report_replica_failure() {
     done < work/states.tsv
 }
 
+# Run COMMAND in ENGINE_DIR and append its stdout/stderr to ENGINE_LOG, one
+# header line per attempt. The log is a diagnostic beside <stage>.out, not a
+# stage output.
+run_engine() {
+    local engine_log=$1
+    local engine_dir=$2
+    shift 2
+    echo "== $(date '+%Y-%m-%d %H:%M:%S') $*" >> "$engine_log"
+    if (
+        cd "$engine_dir"
+        "$@"
+    ) >> "$engine_log" 2>&1; then
+        return 0
+    fi
+    echo "Engine log: $engine_log" >&2
+    echo "Last 20 lines of $engine_log:" >&2
+    tail -n 20 "$engine_log" >&2
+    return 1
+}
+
 run_window_stage() {
     local stage=$1
     local input_restart=$2
@@ -162,18 +194,16 @@ run_window_stage() {
             continue
         fi
         replica_dir="work/$replica"
-        if ! (
-            cd "$replica_dir"
+        if ! run_engine "$replica_dir/engine.$stage.log" "$replica_dir" \
             "$amber_engine" \
-                -O \
-                -i "$stage.in" \
-                -o "$stage.out" \
-                -p system.parm7 \
-                -c "$input_restart" \
-                -r "$stage.rst7" \
-                -x "$stage.nc" \
-                -inf "$stage.info"
-        ); then
+            -O \
+            -i "$stage.in" \
+            -o "$stage.out" \
+            -p system.parm7 \
+            -c "$input_restart" \
+            -r "$stage.rst7" \
+            -x "$stage.nc" \
+            -inf "$stage.info"; then
             die "$stage failed: $replica_dir/$stage.out"
         fi
         for output in "$replica_dir/$stage.out" "$replica_dir/$stage.rst7"; do
@@ -250,8 +280,16 @@ for executable in "$amber_engine" "$amber_mpi_engine" "$mpi_launcher"; do
         die "Executable not found: $executable"
     fi
 done
-# Check production before rerunning any preproduction stage.
-check_production_absent
+# Reuse a completed production; partial production output stops the run.
+production_state=$(production_status)
+if [[ "$production_state" == complete ]]; then
+    echo "Skipping completed production: work"
+    echo "Next: python3 anal.py"
+    exit 0
+fi
+if [[ "$production_state" == partial ]]; then
+    die_partial production
+fi
 
 run_window_stage minimize system.rst7
 run_window_stage heat minimize.rst7
@@ -273,8 +311,9 @@ while IFS=$'\t' read -r replica _; do
     fi
 done < work/states.tsv
 "${PYTHON:-python3}" helpers/input_identity.py "${production_identity[@]}"
-
-check_production_absent
+if [[ "$(production_status)" != missing ]]; then
+    die_partial production
+fi
 
 group_file=work/production.group
 : > "$group_file"

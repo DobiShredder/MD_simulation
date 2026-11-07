@@ -20,7 +20,8 @@ Unrestrained 20 ps membrane equilibration at 310 K and 1 bar
 
  ntc=2,
  ntf=2,
- cut=10.0,
+ cut=12.0,
+ fswitch=10.0,
 
  ntr=0,
 

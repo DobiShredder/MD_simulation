@@ -3,7 +3,7 @@
 ## 한국어
 
 Bias·replica simulation의 PMF와 reweighting을 다룹니다. Replica mixing은 각
-simulation folder의 `anal.py`가 진단합니다. Flux와 rate estimator는 현재
+simulation folder의 `anal.py`가 진단합니다. Flux와 rate estimator는
 analysis tutorial에 포함하지 않습니다. 공통 trajectory processing과 구조
 계산은 1–6번 category에 둡니다.
 

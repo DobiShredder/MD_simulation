@@ -177,6 +177,26 @@ report_replica_failure() {
     done < work/states.tsv
 }
 
+# Run COMMAND in ENGINE_DIR and append its stdout/stderr to ENGINE_LOG, one
+# header line per attempt. The log is a diagnostic beside <stage>.out, not a
+# stage output.
+run_engine() {
+    local engine_log=$1
+    local engine_dir=$2
+    shift 2
+    echo "== $(date '+%Y-%m-%d %H:%M:%S') $*" >> "$engine_log"
+    if (
+        cd "$engine_dir"
+        "$@"
+    ) >> "$engine_log" 2>&1; then
+        return 0
+    fi
+    echo "Engine log: $engine_log" >&2
+    echo "Last 20 lines of $engine_log:" >&2
+    tail -n 20 "$engine_log" >&2
+    return 1
+}
+
 mark_stage_complete() {
     local stage=$1
     stage_outputs_complete "$stage" --require-complete
@@ -243,18 +263,16 @@ run_shared_stage() {
     fi
 
     echo "Running: shared $stage"
-    if ! (
-        cd work/shared
+    if ! run_engine "work/shared/engine.$stage.log" work/shared \
         "$amber_engine" \
-            -O \
-            -i "$stage.in" \
-            -o "$stage.out" \
-            -p ../system.parm7 \
-            -c "$input_restart" \
-            -r "$stage.rst7" \
-            -x "$stage.nc" \
-            -inf "$stage.info"
-    ); then
+        -O \
+        -i "$stage.in" \
+        -o "$stage.out" \
+        -p ../system.parm7 \
+        -c "$input_restart" \
+        -r "$stage.rst7" \
+        -x "$stage.nc" \
+        -inf "$stage.info"; then
         die "shared $stage failed: work/shared/$stage.out"
     fi
     shared_outputs_complete "$stage" --require-complete
@@ -284,18 +302,16 @@ run_window_stage() {
             continue
         fi
         replica_dir="work/$replica"
-        if ! (
-            cd "$replica_dir"
+        if ! run_engine "$replica_dir/engine.$stage.log" "$replica_dir" \
             "$amber_engine" \
-                -O \
-                -i "$stage.in" \
-                -o "$stage.out" \
-                -p system.parm7 \
-                -c "$input_restart" \
-                -r "$stage.rst7" \
-                -x "$stage.nc" \
-                -inf "$stage.info"
-        ); then
+            -O \
+            -i "$stage.in" \
+            -o "$stage.out" \
+            -p system.parm7 \
+            -c "$input_restart" \
+            -r "$stage.rst7" \
+            -x "$stage.nc" \
+            -inf "$stage.info"; then
             die "$stage failed: $replica_dir/$stage.out"
         fi
     done < work/states.tsv
@@ -345,19 +361,17 @@ prepare_gamd_state() {
         die_partial gamd_prepare
     fi
     echo "Running: GaMD parameter preparation in window $gamd_reference_replica"
-    if ! (
-        cd "$reference_dir"
+    if ! run_engine "$reference_dir/engine.gamd_prepare.log" "$reference_dir" \
         "$amber_engine" \
-            -O \
-            -i gamd_prepare.in \
-            -o gamd_prepare.out \
-            -p system.parm7 \
-            -c equilibrate.rst7 \
-            -r gamd_prepare.rst7 \
-            -x gamd_prepare.nc \
-            -inf gamd_prepare.info \
-            -gamd gamd.prepare.log
-    ); then
+        -O \
+        -i gamd_prepare.in \
+        -o gamd_prepare.out \
+        -p system.parm7 \
+        -c equilibrate.rst7 \
+        -r gamd_prepare.rst7 \
+        -x gamd_prepare.nc \
+        -inf gamd_prepare.info \
+        -gamd gamd.prepare.log; then
         die "GaMD parameter preparation failed: $reference_dir/gamd_prepare.out"
     fi
     for output in gamd_prepare.out gamd_prepare.rst7 gamd_prepare.nc gamd_prepare.info gamd.prepare.log gamd-restart.dat; do
@@ -484,6 +498,7 @@ for stage in shared_minimize shared_heat shared_equilibrate equilibrate gamd_pre
 done
 if [[ "$(stage_status production)" == complete ]]; then
     echo "Skipping completed production: work"
+    echo "Next: python3 anal.py"
     exit 0
 fi
 

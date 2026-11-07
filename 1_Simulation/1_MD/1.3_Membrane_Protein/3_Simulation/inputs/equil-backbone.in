@@ -20,7 +20,8 @@
 
  ntc=2,
  ntf=2,
- cut=10.0,
+ cut=12.0,
+ fswitch=10.0,
 
  ntr=1,
  restraint_wt=1.0,

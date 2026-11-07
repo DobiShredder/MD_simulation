@@ -72,6 +72,9 @@ if (( ! ${dry_run:-0} )) && [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_E
         --write "$work_dir" -- "$0" "${original_args[@]}"
 fi
 python=${PYTHON:-python3}
+
+# Unknown config keys are usually typos; warn before any expensive step.
+"$python" helpers/check_config_keys.py "$config" helpers/config_keys.txt
 tleap=${TLEAP:-tleap}
 gmx=$("$python" helpers/config_utils.py "$config" equilibration_engine GROMACS gmx)
 plumed=${PLUMED:-plumed}
@@ -230,9 +233,17 @@ if ! (cd "$candidate_dir" && "$tleap" -f inputs/tleap.final.in > tleap.stdout.lo
 fi
 log_event final-tleap 0 "input=$candidate_dir/inputs/tleap.final.in outputs=$candidate_dir/system.parm7,$candidate_dir/system.rst7,$candidate_dir/system.pdb"
 
+# build.tempered_region/tempered_mask select the hot atoms once; the state
+# predictor, CMAP typing, hot marking and net-charge gate all read this table.
+log_command select-tempered "$python" helpers/tempered_selection.py "$config" "$candidate_dir/system.parm7" "$candidate_dir/tempered_atoms.tsv"
+if ! "$python" helpers/tempered_selection.py "$config" "$candidate_dir/system.parm7" "$candidate_dir/tempered_atoms.tsv"; then
+    die "Tempered-region selection failed: $config, $candidate_dir/system.parm7 -> $candidate_dir/tempered_atoms.tsv"
+fi
+
 echo "Generating $method replica states: $config -> $candidate_dir/states.tsv"
-log_command generate-states "$python" helpers/generate_states.py "$method" "$config" "$candidate_dir/system.parm7" "$candidate_dir"
-if ! "$python" helpers/generate_states.py "$method" "$config" "$candidate_dir/system.parm7" "$candidate_dir"; then
+log_command generate-states "$python" helpers/generate_states.py --tempered-atoms "$candidate_dir/tempered_atoms.tsv" "$method" "$config" "$candidate_dir/system.parm7" "$candidate_dir"
+if ! "$python" helpers/generate_states.py --tempered-atoms "$candidate_dir/tempered_atoms.tsv" \
+    "$method" "$config" "$candidate_dir/system.parm7" "$candidate_dir"; then
     die "Replica state generation failed: $config, $candidate_dir/system.parm7 -> $candidate_dir/states.tsv"
 fi
 if ! "$python" helpers/generate_inputs.py "$method" "$config" "$candidate_dir/inputs" \
@@ -246,9 +257,9 @@ cp -R "$candidate_dir/." "$work_dir/"
 build_log="$work_dir/build.log"
 
 echo "Converting AMBER topology: $work_dir/system.parm7 -> $work_dir/topol.top, $work_dir/system.gro"
-log_command convert-topology "$python" helpers/convert_topology.py "$work_dir/system.parm7" "$work_dir/system.rst7" "$work_dir/topol.top" "$work_dir/system.gro"
-if ! "$python" helpers/convert_topology.py "$work_dir/system.parm7" "$work_dir/system.rst7" \
-    "$work_dir/topol.top" "$work_dir/system.gro"; then
+log_command convert-topology "$python" helpers/convert_topology.py --tempered-atoms "$work_dir/tempered_atoms.tsv" "$work_dir/system.parm7" "$work_dir/system.rst7" "$work_dir/topol.top" "$work_dir/system.gro"
+if ! "$python" helpers/convert_topology.py --tempered-atoms "$work_dir/tempered_atoms.tsv" \
+    "$work_dir/system.parm7" "$work_dir/system.rst7" "$work_dir/topol.top" "$work_dir/system.gro"; then
     die "ParmEd topology conversion failed: $work_dir/system.parm7, $work_dir/system.rst7 -> $work_dir/topol.top"
 fi
 helper_dir=helpers
@@ -272,9 +283,11 @@ if ! "$python" "$helper_dir/scale_cmap.py" "$work_dir/topol.top" "$build_tmp/pro
     die "Failed to restore residue-specific CMAPs: $work_dir/topol.top -> $build_tmp/processed.top"
 fi
 
-# Every non-water, non-ion molecule is hot; the selection is written to hot_molecules.tsv.
-if ! "$python" helpers/generate_rest3_topologies.py "$build_tmp/processed.top" "$work_dir/states.tsv" "$work_dir"; then
-    die "REST3 topology generation failed: $build_tmp/processed.top, $work_dir/states.tsv -> $work_dir/<replica>/topol.top"
+# The parser tempers whole molecules: every molecule covered by tempered_atoms.tsv
+# is hot, and the selection is written to hot_molecules.tsv.
+if ! "$python" helpers/generate_rest3_topologies.py "$build_tmp/processed.top" "$work_dir/tempered_atoms.tsv" \
+    "$work_dir/states.tsv" "$work_dir"; then
+    die "REST3 topology generation failed: $build_tmp/processed.top, $work_dir/tempered_atoms.tsv, $work_dir/states.tsv -> $work_dir/<replica>/topol.top"
 fi
 hot_molecule_indices=()
 while IFS=$'\t' read -r molecule_index _; do
@@ -355,7 +368,8 @@ while IFS=$'\t' read -r replica _; do
 done < "$work_dir/states.tsv"
 
 for output in "$work_dir/system.gro" "$work_dir/topol.top" "$work_dir/states.tsv" \
-    "$work_dir/net_charge.tsv" "$work_dir/hot_molecules.tsv" "$work_dir/resolved_config.toml" \
+    "$work_dir/net_charge.tsv" "$work_dir/tempered_atoms.tsv" "$work_dir/hot_molecules.tsv" \
+    "$work_dir/resolved_config.toml" \
     "$work_dir/energy_check.tsv"; do
     if [[ ! -s "$output" ]]; then
         die "Final build output is missing or empty: $output"

@@ -96,6 +96,26 @@ def render_opes_expanded(args: argparse.Namespace, config: dict[str, object]) ->
     state_read = ""
     if args.restart and not args.parse_only:
         state_read = f"  STATE_RFILE={state_path(args, 'opes.state')}\n"
+
+    # Optional grid controls. When a key is absent the keyword is omitted and
+    # PLUMED chooses the value (automatic TEMP_STEPS, OBSERVATION_STEPS=100).
+    temperature_steps = ""
+    if "temperature_steps" in opes:
+        count = positive_int(opes, "temperature_steps")
+        if count < 2:
+            raise ValueError("temperature_steps must be at least 2 (TEMP_MIN and TEMP_MAX)")
+        temperature_steps = f"  TEMP_STEPS={count}\n"
+    observation_steps = ""
+    if "observation_steps" in opes:
+        count = positive_int(opes, "observation_steps")
+        # OBSERVATION_STEPS counts PACE strides. opes.state is not written until
+        # this unbiased observation ends, so it must end inside the first segment.
+        if count * pace >= segment_steps:
+            raise ValueError(
+                f"observation_steps * pace_steps ({count * pace}) must be smaller than "
+                f"the production steps per segment ({segment_steps})"
+            )
+        observation_steps = f"  OBSERVATION_STEPS={count}\n"
     return f"""ene: ENERGY
 
 ecv: ECV_MULTITHERMAL ...
@@ -103,12 +123,12 @@ ecv: ECV_MULTITHERMAL ...
   TEMP={number(base_temperature)}
   TEMP_MIN={number(minimum)}
   TEMP_MAX={number(maximum)}
-...
+{temperature_steps}...
 
 opes: OPES_EXPANDED ...
   ARG=ecv.ene
   PACE={pace}
-  FILE={state_path(args, 'DELTAFS')}
+{observation_steps}  FILE={state_path(args, 'DELTAFS')}
 {state_read}  STATE_WFILE={state_path(args, 'opes.state')}
   STATE_WSTRIDE={state_stride}
 ...

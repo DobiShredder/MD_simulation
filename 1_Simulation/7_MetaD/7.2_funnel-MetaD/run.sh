@@ -20,17 +20,39 @@ die() {
 engine_failure() {
     local label=$1
     local engine_output=$2
-    shift 2
+    local engine_log=$3
+    shift 3
     echo "Error: $label failed. Engine output: $engine_output" >&2
+    echo "Engine stdout/stderr: $engine_log" >&2
     local detail
     for detail in "$@"; do
         echo "$detail" >&2
     done
-    if [[ -s "$engine_output" ]]; then
-        echo "Last 20 lines of $engine_output:" >&2
-        tail -n 20 "$engine_output" >&2
-    fi
+    local log_file
+    for log_file in "$engine_output" "$engine_log"; do
+        if [[ -s "$log_file" ]]; then
+            echo "Last 20 lines of $log_file:" >&2
+            tail -n 20 "$log_file" >&2
+        fi
+    done
     exit 1
+}
+
+# Run one engine attempt in a directory. stdout/stderr are appended to the
+# engine log after a header line, so earlier attempts stay readable.
+run_engine() {
+    local directory=$1
+    local engine_log=$2
+    shift 2
+    {
+        printf '== %s' "$(date '+%Y-%m-%d %H:%M:%S %Z')"
+        printf ' %q' "$@"
+        printf '\n'
+    } >> "$engine_log"
+    (
+        cd "$directory"
+        "$@"
+    ) >> "$engine_log" 2>&1
 }
 
 work_dir=work
@@ -87,6 +109,15 @@ done
     --record "$work_dir/.source.identity.json" --stage "run source inputs" \
     "${source_options[@]}" --value="$engine" --output "$work_dir/COLVAR" --output "$work_dir/HILLS" --output "$work_dir/FUNNEL_GRID"
 
+# A completed production is reused; its inputs were verified above.
+if [[ -e "$work_dir/.production.success.json" ]]; then
+    "${PYTHON:-python3}" helpers/input_identity.py \
+        --check-completion "$work_dir/.production.identity.json" >/dev/null
+    echo "Skipping completed production: $work_dir/production.nc"
+    echo "Next: python3 anal.py"
+    exit 0
+fi
+
 mkdir -p "$work_dir/inputs"
 cp inputs/minimize-solvent.in "$work_dir/inputs/minimize-solvent.in"
 cp inputs/minimize-all.in "$work_dir/inputs/minimize-all.in"
@@ -142,6 +173,7 @@ run_stage() {
     shift 2
     local output_file="$work_dir/$stage.out"
     local restart_file="$work_dir/$stage.rst7"
+    local engine_log="$work_dir/engine.$stage.log"
 
     "${PYTHON:-python3}" helpers/input_identity.py \
         --record "$work_dir/.$stage.identity.json" --stage "$stage" \
@@ -158,9 +190,8 @@ run_stage() {
     fi
 
     echo "Running: $stage"
-    if ! (
-        cd "$work_dir"
-        "$engine" \
+    if ! run_engine "$work_dir" "$engine_log" \
+            "$engine" \
             -O \
             -i "inputs/$stage.in" \
             -o "$stage.out" \
@@ -168,9 +199,8 @@ run_stage() {
             -c "$input_restart" \
             -r "$stage.rst7" \
             -inf "$stage.info" \
-            "$@"
-    ); then
-        engine_failure "$stage" "$output_file"
+            "$@"; then
+        engine_failure "$stage" "$output_file" "$engine_log"
     fi
     local output
     for output in "$output_file" "$restart_file"; do
@@ -188,11 +218,6 @@ run_stage minimize-all minimize-solvent.rst7
 run_stage heat minimize-all.rst7 -x heat.nc -ref minimize-all.rst7
 run_stage equilibrate heat.rst7 -x equilibrate.nc -ref heat.rst7
 
-if [[ -e "$work_dir/.production.success.json" ]]; then
-    "${PYTHON:-python3}" helpers/input_identity.py \
-        --check-completion "$work_dir/.production.identity.json" >/dev/null
-    die "Production output already exists and is complete: $work_dir/production.nc. Analyze it with: python3 anal.py"
-fi
 # A failed production leaves engine and PLUMED output; recovery is manual.
 leftover=()
 for output in production.out production.rst7 production.info production.nc HILLS COLVAR; do
@@ -223,10 +248,11 @@ sed 's/@RANDOM_SEED@/72101/g' inputs/production.in.template > "$work_dir/product
 "${PYTHON:-python3}" helpers/input_identity.py \
     --check-completion "$work_dir/.production.identity.json" >/dev/null
 
+# PLUMED errors raised inside pmemd appear in this engine log.
+production_log="$work_dir/engine.production.log"
 echo "Running: production"
-if ! (
-    cd "$work_dir"
-    "$engine" \
+if ! run_engine "$work_dir" "$production_log" \
+        "$engine" \
         -O \
         -i production.in \
         -o production.out \
@@ -234,9 +260,9 @@ if ! (
         -c equilibrate.rst7 \
         -r production.rst7 \
         -x production.nc \
-        -inf production.info
-); then
-    engine_failure production "$work_dir/production.out" \
+        -inf production.info; then
+    engine_failure production "$work_dir/production.out" "$production_log" \
+        "PLUMED errors from pmemd are in the engine stdout/stderr log." \
         "PLUMED log: $work_dir/plumed.log (AMBER default name; unverified)" \
         "COLVAR: $work_dir/COLVAR"
 fi

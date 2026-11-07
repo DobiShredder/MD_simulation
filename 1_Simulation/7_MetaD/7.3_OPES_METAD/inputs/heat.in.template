@@ -8,7 +8,7 @@
   tempi=10.0, temp0=300.0,
   ig=@RANDOM_SEED@,
   ntr=1, restraint_wt=2.0,
-  restraintmask=':1-4 & !@H=',
+  restraintmask=':1-3 & !@H=',
   nmropt=1,
   ntpr=5000, ntwx=5000, ntwr=5000,
   ioutfm=1,

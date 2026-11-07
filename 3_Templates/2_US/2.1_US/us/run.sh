@@ -127,7 +127,11 @@ skipped_window_count=0
 reused_stage_count=0
 workflow_started=0
 
+# Real runs keep engine stdout/stderr in engine.<stage>.log beside <stage>.out.
+# Each attempt appends a header, so earlier attempts stay readable.
 run_command() {
+    local engine_log=$1
+    shift
     if (( dry_run )); then
         printf '+'
         printf ' %q' "$@"
@@ -135,7 +139,8 @@ run_command() {
         return
     fi
 
-    "$@"
+    echo "== $(date '+%Y-%m-%d %H:%M:%S') $*" >> "$engine_log"
+    "$@" >> "$engine_log" 2>&1
 }
 
 stage_state() {
@@ -242,9 +247,10 @@ run_stage() {
     fi
     if ! (
         cd "$window_dir"
-        run_command "${command[@]}"
+        run_command "engine.$stage.log" "${command[@]}"
     ); then
         show_engine_output "$prefix.out"
+        show_engine_output "$window_dir/engine.$stage.log"
         die_partial "Window ${window_dir##*/} $stage_label failed. " \
             "$window_dir" "$stage_label" "${stage_outputs[@]}"
     fi

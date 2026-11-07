@@ -4,15 +4,21 @@
 
 *OPM membrane normal을 유지하면서 protein exclusion 영역 밖에 두 leaflet을 배치합니다. / Two leaflets are placed outside the protein exclusion region while retaining the OPM membrane normal.*
 
-
 ## 한국어
 
-OPM에서 membrane normal에 맞춰 배향한 KcsA를 평형화된 Lipid21 bilayer에 삽입합니다.
+OPM에서 membrane normal에 맞춰 배향한 KcsA를 equilibration된 Lipid21 bilayer에 삽입합니다.
 나머지 lipid를 무작위로 채우지 않고, 기존 bilayer unit cell을 x·y 방향으로 복제합니다.
 
 ### 파일 역할
 
-`download.sh`는 다음 coordinate를 `structure/`에 받습니다.
+| 파일 | 역할 |
+| --- | --- |
+| `download.sh` | OPM KcsA 구조와 Lipid21 bilayer coordinate를 `structure/`에 받습니다. |
+| `prepare.py` | OPM 1K4C에서 KcsA tetramer, filter K+와 water를 선택하고 3EFF side chain으로 missing atom을 채웁니다. |
+| `run.sh` | Composition과 padding 설정을 정하고 `build_membrane.py`를 호출합니다. |
+| `build_membrane.py` | Bilayer unit cell 복제, protein 삽입, overlap lipid 제거와 POPE·cholesterol 치환을 수행합니다. `run.sh`가 자동으로 호출합니다. |
+
+`download.sh`가 받는 input은 다음과 같습니다.
 
 | 파일 | 용도 |
 | --- | --- |
@@ -45,10 +51,20 @@ python3 prepare.py \
 ./run.sh work/kcsa.pdb
 ~~~
 
-기본 결과는 `work/system-coordinates.pdb`입니다.
-KcsA에서 box는 124.072×124.686×105.054 Å, leaflet 조성은 upper 186/10/10과
+이 단계는 Python 3, NumPy와 `curl`만 사용하고 GPU를 쓰지 않습니다.
+`work/system-coordinates.pdb`가 이미 있으면 빈 파일이어도 `run.sh`가 거부합니다.
+Input인 `work/kcsa.pdb`는 이 검사에서 제외합니다. 실행 상태와 재실행은
+[GUIDE.md 부록](../../../../GUIDE.md#4-부록-실행-상태와-복구)을 참고합니다.
+
+### 주요 output
+
+정상 종료하면 마지막 줄에 `Coordinate build output: work/system-coordinates.pdb`가
+출력됩니다. KcsA에서 box는 124.072×124.686×105.054 Å, leaflet 조성은 upper 186/10/10과
 lower 196/11/11 POPC/POPE/cholesterol입니다.
 정수로 반올림하므로 정확히 90%/5%/5%가 아닐 수 있습니다.
+
+VMD 등으로 protein orientation, leaflet, lipid tail piercing, hydrophobic
+core의 bulk water, filter K+·water를 확인한 뒤 2단계로 넘어갑니다.
 
 ### 주요 option
 
@@ -66,6 +82,8 @@ Cholesterol은 box 경계에서 5 Å 안쪽의 lipid만 치환 후보로 쓰고,
 배향을 15° 간격으로 찾습니다. 이 값은
 ring이 periodic boundary를 관통하는 초기 구조를 피하기 위한 geometry
 조건입니다.
+
+### 다른 protein에 적용
 
 `build_membrane.py`는 KcsA residue number를 사용하지 않습니다. 다른 OPM
 protein에도 사용하려면 system에 맞는 preparation script로 assembly,
@@ -87,46 +105,139 @@ Membrane system은 PACKMOL이나 PACKMOL-Memgen으로도 만들 수 있습니다
 periodic boundary의 lipid piercing과 initial energy를 별도로 확인해야 합니다.
 
 이 tutorial에서는 PACKMOL input을 제공하지 않고 `build_membrane.py`를
-사용합니다. OPM orientation과 평형화된 Lipid21 bilayer patch를 활용해
+사용합니다. OPM orientation과 equilibration된 Lipid21 bilayer patch를 활용해
 box, overlap cutoff과 lipid 치환 과정을 code에서 직접 확인하고 수정할 수
 있게 구성했습니다.
 
-VMD 등으로 protein orientation, leaflet, lipid tail piercing, hydrophobic
-core의 bulk water, filter K+·water를 확인한 뒤 2단계로 넘어갑니다.
+### 자주 생기는 문제
 
-`download.sh`는 모든 asset과 `SHA256SUMS`를 staging에서 확인한 뒤 `helpers/publish_download.py`로 게시합니다. Transfer, checksum 또는 일반 publication 실패에서는 기존 파일을 보존하며, 관련 없는 preparation 파일도 유지합니다. `structure/.download.pending`가 남으면 prepare/build와 새 download가 거부됩니다. 보존된 staging과 marker를 점검하고, marker만 삭제해 이전 파일과 새 파일을 섞어 사용하지 않습니다.
+| Message | 조치 |
+| --- | --- |
+| `Cannot import NumPy. Activate the ambertools26 environment.` | NumPy가 있는 환경을 불러옵니다. |
+| `Bilayer coordinate input missing: structure/POPC.gro. Run ./download.sh first.` | `download.sh`를 먼저 실행합니다. |
+| `KcsA PDB not found: work/kcsa.pdb` | `prepare.py`를 먼저 실행합니다. |
+| `Too few cholesterol replacement sites are far from the box edges.` | Box 경계에서 떨어진 치환 후보가 부족합니다. `xy_padding`을 늘리거나 `composition`의 cholesterol 비율을 줄입니다. |
+| `Coordinate build output already exists` | Message의 `mv` command로 기존 output을 옮긴 뒤 다시 실행합니다. |
 
 ## English
 
-This stage inserts 1K4C, positioned relative to the membrane according to OPM,
-into replicated, equilibrated Lipid21 bilayer patches. It tiles an existing
-bilayer unit cell in x and y instead of randomly packing the remaining lipids.
-`prepare.py` selects the KcsA tetramer, seven filter K+ ions, and 16
-filter/cavity waters. It transfers the missing Ser22 and Arg117 side-chain
-atoms from closed KcsA 3EFF by a local backbone alignment. H124 is omitted
-because its terminal side chain is incomplete.
+This stage inserts KcsA, oriented along the membrane normal by OPM, into
+replicated, equilibrated Lipid21 bilayer patches. It tiles an existing bilayer
+unit cell in x and y instead of randomly packing the remaining lipids.
 
-The builder derives the number of x/y unit-cell copies from the protein size
-and padding. It removes complete overlapping lipids and preserves the natural
-leaflet asymmetry produced by the protein footprint. The default KcsA box is
-124.072×124.686×105.054 Å. Integer molecule counts mean that the resulting
-composition may differ slightly from exactly 90% POPC, 5% POPE, and 5%
-cholesterol. Edit the clearly named values near the top of `run.sh` to change
-composition or padding.
+### File roles
 
-The builder itself does not use KcsA residue numbers. Another OPM protein can
-be supplied after a system-specific preparation step has selected the
-assembly, repaired missing atoms, assigned protonation, and preserved the OPM
-orientation and half-thickness remark. It assumes an orthorhombic system with
-the membrane normal along z; it does not predict orientation when OPM data are
-absent.
+| File | Role |
+| --- | --- |
+| `download.sh` | Downloads the OPM KcsA structures and Lipid21 bilayer coordinates into `structure/`. |
+| `prepare.py` | Selects the KcsA tetramer, filter K+ ions, and waters from OPM 1K4C and fills missing atoms from 3EFF side chains. |
+| `run.sh` | Sets composition and padding and calls `build_membrane.py`. |
+| `build_membrane.py` | Replicates the bilayer unit cell, inserts the protein, removes overlapping lipids, and substitutes POPE and cholesterol. Called automatically by `run.sh`. |
+
+`download.sh` retrieves these inputs:
+
+| File | Purpose |
+| --- | --- |
+| `1K4C-opm.pdb` | The 2.0 Å KcsA structure positioned in the membrane by OPM. The membrane boundary is z=±15.0 Å. |
+| `3EFF-opm.pdb` | Source conformers for Ser22 OG and the Arg117 side chain missing from 1K4C. |
+| `POPC.gro`, `POPE.gro`, `CHOL15.gro` | Public Lipid21 bilayer coordinates. |
+
+`prepare.py` selects chains C, F, I, and L of OPM 1K4C as the KcsA tetramer. It
+keeps seven filter K+ ions and 16 filter/cavity waters and removes the Fab and
+bulk crystallographic waters. The neutral-pH baseline is E71=`GLH`, D80=`ASP`,
+H25=`HIE`, and E118/E120=`GLU`. Terminal H124 is omitted because its side chain is
+incomplete.
+
+The missing Ser22 OG and Arg117 side-chain atoms are not left for tleap to build.
+`prepare.py` aligns the corresponding side chains of closed KcsA 3EFF on the local
+residue backbone. With tleap internal coordinates alone, Arg117 can overlap a
+neighboring subunit unphysically.
+
+`build_membrane.py` derives the number of x/y unit-cell copies from the protein
+size and padding. It removes complete overlapping lipids and then converts part of
+the POPC to POPE and cholesterol. It preserves the natural leaflet asymmetry
+produced by the protein footprint instead of forcing equal lipid counts.
+
+### Running
+
+~~~bash
+cd 1_Simulation/1_MD/1.3_Membrane_Protein/1_Coordinate_Build
+./download.sh
+python3 prepare.py \
+    structure/1K4C-opm.pdb \
+    work/kcsa.pdb \
+    structure/3EFF-opm.pdb
+./run.sh work/kcsa.pdb
+~~~
+
+This step uses only Python 3, NumPy, and `curl`; it does not use a GPU.
+An existing `work/system-coordinates.pdb`, even an empty one, makes `run.sh`
+refuse to build. The prepared input `work/kcsa.pdb` is exempt. See
+[GUIDE.md appendix](../../../../GUIDE.md#4-appendix-run-state-and-recovery) for run state and reruns.
+
+### Main output
+
+A successful run ends with
+`Coordinate build output: work/system-coordinates.pdb`. The default KcsA box is
+124.072×124.686×105.054 Å, with 186/10/10 POPC/POPE/cholesterol in the upper
+leaflet and 196/11/11 in the lower leaflet. Integer molecule counts mean that the
+composition may differ slightly from exactly 90%/5%/5%.
+
+Inspect protein orientation, leaflets, lipid-tail piercing, bulk water in the
+hydrophobic core, and the filter K+ ions and waters, for example in VMD, before
+moving to stage 2.
+
+### Key options
+
+Edit these values near the top of `run.sh`.
+
+| Value | Default | Meaning |
+| --- | ---: | --- |
+| `composition` | `POPC=90,POPE=5,CHOL=5` | Target lipid fractions in each leaflet. |
+| `xy_padding` | 25 Å | Added to the protein width to set the number of unit-cell copies. |
+| `water_padding` | 20 Å | Water thickness beyond the protein z boundary. |
+| `protein_lipid_distance` | 2.0 Å | Lipids within this distance of protein heavy atoms are removed. |
+
+Cholesterol substitution uses only lipids at least 5 Å inside the box boundary.
+Orientations are searched in 15° steps and must stay at least 1.8 Å from
+neighboring lipid heavy atoms and 0.9 Å from all atoms. These geometric conditions
+avoid initial structures in which a ring pierces the periodic boundary.
+
+### Using another protein
+
+The builder itself does not use KcsA residue numbers. Another OPM protein can be
+supplied after a system-specific preparation step has selected the assembly,
+repaired missing atoms, assigned protonation, and kept required ligands. The
+protein must keep its OPM orientation and start with a line of this form:
+
+~~~text
+REMARK OPM MEMBRANE HALF-THICKNESS 15.000 ANGSTROM
+~~~
+
+The builder assumes an orthorhombic system with the membrane normal along z; it
+does not predict orientation when OPM data are absent.
+
+### PACKMOL and coordinate builders
 
 PACKMOL and PACKMOL-Memgen can also construct membrane systems and are useful
 when changing molecular components or lipid composition. Their packed
 coordinates still require inspection for protein–lipid contacts, lipid piercing
-across periodic boundaries, and initial energy. This tutorial instead provides
-`build_membrane.py`, allowing learners to inspect and modify how OPM orientation
-and equilibrated Lipid21 patches are used.
+across periodic boundaries, and initial energy.
+
+This tutorial does not provide PACKMOL inputs. It instead provides
+`build_membrane.py`, so learners can inspect and modify how OPM orientation and
+equilibrated Lipid21 patches set the box, overlap cutoffs, and lipid
+substitution.
+
+### Common problems
+
+| Message | Action |
+| --- | --- |
+| `Cannot import NumPy. Activate the ambertools26 environment.` | Load an environment that provides NumPy. |
+| `Bilayer coordinate input missing: structure/POPC.gro. Run ./download.sh first.` | Run `download.sh` first. |
+| `KcsA PDB not found: work/kcsa.pdb` | Run `prepare.py` first. |
+| `Too few cholesterol replacement sites are far from the box edges.` | Too few substitution candidates lie away from the box edges. Increase `xy_padding` or lower the cholesterol fraction in `composition`. |
+| `Coordinate build output already exists` | Move the existing output with the `mv` command in the message and rerun. |
 
 ## References / 참고 자료
 
@@ -136,25 +247,3 @@ and equilibrated Lipid21 patches are used.
 - [Lipid21](https://doi.org/10.1021/acs.jctc.1c01217)
 - [PACKMOL-Memgen](https://doi.org/10.1021/acs.jcim.9b00269)
 - [PACKMOL user guide](https://m3g.github.io/packmol/userguide.shtml)
-
-### 동시 실행과 input 변경
-
-Coordinate build, topology build와 simulation은 membrane tutorial root 옆의 `.writers/` registry를 공유합니다. 앞 단계의 work를 읽는 동안 그 directory를 다시 생성하는 작업은 거부합니다.
-
-`work/system-coordinates.pdb`가 있으면 크기가 0인 partial 결과도 보존하고 build를 거부합니다. Input인 `work/kcsa.pdb`는 이 검사에서 제외합니다. 새 계산은 생성된 `work/`를 포함하지 않는 새 tutorial copy에서 시작합니다.
-
-정상 종료, command 실패와 INT/TERM에서는 자식 process의 종료를 확인한 뒤 자기 lock만 해제합니다. SIGKILL이나 node 장애로 남은 lock은 자동 삭제하지 않습니다. Error에 표시된 lock과 `owner.json`의 host, PID, command, scope를 확인하고 scheduler와 해당 host에서 모든 writer와 자식 process가 종료됐는지 확인한 뒤 그 lock directory만 수동 제거합니다. PID가 로컬에서 보이지 않는다는 이유만으로 제거하지 않습니다. `.gate/`도 같은 확인이 필요합니다.
-
-`run.sh --dry-run`과 `run.sh --help`는 보호나 identity 파일을 생성하지 않습니다. 진행 중인 work를 이동하거나 identity를 수정해 재사용하지 않습니다. 보호는 로컬 filesystem과 로컬 자식 process로 검증했으며 network filesystem, remote MPI와 다른 node의 writer 종료는 미검증입니다.
-
-### Concurrent runs and input changes
-
-Coordinate build, topology build and simulation share the `.writers/` registry beside the membrane tutorial root. A downstream reader prevents a builder from rewriting its input directory.
-
-An existing `work/system-coordinates.pdb`, including an empty partial result, blocks coordinate building. The prepared input `work/kcsa.pdb` is allowed. Start a new tutorial copy without generated `work/` directories for a new calculation.
-
-Normal exit, command failure and INT/TERM release only the owned lock after child termination is verified. Locks left by SIGKILL or node failure are retained. Inspect the reported lock and its `owner.json` host, PID, command and scopes; confirm through the scheduler and owning host that all writers and children stopped before manually removing only that lock directory. A PID missing locally is not sufficient. Apply the same checks to `.gate/`.
-
-`run.sh --dry-run` and `run.sh --help` do not create writer or identity files. Do not move active work trees or edit identities to reuse results. Protection was tested on a local filesystem with local child processes; network filesystems, remote MPI and termination of writers on other nodes remain unverified.
-
-`download.sh` validates every asset and `SHA256SUMS` in staging before publishing through `helpers/publish_download.py`. Transfer, checksum and ordinary publication failures preserve existing files, including unrelated preparation files. A retained `structure/.download.pending` blocks source readers and new downloads. Inspect the retained staging and marker; deleting only the marker can expose a mixed generation.

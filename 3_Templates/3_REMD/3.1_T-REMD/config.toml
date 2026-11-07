@@ -16,7 +16,9 @@ mpi_engine = "pmemd.cuda.MPI"
 temperature = 300.0
 pressure = 1.0
 equilibration_ensemble = "NPT"
-production_ensemble = "NPT"
+# NVT is the standard T-REMD setup: one shared NPT stage fixes the box, then every
+# replica runs at that volume. NPT at 1 bar can be unstable for water near 450 K.
+production_ensemble = "NVT"
 timestep = 2.0
 constraint_mode = "h-bonds"
 minimization_steps = 5000

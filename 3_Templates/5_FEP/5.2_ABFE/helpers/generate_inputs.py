@@ -10,16 +10,35 @@ import sys
 from pathlib import Path
 
 sys.dont_write_bytecode = True
-import parmed
-from parmed.geometry import dihedral as parmed_dihedral
+try:
+    import parmed
+    from parmed.geometry import dihedral as parmed_dihedral
+except ImportError:
+    raise SystemExit("Error: ParmEd is required for ABFE input generation: python3 -m pip install parmed") from None
 
 sys.path.insert(0, ".")
-from apply_config import apply_config  # noqa: E402
-from config_utils import load_config, positive_float, positive_int, section, string_value  # noqa: E402
+from apply_config import apply_config, synchronize_resolved_section  # noqa: E402
+from config_utils import finite_float, load_config, positive_float, positive_int, section, string_value  # noqa: E402
 
 
 RestraintRecord = tuple[str, list[object], float, float]
 RESTRAINT_DUMP_FILE = "production.restraint.dat"
+# Both Boresch angles must stay away from 0 and 180 degrees: near-collinear
+# anchors make the angle and dihedral restraints unstable, and the analytical
+# standard-state correction divides by sin(theta_A) * sin(theta_B).
+BORESCH_ANGLE_MIN_DEGREES = 30.0
+BORESCH_ANGLE_MAX_DEGREES = 150.0
+# Soft-core values used when [alchemical] omits a key. They match the values the
+# template wrote before these options were exposed. gti_* = 0 are pmemd.cuda
+# defaults (Amber26 manual 27.1.7.1, p. 559-560) and are not written to mdin.
+SOFTCORE_DEFAULTS: dict[str, float | int] = {
+    "scalpha": 0.5,
+    "scbeta": 12.0,
+    "gti_lam_sch": 0,
+    "gti_ele_sc": 0,
+    "gti_vdw_sc": 0,
+}
+GTI_SOFTCORE_KEYS = ("gti_lam_sch", "gti_ele_sc", "gti_vdw_sc")
 
 
 def window_directory(
@@ -71,6 +90,49 @@ def float_list(values: dict[str, object], key: str) -> list[float]:
     return result
 
 
+def softcore_settings(alchemical: dict[str, object]) -> dict[str, float | int]:
+    """Read and check the soft-core and lambda-scheduling options of the vdW stage."""
+    settings: dict[str, float | int] = {}
+    for key in ("scalpha", "scbeta"):
+        value = finite_float(alchemical, key, default=SOFTCORE_DEFAULTS[key])
+        if value <= 0:
+            raise ValueError(f"{key} must be greater than zero")
+        settings[key] = value
+    for key in GTI_SOFTCORE_KEYS:
+        value = alchemical.get(key, SOFTCORE_DEFAULTS[key])
+        if isinstance(value, bool) or not isinstance(value, int) or value not in (0, 1):
+            raise ValueError(f"{key} must be integer 0 or 1")
+        settings[key] = value
+    return settings
+
+
+def softcore_text(settings: dict[str, float | int]) -> str:
+    """Return the vdW-stage soft-core keywords for the &cntrl namelist.
+
+    gti_* keywords are omitted while all three keep the default 0. With
+    gti_lam_sch=1 pmemd changes the default of gti_ele_sc and gti_vdw_sc to 1,
+    so all three are written as soon as one of them is enabled.
+    """
+    text = f" scalpha={settings['scalpha']!r}, scbeta={settings['scbeta']!r},"
+    if any(settings[key] for key in GTI_SOFTCORE_KEYS):
+        text += "".join(f" {key}={settings[key]}," for key in GTI_SOFTCORE_KEYS)
+    return text
+
+
+def protein_anchor_masks(restraints: dict[str, object]) -> list[str]:
+    """Return the three protein anchor masks, which have no usable default."""
+    keys = [f"protein_anchor_{index}" for index in range(1, 4)]
+    empty = [key for key in keys if not str(restraints.get(key, "")).strip()]
+    if empty:
+        raise ValueError(
+            f"[restraints] {', '.join(empty)} must be set. Use AMBER masks that each "
+            "select one rigid protein atom near the binding site (for example a "
+            "backbone CA), with the three atoms not collinear. See 'Choosing Boresch "
+            "anchors' in README.md."
+        )
+    return [string_value(restraints, key) for key in keys]
+
+
 def vector(a: list[float], b: list[float]) -> list[float]:
     return [b[index] - a[index] for index in range(3)]
 
@@ -115,10 +177,7 @@ def restraint_records(
     restraints: dict[str, object],
     ligand_mask: str,
 ) -> list[RestraintRecord]:
-    p1, p2, p3 = [
-        atom_from_mask(topology, string_value(restraints, f"protein_anchor_{index}"))
-        for index in range(1, 4)
-    ]
+    p1, p2, p3 = [atom_from_mask(topology, mask) for mask in protein_anchor_masks(restraints)]
     l1, l2, l3 = [
         atom_from_mask(topology, string_value(restraints, f"ligand_anchor_{index}"))
         for index in range(1, 4)
@@ -145,7 +204,7 @@ def restraint_records(
     angular_force = positive_float(restraints, "angle_force")
     torsion_force = positive_float(restraints, "torsion_force")
     xyz = lambda atom: list(topology.coordinates[atom.idx])
-    return [
+    records: list[RestraintRecord] = [
         ("distance", [p1, l1], distance(xyz(p1), xyz(l1)), distance_force),
         ("angle_a", [p2, p1, l1], angle(xyz(p2), xyz(p1), xyz(l1)), angular_force),
         ("angle_b", [p1, l1, l2], angle(xyz(p1), xyz(l1), xyz(l2)), angular_force),
@@ -153,6 +212,33 @@ def restraint_records(
         ("dihedral_b", [p2, p1, l1, l2], dihedral(xyz(p2), xyz(p1), xyz(l1), xyz(l2)), torsion_force),
         ("dihedral_c", [p1, l1, l2, l3], dihedral(xyz(p1), xyz(l1), xyz(l2), xyz(l3)), torsion_force),
     ]
+    for kind, atoms, reference, _ in records:
+        if not kind.startswith("angle_"):
+            continue
+        if not BORESCH_ANGLE_MIN_DEGREES <= reference <= BORESCH_ANGLE_MAX_DEGREES:
+            indices = ",".join(str(atom.idx + 1) for atom in atoms)
+            raise ValueError(
+                f"Boresch {kind} is {reference:.1f} deg (atoms {indices}), outside "
+                f"{BORESCH_ANGLE_MIN_DEGREES:.0f}-{BORESCH_ANGLE_MAX_DEGREES:.0f} deg. "
+                "Near-collinear anchors make the restraint unstable and the "
+                "standard-state correction diverge; choose other protein or ligand anchors."
+            )
+    # Dihedrals A and C also need non-collinear anchor triplets on each side.
+    frame_angles = (
+        ("protein anchor angle P3-P2-P1", [p3, p2, p1]),
+        ("ligand anchor angle L1-L2-L3", [l1, l2, l3]),
+    )
+    for name, atoms in frame_angles:
+        value = angle(*(xyz(atom) for atom in atoms))
+        if not BORESCH_ANGLE_MIN_DEGREES <= value <= BORESCH_ANGLE_MAX_DEGREES:
+            indices = ",".join(str(atom.idx + 1) for atom in atoms)
+            raise ValueError(
+                f"{name} is {value:.1f} deg (atoms {indices}), outside "
+                f"{BORESCH_ANGLE_MIN_DEGREES:.0f}-{BORESCH_ANGLE_MAX_DEGREES:.0f} deg. "
+                "Near-collinear anchor triplets leave the Boresch dihedrals ill-defined; "
+                "choose other anchors."
+            )
+    return records
 
 
 def restraint_bounds(kind: str, reference: float) -> tuple[float, float]:
@@ -282,6 +368,7 @@ def alchemical_options(
     collect_mbar: bool,
     ligand_mask: str,
     mbar_interval: int,
+    softcore: dict[str, float | int],
     charge_masks: tuple[str, str] | None = None,
 ) -> str:
     if stage == "restraint":
@@ -292,7 +379,7 @@ def alchemical_options(
     if stage.endswith("vdw"):
         common += (
             f" timask1='{ligand_mask}', timask2='',"
-            f" ifsc=1, scmask1='{ligand_mask}', scmask2='', scalpha=0.5, scbeta=12.0,"
+            f" ifsc=1, scmask1='{ligand_mask}', scmask2='',{softcore_text(softcore)}"
             " aces26=1, gti_sc_cc_energy_terms='ele,vdw,ele14,vdw14',"
             " gti_sc_sc_energy_terms='', gti_nmropt=0,"
         )
@@ -338,6 +425,16 @@ def write_restraint_metadata(work_dir: Path, records: list[RestraintRecord]) -> 
     )
 
 
+def print_restraint_references(work_dir: Path, records: list[RestraintRecord]) -> None:
+    """Print the Boresch references so the anchors can be checked before running."""
+    print("Boresch restraint references from build/complex.rst7:")
+    for kind, atoms, reference, _ in records:
+        unit = "A" if kind == "distance" else "deg"
+        indices = ",".join(str(atom.idx + 1) for atom in atoms)
+        print(f"  {kind:<10} {reference:9.3f} {unit:<3}  atoms {indices}")
+    print(f"Restraint table: {work_dir / 'restraints.tsv'}")
+
+
 def write_window(
     work_dir: Path,
     input_dir: Path,
@@ -351,6 +448,7 @@ def write_window(
     ligand_mask: str,
     common_replacements: dict[str, str],
     mbar_interval: int,
+    softcore: dict[str, float | int],
     charge_masks: dict[str, tuple[str, str]],
 ) -> str:
     """Generate links, restraints, and AMBER inputs for one ABFE window."""
@@ -395,6 +493,7 @@ def write_window(
             collect_mbar=name == "production",
             ligand_mask=ligand_mask,
             mbar_interval=mbar_interval,
+            softcore=softcore,
             charge_masks=charge_masks.get(environment),
         )
         if stage == "restraint" and name == "production":
@@ -443,6 +542,7 @@ def main() -> None:
         }
         mbar_interval = positive_int(run, "mbar_interval_steps")
         seed_base = heating_seed_base(run)
+        softcore = softcore_settings(alchemical)
     except ValueError as error:
         raise SystemExit(f"Config error: {error}") from None
 
@@ -467,6 +567,7 @@ def main() -> None:
     except ValueError as error:
         raise SystemExit(f"Config error: {error}") from None
     write_restraint_metadata(args.work_dir, records)
+    print_restraint_references(args.work_dir, records)
 
     states = ["stage\tenvironment\twindow\tlambda\tseed\tdirectory"]
     state_index = 0
@@ -489,6 +590,7 @@ def main() -> None:
                     ligand_mask,
                     common_replacements,
                     mbar_interval,
+                    softcore,
                     charge_masks,
                 )
             )
@@ -497,9 +599,13 @@ def main() -> None:
         f"temperature_K\tstandard_state_concentration_M\n{positive_float(run, 'temperature'):.6f}\t{standard_state:.6f}\n",
         encoding="utf-8",
     )
-    (args.work_dir / "resolved_config.toml").write_text(
-        args.config.read_text(encoding="utf-8"), encoding="utf-8"
+    # The resolved config records the soft-core values actually written to mdin.
+    resolved_text = synchronize_resolved_section(
+        args.config.read_text(encoding="utf-8"),
+        "alchemical",
+        softcore,
     )
+    (args.work_dir / "resolved_config.toml").write_text(resolved_text, encoding="utf-8")
     apply_config(args.config, args.work_dir)
 
 

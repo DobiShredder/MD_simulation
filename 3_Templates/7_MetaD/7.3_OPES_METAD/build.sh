@@ -52,6 +52,9 @@ if (( ! ${dry_run:-0} )) && [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_E
         --write "$work_dir" -- "$0" "${original_args[@]}"
 fi
 python=${PYTHON:-python3}
+
+# Unknown config keys are usually typos; warn before any expensive step.
+"$python" helpers/check_config_keys.py "$config" helpers/config_keys.txt
 build_tmp=""
 
 report_build_tmp() {

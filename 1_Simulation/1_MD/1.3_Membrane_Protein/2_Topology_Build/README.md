@@ -9,19 +9,41 @@ Lipid21의 modular residue `PA`·`PC`·`PE`·`OL`과 `CHL`은 `leaprc.lipid21`�
 
 | 파일 | 역할 |
 | --- | --- |
-| `run.sh` | Coordinate를 `work/`로 복사하고 tleap을 실행합니다. |
+| `run.sh` | Coordinate를 `work/amber-named.pdb`로 복사하고 tleap을 실행합니다. |
 | `prepare_tleap.py` | `CRYST1` box와 WAT 수를 읽어 tleap input을 만듭니다. `run.sh`가 자동으로 호출합니다. |
 | `tleap.in` | Force field, box placeholder, neutralization과 KCl 추가를 정의한 template입니다. |
+
+### 실행
 
 ~~~bash
 cd 1_Simulation/1_MD/1.3_Membrane_Protein/2_Topology_Build
 ./run.sh ../1_Coordinate_Build/work/system-coordinates.pdb
 ~~~
 
+이 단계는 AmberTools 26 `tleap`과 Python 3만 사용하고 GPU를 쓰지 않습니다.
+`work/`에 `amber-named.pdb`, `tleap.in`, `system.parm7`, `system.rst7`, `system.pdb`,
+`leap.log`, `tleap.stdout.log` 중 하나라도 있으면 빈 파일이어도 복사와 LEaP 실행 전에
+거부합니다. 실행 상태와 재실행은 [GUIDE.md 부록](../../../../GUIDE.md#4-부록-실행-상태와-복구)을 참고합니다.
+
+### 주요 output
+
+| 파일 | 내용 |
+| --- | --- |
+| `work/system.parm7`, `work/system.rst7` | 3단계 simulation input |
+| `work/system.pdb` | 확인용 구조 |
+| `work/leap.log` | LEaP log |
+| `work/tleap.stdout.log` | tleap의 terminal output |
+
+정상 종료하면 마지막 줄에 `AMBER topology and restart: work`가 출력됩니다.
+`leap.log`에서 unknown residue, missing heavy atom, parameter error와 `Errors = 0`을 확인합니다.
+Chain C-terminus의 `OXT`를 tleap이 추가하는 message는 예상된 결과입니다.
+Initial energy에서 `VDWAALS = *************`가 보이면
+simulation을 진행하지 않고 1단계 coordinate를 다시 확인합니다.
+
 ### 주요 option
 
 `prepare_tleap.py`는 PDB의 `CRYST1`을 그대로 사용합니다.
-그러지 않으면 평형화된 patch의 x·y 주기가 변할 수 있습니다.
+그러지 않으면 equilibration된 patch의 x·y 주기가 변할 수 있습니다.
 
 0.15 M KCl pair 수는 total box volume이 아니라 water 분자 수로 계산합니다.
 
@@ -30,51 +52,86 @@ KCl pairs = round(number of WAT × 0.15 / 55.5)
 ~~~
 
 기본 KcsA coordinate에는 pore water를 포함해 약 28,000개의 WAT가 있으며, 76 KCl pairs가 생성됩니다.
-Coordinate 크기나 water 수가 달라지면 값도 자동으로 바뀌니다.
+Coordinate 크기나 water 수가 달라지면 값도 자동으로 바뀝니다.
+Pair 수가 0이면 bulk-salt 추가 command를 생략하고 neutralization만 유지합니다.
+
 `addionsrand`는 tleap 실행마다 다른 water를 선택할 수 있으므로
 ion 초기 위치와 `system.rst7` checksum은 고정되지 않습니다.
 
-주요 output은 `work/system.parm7`, `work/system.rst7`, `work/system.pdb`와 `work/leap.log`입니다.
-`work/tleap.stdout.log`에는 tleap의 terminal output이 저장됩니다.
-`leap.log`에서 unknown residue, missing heavy atom, parameter error와 `Errors = 0`을 확인합니다.
-Chain C-terminus의 `OXT`를 tleap이 추가하는 message는 예상된 결과입니다.
-Initial energy에서 `VDWAALS = *************`가 보이면
-simulation을 진행하지 않고 1단계 coordinate를 다시 확인합니다.
+### 자주 생기는 문제
+
+| Message | 조치 |
+| --- | --- |
+| `Coordinate PDB not found` | 1단계 `run.sh`를 먼저 실행합니다. |
+| `tleap failed. See work/tleap.stdout.log and work/leap.log` | `leap.log`의 첫 error에서 residue 이름과 atom 이름을 확인합니다. Lipid21 이름은 1단계 output을 그대로 사용합니다. |
+| `Topology build output already exists` | `mv work work.old` 후 다시 실행합니다. 3단계가 이 `work`를 읽는 중이면 writer lock이 거부합니다. |
 
 ## English
 
-This stage applies ff19SB, Lipid21, and OPC to the stage-1 coordinates.
-`prepare_tleap.py` transfers the PDB `CRYST1` dimensions to a generated tleap
-input and calculates 0.15 M KCl pairs from the number of water molecules. The
-default KcsA system contains about 28,000 waters and receives 76 KCl pairs.
-Because `addionsrand` selects solvent molecules anew for each tleap invocation,
-the initial ion positions and restart checksum are not fixed.
+This stage applies ff19SB, Lipid21, and OPC to the stage-1 coordinates and
+writes `system.parm7` and `system.rst7`. `leaprc.lipid21` reads the modular
+Lipid21 residues `PA`, `PC`, `PE`, `OL`, and `CHL`.
 
-Outputs are `work/system.parm7`, `work/system.rst7`, `work/system.pdb`, and
-`work/leap.log`; `work/tleap.stdout.log` keeps the tleap terminal output. Check for unknown residues, missing heavy atoms, parameter
-errors, and `Errors = 0`. Do not proceed if the initial energy reports an
-overflow such as `VDWAALS = *************`.
+### File roles
 
-### 동시 실행과 input 변경
+| File | Role |
+| --- | --- |
+| `run.sh` | Copies the coordinates to `work/amber-named.pdb` and runs tleap. |
+| `prepare_tleap.py` | Reads the `CRYST1` box and the WAT count to write the tleap input. Called automatically by `run.sh`. |
+| `tleap.in` | Template defining the force fields, box placeholder, neutralization, and KCl addition. |
 
-Coordinate build, topology build와 simulation은 membrane tutorial root 옆의 `.writers/` registry를 공유합니다. 앞 단계의 work를 읽는 동안 그 directory를 다시 생성하는 작업은 거부합니다.
+### Running
 
-`work/amber-named.pdb`, `tleap.in`, `system.parm7`, `system.rst7`, `system.pdb`, `leap.log` 또는 `tleap.stdout.log`가 있으면 크기가 0인 partial 결과도 보존하고 복사와 LEaP 실행 전에 거부합니다. 새 계산은 생성된 `work/`를 포함하지 않는 새 tutorial copy에서 시작합니다. Simulation의 identity 검사는 이 build 보호를 대신하지 않습니다.
+~~~bash
+cd 1_Simulation/1_MD/1.3_Membrane_Protein/2_Topology_Build
+./run.sh ../1_Coordinate_Build/work/system-coordinates.pdb
+~~~
 
-정상 종료, command 실패와 INT/TERM에서는 자식 process의 종료를 확인한 뒤 자기 lock만 해제합니다. SIGKILL이나 node 장애로 남은 lock은 자동 삭제하지 않습니다. Error에 표시된 lock과 `owner.json`의 host, PID, command, scope를 확인하고 scheduler와 해당 host에서 모든 writer와 자식 process가 종료됐는지 확인한 뒤 그 lock directory만 수동 제거합니다. PID가 로컬에서 보이지 않는다는 이유만으로 제거하지 않습니다. `.gate/`도 같은 확인이 필요합니다.
+This step uses only AmberTools 26 `tleap` and Python 3; it does not use a GPU.
+Any existing `work/amber-named.pdb`, `tleap.in`, `system.parm7`, `system.rst7`,
+`system.pdb`, `leap.log`, or `tleap.stdout.log`, even an empty one, blocks copying
+and LEaP execution. See [GUIDE.md appendix](../../../../GUIDE.md#4-appendix-run-state-and-recovery) for run state and
+reruns.
 
-`run.sh --dry-run`은 보호나 identity 파일을 생성하지 않습니다. 진행 중인 work를 이동하거나 identity를 수정해 재사용하지 않습니다. 보호는 로컬 filesystem과 로컬 자식 process로 검증했으며 network filesystem, remote MPI와 다른 node의 writer 종료는 미검증입니다.
+### Main outputs
 
-### Concurrent runs and input changes
+| File | Content |
+| --- | --- |
+| `work/system.parm7`, `work/system.rst7` | Stage-3 simulation inputs |
+| `work/system.pdb` | Structure for inspection |
+| `work/leap.log` | LEaP log |
+| `work/tleap.stdout.log` | tleap terminal output |
 
-Coordinate build, topology build and simulation share the `.writers/` registry beside the membrane tutorial root. A downstream reader prevents a builder from rewriting its input directory.
+A successful run ends with `AMBER topology and restart: work`.
+Check `leap.log` for unknown residues, missing heavy atoms, parameter errors, and
+`Errors = 0`. Messages about tleap adding `OXT` at chain C-termini are expected.
+Do not proceed if the initial energy reports an overflow such as
+`VDWAALS = *************`; recheck the stage-1 coordinates.
 
-Existing `work/amber-named.pdb`, `tleap.in`, `system.parm7`, `system.rst7`, `system.pdb`, `leap.log`, or `tleap.stdout.log`, including empty partial results, blocks copying and LEaP execution. Start a new tutorial copy without generated `work/` directories for a new calculation. Simulation identity checks do not replace this build protection.
+### Key options
 
-Normal exit, command failure and INT/TERM release only the owned lock after child termination is verified. Locks left by SIGKILL or node failure are retained. Inspect the reported lock and its `owner.json` host, PID, command and scopes; confirm through the scheduler and owning host that all writers and children stopped before manually removing only that lock directory. A PID missing locally is not sufficient. Apply the same checks to `.gate/`.
+`prepare_tleap.py` transfers the PDB `CRYST1` dimensions unchanged; otherwise the
+x/y periodicity of the equilibrated patch could change.
 
-`run.sh --dry-run` does not create writer or identity files. Do not move active work trees or edit identities to reuse results. Protection was tested on a local filesystem with local child processes; network filesystems, remote MPI and termination of writers on other nodes remain unverified.
+The number of 0.15 M KCl pairs is computed from the number of water molecules,
+not the total box volume:
 
-Salt pair 수가 0이면 `prepare_tleap.py`는 bulk-salt 추가 command를 생략합니다. 기존 neutralization은 유지합니다.
+~~~text
+KCl pairs = round(number of WAT × 0.15 / 55.5)
+~~~
 
-When the salt-pair count is zero, `prepare_tleap.py` omits the bulk-salt command and retains neutralization.
+The default KcsA system contains about 28,000 waters, including pore waters, and
+receives 76 KCl pairs. The value follows changes in coordinate size or water
+count. When the pair count is zero, the bulk-salt command is omitted and
+neutralization is kept.
+
+Because `addionsrand` can select different waters on each tleap invocation, the
+initial ion positions and the `system.rst7` checksum are not fixed.
+
+### Common problems
+
+| Message | Action |
+| --- | --- |
+| `Coordinate PDB not found` | Run the stage-1 `run.sh` first. |
+| `tleap failed. See work/tleap.stdout.log and work/leap.log` | Check residue and atom names at the first error in `leap.log`. Use the Lipid21 names from the stage-1 output unchanged. |
+| `Topology build output already exists` | Run `mv work work.old` and rerun. The writer lock refuses while stage 3 reads this `work`. |

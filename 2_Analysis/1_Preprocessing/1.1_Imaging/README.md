@@ -5,62 +5,64 @@
 Periodic boundary condition 때문에 분리되어 보이는 molecule을 같은 primary
 unit cell에 배치합니다. Chignolin residue `:1-10`을 `autoimage` anchor로
 사용하며 protein center of mass와 box center의 거리를 처리 전후로 비교합니다.
-아래 command는 이 directory에서 실행합니다.
+
+`run.sh`는 [Chignolin conventional MD](../../../1_Simulation/1_MD/1.1_Soluble_Protein/README.md)의
+`work/system.parm7`과 `work/production.nc`를 직접 읽고 `inputs/cpptraj.in`을
+실행합니다. 아래 command는 이 directory에서 실행합니다.
 
 ```bash
 ./run.sh
 python3 anal.py
 ```
 
-`run.sh`는 Chignolin conventional-MD output을 직접 읽고
-`inputs/cpptraj.in`을 실행합니다. 처리 전후 center를 각각
-`center_raw.dat`, `center_imaged.dat`에 기록하고 `imaged.nc`를 생성합니다.
-`anal.py`는 두 center-to-box distance를 Å 단위로 표시합니다.
+`python3 anal.py --save-figure figures`처럼 실행하면 figure를 화면에 표시하면서
+`figures/imaging.png`(150 dpi)로도 저장합니다. 저장 directory는 `output/` 밖에
+둡니다. Option이 없으면 image file을 만들지 않습니다.
 
-다른 protein을 사용할 때는 `run.sh` 상단의 `topology`와 `trajectory`,
-`autoimage anchor :1-10`과 두 `vector ... center` mask를 함께 바꿉니다.
+| Output | Column | 단위 |
+| --- | --- | --- |
+| `center_raw.dat` | `Frame`, imaging 전 protein center x/y/z(2–4열), vector origin(5–7열, 0) | Å |
+| `center_imaged.dat` | 같은 형식, imaging 후 protein center | Å |
+| `box_center.dat` | 같은 형식, box center | Å |
+| `imaged.nc` | Imaging한 전체 trajectory. `system.parm7`과 함께 사용합니다. | — |
 
-### 결과 저장과 재실행
+`anal.py`는 처리 전후의 protein center–box center distance를 표시합니다. Imaging
+후 값은 작고 거의 일정합니다. 처리 전 값은 protein이 box center에서 멀어지면
+커집니다.
 
-`run.sh`는 빈 temporary directory에서 새 결과를 계산하고 필수 output을
-확인한 뒤 `output/`을 교체합니다. 계산 실패나 새 output 누락 시 이전 결과와
-log를 유지합니다. 실패한 실행의 log는 `output.failed/`에 복사하고 마지막 부분을 stderr에 출력합니다.
+다른 protein을 사용할 때는 `run.sh` 상단의 두 경로와 `inputs/cpptraj.in`의
+`autoimage anchor :1-10`, 두 `vector ... center` mask를 함께 바꿉니다.
 
-자동 호출되는 `result_generation.py`가 완료한 파일의 hash를
-`output/.generation.json`에 기록합니다. `anal.py`는 이 기록을 확인하며,
-후처리 파일을 저장하는 경우에도 새 결과를 함께 검증한 뒤 반영합니다.
-기록이 없는 과거 결과는 `run.sh`로 다시 생성합니다.
-
-게시가 중단되어 `.output.pending`이 남으면 결과를 소비하거나 다시 게시하지
-않습니다. 실행 process가 종료됐는지 확인한 뒤 marker에 적힌 previous/new
-directory를 함께 보존하고 검사합니다. 파일을 개별적으로 섞거나 marker만
-삭제해서 재실행하지 않습니다.
-
-공개 analysis entry는 자동으로 `writer_guard.py`를 호출해 같은 output의 동시 writer를 거부합니다. Engine 실행부터 결과 게시까지 보호하며, signal 종료 시 child가 멈춘 뒤 lock을 해제합니다. Lock을 임의로 삭제해 실행을 재개하지 않습니다.
+결과 게시, 실패 log(`output.failed/`), 동시 실행 보호(`writer_guard.py`)는
+[GUIDE.md 부록](../../../GUIDE.md#4-부록-실행-상태와-복구)을 참고합니다.
 
 ## English
 
 This example uses cpptraj `autoimage` to place molecules in a consistent
-primary unit cell. Chignolin residues `:1-10` form the anchor. `run.sh` reads
-the default simulation output directly and produces `imaged.nc`; `anal.py`
-compares protein center-of-mass displacement from the box center. Change the
-two paths, anchor, and vector masks together for another system.
+primary unit cell. Chignolin residues `:1-10` form the anchor.
 
-### Result storage and reruns
+`run.sh` reads `work/system.parm7` and `work/production.nc` from the
+[Chignolin conventional-MD tutorial](../../../1_Simulation/1_MD/1.1_Soluble_Protein/README.md)
+and runs `inputs/cpptraj.in`. Run `./run.sh` and then `python3 anal.py` from
+this directory.
 
-`run.sh` calculates in an empty temporary directory, checks required outputs,
-and then replaces `output/`. Calculation failure or missing new outputs leaves
-the previous results and logs intact. Failed-generation logs are copied to
-`output.failed/`, and their last lines are printed to stderr.
+`python3 anal.py --save-figure figures` also saves the figure as
+`figures/imaging.png` (150 dpi) while displaying it. Keep that directory outside
+`output/`; without the option no image file is written.
 
-The automatically called `result_generation.py` records completed file hashes
-in `output/.generation.json`. `anal.py` checks this record and, when saving
-derived files, validates and publishes them together. Regenerate older results
-without a record by running `run.sh`.
+| Output | Columns | Unit |
+| --- | --- | --- |
+| `center_raw.dat` | `Frame`, protein center x/y/z before imaging (columns 2–4), vector origin (columns 5–7, zero) | Å |
+| `center_imaged.dat` | Same layout, protein center after imaging | Å |
+| `box_center.dat` | Same layout, box center | Å |
+| `imaged.nc` | Imaged full trajectory; use with `system.parm7` | — |
 
-If publication stops with `.output.pending` present, readers and publishers
-refuse to proceed. Check that the process has ended, then preserve and inspect
-both previous/new directories listed in the marker. Do not mix individual files
-or remove only the marker to retry.
+`anal.py` plots the protein-center-to-box-center distance before and after
+imaging. After imaging the distance stays small and nearly constant; before
+imaging it grows whenever the protein drifts away from the box center.
 
-Public analysis entries automatically use `writer_guard.py` to reject concurrent writers to the same output. Protection covers engine execution through publication, and signal cleanup drains children before releasing the lock. Do not delete a lock to force a retry.
+For another system, edit the two paths in `run.sh` together with the anchor and
+the two `vector ... center` masks in `inputs/cpptraj.in`.
+
+Result publication, failure logs (`output.failed/`) and concurrent-run
+protection (`writer_guard.py`) are described in [GUIDE.md appendix](../../../GUIDE.md#4-appendix-run-state-and-recovery).

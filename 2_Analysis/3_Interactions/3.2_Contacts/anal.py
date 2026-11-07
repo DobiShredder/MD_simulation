@@ -3,16 +3,22 @@
 
 from __future__ import annotations
 
+import argparse
 from pathlib import Path
+import re
 
 from result_generation import input_generation
-import re
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 
+# Chignolin residue count; residue pairs outside 1-RESIDUE_COUNT are ignored.
 RESIDUE_COUNT = 10
+
+# Used only with --save-figure DIR.
+FIGURE_NAME = "contacts.png"
+FIGURE_DPI = 150
 
 
 def read_table(path: Path) -> tuple[list[str], np.ndarray]:
@@ -69,8 +75,32 @@ def write_frequency(path: Path, frequency: np.ndarray) -> None:
                 )
 
 
+def save_figure(figure: plt.Figure, figure_dir: Path) -> None:
+    figure_dir.mkdir(parents=True, exist_ok=True)
+    figure_path = figure_dir / FIGURE_NAME
+    figure.savefig(figure_path, dpi=FIGURE_DPI)
+    print(f"Saved figure: {figure_path}")
+
+
+def parse_arguments() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--save-figure",
+        metavar="DIR",
+        type=Path,
+        help="also save the figure as PNG in DIR (outside output/); "
+        "by default the figure is only displayed",
+    )
+    return parser.parse_args()
+
+
 def main() -> int:
+    args = parse_arguments()
     output_dir = Path(__file__).resolve().parent / "output"
+    figure_dir = args.save_figure
+    if figure_dir is not None and figure_dir.resolve().is_relative_to(output_dir):
+        # Extra files in output/ would invalidate its recorded generation hashes.
+        raise SystemExit(f"Error: --save-figure DIR must be outside {output_dir}")
     from writer_guard import protect_python_entry
     protect_python_entry("output", writes=(output_dir,))
     completed_output_dir = output_dir
@@ -81,6 +111,7 @@ def main() -> int:
             raise ValueError("Contact-count output is empty or has too few columns.")
         if not np.all(np.isfinite(counts)) or np.any(counts[:, 1:3] < 0):
             raise ValueError("Contact-count output contains invalid values.")
+        print(f"Frames: {len(counts)}")
         if np.all(counts[:, 1:3] == 0):
             frequency = np.zeros((RESIDUE_COUNT, RESIDUE_COUNT), dtype=float)
         else:
@@ -89,27 +120,32 @@ def main() -> int:
                 raise ValueError("Frame indices in the contact outputs do not match.")
             frequency = contact_frequency(series_header, series)
         write_frequency(output_dir / "contact_frequency.tsv", frequency)
-
-        figure, axes = plt.subplots(1, 2, figsize=(12, 5))
-        axes[0].plot(counts[:, 0], counts[:, 1], label="Native")
-        axes[0].plot(counts[:, 0], counts[:, 2], label="Non-native")
-        axes[0].set_xlabel("Frame")
-        axes[0].set_ylabel("Heavy-atom contact count")
-        axes[0].legend()
-
-        image = axes[1].imshow(frequency, vmin=0, vmax=1, origin="lower", cmap="viridis")
-        ticks = np.arange(RESIDUE_COUNT)
-        axes[1].set_xticks(ticks, ticks + 1)
-        axes[1].set_yticks(ticks, ticks + 1)
-        axes[1].set_xlabel("Residue")
-        axes[1].set_ylabel("Residue")
-        axes[1].set_title("Contact frequency")
-        figure.colorbar(image, ax=axes[1], label="Frame fraction")
-
-        figure.tight_layout()
-        print("Displaying Contacts analysis figure.")
-        plt.show()
+    # contact_frequency.tsv is published when the block above ends, before the
+    # figure opens, so closing the window or pressing Ctrl-C keeps the result.
     output_dir = completed_output_dir
+    print(f"Contact frequency: {output_dir / 'contact_frequency.tsv'}")
+
+    figure, axes = plt.subplots(1, 2, figsize=(12, 5))
+    axes[0].plot(counts[:, 0], counts[:, 1], label="Native")
+    axes[0].plot(counts[:, 0], counts[:, 2], label="Non-native")
+    axes[0].set_xlabel("Frame")
+    axes[0].set_ylabel("Heavy-atom contact count")
+    axes[0].legend()
+
+    image = axes[1].imshow(frequency, vmin=0, vmax=1, origin="lower", cmap="viridis")
+    ticks = np.arange(RESIDUE_COUNT)
+    axes[1].set_xticks(ticks, ticks + 1)
+    axes[1].set_yticks(ticks, ticks + 1)
+    axes[1].set_xlabel("Residue")
+    axes[1].set_ylabel("Residue")
+    axes[1].set_title("Contact frequency")
+    figure.colorbar(image, ax=axes[1], label="Frame fraction")
+
+    figure.tight_layout()
+    if figure_dir is not None:
+        save_figure(figure, figure_dir)
+    print("Displaying Contacts analysis figure.")
+    plt.show()
     print(f"Completed: Contacts analysis; results: {output_dir} (figure displayed interactively)")
     return 0
 

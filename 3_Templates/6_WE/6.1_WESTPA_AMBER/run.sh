@@ -19,6 +19,9 @@ Options:
 Environment:
   WESTPA_WORK_MANAGER  serial or processes (default: serial).
   WESTPA_WORKERS       Worker count for processes mode (default: 1).
+  WE_GPU_IDS           Comma-separated GPU ids for processes mode, one per
+                       worker (worker N uses the Nth id). Required to run
+                       pmemd.cuda with the processes work manager.
   AMBER_ENGINE         Override the engine recorded in resolved_config.toml.
   CPPTRAJ              Progress-coordinate executable (default: cpptraj).
   PYTHON               Python with h5py for completion checks (default: python3).
@@ -85,6 +88,7 @@ fi
 python=${PYTHON:-python3}
 work_manager=${WESTPA_WORK_MANAGER:-serial}
 workers=${WESTPA_WORKERS:-1}
+gpu_ids=${WE_GPU_IDS:-}
 
 case "$work_manager" in
     serial|processes) ;;
@@ -96,8 +100,26 @@ fi
 if [[ "$work_manager" == serial && "$workers" -ne 1 ]]; then
     die "Use WESTPA_WORKERS=1 with the serial work manager."
 fi
-if [[ "$work_manager" == processes && "$(basename "$AMBER_ENGINE")" == pmemd.cuda ]]; then
-    die "Multiple process workers cannot share the default pmemd.cuda engine."
+# runseg.sh gives worker N the Nth id of WE_GPU_IDS, so each worker needs its
+# own entry; extra ids stay unused.
+if [[ -n "$gpu_ids" ]]; then
+    if [[ ! "$gpu_ids" =~ ^[0-9]+(,[0-9]+)*$ ]]; then
+        die "WE_GPU_IDS must be comma-separated GPU ids such as 0,1,2,3: $gpu_ids"
+    fi
+    if [[ "$work_manager" != processes ]]; then
+        die "WE_GPU_IDS requires WESTPA_WORK_MANAGER=processes; for serial runs set CUDA_VISIBLE_DEVICES instead."
+    fi
+    IFS=, read -r -a gpu_id_list <<< "$gpu_ids"
+    if (( workers > ${#gpu_id_list[@]} )); then
+        die "WESTPA_WORKERS ($workers) exceeds the number of WE_GPU_IDS entries (${#gpu_id_list[@]}): $gpu_ids"
+    fi
+    if [[ $(printf '%s\n' "${gpu_id_list[@]}" | sort -u | wc -l) -ne ${#gpu_id_list[@]} ]]; then
+        die "WE_GPU_IDS must not repeat a GPU id: $gpu_ids"
+    fi
+    export WE_GPU_IDS=$gpu_ids
+fi
+if [[ "$work_manager" == processes && "$(basename "$AMBER_ENGINE")" == pmemd.cuda && -z "$gpu_ids" ]]; then
+    die "Multiple process workers cannot share the default pmemd.cuda engine. Set WE_GPU_IDS to one GPU id per worker, for example WE_GPU_IDS=0,1."
 fi
 if [[ -n "$selected_block" && ! "$selected_block" =~ ^[1-9][0-9]*$ ]]; then
     die "--block must be a positive integer: $selected_block"
@@ -171,6 +193,9 @@ for config in "$WORK_DIR"/configs/west.[0-9][0-9][0-9].cfg; do
     fi
     echo "===== w_run started $(date '+%Y-%m-%d %H:%M:%S') =====" >> "$block_log"
     echo "Running: WE block $block_text; log: $block_log"
+    if [[ -n "$gpu_ids" ]]; then
+        echo "Per-worker GPU ids (WE_GPU_IDS): $gpu_ids"
+    fi
     if ! "${command[@]}" >> "$block_log" 2>&1; then
         report_westpa_failure "WESTPA block $block_text failed" "$block_log" "$log_start_line"
     fi

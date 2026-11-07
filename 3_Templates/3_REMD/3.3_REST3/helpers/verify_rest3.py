@@ -7,7 +7,11 @@ import argparse
 import csv
 import hashlib
 import math
+import sys
 from pathlib import Path
+
+sys.dont_write_bytecode = True
+from scale_cmap import COLD_CMAP_TYPE_PREFIX  # noqa: E402
 
 SOLVENT_NAMES = {
     "HOH", "OPC", "SOL", "TIP3", "TIP3P", "WAT",
@@ -173,14 +177,17 @@ def verify_cmap_scaling(base: Path, observed: Path, scale: float) -> None:
         if types != base_types:
             raise SystemExit(f"CMAP bonded type changed: {observed}")
 
+        # Maps of residues outside the tempered region (XU types) stay unscaled.
+        central_type = types[2].partition("-")[0]
+        expected_scale = 1.0 if central_type.startswith(COLD_CMAP_TYPE_PREFIX) else scale
         for reference, value in zip(base_values, values):
             if not math.isclose(
-                reference * scale,
+                reference * expected_scale,
                 value,
                 rel_tol=1.0e-9,
                 abs_tol=1.0e-9,
             ):
-                raise SystemExit(f"CMAP energy was not scaled by lambda_pp: {observed}")
+                raise SystemExit(f"CMAP energy does not match the expected scale ({expected_scale}): {observed}")
 
 
 def main() -> None:

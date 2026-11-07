@@ -14,6 +14,7 @@ sys.path.insert(0, ".")
 from apply_config import apply_config  # noqa: E402
 from config_utils import load_config, nonnegative_float, positive_float, section, string_value  # noqa: E402
 from force_field_profiles import resolve_force_field_profile  # noqa: E402
+from generate_inputs import protein_anchor_masks, softcore_settings  # noqa: E402
 
 
 def arguments() -> argparse.Namespace:
@@ -150,6 +151,8 @@ def main() -> None:
         if string_value(build, "charge_method").upper() != "RESP":
             raise ValueError("charge_method currently supports precharged RESP MOL2 input")
         nonnegative_float(build, "salt_concentration_molar")
+        softcore_settings(section(config, "alchemical"))
+        protein_anchor_masks(section(config, "restraints"))
         for source in (args.structure, Path(string_value(build, "ligand_frcmod"))):
             if not source.is_file():
                 raise ValueError(f"Required input not found: {source}")

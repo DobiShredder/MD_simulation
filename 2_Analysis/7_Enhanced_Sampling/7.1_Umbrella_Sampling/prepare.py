@@ -263,6 +263,8 @@ def prepare_windows(windows_dir: Path, output_dir: Path) -> int:
         with (generation_dir / "summary.tsv").open("w", encoding="utf-8", newline="") as handle:
             csv.writer(handle, delimiter="\t").writerows(summary_rows)
 
+        frame_count = sum(int(row[3]) for row in summary_rows[1:])
+        print(f"Frames: {frame_count} after discarding {DISCARD_PS:g} ps per window")
         window_count = len(windows)
     return window_count
 

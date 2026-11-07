@@ -63,6 +63,13 @@ def resolve(config_path: Path) -> dict[str, object]:
         isinstance(seed, bool) or not isinstance(seed, int) or seed <= 0
     ):
         raise ValueError("random_seed must be 'random' or a positive integer")
+    # Gomez et al. (J. Comput. Chem. 2022) and Amber26 section 3.6: the MC
+    # barostat with a hard LJ cutoff can deform lipid bilayers; use an LJ force
+    # switch that brings the LJ force to zero between fswitch and cut.
+    cutoff = positive_float(run, "cutoff")
+    lj_force_switch = positive_float(run, "lj_force_switch")
+    if lj_force_switch >= cutoff:
+        raise ValueError("lj_force_switch must be smaller than cutoff")
     equilibration_steps = positive_int(run, "equilibration_steps")
     stage_run = dict(run)
     stage_run.setdefault("equilibration_heavy_steps", equilibration_steps * 2 // 5)
@@ -105,6 +112,8 @@ def resolve(config_path: Path) -> dict[str, object]:
         "temperature": positive_float(run, "temperature"),
         "pressure": positive_float(run, "pressure"),
         "timestep": positive_float(run, "timestep"),
+        "cutoff": cutoff,
+        "lj_force_switch": lj_force_switch,
         "heating_steps": positive_int(run, "heating_steps"),
         "equilibration_steps": equilibration_steps,
         "equilibration_heavy_steps": heavy_steps,
@@ -130,13 +139,17 @@ def write_md_inputs(output: Path, values: dict[str, object]) -> None:
     interval = values["interval"]
     seed = -1 if values["seed"] == "random" else values["seed"]
     heavy_mask = values["heavy_mask"]
+    # Every stage uses the same LJ potential; fswitch needs igb=0 and ntb>0.
+    cut_setting = f"cut={values['cutoff']}"
+    fswitch_setting = f"fswitch={values['lj_force_switch']}"
     (output / "min-solvent.in").write_text(
         render_cntrl(
             "Minimize solvent while restraining protein and lipid heavy atoms",
             [
                 "imin=1", "maxcyc=10000", "ncyc=5000", "ntmin=2",
-                "dx0=0.0001", "ntb=1", "ntc=1", "ntf=1", "cut=10.0", "ntr=1",
-                "restraint_wt=10.0", f"restraintmask='{values['solvent_mask']}'",
+                "dx0=0.0001", "ntb=1", "ntc=1", "ntf=1", cut_setting, fswitch_setting,
+                "ntr=1", "restraint_wt=10.0",
+                f"restraintmask='{values['solvent_mask']}'",
             ],
         ) + "&ewald\n  netfrc=0,\n/\n", encoding="utf-8"
     )
@@ -145,7 +158,7 @@ def write_md_inputs(output: Path, values: dict[str, object]) -> None:
             "Minimize lipids and solvent while restraining protein heavy atoms",
             [
                 "imin=1", "maxcyc=10000", "ncyc=5000", "ntmin=2", "dx0=0.0001",
-                "ntb=1", "ntc=1", "ntf=1", "cut=10.0", "ntr=1",
+                "ntb=1", "ntc=1", "ntf=1", cut_setting, fswitch_setting, "ntr=1",
                 "restraint_wt=10.0", f"restraintmask='{heavy_mask}'",
             ],
         ) + "&ewald\n  netfrc=0,\n/\n", encoding="utf-8"
@@ -157,7 +170,7 @@ def write_md_inputs(output: Path, values: dict[str, object]) -> None:
                 "imin=0", "irest=0", "ntx=1", f"nstlim={values['heating_steps']}",
                 f"dt={dt_ps:.6f}", "tempi=20.0", f"temp0={temperature:.3f}",
                 "ntt=3", "gamma_ln=1.0", f"ig={seed}", "ntb=1", "ntp=0", "ntc=2",
-                "ntf=2", "cut=10.0", "ntr=1", "restraint_wt=5.0",
+                "ntf=2", cut_setting, fswitch_setting, "ntr=1", "restraint_wt=5.0",
                 f"restraintmask='{heavy_mask}'", f"ntpr={interval}", f"ntwx={interval}",
                 f"ntwr={interval}", "ioutfm=1", "nmropt=1",
             ],
@@ -170,7 +183,7 @@ def write_md_inputs(output: Path, values: dict[str, object]) -> None:
         "imin=0", "irest=1", "ntx=5", f"dt={dt_ps:.6f}",
         f"temp0={temperature:.3f}", "ntt=3", "gamma_ln=1.0", "ig=-1",
         "ntb=2", "ntp=2", "barostat=2", f"pres0={pressure:.3f}",
-        "taup=2.0", "ntc=2", "ntf=2", "cut=10.0",
+        "taup=2.0", "ntc=2", "ntf=2", cut_setting, fswitch_setting,
         f"ntpr={interval}", f"ntwx={interval}", f"ntwr={interval}", "ioutfm=1",
     ]
     for stage, mask in (("heavy", heavy_mask), ("backbone", values["backbone_mask"])):
@@ -225,6 +238,12 @@ def write_build_parameters(output: Path, values: dict[str, object]) -> None:
 
 def write_tleap_and_resolved(output: Path, values: dict[str, object], coordinate: Path) -> None:
     box, water_count = read_box_and_waters(coordinate)
+    # Minimum image: cut + skinnb (2.0 Å default) must stay below half the shortest box edge.
+    if min(box) / 2.0 <= float(values["cutoff"]) + 2.0:
+        raise ValueError(
+            f"box {box[0]:.1f} x {box[1]:.1f} x {box[2]:.1f} Å is too small for "
+            f"cutoff={values['cutoff']:.1f} plus the 2 Å pair-list skin"
+        )
     salt_pairs = round(water_count * float(values["salt_concentration"]) / 55.5)
     profile = values["force_field_profile"]
     protein_source = str(profile["protein_leaprc"])
@@ -267,6 +286,8 @@ pressure = {values['pressure']:.3f}
 ensemble = "NPT"
 pressure_coupling = "anisotropic"
 timestep = {values['timestep']:.3f}
+cutoff = {values['cutoff']:.3f}
+lj_force_switch = {values['lj_force_switch']:.3f}
 constraint_mode = "h-bonds"
 heating_steps = {values['heating_steps']}
 equilibration_steps = {values['equilibration_steps']}

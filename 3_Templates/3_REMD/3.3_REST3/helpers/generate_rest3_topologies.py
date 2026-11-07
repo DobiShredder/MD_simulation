@@ -13,13 +13,7 @@ sys.dont_write_bytecode = True
 sys.path.insert(0, ".")
 from rest3_parser_adapter import load_parser_module, run_parser  # noqa: E402
 from scale_cmap import install_scaled_cmap  # noqa: E402
-
-# tempered_region = "solute": every molecule definition except water and ions
-# is hot. These residue names match mark_hot.py and generate_states.py.
-SOLVENT_AND_ION_NAMES = {
-    "CA", "CA2", "CA2+", "CL", "CL-", "CLA", "HOH", "K", "K+", "MG", "MG2", "MG2+", "NA", "NA+", "OPC", "POT", "SOD", "SOL", "TIP3", "TIP3P", "WAT", "ZN", "ZN2", "ZN2+",
-}
-
+from tempered_selection import definition_selection, read_selection, topology_layout  # noqa: E402
 
 def generated_topology(directory: Path, lambda_pp: float, kappa: float) -> Path:
     suffix = f"-{lambda_pp:.3f}-{kappa:.3f}.top"
@@ -32,37 +26,29 @@ def generated_topology(directory: Path, lambda_pp: float, kappa: float) -> Path:
     return candidates[0]
 
 
-def solute_molecules(topology: Path) -> list[tuple[int, str]]:
-    """Return (definition index, name) of every non-water, non-ion molecule."""
-    definitions: list[tuple[str, set[str]]] = []
-    section = ""
-    for line in topology.read_text(encoding="utf-8").splitlines():
-        data = line.split(";", 1)[0].strip()
-        if not data or data.startswith("#"):
-            continue
-        if data.startswith("[") and data.endswith("]"):
-            section = data.strip("[] ").lower()
-            if section == "moleculetype":
-                definitions.append(("", set()))
-            continue
-        fields = data.split()
-        if section == "moleculetype" and not definitions[-1][0]:
-            definitions[-1] = (fields[0], definitions[-1][1])
-        elif section == "atoms" and len(fields) >= 5 and definitions:
-            definitions[-1][1].add(fields[3].upper())
+def select_hot_molecules(topology: Path, tempered_atoms: Path) -> list[tuple[int, str]]:
+    """Return (definition index, name) of the molecules in the tempered selection.
+
+    The parser tempers whole [ moleculetype ] definitions (hot_molecules), so
+    the selection must cover every atom of each selected molecule.
+    """
+    try:
+        definitions, _ = topology_layout(topology)
+        positions = definition_selection(topology, read_selection(tempered_atoms))
+    except (OSError, ValueError) as error:
+        raise SystemExit(f"Error: {error}") from None
 
     selected: list[tuple[int, str]] = []
-    for index, (name, residues) in enumerate(definitions):
-        cold = residues & SOLVENT_AND_ION_NAMES
-        if cold and cold != residues:
+    for index in sorted(positions):
+        name, atoms = definitions[index]
+        if len(positions[index]) != len(atoms):
             raise SystemExit(
-                f"Molecule {index} ({name}) mixes solute residues with water or ions; "
-                "the solute hot region cannot be separated."
+                f"The tempered selection covers {len(positions[index])} of {len(atoms)} atoms "
+                f"of molecule {index} ({name}). REST3 (repex-topology-parser hot_molecules) "
+                "tempers whole molecules only: select every atom of the molecule, or use "
+                "REST2 for a partial region."
             )
-        if not cold:
-            selected.append((index, name))
-    if not selected:
-        raise SystemExit(f"No solute molecule found for the REST3 hot region: {topology}")
+        selected.append((index, name))
     return selected
 
 
@@ -81,6 +67,7 @@ def main() -> None:
         type=Path,
         help="Base GROMACS topology with residue-specific CMAP types",
     )
+    parser.add_argument("tempered_atoms", type=Path, help="tempered_atoms.tsv from tempered_selection.py")
     parser.add_argument("states", type=Path, help="Resolved REST3 states.tsv file")
     parser.add_argument("output", type=Path, help="Replica output directory")
     args = parser.parse_args()
@@ -90,9 +77,9 @@ def main() -> None:
     if len(states) < 2 or len(states) % 2:
         raise SystemExit(f"REST3 requires at least two and an even number of states: {args.states} ({len(states)} states)")
 
-    hot_molecules = solute_molecules(args.processed_topology)
-    hot_indices = [index for index, _ in hot_molecules]
-    write_hot_molecules(args.output / "hot_molecules.tsv", hot_molecules)
+    selected_molecules = select_hot_molecules(args.processed_topology, args.tempered_atoms)
+    hot_indices = [index for index, _ in selected_molecules]
+    write_hot_molecules(args.output / "hot_molecules.tsv", selected_molecules)
 
     base_temperature = float(states[0]["effective_temperature_K"])
     base_target = args.output / states[0]["replica"] / "topol.top"
@@ -111,9 +98,9 @@ def main() -> None:
             str(args.processed_topology), temps=[base_temperature, temperature], nreps=2
         )
         # The parser indexes [ moleculetype ] blocks itself; stop if its
-        # indices do not name the same molecules as the solute selection.
+        # indices do not name the same molecules as the tempered selection.
         parser_molecules = getattr(converter, "molecules", {})
-        for index, name in hot_molecules:
+        for index, name in selected_molecules:
             if parser_molecules.get(index) != name:
                 raise SystemExit(
                     f"Parser molecule {index} is {parser_molecules.get(index)!r}, "
@@ -139,7 +126,7 @@ def main() -> None:
         install_scaled_cmap(args.processed_topology, target, lambda_pp)
         shutil.rmtree(temporary)
 
-    names = ", ".join(name for _, name in hot_molecules)
+    names = ", ".join(name for _, name in selected_molecules)
     print(f"Created {len(states)} REST3 topologies: {args.output} (hot molecules: {names})")
 
 

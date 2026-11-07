@@ -49,6 +49,15 @@ show_engine_log() {
     fi
 }
 
+# Keep engine stdout/stderr in engine.<stage>.log beside <stage>.out.
+# Each attempt appends a header, so earlier attempts stay readable.
+run_engine() {
+    local engine_log=$1
+    shift
+    echo "== $(date '+%Y-%m-%d %H:%M:%S') $*" >> "$engine_log"
+    "$@" >> "$engine_log" 2>&1
+}
+
 run_stage() {
     local label=$1
     local output=$2
@@ -89,9 +98,11 @@ run_stage() {
         return
     fi
 
+    local engine_log="engine.${output%.out}.log"
     echo "Running: $label"
-    if ! "$@"; then
+    if ! run_engine "$engine_log" "$@"; then
         show_engine_log "$output"
+        show_engine_log "$engine_log"
         die_retained "$label" "$label failed; engine output: work/$output. " "${stage_files[@]}"
     fi
     if [[ ! -s "$output" ]]; then
@@ -125,10 +136,6 @@ fi
 if [[ ! -s "$topology" || ! -s "$coordinates" ]]; then
     die "Run preflight: topology or restart missing: $topology, $coordinates. Run ../2_Topology_Build/run.sh first."
 fi
-# A partial production run is reported by run_stage with recovery steps.
-if (( ! dry_run )) && [[ -e work/production.out && -e work/.production.out.success.json ]]; then
-    die "Production output already exists: work/production.out. To start again, move work aside (for example: mv work work.old) and rerun ./run.sh."
-fi
 
 if (( ! dry_run )); then
     "${PYTHON:-python3}" helpers/input_identity.py --verify work
@@ -140,6 +147,18 @@ if (( ! dry_run )); then
     "${PYTHON:-python3}" helpers/input_identity.py \
         --record work/.source.identity.json --stage "run source inputs" \
         "${source_options[@]}" --value="$engine"
+fi
+
+# A completed production is reused; run_stage refuses a partial one.
+if (( ! dry_run )) && [[ -e work/.production.out.success.json ]]; then
+    "${PYTHON:-python3}" helpers/input_identity.py \
+        --check-completion work/.production.out.identity.json >/dev/null
+    echo "Skipping completed production: work/production.nc"
+    echo "Next: analyze work/system.parm7 and work/production.nc with the 2_Analysis tutorials (../../../../2_Analysis/README.md)"
+    exit 0
+fi
+
+if (( ! dry_run )); then
     mkdir -p work/inputs
     for source_input in "$topology" "$coordinates" inputs/*.in; do
         filename=${source_input##*/}

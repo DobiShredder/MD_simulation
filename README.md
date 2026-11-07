@@ -8,6 +8,9 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 
 
+#### **AMBER**와 **GROMACS**를 사용하는 Molecular Dynamics (MD) simulation tutorial 모음입니다.
+#### Conventional MD부터 enhanced sampling과 free energy 계산까지 다룹니다.
+
 #### A comprehensive collection of Molecular Dynamics (MD) simulation tutorials using **AMBER** and **GROMACS**.
 #### This repository covers enhanced sampling techniques ranging from conventional MD to free energy calculations.
 
@@ -33,13 +36,27 @@
 
 
 
-## Quick start / 빠른 시작
+## Getting started / 처음 시작하기
 
-1. Read the [integrated tutorial guide / 통합 튜토리얼 가이드](GUIDE.md).
-2. Choose a [simulation tutorial / 시뮬레이션 튜토리얼](1_Simulation/README.md).
-3. Process its trajectory with an [analysis tutorial / 분석 튜토리얼](2_Analysis/README.md).
-4. Apply a learned workflow to your structure with the
-   [config-driven templates / 설정 기반 template](3_Templates/README.md).
+1. [GUIDE.md](GUIDE.md)의 [학습 전 준비](GUIDE.md#0-학습-전-준비)를 읽습니다.
+2. 아래 Prerequisites 절에 따라 AmberTools 26 environment를 만듭니다.
+3. 첫 simulation으로 가장 작은 system인
+   [Chignolin conventional MD](1_Simulation/1_MD/1.1_Soluble_Protein/README.md)를
+   실행합니다. 이 output은 analysis 1–5번의 input입니다.
+4. 같은 trajectory로 [Imaging](2_Analysis/1_Preprocessing/1.1_Imaging/README.md)과
+   [RMSD, RMSF, and Rg](2_Analysis/2_Basic/2.1_RMSD_RMSF_Rg/README.md)를 실행합니다.
+5. 다음 method는 [1_Simulation](1_Simulation/README.md)에서 고르고, 직접 준비한
+   structure에는 [3_Templates](3_Templates/README.md)를 사용합니다.
+
+1. Read [Before you start](GUIDE.md#0-before-you-start) in [GUIDE.md](GUIDE.md).
+2. Create the AmberTools 26 environment described under Prerequisites below.
+3. Run [Chignolin conventional MD](1_Simulation/1_MD/1.1_Soluble_Protein/README.md),
+   the smallest system, first. Its output feeds analysis categories 1–5.
+4. Analyze that trajectory with
+   [Imaging](2_Analysis/1_Preprocessing/1.1_Imaging/README.md) and
+   [RMSD, RMSF, and Rg](2_Analysis/2_Basic/2.1_RMSD_RMSF_Rg/README.md).
+5. Choose the next method in [1_Simulation](1_Simulation/README.md), and use
+   [3_Templates](3_Templates/README.md) for your own structure.
 
 
 
@@ -47,7 +64,7 @@
 
 ```text
 MD_simulation/
-├── GUIDE.md                 # Integrated curriculum and method selection
+├── GUIDE.md                 # Curriculum, method selection, run-state appendix
 ├── assets/                  # Shared SVG concept figures
 ├── 1_Simulation/
 │   ├── 1_MD/
@@ -77,6 +94,12 @@ MD_simulation/
     ├── 6_WE/                # WESTPA + AMBER weighted ensemble
     └── 7_MetaD/             # MetaD and OPES variants
 ```
+
+[GUIDE.md 부록](GUIDE.md#4-부록-실행-상태와-복구)은 모든 `build.sh`, `run.sh`, `anal.py`가 공통으로
+따르는 결과 보존, 실패 후 재실행, 동시 실행 보호와 analysis output 게시 규칙을
+설명합니다. The [GUIDE.md appendix](GUIDE.md#4-appendix-run-state-and-recovery) describes the
+result-preservation, rerun-after-failure, concurrent-run and analysis-output rules
+shared by every `build.sh`, `run.sh` and `anal.py`.
 
 ## Simulation tutorials / 시뮬레이션 튜토리얼
 
@@ -133,6 +156,8 @@ ff19SB tutorial은 Amber 26에서 권장하는 4-site OPC water와 OPC용 ion
 parameter를 사용합니다. The ff19SB tutorials use the Amber 26 recommended
 four-site OPC water model and its matching ion parameters.
 
+내려받은 source structure는 checksum과 함께 기록합니다. 생성된 system,
+trajectory, restart file, topology와 log는 Git으로 배포하지 않습니다.
 Downloaded source structures are recorded with checksums. Generated systems,
 trajectories, restarts, topologies, and logs are not distributed through Git.
 
@@ -141,7 +166,9 @@ trajectories, restarts, topologies, and logs are not distributed through Git.
 
 ## 🛠️ Prerequisites & Tools
 
-The tutorials utilize the following software packages. Please ensure they are installed and properly configured in your environment.
+Tutorial은 다음 software package를 사용합니다. 각 환경에 설치하고 설정해 둡니다.
+The tutorials use the following software packages. Install and configure them
+in your environment.
 
 | Software                                                                                  | Description                             | Official Site                              |
 | :---------------------------------------------------------------------------------------- | :-------------------------------------- | :----------------------------------------- |
@@ -161,7 +188,7 @@ array expansion under `set -u`; put a Homebrew or conda `bash` first in `PATH`.
 
 AmberTools 26은 conda-forge에서 Linux와 macOS용 binary package로 제공됩니다.
 별도 environment를 만든 뒤 Amber environment script를 불러옵니다.
-Weighted Ensemble (WE) 계산을 위한 WESTPA도 같은 environment에 install하는 것을 추천드립니다.
+Weighted Ensemble (WE) 계산에 쓰는 WESTPA도 같은 environment에 설치합니다.
 
 ```bash
 conda create -n ambertools26 -c conda-forge python=3.12 ambertools=26
@@ -185,14 +212,18 @@ Conda-forge package는 topology build, `sander` CPU test와 cpptraj analysis에
 사용할 수 있습니다. CPU parallel 및 CUDA support는 포함하지 않습니다.
 Tutorial의 기본 production engine인 `pmemd.cuda`는 별도의 Amber 26 설치와 지원되는 GPU가 필요합니다.
 AmberTools만 설치한 환경에서 짧은 test를 실행할 때는 해당 method가 `sander`를 지원하는지 local README에서 먼저 확인합니다.
-각 실행 파일 (`run.sh`)에 포함 된 dry run은 engine 선택과 command만 표시합니다.
+각 `run.sh`의 dry run은 engine 선택과 command만 표시합니다.
 
 ```bash
 AMBER_ENGINE=sander ./run.sh --dry-run
 ```
 
-The dry-run mode included in each `run.sh` prints the selected engine and
-command without starting the calculation.
+The conda-forge package covers topology builds, `sander` CPU tests, and cpptraj
+analysis, but not CPU-parallel or CUDA engines. The default tutorial production
+engine, `pmemd.cuda`, needs a separate Amber 26 installation and a supported
+GPU. Before a short AmberTools-only test, check in the local README whether the
+method supports `sander`. The dry-run mode included in each `run.sh` prints the
+selected engine and command without starting the calculation.
 
 [AmberTools 26 공식 설치 안내](https://ambermd.org/GetAmber.php)와
 [Amber 2026 Reference Manual](https://ambermd.org/doc12/Amber26.pdf)에서
@@ -200,13 +231,16 @@ platform별 차이와 설치 후 test 방법을 확인할 수 있습니다.
 
 ### 🐍 Python Dependencies
 
-분석 스크립트 및 시각화를 위해서는 아래 library들이 추가적으로 필요합니다. `pip` 혹은 `conda`를 사용하여 설치할 수 있습니다.
-또한, Python 패키지들은 가상 환경을 구성해서 관리하는 것을 추천합니다 (예: [Anaconda](https://www.anaconda.com/download))
-**AmberTools26을 설치할 때 생성 된 가상 환경(ambertools26)에 통합하여 사용하는 것을 추천합니다.**
+분석 script와 시각화에는 아래 library가 추가로 필요합니다. `pip` 또는 `conda`로
+설치합니다. Python package는 가상 환경(예: [Anaconda](https://www.anaconda.com/download))에서
+관리하며, AmberTools 26 설치 때 만든 `ambertools26` environment에 함께 설치하는
+구성을 기준으로 합니다.
 
-To run the analysis scripts, you need the following Python libraries. You can install them via `pip` or `conda`.
+The analysis scripts need the following Python libraries, installed with `pip`
+or `conda`. Manage them in a virtual environment (e.g.
+[Anaconda](https://www.anaconda.com/download)); the tutorials assume the
+`ambertools26` environment created for AmberTools 26.
 
-I recommend to manage your Python packages through virtual environment (ex: [Anaconda](https://www.anaconda.com/download))
 ```bash
 numpy
 matplotlib
@@ -217,6 +251,11 @@ umap-learn>=0.5.7,<0.6
 pymbar>=4,<5
 MDAnalysis
 ```
+
+Analysis package의 설치 command와 category별 사용처는
+[2_Analysis README](2_Analysis/README.md#준비)에 있습니다. The analysis install
+command and per-category usage are in the
+[2_Analysis README](2_Analysis/README.md#preparation).
 
 
 
@@ -266,7 +305,9 @@ subject to their respective licenses and terms. Third-party algorithms reused in
 
 
 
-*If you need any help, please contact me.*
+*질문과 문제 보고는 [GitHub Issues](https://github.com/DobiShredder/MD_simulation/issues)에
+남깁니다. Questions and problem reports go to
+[GitHub Issues](https://github.com/DobiShredder/MD_simulation/issues).*
 
 
 

@@ -28,8 +28,8 @@ RBFE production at lambda @LAMBDA@
   scmask1='@SCMASK_A@',
   scmask2='@SCMASK_B@',
   ifsc=1,
-  scalpha=0.5,
-  scbeta=12.0,
+  scalpha=@SCALPHA@,
+  scbeta=@SCBETA@,@GTI_SOFTCORE_OPTIONS@
   aces26=1,
   gti_sc_cc_energy_terms='ele,vdw,ele14,vdw14',
   gti_sc_sc_energy_terms='',

@@ -13,6 +13,12 @@ die() {
 
 profile=$1
 simulation_work=$2
+
+# Reweighting parameters. The temperature must match temp0 in the GaMD
+# production input; the bin width is in the CV unit (Å for all three profiles).
+temperature_kelvin=300
+bin_width_angstrom=0.25
+
 cpptraj=${CPPTRAJ:-cpptraj}
 python=${PYTHON:-python3}
 output_dir=${OUTPUT_DIR:-"output/$profile"}
@@ -111,8 +117,8 @@ if ! "$python" \
     --cv "$output_dir/cv.dat" \
     --log-directory "$simulation_work" \
     --components "$components" \
-    --temperature 300 \
-    --bin-width 0.25 \
+    --temperature "$temperature_kelvin" \
+    --bin-width "$bin_width_angstrom" \
     --output "$output_dir/pmf.tsv"; then
     die "GaMD reweighting failed: $output_dir/cv.dat; GaMD logs: $simulation_work"
 fi

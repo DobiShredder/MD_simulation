@@ -2,19 +2,28 @@
 
 ## 한국어
 
-사용자가 직접 실행하는 파일은 이 directory의 root에 있습니다. `helpers/`는 `build.sh`, `run.sh` 또는 `anal.py`가 자동 호출하는 leaf-local 내부 code입니다. `helpers/result_generation.py`는 외부 consumer에서 결과를 읽기 전 별도로 검사할 때도 사용합니다.
+Ligand A에서 ligand B로 변환하는 dual-topology AMBER RBFE window를 complex와
+solvent environment에 각각 만듭니다. `atom_mapping.tsv`로 대응시킨 common core는
+두 end state의 parameter를 lambda에 따라 linear mixing하고, 대응되지 않은 atom만
+soft-core가 됩니다.
 
-중단되거나 marker가 없는 stage output은 자동 삭제하거나 재실행하지 않고 보존한 채 중단합니다.
+기본 lambda는 0.0–1.0의 11개 state이며 restraint stage는 없습니다. 각 window는
+250,000-step heating, 500,000-step equilibration과 10,000,000-step production을
+실행합니다. `ifmbar=1`, `bar_intervall=5000`으로 cross-state energy를 기록합니다.
 
-Water count를 위한 first-pass LEaP input과 `solvated.pdb`는 `work/.build_tmp.XXXXXX/`에서 생성합니다. 전체 build가 성공하면 temporary directory를 삭제하고, 실패하면 진단을 위해 경로를 출력하고 보존합니다. Final PDB, topology, restart, resolved config와 LEaP log는 유지합니다.
+### 필요한 input
+
+- `build.sh`에 넘길 ligand를 제외한 reviewed protein PDB
+- 서로 같은 coordinate frame에 배치한 두 ligand의 precharged MOL2와 matching
+  frcmod (`config.toml`에서 지정)
+- One-to-one atom-name mapping인 `atom_mapping.tsv`
 
 이 directory만 별도로 복사해 사용할 수 있습니다. Python dependency는 복사한
-directory의 `requirements.txt`를 사용해 설치합니다.
+directory의 `requirements.txt`를 사용해 설치합니다. 필요한 program과 기본
+계산량(22 windows, production 합계 440 ns)은 [FEP template README](../README.md#필요한-program)에
+있습니다.
 
-Ligand A에서 ligand B로 변환하는 dual-topology AMBER RBFE window를 complex와
-solvent environment에 각각 만듭니다. `build.sh`에는 ligand를 제외한 reviewed
-protein PDB를 전달합니다. 서로 같은 coordinate frame에 배치한 precharged MOL2,
-matching frcmod와 one-to-one `atom_mapping.tsv`는 `config.toml`에서 지정합니다.
+### 실행
 
 ```bash
 ./build.sh prepared_protein.pdb
@@ -23,24 +32,31 @@ matching frcmod와 one-to-one `atom_mapping.tsv`는 `config.toml`에서 지정�
 python3 anal.py
 ```
 
-기본 lambda는 0.0–1.0의 11개 state이며 restraint stage는 없습니다. 각 window는
-250,000-step heating, 500,000-step equilibration과 10,000,000-step production을
-실행합니다. `ifmbar=1`, `bar_intervall=5000`으로 cross-state energy를 기록합니다.
-Build는 두 ligand mask가 비어 있지 않고 겹치지 않는지, mapping atom 이름이
-각 ligand에 존재하며 one-to-one인지 검사합니다.
+| File | 역할 |
+| --- | --- |
+| `download.sh` | `download.sh PDB_ID`로 optional source protein PDB 다운로드 |
+| `config.toml` | Force field, ligand file, mask, MD 길이와 lambda schedule |
+| `atom_mapping.tsv` | Ligand A–B common-core atom pair |
+| `build.sh` | 두 environment와 lambda window 생성 |
+| `run.sh` | Window별 stage 실행 |
+| `anal.py` | MBAR free energy와 overlap 계산 |
+
+`helpers/`는 `build.sh`, `run.sh` 또는 `anal.py`가 자동 호출하는 leaf-local 내부
+code입니다. `helpers/result_generation.py`는 외부 consumer에서 결과를 읽기 전
+별도로 검사할 때도 사용합니다.
 
 ### Common core와 `atom_mapping.tsv`
 
-`atom_mapping.tsv`의 atom pair는 common core입니다. 대응된 atom은 두 end state의
-parameter를 lambda에 따라 linear mixing하고, 대응되지 않은 atom만 soft-core가
-됩니다. `helpers/generate_inputs.py`는 environment마다 다음을 수행합니다.
+Build는 두 ligand mask가 비어 있지 않고 겹치지 않는지, mapping atom 이름이
+각 ligand에 존재하며 one-to-one인지 검사합니다. `helpers/generate_inputs.py`는
+environment마다 다음을 수행합니다.
 
 - Ligand mask가 residue 하나 전체를 고르는지, residue 이름이 topology에서
   유일한지 확인합니다.
 - Mapping된 ligand B atom이 ligand A partner와 같은 순서로 놓였는지 확인합니다.
   Amber manual은 common atom의 같은 순서와 같은 시작 좌표를 요구합니다
   (Amber26 §27.1.6, p.555, sander 기준; pmemd 준비 예시 §27.1.8.1, p.568).
-  순서가 다르면 MOL2 atom 순서나 mapping을 고쳐야 합니다.
+  순서가 다르면 MOL2 atom 순서나 mapping을 고칩니다.
 - 대응 atom 좌표 차이가 0.1 Å 이하인지 확인하고, ligand B core 좌표를 ligand A
   대응 atom에 복사해 `work/build/{complex,solvent}_core.rst7`을 만듭니다.
   Window는 이 restart에서 시작합니다.
@@ -52,12 +68,38 @@ parameter를 lambda에 따라 linear mixing하고, 대응되지 않은 atom만 s
 SHAKE bond는 `pmemd.cuda` 기본값(`tishake=0`, 자동 `gti_syn_mass=3`)을 사용합니다
 (§27.1.7.5, p.567). 실제 `pmemd.cuda` parsing과 DV/DL은 미검증입니다.
 
-Production 일부만 존재하면 자동으로 덮어쓰지 않습니다. `anal.py`는 완료 marker가
-있는 모든 production output을 사용하며 FE-ToolKit의
-`edgembar-amber2dats.py`와 `edgembar`가 필요합니다.
-`download.sh PDB_ID`는 optional source protein PDB를 내려받습니다. `build.sh`는
-두 environment와 lambda window를 생성하고, `run.sh`는 window별 stage를
-실행하며, `anal.py`는 MBAR free energy와 overlap을 계산합니다.
+### Output
+
+`build.sh`는 각 lambda 값을 complex와 solvent의 한 window로 만들고
+`work/states.tsv`에 기록합니다. `anal.py`는 완료 기록이 있는 모든 production
+output을 사용해 `mbar/`, `free_energy.tsv`, `mbar_diagnostics.tsv`,
+`overlap_matrix.tsv`를 씁니다. Analysis가 실패하면 기존 결과를 유지하고 실패한
+command의 최근 log를 stderr에 출력합니다.
+
+외부 script에서 결과를 읽기 전에는 다음 검사를 사용합니다. 별도 `WORK_DIR`을
+사용했다면 `work`를 그 경로로 바꿉니다.
+
+```bash
+python3 helpers/result_generation.py work
+```
+
+완료 기록은 `work/.analysis-generation.json`입니다. `work/.analysis.pending`이
+남으면 게시가 중간에 멈춘 것이므로 GUIDE.md 부록의 `.output.pending`과 같은
+방식으로 처리합니다.
+
+### 성공 확인
+
+| Command | 정상 종료 |
+| --- | --- |
+| `./build.sh prepared_protein.pdb` | Environment마다 `N common-core atoms (largest pre-sync gap ...)`와 두 `scmask`를 출력하고 `FEP systems and windows: work`로 끝납니다. |
+| `./run.sh --dry-run` | `Dry run: RBFE: 22 environment/window states, 10000000 production steps per window` |
+| `./run.sh` | `RBFE production completed: work/complex, work/solvent`. `--preparation-only`는 `RBFE preparation completed: work`로 끝납니다. |
+| `python3 anal.py` | `RBFE free-energy results: work/free_energy.tsv`. 모든 window의 production이 끝나야 실행됩니다. |
+
+부호, overlap 기준과 overlap이 부족할 때의 조치는
+[FEP tutorial README](../../../1_Simulation/5_FEP/README.md#결과-해석)를 따릅니다.
+Window를 추가할 때는 `lambda_values`에 해당 구간의 값을 넣고 새 `WORK_DIR`에서 다시
+build합니다.
 
 ### Config 선택값
 
@@ -72,81 +114,173 @@ Production 일부만 존재하면 자동으로 덮어쓰지 않습니다. `anal.
 | `equilibration_ensemble` | `NVT`, `NPT` | `NPT` | Generated equilibration input의 `ntb`와 `ntp`를 설정합니다. |
 | `production_ensemble` | `NVT`, `NPT` | `NPT` | Generated production input의 `ntb`와 `ntp`를 설정합니다. |
 | `random_seed` | `"random"` 또는 양의 정수 | `"random"` | Heating만 새 velocity를 만듭니다. `"random"`은 `ig=-1`, 정수 N은 window마다 `ig=N + global window index`(1부터)를 씁니다. Equilibration과 production은 restart에서 이어가며 항상 `ig=-1`입니다. |
+| `scalpha` | 0보다 큰 수 (unitless) | `0.5` | vdW soft-core의 α입니다. |
+| `scbeta` | 0보다 큰 수 (Å²) | `12.0` | Electrostatic soft-core의 β입니다. |
+| `gti_lam_sch` | 정수 `0`, `1` | `0` | `1`이면 `pmemd.cuda` smoothstep lambda scheduling을 켭니다. |
+| `gti_ele_sc` | 정수 `0`, `1` | `0` | `1`이면 electrostatic soft-core에 smoothstep function을 씁니다. |
+| `gti_vdw_sc` | 정수 `0`, `1` | `0` | `1`이면 vdW soft-core에 smoothstep function을 씁니다. |
+
+`[alchemical]`의 soft-core 다섯 값은 모든 window의 minimization, heating,
+equilibration, production input에 들어갑니다. 세 `gti_*`가 모두 0이면
+`pmemd.cuda` 기본값과 같아 mdin에 쓰지 않고, 하나라도 1이면 셋을 모두 씁니다.
+`gti_lam_sch=1`이면 `pmemd.cuda`의 기본값이 `gti_ele_sc=1`, `gti_vdw_sc=1`,
+`scalpha=0.2`, `scbeta=50.0`으로 바뀝니다(Amber26 §27.1.7.1, p.559–560). Template은
+config 값을 그대로 쓰므로 네 값을 함께 정합니다. Window directory에 `lambda.sch`가
+없으면 `pmemd.cuda` 기본 `smooth_step2` schedule을 사용합니다. 기본값이 아닌 조합은
+`pmemd.cuda`로 실행하지 않았습니다(미검증). Build가 사용한 값은
+`work/resolved_config.toml`의 `[alchemical]`에 기록됩니다.
 
 `lambda_values`는 0.0과 1.0을 포함하는 중복 없는 오름차순 list를 직접
-지정합니다. Auto/file mode는 없으며, 각 값이 complex와 solvent의 한 window가
-되어 `work/states.tsv`에 기록됩니다. `production_segments`는 현재 `1`만
-지원합니다.
+지정합니다. Auto/file mode는 없습니다. `production_segments`는 `1`만 지원합니다.
 
-### Engine 선택과 실행 상태
+### 숫자 option
 
-`AMBER_ENGINE`이 설정되어 있으면 이를 사용하며, 없으면 build가 기록한 `work/resolved_config.toml`의 `run.engine`을 읽습니다. 허용하는 executable 이름은 `pmemd.cuda`이며 설치 경로를 지정할 수 있습니다. 빈 override, 누락된 engine 설정과 지원하지 않는 executable은 기본값으로 대체하지 않고 error로 중단합니다. Runner가 `helpers/config_utils.py`를 자동 호출해 이 설정을 읽습니다.
+| Key | 기본값 | Unit | Stage | 효과 |
+| --- | --- | --- | --- | --- |
+| `ligand_a_net_charge`, `ligand_b_net_charge` | `0` | e | Build | MOL2 charge 합과 0.01 e 이내로 맞아야 합니다. `anal.py`는 net-charge correction을 계산하지 않습니다. |
+| `complex_box_distance` | `14.0` | Å | Build | Complex leg의 solute와 box edge 사이 `solvatebox` buffer |
+| `solvent_box_distance` | `20.0` | Å | Build | Solvent leg의 `solvatebox` buffer |
+| `salt_concentration` | `150.0` | mM | Build | 중화 ion 뒤 leg마다 `water 수 × M / 55.5`(반올림)개의 NaCl pair를 더합니다. |
+| `temperature` | `300.0` | K | MD stage, `anal.py` | `temp0`와 `edgembar --temp` |
+| `pressure` | `1.0` | bar | NPT stage | `pres0` |
+| `timestep` | `2.0` | fs | MD stage | `dt`. 2 fs보다 크면 build가 거부합니다. |
+| `minimization_steps` | `5000` | cycles | Minimization | `maxcyc` |
+| `minimization_steepest_steps` | `2500` | cycles | Minimization | RBFE input은 `ntmin=2`(전부 steepest descent)이고 `ncyc`가 없어 적용되지 않습니다. |
+| `heating_initial_temperature` | `0.0` | K | Heating | `tempi` |
+| `heating_steps` | `250000` | steps | Heating | NVT 500 ps |
+| `equilibration_steps` | `500000` | steps | Equilibration | 1 ns |
+| `production_steps_per_window` | `10000000` | steps | Production | Window당 20 ns |
+| `trajectory_interval_steps` | `5000` | steps | MD stage | `ntwx`. Production은 window당 2,000 frames입니다. |
+| `energy_interval_steps` | `5000` | steps | MD stage | mdout 기록 간격 `ntpr` |
+| `restart_interval_steps` | `5000` | steps | MD stage | `ntwr` |
+| `mbar_interval_steps` | `5000` | steps | Production | Cross-state energy 기록 간격 `bar_intervall` |
 
-Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 중단하고 파일을 보존합니다. 새 build에는 별도 `WORK_DIR`을 지정합니다.
+### Engine 선택
 
-빈 output도 기존 파일로 취급합니다. Completion marker와 필수 nonempty output이 모두 있어야 단계를 건너뛰며, partial output은 자동으로 덮어쓰지 않습니다. Partial output이 있으면 error가 해당 window와 남은 파일을 표시합니다. 이 파일을 `WORK_DIR` 밖으로 옮긴 뒤(예: `mkdir -p work.failed && mv ... work.failed/`) error에 표시된 `./run.sh` command를 다시 실행합니다. `WORK_DIR` 안으로 옮기면 identity가 없는 결과로 거부됩니다.
+`AMBER_ENGINE`이 설정되어 있으면 이를 사용하며, 없으면 build가 기록한
+`work/resolved_config.toml`의 `run.engine`을 읽습니다. 허용하는 executable 이름은
+`pmemd.cuda`이며 설치 경로를 지정할 수 있습니다. 빈 override, 누락된 engine 설정과
+지원하지 않는 executable은 기본값으로 대체하지 않고 error로 중단합니다. Runner가
+`helpers/config_utils.py`를 자동 호출해 이 설정을 읽습니다.
 
-### 동시 실행과 input 변경
+### Window 재실행과 병렬 실행
 
-Build는 work tree 전체를 보호합니다. Run은 states/config를 읽고 선택된 environment/leg/window에만 write scope를 등록하므로 서로 독립적인 window를 동시에 실행할 수 있습니다.
-자동 호출되는 `helpers/writer_guard.py`가 scope 등록과 자식 process 종료를 관리하고,
-`helpers/input_identity.py`가 작은 계산 input의 SHA256을 비교합니다.
-`--help`와 `--dry-run`은 lock과 identity를 만들지 않습니다.
+Run은 선택한 environment/window에만 write scope를 등록하므로 서로 독립적인
+window를 동시에 실행할 수 있습니다. 완료 기록이 있는 stage는 다시 실행하지
+않습니다. Partial output이 있으면 error가 해당 window와 남은 파일, 다시 실행할
+`./run.sh` command를 표시합니다. 그 밖의 실행 상태, 실패 후 재실행, 동시 실행
+보호는 [GUIDE.md 부록](../../../GUIDE.md#4-부록-실행-상태와-복구)을 참고합니다.
 
-첫 stage 실행 전에 사용한 input을 `.*.identity.json`에 기록합니다. 같은 input의
-완료 stage는 재사용하지만, topology, 최초 coordinate file, generated engine input
-또는 해당 stage가 소비하는 predecessor restart가 바뀌면 실행 전에 거부합니다.
-기록이 없는 기존 완료·partial 결과도 보존하고 거부합니다. Identity를 새 input으로
-덮어쓰거나 과거 결과에 소급 생성하지 않습니다. 변경된 계산은 새 `WORK_DIR`에서
-build부터 시작합니다. 완료 marker는 engine 성공과 필요한 output 확인 뒤에
-생성합니다. Output으로 갱신되는 bias/replica state와 완료한 predecessor input을
-구분하며, 기존 input을 바꾸지 않는 후속 segment 추가는 허용합니다.
+### 문제 해결
 
-실행 때 다시 소비하지 않는 원본 `config.toml` 변경은 이미 생성된 input에 반영되지
-않습니다. 검사 대상은 실제 실행 input과 실행 때 소비하는 설정입니다. Identity에는
-절대 경로가 들어가므로 진행 중인 work tree나 source 파일을 이동·복사한 뒤 이어서
-실행하는 방식은 지원하지 않습니다.
+| Message | 원인과 조치 |
+| --- | --- |
+| `ligand_a.mol2 charge ... does not match expected ...` | MOL2 charge 합이 `ligand_*_net_charge`와 0.01 e 이상 다릅니다. MOL2 charge나 config 값을 고칩니다. |
+| `Common-core error (...): mapped ligand B atoms are not in the same order as their ligand A partners` | Ligand B MOL2 atom 순서가 mapping과 맞지 않습니다. MOL2 atom 순서나 `atom_mapping.tsv`를 고칩니다. |
+| `Common-core error (...): mapped core atoms differ by ... A (limit 0.1 A)` | 두 ligand가 같은 coordinate frame에 놓이지 않았거나 mapping이 다른 atom을 짝지었습니다. |
+| `Common-core error (...): ligand mask must select the whole residue` | `ligand_a_mask`/`ligand_b_mask`가 residue 일부만 고릅니다. `:LGA`처럼 residue 전체를 지정합니다. |
+| `The coupled RBFE protocol has no separate charge or vdw stage` | RBFE에는 `--stage`가 없습니다. `--system`과 `--windows`만 사용합니다. |
+| `Completed equilibration output is required` | `--production-only` 전에 `--preparation-only`가 해당 window를 끝내지 않았습니다. |
 
-Lock metadata는 `work.writers/<token>/owner.json`에 host, PID, command와 scope를
-기록합니다. 등록 중에는 `work.writers/.gate/owner.json`도 사용합니다. 정상 종료,
-실패 또는 INT/TERM 후에는 자식 engine 종료를 확인하고 자신의 lock만 해제합니다.
-SIGKILL 또는 node 장애로 남은 lock은 자동으로 지우지 않습니다. Metadata를 읽고
-관련 host의 job과 모든 자식 process가 종료됐는지 확인한 뒤 해당 token의
-`owner.json`과 비어 있는 directory를 수동으로 제거합니다. `.gate`가 남았으면 모든
-등록·해제 작업의 종료도 확인합니다. PID만으로 다른 host의 작업 종료를 판단하지
-않습니다. Cluster filesystem의 atomic directory 생성과 remote/daemon process
-종료는 로컬 fixture에서 검증하지 않았습니다.
+## English
 
+This dual-topology Amber RBFE template creates complex and solvent windows for
+transforming ligand A into ligand B. The common core mapped by
+`atom_mapping.tsv` mixes the parameters of both end states linearly with lambda;
+only unmapped atoms become soft-core.
 
-### Analysis 결과 저장
+The default schedule contains 11 lambda states from 0.0 to 1.0 and no restraint
+stage. Each window runs 250,000 heating steps, 500,000 equilibration steps and
+10,000,000 production steps, and records cross-state energies with `ifmbar=1`
+and `bar_intervall=5000`.
 
-`anal.py`는 새 extracted energy, report와 최종 TSV를 temporary generation에서
-계산합니다. Extraction, estimator, TSV 또는 HTML 생성이 실패하면 기존
-`mbar/`, `free_energy.tsv`, `mbar_diagnostics.tsv`, `overlap_matrix.tsv`를 유지합니다.
-실패한 command의 최근 log 내용은 stderr에 출력합니다.
+### Required inputs
 
-자동 호출되는 `helpers/result_generation.py`가 이 파일들을 검증하고 게시합니다.
-완료 기록은 `work/.analysis-generation.json`입니다. 여러 파일의 게시 도중
-중단되면 `work/.analysis.pending`이 consumer와 재실행을 차단합니다. 실행 process가
-종료됐는지 확인한 뒤 marker에 적힌 previous/new directory를 보존하고 검사합니다.
-Marker만 삭제하거나 파일을 개별적으로 섞지 않습니다.
+- A ligand-free reviewed protein PDB passed to `build.sh`
+- Precharged MOL2 files of both ligands in the same coordinate frame, with
+  matching frcmod files (set in `config.toml`)
+- `atom_mapping.tsv`, a one-to-one atom-name map
 
-외부 script에서 결과를 읽기 전에는 다음 검사를 사용합니다. 별도 `WORK_DIR`을
-사용했다면 `work`를 그 경로로 바꿉니다.
+This directory can be copied and used on its own. Install its Python
+dependencies from the local `requirements.txt` after copying it. Required
+programs and the default computation (22 windows, 440 ns of total production)
+are listed in the [FEP template README](../README.md#required-programs).
+
+### Run
+
+```bash
+./build.sh prepared_protein.pdb
+./run.sh --dry-run
+./run.sh
+python3 anal.py
+```
+
+| File | Role |
+| --- | --- |
+| `download.sh` | `download.sh PDB_ID` downloads an optional source protein PDB |
+| `config.toml` | Force fields, ligand files, masks, MD lengths and lambda schedule |
+| `atom_mapping.tsv` | Ligand A–B common-core atom pairs |
+| `build.sh` | Creates both environments and their lambda windows |
+| `run.sh` | Runs the stages of each window |
+| `anal.py` | Estimates MBAR free energy and overlap |
+
+`helpers/` contains leaf-local internal code called automatically by
+`build.sh`, `run.sh`, or `anal.py`; `helpers/result_generation.py` also supports
+a separate integrity check before an external consumer reads results.
+
+### Common core and `atom_mapping.tsv`
+
+The build checks that both ligand masks are non-empty and non-overlapping and
+that the mapped atom names exist in each ligand and are one-to-one. For each
+environment, `helpers/generate_inputs.py`:
+
+- requires each ligand mask to select one whole, uniquely named residue;
+- checks that mapped ligand B atoms follow the order of their ligand A partners
+  (Amber26 §27.1.6, p.555, stated for sander; pmemd preparation example
+  §27.1.8.1, p.568). Fix the MOL2 atom order or the mapping if they differ;
+- refuses core gaps above 0.1 Å and copies the ligand B core coordinates onto
+  ligand A in `work/build/{complex,solvent}_core.rst7`, which every window
+  starts from;
+- derives `scmask1=':LGA@...'` and `scmask2=':LGB@...'` from the unmapped atoms.
+
+The shipped `atom_mapping.tsv` is a benzene→toluene example; replace it with the
+atom names of your MOL2 files. Because the core stays coupled, no ligand
+restraint is added. SHAKE bonds between core and soft-core atoms use the
+`pmemd.cuda` defaults (`tishake=0`, automatic `gti_syn_mass=3`; §27.1.7.5,
+p.567). Actual `pmemd.cuda` parsing and DV/DL remain unverified.
+
+### Outputs
+
+`build.sh` turns each lambda value into one complex and one solvent window and
+records them in `work/states.tsv`. `anal.py` uses every production output with
+a completion record and writes `mbar/`, `free_energy.tsv`,
+`mbar_diagnostics.tsv`, and `overlap_matrix.tsv`. A failed analysis keeps the
+previous results and prints recent log lines of the failed command to stderr.
+
+Before reading results in an external script, run the check below. Replace
+`work` with your `WORK_DIR` if using another directory.
 
 ```bash
 python3 helpers/result_generation.py work
 ```
 
-공개 analysis entry는 자동으로 `helpers/writer_guard.py`를 호출해 같은 output의 동시 writer를 거부합니다. Engine 실행부터 결과 게시까지 보호하며, signal 종료 시 child가 멈춘 뒤 lock을 해제합니다. Lock을 임의로 삭제해 실행을 재개하지 않습니다.
+Completion is recorded in `work/.analysis-generation.json`. A leftover
+`work/.analysis.pending` means publication stopped midway; handle it like
+`.output.pending` in the GUIDE.md appendix.
 
-## English
+### Success check
 
-User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh`, `run.sh`, or `anal.py`; `helpers/result_generation.py` also supports a separate integrity check before an external consumer reads results.
+| Command | Normal finish |
+| --- | --- |
+| `./build.sh prepared_protein.pdb` | Prints `N common-core atoms (largest pre-sync gap ...)` and both `scmask` values per environment, then ends with `FEP systems and windows: work`. |
+| `./run.sh --dry-run` | `Dry run: RBFE: 22 environment/window states, 10000000 production steps per window` |
+| `./run.sh` | `RBFE production completed: work/complex, work/solvent`; `--preparation-only` ends with `RBFE preparation completed: work`. |
+| `python3 anal.py` | `RBFE free-energy results: work/free_energy.tsv`; it requires finished production in every window. |
 
-Interrupted or unmarked stage output is retained and stops the workflow instead of being deleted or rerun automatically.
-
-The first-pass LEaP input and water-count `solvated.pdb` are created under `work/.build_tmp.XXXXXX/`. A successful build removes that temporary directory; a failed build prints and retains it for diagnosis. Final PDB, topology, restart, resolved config, and LEaP logs are retained.
+See the [FEP tutorial README](../../../1_Simulation/5_FEP/README.md#interpreting-the-results)
+for the sign, the overlap guideline and what to do when overlap is poor. To add
+windows, insert values in that region of `lambda_values` and rebuild in a new
+`WORK_DIR`.
 
 ### Config choices
 
@@ -161,100 +295,71 @@ The first-pass LEaP input and water-count `solvated.pdb` are created under `work
 | `equilibration_ensemble` | `NVT`, `NPT` | `NPT` | Sets `ntb` and `ntp` in generated equilibration input. |
 | `production_ensemble` | `NVT`, `NPT` | `NPT` | Sets `ntb` and `ntp` in generated production input. |
 | `random_seed` | `"random"` or a positive integer | `"random"` | Only heating starts new velocities. `"random"` writes `ig=-1`; an integer N writes `ig=N + global window index` (starting at 1) per window. Equilibration and production continue from restarts with `ig=-1`. |
+| `scalpha` | Number greater than zero (unitless) | `0.5` | vdW soft-core α. |
+| `scbeta` | Number greater than zero (Å²) | `12.0` | Electrostatic soft-core β. |
+| `gti_lam_sch` | Integer `0` or `1` | `0` | `1` enables `pmemd.cuda` smoothstep lambda scheduling. |
+| `gti_ele_sc` | Integer `0` or `1` | `0` | `1` applies the smoothstep function to electrostatic soft-core. |
+| `gti_vdw_sc` | Integer `0` or `1` | `0` | `1` applies the smoothstep function to vdW soft-core. |
+
+The five soft-core values in `[alchemical]` go into the minimization, heating,
+equilibration and production inputs of every window. While all three `gti_*`
+are 0 they equal the `pmemd.cuda` defaults and are not written; if any is 1, all
+three are written. With `gti_lam_sch=1`, `pmemd.cuda` changes its defaults to
+`gti_ele_sc=1`, `gti_vdw_sc=1`, `scalpha=0.2` and `scbeta=50.0` (Amber26
+§27.1.7.1, p.559–560). The template always writes the config values, so set all
+four together. Without `lambda.sch` in the window directory, `pmemd.cuda` uses
+its default `smooth_step2` schedule. Non-default combinations have not been run
+with `pmemd.cuda` (unverified). The values used by the build are recorded under
+`[alchemical]` in `work/resolved_config.toml`.
 
 `lambda_values` is an explicit, unique, increasing list spanning 0.0 to 1.0.
-It has no auto/file mode. Each value creates one complex and one solvent window
-recorded in `work/states.tsv`. `production_segments` currently supports only
-`1`.
+It has no auto/file mode. `production_segments` supports only `1`.
 
-This directory can be copied and used on its own. Install its Python
-dependencies from the local `requirements.txt` after copying it.
+### Numeric options
 
-This dual-topology Amber RBFE template creates complex and solvent windows for
-ligand A to ligand B. Pass a ligand-free reviewed protein PDB to `build.sh` and
-configure aligned precharged MOL2 files, matching frcmod files, two ligand
-masks, and a one-to-one atom-name map. The map defines the common core: mapped
-atoms are mixed linearly with lambda and only unmapped atoms become soft-core.
-For each environment, `helpers/generate_inputs.py` requires each ligand mask to
-select one whole, uniquely named residue, checks that mapped ligand B atoms
-follow the order of their ligand A partners (Amber26 §27.1.6, p.555, stated for
-sander; pmemd preparation example §27.1.8.1, p.568), refuses core gaps above
-0.1 Å, copies the ligand B core coordinates onto ligand A in
-`work/build/{complex,solvent}_core.rst7`, and derives `scmask1`/`scmask2` from
-the unmapped atoms. The shipped `atom_mapping.tsv` is a benzene→toluene example;
-replace it with the atom names of your MOL2 files. Because the core stays
-coupled, no ligand restraint is added. SHAKE bonds between core and soft-core
-atoms use the `pmemd.cuda` defaults (`tishake=0`, automatic `gti_syn_mass=3`;
-§27.1.7.5, p. 567). Actual `pmemd.cuda` parsing and DV/DL remain unverified.
-The default schedule contains 11 states;
-each window runs 10,000,000 production steps and records cross-state energies
-with `ifmbar`. `download.sh` can retrieve a source protein PDB, `build.sh`
-creates both environments and their windows, `run.sh` executes them, and
-`anal.py` estimates MBAR free energy and overlap. Partial production is not
-overwritten automatically. The analysis requires FE-ToolKit
-`edgembar-amber2dats.py` and `edgembar` on `PATH`.
+| Key | Default | Unit | Stage | Effect |
+| --- | --- | --- | --- | --- |
+| `ligand_a_net_charge`, `ligand_b_net_charge` | `0` | e | Build | Must match the MOL2 charge sum within 0.01 e. `anal.py` applies no net-charge correction. |
+| `complex_box_distance` | `14.0` | Å | Build | `solvatebox` solute-to-edge buffer of the complex leg |
+| `solvent_box_distance` | `20.0` | Å | Build | `solvatebox` buffer of the solvent leg |
+| `salt_concentration` | `150.0` | mM | Build | After neutralization, adds `waters × M / 55.5` (rounded) NaCl pairs to each leg. |
+| `temperature` | `300.0` | K | MD stages, `anal.py` | `temp0` and `edgembar --temp` |
+| `pressure` | `1.0` | bar | NPT stages | `pres0` |
+| `timestep` | `2.0` | fs | MD stages | `dt`; values above 2 fs are rejected by the build. |
+| `minimization_steps` | `5000` | cycles | Minimization | `maxcyc` |
+| `minimization_steepest_steps` | `2500` | cycles | Minimization | Not applied: the RBFE input uses `ntmin=2` (steepest descent throughout) without `ncyc`. |
+| `heating_initial_temperature` | `0.0` | K | Heating | `tempi` |
+| `heating_steps` | `250000` | steps | Heating | 500 ps NVT |
+| `equilibration_steps` | `500000` | steps | Equilibration | 1 ns |
+| `production_steps_per_window` | `10000000` | steps | Production | 20 ns per window |
+| `trajectory_interval_steps` | `5000` | steps | MD stages | `ntwx`; 2,000 production frames per window |
+| `energy_interval_steps` | `5000` | steps | MD stages | mdout interval `ntpr` |
+| `restart_interval_steps` | `5000` | steps | MD stages | `ntwr` |
+| `mbar_interval_steps` | `5000` | steps | Production | Cross-state energy interval `bar_intervall` |
 
-### Engine selection and run state
+### Engine selection
 
-`AMBER_ENGINE` overrides `run.engine` in the build-generated `work/resolved_config.toml`. Accepted executable names are `pmemd.cuda`; installation paths are accepted. Empty overrides, missing engine settings and unsupported executables fail instead of falling back to a default. The runner invokes `helpers/config_utils.py` automatically to read this setting.
+`AMBER_ENGINE` overrides `run.engine` in the build-generated
+`work/resolved_config.toml`. Accepted executable names are `pmemd.cuda`;
+installation paths are accepted. Empty overrides, missing engine settings and
+unsupported executables fail instead of falling back to a default. The runner
+invokes `helpers/config_utils.py` automatically to read this setting.
 
-Build stops before changing inputs when topology/restart files already exist, preserving those files. Use a separate `WORK_DIR` for a new build.
+### Rerunning and parallel windows
 
-Empty outputs also count as existing files. A stage is skipped only when its completion marker and all required nonempty outputs exist; partial outputs are not overwritten automatically. For partial output, the error names the window and the leftover files. Move those files outside `WORK_DIR` (for example: `mkdir -p work.failed && mv ... work.failed/`) and rerun the `./run.sh` command shown in the error. Files moved elsewhere inside `WORK_DIR` are rejected as results without identity.
+Run registers write scopes only for the selected environment/window paths, so
+independent windows can run concurrently. Stages with a completion record are
+not rerun. For partial output, the error names the window, the leftover files
+and the `./run.sh` command to rerun. See [GUIDE.md appendix](../../../GUIDE.md#4-appendix-run-state-and-recovery) for
+other run state, reruns after failure and concurrent-run protection.
 
-### Concurrent runs and input changes
+### Troubleshooting
 
-Build protects the whole work tree. Run registers shared reads of states/config and writes only to selected environment/leg/window paths, allowing independent windows to run concurrently.
-The automatically called `helpers/writer_guard.py` registers scopes and supervises
-child processes; `helpers/input_identity.py` compares SHA256 hashes of small
-calculation inputs. Help and dry-run commands create no locks or identities.
-
-Inputs are recorded in `.*.identity.json` before the first stage launch. Completed
-stages can reuse identical inputs. Changes to topology, initial coordinates,
-generated engine inputs, or the predecessor restart consumed by a stage cause
-rejection before execution. Existing complete or partial results without an
-identity are also retained and rejected. Records are never replaced or created
-retroactively for old results. Start a changed calculation with a fresh
-`WORK_DIR`, beginning with the build. Completion markers are written
-after engine success and required-output checks. Mutable bias/replica outputs are
-distinguished from completed predecessor inputs; additional segments that leave
-existing inputs intact are allowed.
-
-Changes to a source `config.toml` that is not read at runtime do not update inputs
-already generated by the build. Checks cover actual execution inputs and settings
-consumed at runtime. Identities contain absolute paths: moving or copying an
-ongoing work tree or its source files and then continuing is unsupported.
-
-`work.writers/<token>/owner.json` records the host, PID, command, and scopes.
-`work.writers/.gate/owner.json` is used briefly during registration and release.
-Normal exits, failures, and INT/TERM release only the current job's lock after
-verifying child-engine termination. Locks left by SIGKILL or node failure are
-retained. Read the metadata and verify that the job and all children have stopped
-on the relevant hosts before manually removing that token's `owner.json` and its
-empty directory. A leftover `.gate` also requires checking that all registration
-and release operations have stopped. A PID alone does not establish that a job
-on another host has ended. Atomic directory operations on cluster filesystems
-and termination of remote/daemon processes were not tested by local fixtures.
-
-### Analysis result storage
-
-`anal.py` calculates new extracted energies, reports, and final TSV files in a
-temporary generation. Extraction, estimation, TSV, or HTML failure preserves
-the previous `mbar/`, `free_energy.tsv`, `mbar_diagnostics.tsv`, and
-`overlap_matrix.tsv`. Recent failed-command log lines are printed to stderr.
-
-The automatically called `helpers/result_generation.py` validates and publishes
-this group, recording completion in `work/.analysis-generation.json`. If multiple
-file publication is interrupted, `work/.analysis.pending` blocks consumers and
-reruns. Check that the process has ended, then preserve and inspect the
-previous/new directories listed there. Do not remove only the marker or mix
-individual files.
-
-Before reading results in an external script, run the check below. Replace
-`work` with your `WORK_DIR` if using another directory.
-
-```bash
-python3 helpers/result_generation.py work
-```
-
-Public analysis entries automatically use `helpers/writer_guard.py` to reject concurrent writers to the same output. Protection covers engine execution through publication, and signal cleanup drains children before releasing the lock. Do not delete a lock to force a retry.
+| Message | Cause and fix |
+| --- | --- |
+| `ligand_a.mol2 charge ... does not match expected ...` | The MOL2 charge sum differs from `ligand_*_net_charge` by more than 0.01 e. Fix the MOL2 charges or the config value. |
+| `Common-core error (...): mapped ligand B atoms are not in the same order as their ligand A partners` | The ligand B MOL2 atom order does not follow the mapping. Fix the MOL2 atom order or `atom_mapping.tsv`. |
+| `Common-core error (...): mapped core atoms differ by ... A (limit 0.1 A)` | The ligands are not in the same coordinate frame, or the mapping pairs different atoms. |
+| `Common-core error (...): ligand mask must select the whole residue` | `ligand_a_mask`/`ligand_b_mask` selects part of a residue. Select the whole residue, such as `:LGA`. |
+| `The coupled RBFE protocol has no separate charge or vdw stage` | RBFE has no `--stage`; use only `--system` and `--windows`. |
+| `Completed equilibration output is required` | `--preparation-only` has not finished that window before `--production-only`. |

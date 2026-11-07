@@ -2,31 +2,29 @@
 
 ## 한국어
 
-최소 2개·짝수 replica만 지원합니다. `build.sh`와 `run.sh`는 홀수 schedule을 자동 조정하지 않고 거부합니다. `run.sh --dry-run`도 실제 state table의 count를 검사합니다. 기존 홀수 결과는 새 work directory에서 다시 준비합니다.
+Reaction coordinate의 각 umbrella center를 replica state로 두고 AMBER
+Hamiltonian replica exchange(`-rem 3`)로 인접 state를 교환합니다. 각 replica는 자기
+harmonic window를 sampling합니다. `windows.tsv`에는 center를 Å 단위로 한 줄에
+하나씩 적고 `config.toml`에는 두 AMBER atom mask, force constant와 exchange
+interval을 지정합니다. Reaction coordinate는 두 mask 사이의 거리입니다.
 
-기본 center는 6–24 Å 양 끝을 포함하는 20개이며 spacing은 `18/19 ≈ 0.947368 Å`입니다. State table과 restraint center는 소수점 8자리로 기록합니다.
+### 파일 역할
 
-Minimization은 replica별 `.out`, `.rst7`, `.info`가 있어야 완료됩니다. Minimization trajectory는 필수 output이 아닙니다. Heating, equilibration과 production에는 `.nc`도 필요합니다. Equilibration의 `DISANG`과 `DUMPAVE`는 각 replica directory의 `distance.RST`와 `restraint.equilibrate.dat`를 가리킵니다.
-
-Build는 production segment마다 `production.NNN.template.in`을 만듭니다. Exchange production은 group file로 이 directory에서 실행되므로 `run.sh`가 segment 시작 직전 `@DISANG@`과 `@DUMPAVE@`를 `work/<replica>/distance.RST`와 `work/<replica>/restraint.production.NNN.dat`로 바꿔 `production.NNN.in`을 씁니다.
-
-사용자가 직접 실행하는 파일은 이 directory의 root에 있습니다. `helpers/`는 `build.sh` 또는 `run.sh`가 자동 호출하는 leaf-local 내부 code이며 직접 실행하지 않습니다.
-
-중단되거나 marker가 없는 stage output은 자동 삭제하거나 재실행하지 않고 보존한 채 중단합니다.
-
-Water count를 위한 first-pass LEaP input과 `solvated.pdb`는 `work/.build_tmp.XXXXXX/`에서 생성합니다. 전체 build가 성공하면 temporary directory를 삭제하고, 실패하면 진단을 위해 경로를 출력하고 보존합니다. Final PDB, topology, restart, resolved config와 LEaP log는 유지합니다. Replica는 공통 `work/system.parm7`과 `work/system.rst7`을 직접 참조하며 replica별 engine input, bias, seed와 restart는 각 directory에 남습니다.
+| 파일 | 역할 |
+| --- | --- |
+| `download.sh` | `download.sh PDB_ID`로 source PDB를 받습니다. |
+| `build.sh` | LEaP system, `work/states.tsv`, window별 MD input과 restraint를 만듭니다. |
+| `run.sh` | Window별 preproduction과 `pmemd.cuda.MPI -rem 3` replica exchange를 순서대로 실행합니다. |
+| `config.toml` | Force field, box, stage 길이, atom mask, force constant와 exchange interval 설정입니다. |
+| `windows.tsv` | Umbrella center 목록(Å)입니다. |
+| `helpers/` | `build.sh` 또는 `run.sh`가 자동 호출하는 leaf-local 내부 code이며 직접 실행하지 않습니다. `generate_inputs.py`는 LEaP input과 resolved 설정을, `make_window_replicas.py`는 window별 MD input과 restraint를 만듭니다. |
 
 이 directory만 별도로 복사해 사용할 수 있습니다. Python dependency는 복사한
-directory의 `requirements.txt`를 사용해 설치합니다.
+directory의 `requirements.txt`(NumPy, ParmEd, Python 3.11 미만이면 tomli)로
+설치합니다. AMBER(`tleap`, `pmemd.cuda`, `pmemd.cuda.MPI`)와 MPI는
+[family README의 준비 사항](../README.md#준비-사항)을 참고합니다.
 
-Reaction coordinate의 각 umbrella center를 replica state로 두고 AMBER
-multidimensional replica exchange로 인접 state를 교환합니다. `windows.tsv`에는
-center를 Å 단위로 한 줄에 하나씩 적고 `config.toml`에는 두 AMBER atom mask,
-force constant와 exchange interval을 지정합니다.
-
-기본 `force_constant = 1.0`은 AMBER `rk`(E = rk(r − r₀)², kcal mol⁻¹ Å⁻²)입니다. 기본
-0.947 Å 간격에서 300 K window 폭은 약 0.55 Å이고 예상 인접 교환 확률은 약 0.22입니다
-(Gaussian 예측, 미검증). Window 간격을 바꾸면 force constant도 함께 조정합니다.
+### 실행
 
 ```bash
 ./build.sh prepared.pdb
@@ -34,15 +32,134 @@ force constant와 exchange interval을 지정합니다.
 ./run.sh
 ```
 
-Build는 두 mask가 각각 한 atom을 선택하는지 확인하고 `work/states.tsv`와
-window directory를 만듭니다. AMBER에서는 `nstlim`이 exchange 사이 MD steps,
-`numexchg`가 segment의 exchange 횟수입니다. MPI process 수는 window 수와 같아야
-하며 `MPI_PROCESSES`, `MPI_OPTIONS`로 실행 환경을 조정합니다.
-`download.sh PDB_ID`는 source PDB를 내려받고 `run.sh`는 preproduction과
-multidimensional replica exchange를 순서대로 실행합니다.
+Build는 두 mask가 각각 atom을 하나 이상 선택하고 서로 겹치지 않는지 확인한 뒤
+`work/states.tsv`와 window directory를 만듭니다.
 
-기본 production은 window당 200 ns입니다. 2 fs timestep과 1000-step exchange
-interval에서 input은 `nstlim=1000`, `numexchg=100000`으로 생성됩니다.
+`AMBER_ENGINE`이 설정되어 있으면 이를 사용하며, 없으면
+`work/resolved_config.toml`의 `run.engine`을 읽습니다. 허용하는 executable
+이름은 `pmemd.cuda`이며 설치 경로를 지정할 수 있습니다. Exchange production에는
+`AMBER_MPI_ENGINE` 또는 `run.mpi_engine`을 사용하며 executable 이름은
+`pmemd.cuda.MPI`입니다. 기존 resolved config에 `run.mpi_engine`이 없으면
+`AMBER_MPI_ENGINE`을 지정하거나 새 `WORK_DIR`에서 build합니다. 빈 override,
+누락된 engine 설정과 지원하지 않는 executable은 기본값으로 대체하지 않고
+error로 중단합니다.
+
+`build.sh`는 window 생성과 모든 검사를 마친 뒤 마지막에 `work/build.done`을
+씁니다. 이 파일이 없으면 `run.sh`와 `run.sh --dry-run`은 시작하지 않습니다.
+실패한 build의 `work`는 옮긴 뒤 `./build.sh`를 다시 실행합니다.
+
+실행 상태, 실패 후 재실행, 동시 실행 보호는 [GUIDE.md 부록](../../../GUIDE.md#4-부록-실행-상태와-복구)을
+참고합니다.
+
+### 계산 resource와 길이
+
+| 항목 | 규칙 |
+| --- | --- |
+| Replica 수 | `windows.tsv`의 center 수입니다. 기본 20개입니다. |
+| Pre-production | `pmemd.cuda` process 하나가 window별 minimization, heating, equilibration을 순서대로 실행합니다. |
+| Production MPI rank | Window당 1개입니다. `MPI_PROCESSES`가 window 수와 다르면 시작 전에 거부합니다. |
+| GPU | `run.sh`는 GPU를 지정하지 않습니다. `pmemd.cuda.MPI`는 `CUDA_VISIBLE_DEVICES`에 보이는 GPU를 rank에 나눠 씁니다(Amber26 manual 24.6.5, p. 506). GPU 1개로도 실행되지만 모든 rank가 나눠 쓰므로 느립니다. |
+| Launcher 설정 | `MPI_LAUNCHER`(기본 `mpirun`), `MPI_OPTIONS`(launcher option, node 배치), `AMBER_OPTIONS`(모든 pmemd 호출에 추가)를 씁니다. `AMBER_OPTIONS`는 input identity에 기록되므로 실행 도중 바꾸지 않습니다. |
+
+기본 config(2 fs)에서 계산 길이는 다음과 같습니다.
+
+| Stage | Steps | Window당 길이 |
+| --- | --- | --- |
+| Heating / NPT equilibration | 250,000 / 500,000 | 0.5 ns / 1 ns |
+| Production segment | `nstlim=1000` × `numexchg=5000` | 10 ns |
+| Production 전체 | 20 segments | 200 ns(20 windows 합계 4 µs) |
+
+Segment마다 exchange를 5,000번 시도하며 인접 pair 하나는 약 2,500번
+시도됩니다(Amber26 manual 27.4.4.2, p. 582).
+
+### Reaction coordinate mask
+
+`atom_mask_1`과 `atom_mask_2`는 각각 atom 하나 또는 atom group을 선택합니다.
+Build는 선택 결과에 따라 각 window의 `distance.RST`를 다르게 씁니다.
+
+| Mask 선택 | `distance.RST` | 거리 기준점 |
+| --- | --- | --- |
+| atom 1개 | `iat=a,b` | 해당 atom 위치 |
+| atom 2개 이상 | `iat=-1` + `igr1=...` 또는 `igr2=...` | group의 center of mass |
+
+한쪽만 group이면 `iat=a,-1`처럼 섞어서 씁니다. Group 위치는 AMBER `ir6`
+기본값 0에 따라 center of mass로 계산합니다(Amber26 manual 31.1.1, p. 670,
+674). 예를 들어 `atom_mask_1 = ":1-3@CA"`는 세 Cα의 center of mass를 씁니다.
+`sander`는 group당 200 atoms, `pmemd`는 system atom 수까지 허용합니다. AmberTools
+26 `sander`에서 group 거리 restraint가 center-of-mass 거리와 일치함을
+확인했습니다. `pmemd.cuda`의 group restraint 실행은 미검증입니다. `DUMPAVE`
+output은 group 여부와 관계없이 time과 거리 두 column입니다.
+
+### Restraint input 경로
+
+Equilibration의 `DISANG`과 `DUMPAVE`는 각 replica directory의 `distance.RST`와
+`restraint.equilibrate.dat`를 가리킵니다. Build는 production segment마다
+`production.NNN.template.in`을 만듭니다. Exchange production은 group file로 이
+directory에서 실행되므로 `run.sh`가 segment 시작 직전 `@DISANG@`과
+`@DUMPAVE@`를 `work/<replica>/distance.RST`와
+`work/<replica>/restraint.production.NNN.dat`로 바꿔 `production.NNN.in`을
+씁니다.
+
+### 주요 output
+
+- `work/states.tsv`: window와 center의 최종 mapping
+- `work/system.parm7`, `work/system.rst7`: 모든 replica가 직접 참조하는 공통 topology와 coordinate file
+- `work/<replica>/`: replica별 engine input, restraint, seed와 restart
+- `work/<replica>/production.NNN.nc`: segment별 trajectory
+- `work/<replica>/restraint.production.NNN.dat`: segment별 restraint coordinate 기록
+- `work/exchange.NNN.log`: segment별 exchange log
+- `work/mpirun.production.NNN.log`: segment별 MPI stdout/stderr
+
+Segment가 끝날 때마다 `Completed: production.NNN (work)`가 출력되고
+`work/.production.NNN.complete`가 생깁니다. 모든 segment가 끝나면 마지막 줄은
+`Completed REUS production: work`입니다. 기본값에서 window별
+`production.NNN.nc`는 segment당 1,000 frame(5,000,000 steps ÷
+`trajectory_interval_steps` 5,000), `restraint.production.NNN.dat`는 500 step마다
+한 줄씩 약 10,000줄입니다. `--preparation-only`는
+`Preparation output: work/<replica>/equilibrate.rst7`로 끝납니다.
+
+### Exchange 품질 해석
+
+Template에는 `anal.py`가 없으므로 AMBER H-REMD remlog인
+`work/exchange.NNN.log`를 직접 읽습니다. 일반 판단 기준은
+[family README의 Exchange 품질 해석](../README.md#exchange-품질-해석)을 따릅니다.
+Remlog의 각 `# exchange N` block에는 replica 행이 하나씩 있습니다(Amber26
+manual 27.4.5, pp. 587–588).
+
+| Column | 의미 |
+| --- | --- |
+| `Rep#`, `Neibr#` | 1부터 시작하는 replica와 이번 시도의 상대입니다. Group file 순서이므로 1이 `work/000`, 즉 가장 작은 center입니다. |
+| `PotE(x_1)`, `PotE(x_2)` | 현재 구조와 교환 후보 구조의 potential energy(kcal/mol)입니다. |
+| `Success` | 이번 시도의 성공(`T`)/실패(`F`)입니다. |
+| `Success rate (i,i+1)` | 이 replica와 다음 replica 사이의 누적 acceptance입니다. |
+
+- 각 segment는 새 실행이므로 success rate는 segment마다 다시 누적됩니다.
+  마지막 `# exchange` block의 값을 그 segment의 pair acceptance로 봅니다.
+- H-REMD는 구조를 교환하고 각 replica는 자기 Hamiltonian을 유지합니다. 따라서
+  `work/NNN/`의 trajectory와 `restraint.production.NNN.dat`는 한 window의
+  sampling이며 PMF input으로 바로 쓸 수 있습니다. 한 구조가 window를 이동한
+  경로는 cpptraj `remlog ... crdidx`로 재구성합니다(Amber26 manual 38.13.30,
+  pp. 927–928).
+- Window overlap은 인접 window의 `restraint.production.NNN.dat` 두 번째
+  column(거리, Å) histogram으로 확인합니다. Histogram 사이에 빈 구간이 있으면 그
+  pair의 acceptance도 0에 가깝고 PMF에 공백이 생깁니다.
+
+cpptraj `remlog`는 segment log 하나에서 acceptance와 round trip을 계산합니다.
+
+```bash
+cpptraj <<'EOF'
+readdata work/exchange.001.log as remlog nosearch name rem
+remlog rem stats statsout rem.stats.dat reptime rem.reptime.dat acceptout rem.accept.dat
+EOF
+```
+
+`acceptout`은 replica별 위/아래 acceptance(%), `statsout`은 round trip 수,
+`reptime`은 각 coordinate가 window마다 머문 시간 비율입니다. 이 command는
+AmberTools 26 cpptraj에서 합성 H-REMD log로 확인했으며 실제
+`pmemd.cuda.MPI` log 읽기는 미검증입니다. Overlap histogram과 WHAM 계산 방식은
+[7.1 analysis tutorial](../../../2_Analysis/7_Enhanced_Sampling/7.1_Umbrella_Sampling/README.md)을
+참고합니다. 그 script는 tutorial의 `us/work/NNN/distance.dat`를 읽으므로 template
+output 경로에 맞게 바꿔야 합니다.
 
 ### Config 선택값
 
@@ -57,82 +174,232 @@ interval에서 input은 `nstlim=1000`, `numexchg=100000`으로 생성됩니다.
 | `constraint_mode` | `h-bonds`만 지원 | `h-bonds` | Hydrogen-containing bond에 SHAKE를 적용합니다. |
 | `random_seed` | `"random"` 또는 양의 정수 | `"random"` | Window seed와 stage별 `ig`를 정합니다. 아래 seed 규칙을 따릅니다. |
 
+### 숫자 option
+
+| Key | 기본값 | Unit | Stage | 효과 |
+| --- | ---: | --- | --- | --- |
+| `build.solute_box_distance` | 14.0 | Å | build | LEaP solvation에서 solute와 box 경계 사이 최소 거리입니다. |
+| `build.salt_concentration` | 150.0 | mM | build | Neutralization 뒤 추가할 bulk salt 농도입니다. |
+| `run.temperature` | 300.0 | K | MD | 모든 window의 `temp0`와 heating 목표 temperature입니다. |
+| `run.pressure` | 1.0 | bar | NPT stage | `pres0`입니다. |
+| `run.timestep` | 2.0 | fs | 모든 MD | AMBER `dt`(ps)로 씁니다. Hydrogen mass repartitioning이 없으므로 2.0보다 크면 거부합니다. |
+| `run.minimization_steps` / `minimization_steepest_steps` | 5000 / 2500 | step | minimization | `maxcyc` / `ncyc`입니다. |
+| `run.heating_initial_temperature` | 20.0 | K | heating | `tempi`와 `&wt TEMP0`의 시작값입니다. |
+| `run.heating_steps` | 250000 | step | heating | Heating `nstlim`입니다. |
+| `run.equilibration_steps` | 500000 | step | equilibration | Window NPT equilibration의 `nstlim`입니다. |
+| `run.production_steps` | 100000000 | step | production | Window당 전체 production입니다. Segment 수로 나누어떨어져야 합니다. |
+| `run.production_segments` | 20 | 개 | production | Restart 가능한 segment 수입니다. Segment 길이는 `exchange_interval_steps`로 나누어떨어져야 합니다. |
+| `run.trajectory_interval_steps` | 5000 | step | MD | `ntwx`입니다. |
+| `run.energy_interval_steps` | 5000 | step | MD | `ntpr`입니다. |
+| `run.restart_interval_steps` | 5000 | step | MD | `ntwr`입니다. |
+| `umbrella.force_constant` | 1.0 | kcal mol⁻¹ Å⁻² | 모든 stage | `distance.RST`의 `rk2`, `rk3`입니다. 아래 window 절을 참고합니다. |
+| `umbrella.exchange_interval_steps` | 1000 | step | production | Exchange 사이 MD step(`nstlim`)입니다. `numexchg`는 segment step ÷ 이 값입니다. |
+| `umbrella.distance_output_interval_steps` | 500 | step | equilibration, production | `&wt type='DUMPFREQ'`로 `DUMPAVE` 기록 간격을 정합니다. |
+
+Segment 1은 `equilibrate.rst7`, segment N은 같은 window directory의
+`production.(N-1).rst7`에서 `irest=1`로 이어집니다. Segment마다
+`exchange.NNN.log`가 따로 생기며, 끊긴 계산은 `./run.sh --segments N-20`으로
+이어서 실행합니다.
+
+### Window와 force constant
+
+기본 center는 6–24 Å 양 끝을 포함하는 20개이며 spacing은
+`18/19 ≈ 0.947368 Å`입니다. State table과 restraint center는 소수점 8자리로
+기록합니다.
+
 `windows_file`은 항상 명시적인 center 목록을 읽으며 `auto`/`file` mode가
 아닙니다. Blank line과 `#`로 시작하는 comment line을 제외하고 각 행에는 center
 하나만 적습니다. Center 목록은 비어 있지 않고 중복 없이 오름차순이어야 합니다.
-각 행이 한 exchange state가 되고 최종 mapping은 `work/states.tsv`에 기록됩니다.
+각 행이 한 exchange state가 됩니다. Replica 수는 2 이상의 짝수여야 하며
+`build.sh`와 `run.sh`는 홀수 schedule을 자동 조정하지 않고 거부합니다.
+`run.sh --dry-run`도 같은 검사를 합니다.
 
-Seed 규칙: `"random"`이면 window마다 무작위 seed를 만들어 heating `ig`에 쓰고, equilibration과 production segment는 `ig=-1`로 실행 시각에서 seed를 정합니다. 정수이면 window seed는 `정수 + 7919 × window index`입니다. Langevin dynamics(`ntt=3`)는 restart마다 다른 `ig`를 써야 하므로 stage마다 1,000,000을 더합니다. Heating은 +0, equilibration은 +1,000,000, production segment N은 +(2+N)×1,000,000입니다.
+기본 `force_constant = 1.0`은 AMBER `rk`(E = rk(r − r₀)², kcal mol⁻¹ Å⁻²)입니다.
+기본 0.947 Å 간격에서 300 K window 폭은 약 0.55 Å이고 예상 인접 교환 확률은 약
+0.22입니다(Gaussian 예측, 미검증). Window 간격을 바꾸면 force constant도 함께
+조정합니다.
 
-### Engine 선택과 실행 상태
+### Seed 규칙
 
-`AMBER_ENGINE`이 설정되어 있으면 이를 사용하며, 없으면 build가 기록한 `work/resolved_config.toml`의 `run.engine`을 읽습니다. 허용하는 executable 이름은 `pmemd.cuda`이며 설치 경로를 지정할 수 있습니다. Exchange production에는 `AMBER_MPI_ENGINE` 또는 resolved config의 `run.mpi_engine`을 사용하며 executable 이름은 `pmemd.cuda.MPI`입니다. 기존 resolved config에 `run.mpi_engine`이 없으면 `AMBER_MPI_ENGINE`을 지정하거나 새 `WORK_DIR`에서 build합니다. 빈 override, 누락된 engine 설정과 지원하지 않는 executable은 기본값으로 대체하지 않고 error로 중단합니다. Runner가 `helpers/config_utils.py`를 자동 호출해 이 설정을 읽습니다.
+`"random"`이면 window마다 무작위 seed를 만들어 heating `ig`에 쓰고,
+equilibration과 production segment는 `ig=-1`로 실행 시각에서 seed를 정합니다.
+정수이면 window seed는 `정수 + 7919 × window index`입니다. Langevin
+dynamics(`ntt=3`)는 restart마다 다른 `ig`를 써야 하므로 stage마다 1,000,000을
+더합니다. Heating은 +0, equilibration은 +1,000,000, production segment N은
++(2+N)×1,000,000입니다.
 
-Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 중단하고 파일을 보존합니다. 새 build에는 별도 `WORK_DIR`을 지정합니다.
+### 문제 해결
 
-`run.sh`가 partial output으로 중단하면 오류 메시지가 나열한 파일을 `work.failed/`처럼 work directory 밖으로 옮긴 뒤 같은 command를 다시 실행합니다. 완료된 앞 stage와 segment는 건너뜁니다. Production segment의 MPI 출력은 `work/mpirun.production.NNN.log`에 이어서 기록합니다.
-
-다운로드는 임시 파일의 PDB atom record를 확인한 뒤 최종 파일로 교체합니다. 실패하면 기존 PDB를 보존하고 임시 파일을 정리합니다.
-
-빈 output도 기존 파일로 취급합니다. Completion marker와 필수 nonempty output이 모두 있어야 단계를 건너뛰며, partial output은 자동으로 덮어쓰지 않습니다.
-
-### 동시 실행과 input 변경
-
-Build와 run은 shared input, replica output 및 exchange state가 있는 work tree를 함께 보호합니다. 같은 tree에서 replica별로 따로 실행하지 않습니다. 서로 다른 `WORK_DIR`은 독립 실행을 허용합니다.
-자동 호출되는 `helpers/writer_guard.py`가 scope 등록과 자식 process 종료를 관리하고,
-`helpers/input_identity.py`가 작은 계산 input의 SHA256을 비교합니다.
-`--help`와 `--dry-run`은 lock과 identity를 만들지 않습니다.
-
-첫 stage 실행 전에 사용한 input을 `.*.identity.json`에 기록합니다. 같은 input의
-완료 stage는 재사용하지만, topology, 최초 coordinate file, generated engine input
-또는 해당 stage가 소비하는 predecessor restart가 바뀌면 실행 전에 거부합니다.
-기록이 없는 기존 완료·partial 결과도 보존하고 거부합니다. Identity를 새 input으로
-덮어쓰거나 과거 결과에 소급 생성하지 않습니다. 변경된 계산은 새 `WORK_DIR`에서
-build부터 시작합니다. 완료 marker는 engine 성공과 필요한 output 확인 뒤에
-생성합니다. Output으로 갱신되는 bias/replica state와 완료한 predecessor input을
-구분하며, 기존 input을 바꾸지 않는 후속 segment 추가는 허용합니다.
-
-실행 때 다시 소비하지 않는 원본 `config.toml` 변경은 이미 생성된 input에 반영되지
-않습니다. 검사 대상은 실제 실행 input과 실행 때 소비하는 설정입니다. Identity에는
-절대 경로가 들어가므로 진행 중인 work tree나 source 파일을 이동·복사한 뒤 이어서
-실행하는 방식은 지원하지 않습니다.
-
-Lock metadata는 `work.writers/<token>/owner.json`에 host, PID, command와 scope를
-기록합니다. 등록 중에는 `work.writers/.gate/owner.json`도 사용합니다. 정상 종료,
-실패 또는 INT/TERM 후에는 자식 engine 종료를 확인하고 자신의 lock만 해제합니다.
-SIGKILL 또는 node 장애로 남은 lock은 자동으로 지우지 않습니다. Metadata를 읽고
-관련 host의 job과 모든 자식 process가 종료됐는지 확인한 뒤 해당 token의
-`owner.json`과 비어 있는 directory를 수동으로 제거합니다. `.gate`가 남았으면 모든
-등록·해제 작업의 종료도 확인합니다. PID만으로 다른 host의 작업 종료를 판단하지
-않습니다. Cluster filesystem의 atomic directory 생성과 remote/daemon process
-종료는 로컬 fixture에서 검증하지 않았습니다.
-
-
-`helpers/generate_inputs.py`는 LEaP input과 resolved 설정을 생성합니다.
-Window별 MD input과 restraint는 `helpers/make_window_replicas.py`가
-생성하며 두 helper 모두 `build.sh`가 자동 호출합니다.
+| Message 또는 증상 | 원인 | 조치 |
+| --- | --- | --- |
+| `Mask must select at least one atom: ...` 또는 `The two reaction-coordinate masks must not select the same atom` | Mask가 비었거나 두 mask가 겹칩니다. | `work/system.parm7` 기준 residue 번호와 atom 이름으로 mask를 고치고 새 `WORK_DIR`에서 build합니다. |
+| `Replica exchange requires at least two and an even number of windows: ...` 또는 `window centers must be non-empty, unique, and increasing` | `windows.tsv`의 center 수가 홀수이거나 순서가 틀립니다. | Center를 오름차순 짝수 개로 맞춥니다. |
+| `Build did not complete: work/build.done is missing; ...` | Build가 중간에 실패했습니다. | Build error를 확인하고 `mv work work.old` 후 다시 build합니다. |
+| `MPI_PROCESSES must equal the window count: N` | Rank 수가 window 수와 다릅니다. | `MPI_PROCESSES`를 지우거나 N으로 둡니다. |
+| `REUS segment N failed: work/mpirun.production.NNN.log, work/exchange.NNN.log` | MPI, GPU 또는 engine error입니다. | `run.sh`가 출력한 log 끝부분과 각 window의 `production.NNN.out`을 확인합니다. 남은 partial output은 [GUIDE.md 부록](../../../GUIDE.md#4-부록-실행-상태와-복구) 절차로 옮깁니다. |
+| 특정 pair의 success rate가 0에 가까움 | 두 window의 distance 분포가 겹치지 않습니다. | 새 `WORK_DIR`에서 그 사이에 center를 추가하거나 `force_constant`를 낮춥니다. |
 
 ## English
 
-Only even replica counts of at least two are supported. `build.sh` and `run.sh` reject odd schedules without adjusting them. `run.sh --dry-run` checks the actual state-table count too. Prepare a new work directory for results built with an odd schedule.
+Each umbrella center on the reaction coordinate is a replica state, and AMBER
+Hamiltonian replica exchange (`-rem 3`) swaps neighboring states while every replica
+samples its harmonic window. List centers in Å, one per line, in `windows.tsv`,
+and set the two AMBER atom masks, force constant and exchange interval in
+`config.toml`. The reaction coordinate is the distance between the two masks.
 
-The default has 20 centers including both 6 and 24 Å, spaced by `18/19 ≈ 0.947368 Å`. State tables and restraint centers use eight decimal places.
+### File roles
 
-The default `force_constant = 1.0` is the AMBER `rk` (E = rk(r − r₀)², kcal mol⁻¹ Å⁻²). At this spacing, 300 K windows are about 0.55 Å wide and the predicted neighbor exchange acceptance is about 0.22 (Gaussian estimate, unverified). Adjust the force constant together with the window spacing.
+| File | Role |
+| --- | --- |
+| `download.sh` | Downloads a source PDB with `download.sh PDB_ID`. |
+| `build.sh` | Builds the LEaP system, `work/states.tsv`, per-window MD inputs and restraints. |
+| `run.sh` | Runs per-window preproduction and `pmemd.cuda.MPI -rem 3` replica exchange in order. |
+| `config.toml` | Force field, box, stage lengths, atom masks, force constant and exchange interval. |
+| `windows.tsv` | Umbrella center list (Å). |
+| `helpers/` | Leaf-local internal code called automatically by `build.sh` or `run.sh`; not an entry point. `generate_inputs.py` writes LEaP inputs and resolved settings, and `make_window_replicas.py` writes per-window MD inputs and restraints. |
 
-Minimization completion requires each replica’s `.out`, `.rst7`, and `.info`; a minimization trajectory is optional. Heating, equilibration, and production also require `.nc`. Equilibration resolves `DISANG` and `DUMPAVE` to `distance.RST` and `restraint.equilibrate.dat` within each replica directory.
+This directory can be copied and used on its own. Install its Python
+dependencies (NumPy, ParmEd, and tomli below Python 3.11) from the local
+`requirements.txt` after copying it. For AMBER (`tleap`, `pmemd.cuda`,
+`pmemd.cuda.MPI`) and MPI, see the
+[family README prerequisites](../README.md#prerequisites).
 
-The build writes one `production.NNN.template.in` per production segment. Exchange production runs from this directory through the group file, so `run.sh` replaces `@DISANG@` and `@DUMPAVE@` with `work/<replica>/distance.RST` and `work/<replica>/restraint.production.NNN.dat` and writes `production.NNN.in` just before the segment starts.
+### Run
 
-`helpers/generate_inputs.py` writes LEaP inputs and resolved settings.
-`helpers/make_window_replicas.py` writes per-window MD inputs and
-restraints. Both are called automatically by `build.sh`.
+```bash
+./build.sh prepared.pdb
+./run.sh --dry-run
+./run.sh
+```
 
-User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh` or `run.sh`; it is not a separate entry point.
+The build checks that each mask selects at least one atom and that the masks do
+not overlap, then writes `work/states.tsv` and the window directories.
 
-Interrupted or unmarked stage output is retained and stops the workflow instead of being deleted or rerun automatically.
+`AMBER_ENGINE` overrides `run.engine` in `work/resolved_config.toml`. The
+accepted executable name is `pmemd.cuda`; installation paths are accepted.
+Exchange production uses `AMBER_MPI_ENGINE` or `run.mpi_engine`, with
+executable name `pmemd.cuda.MPI`. If an older resolved config lacks
+`run.mpi_engine`, set `AMBER_MPI_ENGINE` or build in a new `WORK_DIR`. Empty
+overrides, missing engine settings and unsupported executables fail instead of
+falling back to a default.
 
-The first-pass LEaP input and water-count `solvated.pdb` are created under `work/.build_tmp.XXXXXX/`. A successful build removes that temporary directory; a failed build prints and retains it for diagnosis. Final PDB, topology, restart, resolved config, and LEaP logs are retained. Replicas reference the shared `work/system.parm7` and `work/system.rst7` directly, while replica-specific engine inputs, bias, seeds, and restart files remain in each directory.
+`build.sh` writes `work/build.done` as its last step, after window generation
+and every check. Without it, `run.sh` and `run.sh --dry-run` do not start. Move
+the `work` of a failed build aside and rerun `./build.sh`.
+
+See [GUIDE.md appendix](../../../GUIDE.md#4-appendix-run-state-and-recovery) for run state, reruns after failure and
+concurrent-run protection.
+
+### Resources and length
+
+| Item | Rule |
+| --- | --- |
+| Replica count | Number of centers in `windows.tsv`; 20 by default. |
+| Pre-production | One `pmemd.cuda` process runs minimization, heating and equilibration for each window in turn. |
+| Production MPI ranks | One per window. A different `MPI_PROCESSES` is rejected before launch. |
+| GPUs | `run.sh` does not assign GPUs. `pmemd.cuda.MPI` distributes ranks over the GPUs visible in `CUDA_VISIBLE_DEVICES` (Amber26 manual 24.6.5, p. 506). One GPU works but is slow because every rank shares it. |
+| Launcher settings | `MPI_LAUNCHER` (default `mpirun`), `MPI_OPTIONS` (launcher options, node placement) and `AMBER_OPTIONS` (appended to every pmemd call). `AMBER_OPTIONS` is recorded in the input identity, so do not change it mid-run. |
+
+Default lengths at 2 fs:
+
+| Stage | Steps | Length per window |
+| --- | --- | --- |
+| Heating / NPT equilibration | 250,000 / 500,000 | 0.5 ns / 1 ns |
+| Production segment | `nstlim=1000` × `numexchg=5000` | 10 ns |
+| Full production | 20 segments | 200 ns (4 µs over 20 windows) |
+
+Each segment makes 5,000 exchange attempts, about 2,500 per neighbor pair
+(Amber26 manual 27.4.4.2, p. 582).
+
+### Reaction-coordinate masks
+
+`atom_mask_1` and `atom_mask_2` each select one atom or an atom group. The build
+writes each window's `distance.RST` according to the selection.
+
+| Mask selects | `distance.RST` | Distance reference |
+| --- | --- | --- |
+| one atom | `iat=a,b` | that atom |
+| two or more atoms | `iat=-1` + `igr1=...` or `igr2=...` | group center of mass |
+
+Mixed selections are allowed, for example `iat=a,-1`. The group position is the
+center of mass because AMBER `ir6` defaults to 0 (Amber26 manual 31.1.1,
+pp. 670, 674). For example, `atom_mask_1 = ":1-3@CA"` uses the center of mass of
+three Cα atoms. `sander` allows up to 200 atoms per group and `pmemd` up to the system atom
+count.
+With AmberTools 26 `sander`, the group restraint matched the center-of-mass
+distance. Group restraints in `pmemd.cuda` are unverified. The `DUMPAVE` output
+keeps two columns, time and distance, for atoms and groups alike.
+
+### Restraint input paths
+
+Equilibration resolves `DISANG` and `DUMPAVE` to `distance.RST` and
+`restraint.equilibrate.dat` within each replica directory. The build writes one
+`production.NNN.template.in` per production segment. Exchange production runs
+from this directory through the group file, so `run.sh` replaces `@DISANG@` and
+`@DUMPAVE@` with `work/<replica>/distance.RST` and
+`work/<replica>/restraint.production.NNN.dat` and writes `production.NNN.in`
+just before the segment starts.
+
+### Main outputs
+
+- `work/states.tsv`: final window-to-center mapping
+- `work/system.parm7`, `work/system.rst7`: shared topology and coordinate file referenced directly by every replica
+- `work/<replica>/`: per-replica engine inputs, restraints, seeds and restarts
+- `work/<replica>/production.NNN.nc`: per-segment trajectory
+- `work/<replica>/restraint.production.NNN.dat`: per-segment restraint-coordinate record
+- `work/exchange.NNN.log`: exchange log for each segment
+- `work/mpirun.production.NNN.log`: MPI stdout/stderr for each segment
+
+Each finished segment prints `Completed: production.NNN (work)` and creates
+`work/.production.NNN.complete`. After the last segment the final line is
+`Completed REUS production: work`. With the defaults each window's
+`production.NNN.nc` holds 1,000 frames per segment (5,000,000 steps ÷
+`trajectory_interval_steps` 5,000), and `restraint.production.NNN.dat` about
+10,000 rows, one every 500 steps. `--preparation-only` ends with
+`Preparation output: work/<replica>/equilibrate.rst7`.
+
+### Reading exchange quality
+
+The template has no `anal.py`; read the AMBER H-REMD remlog
+`work/exchange.NNN.log` directly. General criteria are in the
+[family README](../README.md#reading-exchange-quality). Each `# exchange N`
+block has one row per replica (Amber26 manual 27.4.5, pp. 587–588).
+
+| Column | Meaning |
+| --- | --- |
+| `Rep#`, `Neibr#` | Replica number starting at 1 and its partner in this attempt. Group-file order makes 1 the `work/000` window, the smallest center. |
+| `PotE(x_1)`, `PotE(x_2)` | Potential energy (kcal/mol) of the current and the proposed structure. |
+| `Success` | Accepted (`T`) or rejected (`F`) in this attempt. |
+| `Success rate (i,i+1)` | Cumulative acceptance between this replica and the next. |
+
+- Every segment is a new run, so success rates restart in each segment. Use the
+  last `# exchange` block as that segment's pair acceptance.
+- H-REMD swaps structures while each replica keeps its Hamiltonian. The
+  trajectory and `restraint.production.NNN.dat` in `work/NNN/` therefore sample
+  one window and can go straight into a PMF. Reconstruct how a structure moved
+  across windows with cpptraj `remlog ... crdidx` (Amber26 manual 38.13.30,
+  pp. 927–928).
+- Check window overlap with histograms of the second column (distance, Å) of
+  neighboring windows' `restraint.production.NNN.dat`. A gap between histograms
+  goes with near-zero acceptance for that pair and a gap in the PMF.
+
+cpptraj `remlog` computes acceptance and round trips from one segment log.
+
+```bash
+cpptraj <<'EOF'
+readdata work/exchange.001.log as remlog nosearch name rem
+remlog rem stats statsout rem.stats.dat reptime rem.reptime.dat acceptout rem.accept.dat
+EOF
+```
+
+`acceptout` gives up/down acceptance (%) per replica, `statsout` the round
+trips, and `reptime` the fraction of time each coordinate spent in each window.
+The command was checked with AmberTools 26 cpptraj on a synthetic H-REMD log;
+reading a real `pmemd.cuda.MPI` log is unverified. For overlap histograms and
+WHAM, see the
+[7.1 analysis tutorial](../../../2_Analysis/7_Enhanced_Sampling/7.1_Umbrella_Sampling/README.md);
+its scripts read the tutorial's `us/work/NNN/distance.dat`, so adapt the paths
+to the template outputs.
 
 ### Config choices
 
@@ -147,68 +414,68 @@ The first-pass LEaP input and water-count `solvated.pdb` are created under `work
 | `constraint_mode` | `h-bonds` only | `h-bonds` | Applies SHAKE to bonds involving hydrogen. |
 | `random_seed` | `"random"` or a positive integer | `"random"` | Sets window seeds and per-stage `ig`; see the seed rule below. |
 
+### Numeric options
+
+| Key | Default | Unit | Stage | Effect |
+| --- | ---: | --- | --- | --- |
+| `build.solute_box_distance` | 14.0 | Å | build | Minimum solute-to-box-edge distance in LEaP solvation. |
+| `build.salt_concentration` | 150.0 | mM | build | Bulk salt added after neutralization. |
+| `run.temperature` | 300.0 | K | MD | `temp0` of every window and the heating target. |
+| `run.pressure` | 1.0 | bar | NPT stages | `pres0`. |
+| `run.timestep` | 2.0 | fs | all MD | Written as AMBER `dt` (ps). Values above 2.0 are rejected because hydrogen masses are not repartitioned. |
+| `run.minimization_steps` / `minimization_steepest_steps` | 5000 / 2500 | steps | minimization | `maxcyc` / `ncyc`. |
+| `run.heating_initial_temperature` | 20.0 | K | heating | Start value of `tempi` and the `&wt TEMP0` ramp. |
+| `run.heating_steps` | 250000 | steps | heating | Heating `nstlim`. |
+| `run.equilibration_steps` | 500000 | steps | equilibration | `nstlim` of window NPT equilibration. |
+| `run.production_steps` | 100000000 | steps | production | Total production per window; must divide by the segment count. |
+| `run.production_segments` | 20 | count | production | Number of restartable segments; each segment must divide by `exchange_interval_steps`. |
+| `run.trajectory_interval_steps` | 5000 | steps | MD | `ntwx`. |
+| `run.energy_interval_steps` | 5000 | steps | MD | `ntpr`. |
+| `run.restart_interval_steps` | 5000 | steps | MD | `ntwr`. |
+| `umbrella.force_constant` | 1.0 | kcal mol⁻¹ Å⁻² | all stages | `rk2`, `rk3` in `distance.RST`; see the window section below. |
+| `umbrella.exchange_interval_steps` | 1000 | steps | production | MD steps between exchanges (`nstlim`); `numexchg` is segment steps ÷ this value. |
+| `umbrella.distance_output_interval_steps` | 500 | steps | equilibration, production | `DUMPAVE` interval set through `&wt type='DUMPFREQ'`. |
+
+Segment 1 starts from `equilibrate.rst7` and segment N from
+`production.(N-1).rst7` in the same window directory, with `irest=1`. Each
+segment writes its own `exchange.NNN.log`; resume an interrupted run with
+`./run.sh --segments N-20`.
+
+### Windows and force constant
+
+The default has 20 centers including both 6 and 24 Å, spaced by
+`18/19 ≈ 0.947368 Å`. State tables and restraint centers use eight decimal
+places.
+
 `windows_file` always supplies an explicit center list and is not an
 `auto`/`file` mode. After blank lines and full-line `#` comments are skipped,
-each row must contain exactly one center. The list must be nonempty, unique,
-and increasing. Each row becomes one exchange state, and the final mapping is
-written to `work/states.tsv`.
+each row must contain exactly one center. The list must be nonempty, unique and
+increasing. Each row becomes one exchange state. The replica count must be even
+and at least two; `build.sh` and `run.sh` reject odd schedules without adjusting
+them, and `run.sh --dry-run` applies the same check.
 
-Seed rule: with `"random"`, each window gets a random seed for heating `ig`, and equilibration and production segments use `ig=-1` (wall-clock seed). With an integer, the window seed is `integer + 7919 × window index`. Langevin dynamics (`ntt=3`) needs a different `ig` on each restart, so each stage adds 1,000,000: heating +0, equilibration +1,000,000, and production segment N +(2+N)×1,000,000.
+The default `force_constant = 1.0` is the AMBER `rk` (E = rk(r − r₀)²,
+kcal mol⁻¹ Å⁻²). At the default 0.947 Å spacing, 300 K windows are about 0.55 Å
+wide and the predicted neighbor exchange acceptance is about 0.22 (Gaussian
+estimate, unverified). Adjust the force constant together with the window
+spacing.
 
-This directory can be copied and used on its own. Install its Python
-dependencies from the local `requirements.txt` after copying it.
+### Seed rule
 
-Each umbrella center is a replica state. Amber multidimensional replica
-exchange swaps neighboring states while every replica samples its harmonic
-window. The build resolves two one-atom AMBER masks and writes dynamic states.
-`download.sh` retrieves a source PDB, and `run.sh` executes preproduction and
-multidimensional replica exchange.
-Amber uses `nstlim` for steps between attempts and `numexchg` for attempts per
-segment; the MPI process count must equal the number of windows. The default is
-200 ns per window, rendered as `nstlim=1000` and `numexchg=100000` at 2 fs.
+With `"random"`, each window gets a random seed for heating `ig`, and
+equilibration and production segments use `ig=-1` (wall-clock seed). With an
+integer, the window seed is `integer + 7919 × window index`. Langevin dynamics
+(`ntt=3`) needs a different `ig` on each restart, so each stage adds 1,000,000:
+heating +0, equilibration +1,000,000, and production segment N
++(2+N)×1,000,000.
 
-### Engine selection and run state
+### Troubleshooting
 
-`AMBER_ENGINE` overrides `run.engine` in the build-generated `work/resolved_config.toml`. Accepted executable names are `pmemd.cuda`; installation paths are accepted. Exchange production uses `AMBER_MPI_ENGINE` or resolved `run.mpi_engine`, with executable name `pmemd.cuda.MPI`. If an older resolved config lacks `run.mpi_engine`, set `AMBER_MPI_ENGINE` or build in a new `WORK_DIR`. Empty overrides, missing engine settings and unsupported executables fail instead of falling back to a default. The runner invokes `helpers/config_utils.py` automatically to read this setting.
-
-Build stops before changing inputs when topology/restart files already exist, preserving those files. Use a separate `WORK_DIR` for a new build.
-
-When `run.sh` stops on partial output, move the files listed in the error out of the work directory (for example, to `work.failed/`) and rerun the same command; completed earlier stages and segments are skipped. Production MPI output is appended to `work/mpirun.production.NNN.log` for each segment.
-
-Downloads replace the final PDB only after validating atom records in a temporary file. Failure preserves the existing PDB and removes the temporary file.
-
-Empty outputs also count as existing files. A stage is skipped only when its completion marker and all required nonempty outputs exist; partial outputs are not overwritten automatically.
-
-### Concurrent runs and input changes
-
-Build and run protect the shared inputs, replica outputs, and exchange state in the work tree. Replicas in the same tree are not separate concurrent runs. Separate `WORK_DIR` trees can run independently.
-The automatically called `helpers/writer_guard.py` registers scopes and supervises
-child processes; `helpers/input_identity.py` compares SHA256 hashes of small
-calculation inputs. Help and dry-run commands create no locks or identities.
-
-Inputs are recorded in `.*.identity.json` before the first stage launch. Completed
-stages can reuse identical inputs. Changes to topology, initial coordinates,
-generated engine inputs, or the predecessor restart consumed by a stage cause
-rejection before execution. Existing complete or partial results without an
-identity are also retained and rejected. Records are never replaced or created
-retroactively for old results. Start a changed calculation with a fresh
-`WORK_DIR`, beginning with the build. Completion markers are written
-after engine success and required-output checks. Mutable bias/replica outputs are
-distinguished from completed predecessor inputs; additional segments that leave
-existing inputs intact are allowed.
-
-Changes to a source `config.toml` that is not read at runtime do not update inputs
-already generated by the build. Checks cover actual execution inputs and settings
-consumed at runtime. Identities contain absolute paths: moving or copying an
-ongoing work tree or its source files and then continuing is unsupported.
-
-`work.writers/<token>/owner.json` records the host, PID, command, and scopes.
-`work.writers/.gate/owner.json` is used briefly during registration and release.
-Normal exits, failures, and INT/TERM release only the current job's lock after
-verifying child-engine termination. Locks left by SIGKILL or node failure are
-retained. Read the metadata and verify that the job and all children have stopped
-on the relevant hosts before manually removing that token's `owner.json` and its
-empty directory. A leftover `.gate` also requires checking that all registration
-and release operations have stopped. A PID alone does not establish that a job
-on another host has ended. Atomic directory operations on cluster filesystems
-and termination of remote/daemon processes were not tested by local fixtures.
+| Message or symptom | Cause | Action |
+| --- | --- | --- |
+| `Mask must select at least one atom: ...` or `The two reaction-coordinate masks must not select the same atom` | A mask is empty or the masks overlap. | Fix the masks using residue numbers and atom names in `work/system.parm7`, then build in a new `WORK_DIR`. |
+| `Replica exchange requires at least two and an even number of windows: ...` or `window centers must be non-empty, unique, and increasing` | `windows.tsv` has an odd count or bad order. | Provide an even number of increasing centers. |
+| `Build did not complete: work/build.done is missing; ...` | The build failed partway. | Read the build error, `mv work work.old`, and rebuild. |
+| `MPI_PROCESSES must equal the window count: N` | The rank count differs from the window count. | Unset `MPI_PROCESSES` or set it to N. |
+| `REUS segment N failed: work/mpirun.production.NNN.log, work/exchange.NNN.log` | MPI, GPU or engine error. | Read the log tail printed by `run.sh` and each window's `production.NNN.out`. Move retained partial output as described in the [GUIDE.md appendix](../../../GUIDE.md#4-appendix-run-state-and-recovery). |
+| One pair's success rate stays near 0 | The two windows' distance distributions do not overlap. | In a new `WORK_DIR`, add a center between them or lower `force_constant`. |

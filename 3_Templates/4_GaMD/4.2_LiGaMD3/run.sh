@@ -5,16 +5,21 @@ original_args=("$@")
 
 show_help() {
     cat <<'EOF'
-Usage: ./run.sh [--preparation-only | --production-only] [--segments START-END] [--dry-run]
+Usage: ./run.sh --allow-unverified [--preparation-only | --production-only] [--segments START-END]
+       ./run.sh --dry-run [--preparation-only | --production-only] [--segments START-END]
 
 Run Amber 26 triple-boost LiGaMD3 with configured ligand and receptor masks.
 
+LiGaMD3 (igamd=28) on the Amber 26 pmemd.cuda engine has not been verified with
+this template, so engine runs require --allow-unverified. See README.md first.
+
 Options:
+  --allow-unverified  Opt in to running unverified LiGaMD3 on the AMBER engine.
   --preparation-only  Run through GaMD parameter preparation and stop.
   --production-only   Run only configured production segments.
   --segments RANGE    Run an inclusive 1-based segment range.
-  --dry-run      Print engine commands without running them.
-  -h, --help     Show this help message and exit.
+  --dry-run           Print engine commands without running them.
+  -h, --help          Show this help message and exit.
 EOF
 }
 
@@ -24,6 +29,7 @@ if [[ "${1:-}" == -h || "${1:-}" == --help ]]; then
 fi
 
 dry_run=0
+allow_unverified=0
 preparation_only=0
 production_only=0
 segment_range=""
@@ -40,12 +46,17 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         --dry-run) dry_run=1; shift ;;
+        --allow-unverified) allow_unverified=1; shift ;;
         -h|--help) show_help; exit 0 ;;
         *) show_help >&2; exit 2 ;;
     esac
 done
 if (( preparation_only && production_only )); then
     echo "Error: incompatible run modes." >&2
+    exit 2
+fi
+if (( ! dry_run && ! allow_unverified )); then
+    echo "Error: LiGaMD3 on the Amber 26 GPU engine is unverified; rerun with --allow-unverified after reading README.md." >&2
     exit 2
 fi
 
@@ -60,6 +71,15 @@ show_engine_output() {
         echo "Last 20 lines of $output:" >&2
         tail -n 20 "$output" >&2
     fi
+}
+
+# Keep engine stdout/stderr in engine.<stage>.log beside <stage>.out.
+# Each attempt appends a header, so earlier attempts stay readable.
+run_engine() {
+    local engine_log=$1
+    shift
+    echo "== $(date '+%Y-%m-%d %H:%M:%S') $*" >> "$engine_log"
+    "$@" >> "$engine_log" 2>&1
 }
 
 # Partial output is never removed or overwritten; the user moves it out of the work tree.
@@ -274,8 +294,9 @@ PY
     fi
 
     echo "Running: $label ($directory)"
-    if ! (cd "$directory"; "${command[@]}"); then
+    if ! (cd "$directory"; run_engine "engine.$stage.log" "${command[@]}"); then
         show_engine_output "$prefix.out"
+        show_engine_output "$directory/engine.$stage.log"
         die_partial "$label failed. " "$label" "$directory" "${stage_outputs[@]}"
     fi
     if [[ "$use_gamd" == yes ]]; then

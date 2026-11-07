@@ -32,6 +32,9 @@ random_seed = "random"
 
 [umbrella]
 # Config unit: distance Å
+# Each mask may select one atom or an atom group. A group side uses its center
+# of mass in PLUMED (COM), AMBER (igr with ir6=0), and cpptraj seed selection.
+# Group atoms must be inside [ratchet_md] whole_molecule_mask.
 atom_mask_1 = ":1@CA"
 atom_mask_2 = ":10@CA"
 windows_file = "us/windows.tsv"
@@ -44,6 +47,8 @@ whole_molecule_mask = "!:WAT,Na+,Cl-"
 target_distance = 30.0
 kappa = 100.0
 path_generation_steps = 500000
+# output_interval_steps sets both ratchet.dat (PLUMED PRINT) and ratchet.nc (ntwx);
+# rmd/anal.py picks window seeds from these frames.
 output_interval_steps = 500
 minimum_density = 0.90
 maximum_density = 1.10

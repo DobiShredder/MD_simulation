@@ -62,6 +62,15 @@ show_engine_output() {
     fi
 }
 
+# Keep engine stdout/stderr in engine.<stage>.log beside <stage>.out.
+# Each attempt appends a header, so earlier attempts stay readable.
+run_engine() {
+    local engine_log=$1
+    shift
+    echo "== $(date '+%Y-%m-%d %H:%M:%S') $*" >> "$engine_log"
+    "$@" >> "$engine_log" 2>&1
+}
+
 # Partial output is never removed or overwritten; the user moves it out of the work tree.
 die_partial() {
     local reason=$1
@@ -274,8 +283,9 @@ PY
     fi
 
     echo "Running: $label ($directory)"
-    if ! (cd "$directory"; "${command[@]}"); then
+    if ! (cd "$directory"; run_engine "engine.$stage.log" "${command[@]}"); then
         show_engine_output "$prefix.out"
+        show_engine_output "$directory/engine.$stage.log"
         die_partial "$label failed. " "$label" "$directory" "${stage_outputs[@]}"
     fi
     if [[ "$use_gamd" == yes ]]; then

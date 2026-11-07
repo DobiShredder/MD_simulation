@@ -132,6 +132,21 @@ report_replica_failure() {
     done < work/states.tsv
 }
 
+# Append engine stdout/stderr to ENGINE_LOG, one header line per attempt. The
+# log is a diagnostic beside <stage>.out, not a stage output.
+run_engine() {
+    local engine_log=$1
+    shift
+    echo "== $(date '+%Y-%m-%d %H:%M:%S') $*" >> "$engine_log"
+    if "$@" >> "$engine_log" 2>&1; then
+        return 0
+    fi
+    echo "Engine log: $engine_log" >&2
+    echo "Last 20 lines of $engine_log:" >&2
+    tail -n 20 "$engine_log" >&2
+    return 1
+}
+
 mark_stage_complete() {
     local stage=$1
     stage_outputs_complete "$stage" --require-complete
@@ -165,7 +180,8 @@ run_replica_stage() {
         if [[ "$stage" == heat ]]; then
             reference=(-ref "$replica_dir/$input_restart")
         fi
-        if ! "$amber_engine" \
+        if ! run_engine "$replica_dir/engine.$stage.log" \
+            "$amber_engine" \
             -O \
             -i "$replica_dir/$stage.in" \
             -o "$replica_dir/$stage.out" \
@@ -262,6 +278,7 @@ for stage in minimize heat equilibrate production; do
 done
 if [[ "$(stage_status production)" == complete ]]; then
     echo "Skipping completed production: work"
+    echo "Next: python3 anal.py"
     exit 0
 fi
 

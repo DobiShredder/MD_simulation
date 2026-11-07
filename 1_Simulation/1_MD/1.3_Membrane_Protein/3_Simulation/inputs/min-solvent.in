@@ -9,7 +9,8 @@ Relax water and bulk ions while restraining protein, lipids, and filter K+
  ntc=1,
  ntf=1,
  ntb=1,
- cut=10.0,
+ cut=12.0,
+ fswitch=10.0,
 
  ntr=1,
  restraint_wt=10.0,

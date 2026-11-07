@@ -120,18 +120,6 @@ die_partial() {
   for file in ${retained[*]:-}; do mkdir -p \"work.failed/\${file%/*}\"; mv \"\$file\" \"work.failed/\$file\"; done"
 }
 
-# Production is never overwritten; refuse complete or partial output.
-check_production_absent() {
-    local production_status
-    production_status=$(stage_status production)
-    if [[ "$production_status" == complete ]]; then
-        die "REST2 production already exists and is complete in work. Files were preserved. Move work aside (for example: mv work work.old) to start a new run."
-    fi
-    if [[ "$production_status" == partial ]]; then
-        die_partial production
-    fi
-}
-
 # Point to GROMACS replica logs after a failed multi-replica run.
 report_replica_logs() {
     local replica_dir log
@@ -151,6 +139,15 @@ report_replica_logs() {
     done
 }
 
+# Print the last 20 lines of a GROMACS stdout/stderr log after a failed call.
+show_log_tail() {
+    local log=$1
+    if [[ -s "$log" ]]; then
+        echo "Last 20 lines of $log:" >&2
+        tail -n 20 "$log" >&2
+    fi
+}
+
 wait_for_batch() {
     local stage=$1
     shift
@@ -160,6 +157,9 @@ wait_for_batch() {
     for job in "$@"; do
         if ! wait "${job%%:*}"; then
             echo "Error: $stage failed: work/${job#*:}/$stage.mdrun.log" >&2
+            if (( ! failed )); then
+                show_log_tail "work/${job#*:}/$stage.mdrun.log"
+            fi
             failed=1
         fi
     done
@@ -229,6 +229,7 @@ run_preproduction_stage() {
             -c "$replica_dir/$input_coordinates.gro" \
             -o "$replica_dir/$stage.tpr"; then
             echo "Error: $stage tpr generation failed: $replica_dir/$stage.grompp.log" >&2
+            show_log_tail "$replica_dir/$stage.grompp.log"
             wait_for_batch "$stage" "${batch[@]}"
             exit 1
         fi
@@ -336,6 +337,18 @@ for executable in "$gmx" "$gmx_mpi" "$mpi_launcher"; do
     fi
 done
 
+# Reuse a completed production before any GROMACS call; partial production
+# output stops the run.
+production_status=$(stage_status production)
+if [[ "$production_status" == complete ]]; then
+    echo "Skipping completed production: work"
+    echo "Next: python3 anal.py"
+    exit 0
+fi
+if [[ "$production_status" == partial ]]; then
+    die_partial production
+fi
+
 option_log=work/mdrun_option_check.log
 if ! "$gmx_mpi" mdrun -h -hrex > "$option_log" 2>&1; then
     die "GROMACS does not recognize -hrex: $option_log"
@@ -359,14 +372,13 @@ if ! "$gmx_mpi" mdrun -h -plumed work/000/plumed.dat >> "$option_log" 2>&1; then
     die "GROMACS does not recognize -plumed: $option_log"
 fi
 
-# Check production before rerunning any preproduction stage.
-check_production_absent
-
 run_preproduction_stage minimize system
 run_preproduction_stage equilibrate minimize
 
 check_stage_identity production equilibrate
-check_production_absent
+if [[ "$(stage_status production)" != missing ]]; then
+    die_partial production
+fi
 
 replica_dirs=()
 while IFS=$'\t' read -r replica _; do
@@ -384,6 +396,7 @@ while IFS=$'\t' read -r replica _; do
         -c "$replica_dir/equilibrate.gro" \
         -t "$replica_dir/equilibrate.cpt" \
         -o "$replica_dir/production.tpr"; then
+        show_log_tail "$replica_dir/production.grompp.log"
         die "Production tpr generation failed: $replica_dir/production.grompp.log"
     fi
 done < work/states.tsv

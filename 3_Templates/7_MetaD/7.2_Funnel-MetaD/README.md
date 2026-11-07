@@ -2,18 +2,93 @@
 
 ## 한국어
 
-First-pass LEaP는 work directory에서 검증한 `ligand.mol2`와 `ligand.frcmod`를 temporary directory에 복사해 읽습니다. MOL2의 residue name과 total charge가 config와 맞지 않으면 build를 시작하기 전에 중단합니다.
-
-사용자가 직접 실행하는 파일은 이 directory의 root에 있습니다. `helpers/`는 `build.sh`, `run.sh` 또는 `anal.py`가 자동 호출하는 leaf-local 내부 code이며 직접 실행하지 않습니다.
-
-중단되거나 marker가 없는 stage output은 자동 삭제하거나 재실행하지 않고 보존한 채 중단합니다.
-
-Water count를 위한 first-pass LEaP input과 `solvated.pdb`는 `work/.build_tmp.XXXXXX/`에서 생성합니다. 전체 build가 성공하면 temporary directory를 삭제하고, 실패하면 진단을 위해 경로를 출력하고 보존합니다. Final PDB, topology, restart, resolved config와 LEaP log는 유지합니다.
+Ligand COM의 funnel-axis projection `fps.lp`에 WT-MetaD bias를 쌓고 transverse
+distance `fps.ld`를 funnel restraint로 제한합니다. Bulk solvent 전체를 bias하지
+않으면서 binding/unbinding 방향을 sampling하는 구성입니다. Funnel-MetaD 방식은
+이 directory에서 고정되며 별도 config mode가 아닙니다.
 
 이 directory만 별도로 복사해 사용할 수 있습니다. Python dependency는 복사한
-directory의 `requirements.txt`를 사용해 설치합니다.
+directory의 `requirements.txt`로 설치합니다. 사용자가 직접 실행하는 파일은 이
+directory의 root에 있고, `helpers/`는 자동 호출되는 내부 code입니다.
 
-### Config 선택값
+### 필요한 input과 실행
+
+`ligand/ligand.mol2`와 `ligand/ligand.frcmod`는 config의 residue name과 net charge가
+반영된 precharged GAFF2 input이어야 합니다. Template는 RESP charge를 다시
+계산하지 않습니다. Complex PDB의 ligand residue name과 MOL2 template가 같아야
+합니다. MOL2의 residue name과 total charge가 config와 맞지 않으면 LEaP를 시작하기
+전에 중단합니다.
+
+`download.sh PDB_ID`는 optional source complex를 내려받으며 ligand parameter를
+생성하지 않습니다. 임시 파일에서 PDB atom record를 확인한 뒤 최종 파일로
+교체합니다.
+
+```bash
+./build.sh prepared-complex.pdb
+./run.sh --dry-run
+./run.sh
+python3 anal.py
+```
+
+`build.sh`가 mask를 topology atom number로 변환하고 initial ligand COM이 configured
+funnel 안에 있는지 검사합니다. `run.sh`는 누적 bias state를 이어받아 segment를
+실행하고 `anal.py`는 `COLVAR`와 free-energy reconstruction을 처리합니다.
+
+### 주요 output
+
+| 파일 | 내용 |
+| --- | --- |
+| `work/HILLS`, `work/COLVAR`, `work/FUNNEL_GRID` | 10 production segments가 공유하는 root bias state와 CV |
+| `work/001/` … | Segment별 restart, trajectory와 AMBER output |
+| `work/analysis/production_summary.tsv` | Projection, transverse distance와 bias 범위 |
+| `work/analysis/fes.dat` | `plumed sum_hills`로 만든 FES |
+
+`anal.py --skip-fes`는 hill reconstruction 없이 projection, transverse distance와
+bias 범위만 기록하며, 새 결과에는 과거 FES를 포함하지 않습니다. `COLVAR`의
+header나 finite 값이 잘못되면 기존 analysis 결과를 교체하지 않습니다.
+
+### 결과 확인과 해석
+
+모든 segment가 끝나면 `run.sh`가 `MetaD production segments completed: 1-10 of 10 (...)`와
+`Next: python3 anal.py`를 출력합니다. `anal.py`는
+`Funnel-MetaD diagnostics: .../production_summary.tsv`로 끝납니다.
+
+`fes.dat`은 `fps.lp`에 대한 1D FES `W(lp)`입니다. Binding free energy는 다음 안내
+절차로 계산하며 이 template는 구현하지 않았습니다(Limongelli, Bonomi &
+Parrinello, *PNAS* 110:6358, 2013).
+
+1. Cylinder 구간(`lp > zcc`)에서 FES가 평평한 unbound 값 `W_ref`를 정합니다.
+2. Bound site 구간에서 `I = ∫ exp(−[W(lp) − W_ref] / kT) dlp`를 적분합니다.
+3. `ΔG° = −kT ln(C° · π R_cyl² · I)`를 계산합니다. `C° = 1/1660 Å⁻³ = 0.6022 nm⁻³`,
+   `R_cyl = cylinder_radius`(nm), `kT = k_B · temperature`입니다.
+
+Bound–unbound recrossing이 여러 번 일어나고 segment마다 `ΔG°`가 일정할 때만 이
+값을 보고합니다.
+
+### 주요 parameter
+
+`funnel_selection`의 protein/ligand/alignment mask, anchor atom과 두 axis point의
+AMBER mask를 system에 맞게 지정합니다. Axis point의 각 mask는 atom 하나를
+선택합니다.
+
+Funnel geometry, hill과 20 Å solvent padding은 system 크기와 최대 projection에
+맞게 확인합니다.
+
+| Key | 기본값 | Unit | PLUMED keyword | 효과 |
+| --- | --- | --- | --- | --- |
+| `ligand_net_charge` | 0 | e | – | Build 전 MOL2 total charge와 비교합니다. |
+| `zcc` | 1.8 | nm | `FUNNEL ZCC` | Cone에서 cylinder로 바뀌는 `fps.lp` |
+| `alpha` | 0.55 | rad | `FUNNEL ALPHA` | Cone 각도. π/2보다 작아야 합니다. |
+| `cylinder_radius` | 0.1 | nm | `FUNNEL RCYL` | Cylinder 반지름. Standard-state correction의 `R_cyl`입니다. |
+| `minimum_projection`, `maximum_projection` | -0.5, 3.7 | nm | `MINS`, `MAXS`, `METAD GRID_MIN/MAX` | Funnel과 bias grid의 `fps.lp` 범위 |
+| `lower_wall`, `upper_wall` | -0.3, 3.5 | nm | `LOWER_WALLS AT`, `UPPER_WALLS AT` | `minimum < lower < zcc < upper < maximum`이어야 합니다. |
+| `wall_force` | 35100.0 | kJ mol⁻¹ nm⁻² | `FUNNEL KAPPA`, wall `KAPPA` | Funnel 경계와 axial wall의 force constant |
+| `radial_grid_bins`, `axial_grid_bins` | 500, 500 | bin | `NBINS`, `NBINZ` | `FUNNEL_GRID` 해상도 |
+| `sigma` | 0.05 | nm | `METAD SIGMA` | `fps.lp` Gaussian width |
+| `height` | 1.2 | kJ/mol | `HEIGHT` | 처음 hill height |
+| `pace_steps` | 500 | step(1 ps) | `PACE` | Hill 추가 간격 |
+| `bias_factor` | 10.0 | – | `BIASFACTOR` | 1보다 커야 합니다. |
+| `grid_bins` | 420 | bin | `GRID_BIN` | `fps.lp` bias grid 해상도 |
 
 | Option | 허용값 | 기본값 | 적용 방식 |
 | --- | --- | --- | --- |
@@ -28,11 +103,45 @@ directory의 `requirements.txt`를 사용해 설치합니다.
 | `constraint_mode` | `h-bonds`만 지원 | `h-bonds` | Hydrogen-containing bond에 SHAKE를 적용합니다. |
 | `random_seed` | `"random"` 또는 양의 정수 | `"random"` | `"random"`은 AMBER `ig=-1`, 정수는 고정 seed를 사용합니다. |
 
-Funnel-MetaD 방식은 이 directory에서 고정되며 별도 config mode가 아닙니다.
+### 문제 해결
 
-Ligand COM의 funnel-axis projection `fps.lp`에 WT-MetaD bias를 쌓고 transverse
-distance `fps.ld`를 funnel restraint로 제한합니다. Bulk solvent 전체를 bias하지
-않으면서 binding/unbinding 방향을 sampling하는 구성입니다.
+| Error message | 확인할 것 |
+| --- | --- |
+| `PLUMED action unavailable: FUNNEL_PS. Rebuild PLUMED 2.10 with --enable-modules=funnel.` | `funnel` module을 넣어 PLUMED를 다시 build합니다. |
+| `Ligand validation: MOL2 residue name mismatch`, `MOL2 charge mismatch` | `ligand_residue_name`, `ligand_net_charge`와 MOL2를 맞춥니다. |
+| `Funnel setup error: AMBER mask must select one atom` | `axis_point_a_masks`, `axis_point_b_masks`, `anchor_atom_mask`의 각 mask가 atom 하나를 고르게 합니다. |
+| `Funnel setup error: Initial ligand COM is outside the funnel` | Axis point, `zcc`, `alpha`, `cylinder_radius`를 다시 정합니다. |
+| `funnel projection limits must satisfy min < lower < zcc < upper < max` | `[funnel]`의 projection 값 순서를 고칩니다. |
+
+공통 error는 [MetaD template README](../README.md)의 문제 해결에 있습니다.
+
+Segment layout, `--segments` option, engine 선택과 실패한 segment의 bias 복원은
+[MetaD template README](../README.md)를 참고합니다. 실행 상태, 실패 후 재실행과
+동시 실행 보호는 [GUIDE.md 부록](../../../GUIDE.md#4-부록-실행-상태와-복구)을 참고합니다.
+
+## English
+
+Funnel-MetaD biases the ligand-COM projection on the funnel axis, `fps.lp`, with
+WT-MetaD and confines the transverse distance `fps.ld` with a funnel restraint.
+This samples the binding/unbinding direction without biasing the whole bulk
+solvent. The Funnel-MetaD method is fixed by this directory and is not a
+separate config mode.
+
+This directory can be copied and used on its own. Install its Python
+dependencies from the local `requirements.txt`. User-facing entry points are in
+this directory root; `helpers/` contains internal code called automatically.
+
+### Required inputs and run
+
+`ligand/ligand.mol2` and `ligand/ligand.frcmod` must be a precharged GAFF2 pair
+that matches the configured residue name and net charge. RESP charges are not
+recomputed. The ligand residue name in the complex PDB must match the MOL2
+template. A MOL2 residue name or total charge that differs from the config stops
+the build before LEaP runs.
+
+`download.sh PDB_ID` retrieves an optional source complex and does not generate
+ligand parameters. It checks the PDB atom records in a temporary file before
+replacing the final file.
 
 ```bash
 ./build.sh prepared-complex.pdb
@@ -41,102 +150,70 @@ distance `fps.ld`를 funnel restraint로 제한합니다. Bulk solvent 전체를
 python3 anal.py
 ```
 
-`ligand/ligand.mol2`와 `ligand/ligand.frcmod`는 config의 residue name과 net charge가
-반영된 precharged GAFF2 input이어야 합니다. Template는 RESP charge를 다시
-계산하지 않습니다. Complex PDB의 ligand residue name과 MOL2 template가 같아야
-합니다.
+`build.sh` converts the masks to topology atom numbers and checks that the
+initial ligand COM lies inside the configured funnel. `run.sh` continues the
+cumulative bias state across segments, and `anal.py` handles `COLVAR` and the
+free-energy reconstruction.
 
-`funnel_selection`의 protein/ligand/alignment mask, anchor atom과 두 axis point의
-AMBER mask를 system에 맞게 지정합니다. Axis point의 각 mask는 atom 하나를
-선택합니다. `build.sh`가 mask를 topology atom number로 변환하고 initial ligand
-COM이 configured funnel 안에 있는지 검사합니다.
-`download.sh PDB_ID`는 optional source complex를 내려받으며 ligand parameter를
-생성하지 않습니다. `run.sh`는 누적 bias state를 이어받고 `anal.py`는 COLVAR와
-free-energy reconstruction을 처리합니다.
+### Main outputs
 
-기본 geometry는 `ZCC=1.8 nm`, `ALPHA=0.55 rad`, cylinder radius 0.1 nm와
-35,100 kJ/mol/nm² wall입니다. Hill은 1.2 kJ/mol, sigma 0.05 nm,
-`PACE=500`, `BIASFACTOR=10`입니다. 이 값과 20 Å solvent padding은 system 크기와
-최대 projection에 맞게 확인합니다.
+| File | Content |
+| --- | --- |
+| `work/HILLS`, `work/COLVAR`, `work/FUNNEL_GRID` | Root bias state and CVs shared by the ten production segments |
+| `work/001/` … | Restart, trajectory and AMBER output per segment |
+| `work/analysis/production_summary.tsv` | Projection, transverse distance and bias ranges |
+| `work/analysis/fes.dat` | FES from `plumed sum_hills` |
 
-10 production segments는 root의 `HILLS`, `COLVAR`와 `FUNNEL_GRID`를 공유합니다.
-Partial segment는 자동 삭제하지 않습니다. `anal.py --skip-fes`는 hill
-reconstruction 없이 projection, transverse distance와 bias 범위만 기록합니다.
+`anal.py --skip-fes` records only projection, transverse distance and bias
+ranges without hill reconstruction, and the new result does not keep the old
+FES. An invalid `COLVAR` header or nonfinite values leave previous analysis
+results in place.
 
-### Engine 선택과 실행 상태
+### Success check and interpretation
 
-`AMBER_ENGINE`이 설정되어 있으면 이를 사용하며, 없으면 build가 기록한 `work/resolved_config.toml`의 `run.engine`을 읽습니다. 허용하는 executable 이름은 `pmemd.cuda`, `pmemd`, `sander`이며 설치 경로를 지정할 수 있습니다. Build 전 dry-run에 한해서 resolved config가 없으면 `config.toml`을 읽습니다. PLUMED 연동이 가능한 AMBER build가 필요합니다. 빈 override, 누락된 engine 설정과 지원하지 않는 executable은 기본값으로 대체하지 않고 error로 중단합니다. Runner가 `helpers/config_utils.py`를 자동 호출해 이 설정을 읽습니다.
+After the last segment, `run.sh` prints
+`MetaD production segments completed: 1-10 of 10 (...)` and
+`Next: python3 anal.py`. `anal.py` ends with
+`Funnel-MetaD diagnostics: .../production_summary.tsv`.
 
-Build는 기존 topology/restart file이 있으면 input을 변경하기 전에 중단하고 파일을 보존합니다. 새 build에는 별도 `WORK_DIR`을 지정합니다.
+`fes.dat` is the 1D FES `W(lp)` along `fps.lp`. The binding free energy follows
+the guidance below; this template does not implement it (Limongelli, Bonomi &
+Parrinello, *PNAS* 110:6358, 2013).
 
-다운로드는 임시 파일의 PDB atom record를 확인한 뒤 최종 파일로 교체합니다. 실패하면 기존 PDB를 보존하고 임시 파일을 정리합니다.
+1. Take the flat unbound value `W_ref` of the FES in the cylinder region
+   (`lp > zcc`).
+2. Integrate `I = ∫ exp(−[W(lp) − W_ref] / kT) dlp` over the bound site.
+3. Compute `ΔG° = −kT ln(C° · π R_cyl² · I)` with
+   `C° = 1/1660 Å⁻³ = 0.6022 nm⁻³`, `R_cyl = cylinder_radius` (nm) and
+   `kT = k_B · temperature`.
 
-빈 output도 기존 파일로 취급합니다. Completion marker와 필수 nonempty output이 모두 있어야 단계를 건너뛰며, partial output은 자동으로 덮어쓰지 않습니다.
+Report the value only after repeated bound–unbound recrossings and when `ΔG°`
+stays constant across segments.
 
-### 동시 실행과 input 변경
+### Key parameters
 
-Build와 run은 같은 work tree에 동시에 쓸 수 없습니다. 서로 다른 `WORK_DIR`은 독립 실행을 허용합니다.
-자동 호출되는 `helpers/writer_guard.py`가 scope 등록과 자식 process 종료를 관리하고,
-`helpers/input_identity.py`가 작은 계산 input의 SHA256을 비교합니다.
-`--help`와 `--dry-run`은 lock과 identity를 만들지 않습니다.
+Set the protein/ligand/alignment masks, the anchor atom and the AMBER masks of
+both axis points in `funnel_selection` for your system. Each axis-point mask
+must select one atom.
 
-첫 stage 실행 전에 사용한 input을 `.*.identity.json`에 기록합니다. 같은 input의
-완료 stage는 재사용하지만, topology, 최초 coordinate file, generated engine input
-또는 해당 stage가 소비하는 predecessor restart가 바뀌면 실행 전에 거부합니다.
-기록이 없는 기존 완료·partial 결과도 보존하고 거부합니다. Identity를 새 input으로
-덮어쓰거나 과거 결과에 소급 생성하지 않습니다. 변경된 계산은 새 `WORK_DIR`에서
-build부터 시작합니다. 완료 marker는 engine 성공과 필요한 output 확인 뒤에
-생성합니다. Output으로 갱신되는 bias/replica state와 완료한 predecessor input을
-구분하며, 기존 input을 바꾸지 않는 후속 segment 추가는 허용합니다.
+Check the funnel geometry, hills and the 20 Å solvent padding against the system
+size and the maximum projection.
 
-실행 때 다시 소비하지 않는 원본 `config.toml` 변경은 이미 생성된 input에 반영되지
-않습니다. 검사 대상은 실제 실행 input과 실행 때 소비하는 설정입니다. Identity에는
-절대 경로가 들어가므로 진행 중인 work tree나 source 파일을 이동·복사한 뒤 이어서
-실행하는 방식은 지원하지 않습니다.
-
-Lock metadata는 `work.writers/<token>/owner.json`에 host, PID, command와 scope를
-기록합니다. 등록 중에는 `work.writers/.gate/owner.json`도 사용합니다. 정상 종료,
-실패 또는 INT/TERM 후에는 자식 engine 종료를 확인하고 자신의 lock만 해제합니다.
-SIGKILL 또는 node 장애로 남은 lock은 자동으로 지우지 않습니다. Metadata를 읽고
-관련 host의 job과 모든 자식 process가 종료됐는지 확인한 뒤 해당 token의
-`owner.json`과 비어 있는 directory를 수동으로 제거합니다. `.gate`가 남았으면 모든
-등록·해제 작업의 종료도 확인합니다. PID만으로 다른 host의 작업 종료를 판단하지
-않습니다. Cluster filesystem의 atomic directory 생성과 remote/daemon process
-종료는 로컬 fixture에서 검증하지 않았습니다.
-
-처음 numbered layout으로 실행했다면 segment 수를 줄여도 첫 output은 `work/001/`에 유지합니다. 한 segment를 root `work/production.*`로 완료한 뒤 segment 수를 늘렸다면 첫 output은 그대로 두고 후속 output만 `work/002/`, `work/003/`에 생성합니다. 처음부터 여러 segment를 실행하면 `work/001/`부터 생성합니다.
-
-
-### Analysis 결과 저장
-
-`anal.py`는 diagnostic TSV와 새 FES를 별도 temporary generation에서 만들고
-확인한 뒤 `work/analysis/`을 교체합니다. `sum_hills`가 exit 0을 반환해도
-새 `fes.dat`이 없거나 비어 있으면 실패로 처리하고 이전 결과를 유지합니다.
-`--skip-fes`의 새 결과에는 과거 FES를 포함하지 않습니다.
-
-자동 호출되는 `helpers/result_generation.py`가 완료한 output hash를
-`analysis/.generation.json`에 기록합니다. 게시가 중단되어
-`work/.analysis.pending`이 남으면 재실행을 거부합니다. 실행 process가 종료됐는지
-확인한 뒤 marker의 previous/new directory를 보존하고 검사합니다.
-
-Analysis는 COLVAR의 column 수, field name과 finite 값을 확인합니다. 같은 header의 반복은 허용하지만 header 변경, 중복 field와 NaN/Inf는 거부합니다. 잘못된 input을 읽으면 기존 analysis 결과를 교체하지 않습니다. 음수 CV 값은 method의 범위에 따라 사용할 수 있습니다.
-
-공개 analysis entry는 자동으로 `helpers/writer_guard.py`를 호출해 같은 output의 동시 writer를 거부합니다. Engine 실행부터 결과 게시까지 보호하며, signal 종료 시 child가 멈춘 뒤 lock을 해제합니다. Lock을 임의로 삭제해 실행을 재개하지 않습니다.
-
-## English
-
-The first LEaP pass reads temporary copies of the validated work-directory `ligand.mol2` and `ligand.frcmod`. A MOL2 residue name or total charge that differs from the config stops the build before LEaP runs.
-
-User-facing entry points remain in this directory root. `helpers/` contains leaf-local internal code called automatically by `build.sh`, `run.sh`, or `anal.py`; it is not a separate entry point.
-
-Interrupted or unmarked stage output is retained and stops the workflow instead of being deleted or rerun automatically.
-
-The first-pass LEaP input and water-count `solvated.pdb` are created under `work/.build_tmp.XXXXXX/`. A successful build removes that temporary directory; a failed build prints and retains it for diagnosis. Final PDB, topology, restart, resolved config, and LEaP logs are retained.
-
-This directory can be copied and used on its own. Install its Python
-dependencies from the local `requirements.txt` after copying it.
-
-### Config choices
+| Key | Default | Unit | PLUMED keyword | Effect |
+| --- | --- | --- | --- | --- |
+| `ligand_net_charge` | 0 | e | – | Compared with the MOL2 total charge before the build. |
+| `zcc` | 1.8 | nm | `FUNNEL ZCC` | `fps.lp` where the cone turns into the cylinder |
+| `alpha` | 0.55 | rad | `FUNNEL ALPHA` | Cone angle; must be below π/2. |
+| `cylinder_radius` | 0.1 | nm | `FUNNEL RCYL` | Cylinder radius; `R_cyl` in the standard-state correction. |
+| `minimum_projection`, `maximum_projection` | -0.5, 3.7 | nm | `MINS`, `MAXS`, `METAD GRID_MIN/MAX` | `fps.lp` range of the funnel and the bias grid |
+| `lower_wall`, `upper_wall` | -0.3, 3.5 | nm | `LOWER_WALLS AT`, `UPPER_WALLS AT` | Must satisfy `minimum < lower < zcc < upper < maximum`. |
+| `wall_force` | 35100.0 | kJ mol⁻¹ nm⁻² | `FUNNEL KAPPA`, wall `KAPPA` | Force constant of the funnel boundary and axial walls |
+| `radial_grid_bins`, `axial_grid_bins` | 500, 500 | bins | `NBINS`, `NBINZ` | `FUNNEL_GRID` resolution |
+| `sigma` | 0.05 | nm | `METAD SIGMA` | `fps.lp` Gaussian width |
+| `height` | 1.2 | kJ/mol | `HEIGHT` | Initial hill height |
+| `pace_steps` | 500 | step (1 ps) | `PACE` | Hill deposition interval |
+| `bias_factor` | 10.0 | – | `BIASFACTOR` | Must exceed one. |
+| `grid_bins` | 420 | bins | `GRID_BIN` | `fps.lp` bias-grid resolution |
 
 | Option | Allowed values | Default | Effect |
 | --- | --- | --- | --- |
@@ -151,82 +228,20 @@ dependencies from the local `requirements.txt` after copying it.
 | `constraint_mode` | `h-bonds` only | `h-bonds` | Applies SHAKE to bonds involving hydrogen. |
 | `random_seed` | `"random"` or a positive integer | `"random"` | `"random"` maps to AMBER `ig=-1`; an integer fixes the seed. |
 
-The Funnel-MetaD method is fixed by this directory and is not a separate config
-mode.
+### Troubleshooting
 
-Funnel-MetaD biases the ligand-COM projection `fps.lp` and confines transverse
-motion `fps.ld` with a funnel restraint. Supply a precharged GAFF2 MOL2/frcmod
-pair and a complex PDB with the same ligand residue name. RESP charges are not
-recomputed.
+| Error message | What to check |
+| --- | --- |
+| `PLUMED action unavailable: FUNNEL_PS. Rebuild PLUMED 2.10 with --enable-modules=funnel.` | Rebuild PLUMED with the `funnel` module. |
+| `Ligand validation: MOL2 residue name mismatch`, `MOL2 charge mismatch` | Match `ligand_residue_name` and `ligand_net_charge` to the MOL2. |
+| `Funnel setup error: AMBER mask must select one atom` | Make each mask in `axis_point_a_masks`, `axis_point_b_masks` and `anchor_atom_mask` select one atom. |
+| `Funnel setup error: Initial ligand COM is outside the funnel` | Redefine the axis points, `zcc`, `alpha` or `cylinder_radius`. |
+| `funnel projection limits must satisfy min < lower < zcc < upper < max` | Fix the order of the projection values in `[funnel]`. |
 
-All masks, the anchor, and both axis-point selections are system-specific.
-Each axis mask must select one atom. The build resolves atom numbers and checks
-that the initial ligand COM lies inside the configured funnel. The default uses
-a 1.2 kJ/mol hill, 0.05 nm sigma, 500-step pace, bias factor 10, and a
-35,100 kJ/mol/nm² wall. Segments share root-level `HILLS`, `COLVAR`, and
-`FUNNEL_GRID` state. `download.sh` retrieves only a source complex; `build.sh`,
-`run.sh`, and `anal.py` create, propagate, and analyze the configured workflow.
+Common errors are listed under Troubleshooting in the
+[MetaD template README](../README.md).
 
-### Engine selection and run state
-
-`AMBER_ENGINE` overrides `run.engine` in the build-generated `work/resolved_config.toml`. Accepted executable names are `pmemd.cuda`, `pmemd`, `sander`; installation paths are accepted. Before build, dry-run alone may read `config.toml` when the resolved file is absent. An AMBER build with the required PLUMED integration is still needed. Empty overrides, missing engine settings and unsupported executables fail instead of falling back to a default. The runner invokes `helpers/config_utils.py` automatically to read this setting.
-
-Build stops before changing inputs when topology/restart files already exist, preserving those files. Use a separate `WORK_DIR` for a new build.
-
-Downloads replace the final PDB only after validating atom records in a temporary file. Failure preserves the existing PDB and removes the temporary file.
-
-Empty outputs also count as existing files. A stage is skipped only when its completion marker and all required nonempty outputs exist; partial outputs are not overwritten automatically.
-
-### Concurrent runs and input changes
-
-If the first run used numbered directories, reducing the count retains the first output under `work/001/`.
-
-Build and run cannot write the same work tree concurrently. Separate `WORK_DIR` trees can run independently.
-The automatically called `helpers/writer_guard.py` registers scopes and supervises
-child processes; `helpers/input_identity.py` compares SHA256 hashes of small
-calculation inputs. Help and dry-run commands create no locks or identities.
-
-Inputs are recorded in `.*.identity.json` before the first stage launch. Completed
-stages can reuse identical inputs. Changes to topology, initial coordinates,
-generated engine inputs, or the predecessor restart consumed by a stage cause
-rejection before execution. Existing complete or partial results without an
-identity are also retained and rejected. Records are never replaced or created
-retroactively for old results. Start a changed calculation with a fresh
-`WORK_DIR`, beginning with the build. Completion markers are written
-after engine success and required-output checks. Mutable bias/replica outputs are
-distinguished from completed predecessor inputs; additional segments that leave
-existing inputs intact are allowed.
-
-Changes to a source `config.toml` that is not read at runtime do not update inputs
-already generated by the build. Checks cover actual execution inputs and settings
-consumed at runtime. Identities contain absolute paths: moving or copying an
-ongoing work tree or its source files and then continuing is unsupported.
-
-`work.writers/<token>/owner.json` records the host, PID, command, and scopes.
-`work.writers/.gate/owner.json` is used briefly during registration and release.
-Normal exits, failures, and INT/TERM release only the current job's lock after
-verifying child-engine termination. Locks left by SIGKILL or node failure are
-retained. Read the metadata and verify that the job and all children have stopped
-on the relevant hosts before manually removing that token's `owner.json` and its
-empty directory. A leftover `.gate` also requires checking that all registration
-and release operations have stopped. A PID alone does not establish that a job
-on another host has ended. Atomic directory operations on cluster filesystems
-and termination of remote/daemon processes were not tested by local fixtures.
-
-If one segment completed as `work/production.*`, increasing the segment count retains that first output and writes later outputs under `work/002/`, `work/003/`, etc. Runs configured with multiple segments from the start use `work/001/` onward.
-
-### Analysis result storage
-
-`anal.py` creates diagnostic TSV files and a fresh FES in a separate temporary
-generation before replacing `work/analysis/`. An exit-zero `sum_hills` that
-creates no nonempty `fes.dat` is a failure and preserves previous results.
-A new `--skip-fes` generation does not retain the old FES.
-
-The automatically called `helpers/result_generation.py` records output hashes
-in `analysis/.generation.json`. Interrupted publication leaves
-`work/.analysis.pending` and blocks reruns. Check that the process has ended,
-then preserve and inspect the previous/new directories listed in the marker.
-
-Analysis checks COLVAR column counts, field names, and finite values. Repeated identical headers are allowed; changed headers, duplicate fields, and NaN/Inf are rejected. Invalid input leaves previous analysis results intact. Negative CV values remain valid where the method permits them.
-
-Public analysis entries automatically use `helpers/writer_guard.py` to reject concurrent writers to the same output. Protection covers engine execution through publication, and signal cleanup drains children before releasing the lock. Do not delete a lock to force a retry.
+See the [MetaD template README](../README.md) for the segment layout, the
+`--segments` option, engine selection and restoring bias after a failed
+segment. See [GUIDE.md appendix](../../../GUIDE.md#4-appendix-run-state-and-recovery) for run state, reruns after
+failure and concurrent-run protection.

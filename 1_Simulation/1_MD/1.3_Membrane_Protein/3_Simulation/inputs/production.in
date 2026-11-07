@@ -20,7 +20,8 @@ Training production: 1 ns KcsA membrane MD
 
  ntc=2,
  ntf=2,
- cut=10.0,
+ cut=12.0,
+ fswitch=10.0,
  ntr=0,
 
  ntwx=5000,

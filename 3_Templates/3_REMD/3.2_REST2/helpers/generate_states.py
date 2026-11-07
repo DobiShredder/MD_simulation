@@ -19,6 +19,7 @@ from config_utils import (  # noqa: E402
     section,
     string_value,
 )
+from tempered_selection import read_selection  # noqa: E402
 from temperature_ladder import LadderRow, generate_even_temperature_ladder  # noqa: E402
 
 WATER_NAMES = {
@@ -41,7 +42,15 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("config", type=Path, help="TOML configuration file")
     parser.add_argument("topology", type=Path, help="AMBER topology used to count atoms")
     parser.add_argument("output", type=Path, help="Output states.tsv file")
-    return parser.parse_args()
+    parser.add_argument(
+        "--tempered-atoms",
+        type=Path,
+        help="REST2/REST3: tempered_atoms.tsv; its atom count drives the auto ladder",
+    )
+    args = parser.parse_args()
+    if args.method != "remd" and args.tempered_atoms is None:
+        parser.error(f"{args.method} requires --tempered-atoms")
+    return args
 
 
 def count_system(topology_path: Path) -> dict[str, int]:
@@ -141,6 +150,10 @@ def main() -> None:
         exchange = section(config, "replica_exchange")
         mode = string_value(exchange, "temperature_mode")
         counts = count_system(args.topology)
+        if args.method != "remd":
+            # REST tempers only the selected atoms, so the predictor counts them
+            # (whole solute by default, or build.tempered_mask).
+            counts["tempered_atoms"] = len(read_selection(args.tempered_atoms))
 
         diagnostic_rows: list[LadderRow] = []
         used_target: float | None = None
@@ -153,7 +166,7 @@ def main() -> None:
                 predictor_atoms = counts["solute_atoms"] + counts["ion_atoms"]
                 predictor_waters = counts["water_molecules"]
             else:
-                predictor_atoms = counts["solute_atoms"]
+                predictor_atoms = counts["tempered_atoms"]
                 predictor_waters = 0
             diagnostic_rows, used_target = generate_even_temperature_ladder(
                 protein_atoms=predictor_atoms,
@@ -177,7 +190,7 @@ def main() -> None:
             predictor_atoms = (
                 counts["solute_atoms"] + counts["ion_atoms"]
                 if args.method == "remd"
-                else counts["solute_atoms"]
+                else counts["tempered_atoms"]
             )
             predictor_waters = counts["water_molecules"] if args.method == "remd" else 0
         else:
@@ -198,7 +211,7 @@ def main() -> None:
         seeds = state_seeds(exchange.get("random_seed"), len(temperatures))
         kappas = kappa_values(config, temperatures) if args.method == "rest3" else None
         positive_int(exchange, "exchange_interval_steps")
-    except ValueError as error:
+    except (OSError, ValueError) as error:
         raise SystemExit(f"Config error: {error}") from None
 
     args.output.mkdir(parents=True, exist_ok=True)

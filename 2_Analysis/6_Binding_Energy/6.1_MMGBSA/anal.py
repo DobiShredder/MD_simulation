@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import csv
 from pathlib import Path
 
@@ -13,6 +14,14 @@ try:
     import numpy as np
 except ModuleNotFoundError as error:
     raise SystemExit("Install NumPy and matplotlib in the ambertools26 environment.") from error
+
+
+# block_summary.tsv splits the analysed frames into this many consecutive blocks.
+BLOCK_COUNT = 5
+
+# Used only with --save-figure DIR.
+FIGURE_NAME = "mmgbsa_running_mean.png"
+FIGURE_DPI = 150
 
 
 def model_name(line: str) -> str | None:
@@ -104,7 +113,7 @@ def write_energy_outputs(
         for frame, value in zip(data[:, 0], cumulative, strict=True):
             running.append(f"{model}\t{frame:g}\t{value:.8f}")
 
-        for block_number, indices in enumerate(np.array_split(np.arange(len(data)), 5), start=1):
+        for block_number, indices in enumerate(np.array_split(np.arange(len(data)), BLOCK_COUNT), start=1):
             if len(indices) == 0:
                 continue
             blocks.append(
@@ -149,31 +158,72 @@ def write_decomposition(
     )
 
 
+def check_frame_count(datasets: dict[str, tuple[list[str], np.ndarray]]) -> None:
+    # Standard deviations use ddof=1, and each block needs at least one frame.
+    minimum_frames = max(2, BLOCK_COUNT)
+    for model, (_, data) in datasets.items():
+        print(f"Frames: {len(data)} ({model})")
+        if len(data) < minimum_frames:
+            raise SystemExit(
+                f"Error: {model} energies have {len(data)} frames; at least "
+                f"{minimum_frames} are needed (BLOCK_COUNT={BLOCK_COUNT})."
+            )
+
+
+def save_figure(figure: plt.Figure, figure_dir: Path) -> None:
+    figure_dir.mkdir(parents=True, exist_ok=True)
+    figure_path = figure_dir / FIGURE_NAME
+    figure.savefig(figure_path, dpi=FIGURE_DPI)
+    print(f"Saved figure: {figure_path}")
+
+
+def parse_arguments() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--save-figure",
+        metavar="DIR",
+        type=Path,
+        help="also save the figure as PNG in DIR (outside output/); "
+        "by default the figure is only displayed",
+    )
+    return parser.parse_args()
+
+
 def main() -> int:
+    args = parse_arguments()
     output_dir = Path(__file__).resolve().parent / "output"
+    figure_dir = args.save_figure
+    if figure_dir is not None and figure_dir.resolve().is_relative_to(output_dir):
+        # Extra files in output/ would invalidate its recorded generation hashes.
+        raise SystemExit(f"Error: --save-figure DIR must be outside {output_dir}")
     from writer_guard import protect_python_entry
     protect_python_entry("output", writes=(output_dir,))
     completed_output_dir = output_dir
     with input_generation(output_dir) as output_dir:
         print(f"Running: MMGBSA analysis; input directory: {output_dir}")
         energy = read_energy(output_dir / "energy.csv")
+        check_frame_count(energy)
         decomposition = read_decomposition(output_dir / "decomposition.csv")
         write_energy_outputs(output_dir, energy)
         write_decomposition(output_dir, decomposition)
 
-        figure, axis = plt.subplots(figsize=(8, 4.5))
-        for model, (header, data) in energy.items():
-            total = data[:, header.index("DELTA TOTAL")]
-            cumulative = np.cumsum(total) / np.arange(1, len(total) + 1)
-            axis.plot(data[:, 0], cumulative, label=model)
-        axis.set_xlabel("MMPBSA frame")
-        axis.set_ylabel("Running mean ΔTOTAL (kcal/mol)")
-        axis.legend()
-        figure.tight_layout()
-        print("Displaying MMGBSA analysis figure.")
-        plt.show()
     output_dir = completed_output_dir
-    print(f"Completed: MMGBSA analysis; results: {output_dir} (figure displayed interactively)")
+    # Tables are published before the figure window opens.
+    print(f"Completed: MMGBSA analysis; results: {output_dir}")
+
+    figure, axis = plt.subplots(figsize=(8, 4.5))
+    for model, (header, data) in energy.items():
+        total = data[:, header.index("DELTA TOTAL")]
+        cumulative = np.cumsum(total) / np.arange(1, len(total) + 1)
+        axis.plot(data[:, 0], cumulative, label=model)
+    axis.set_xlabel("MMPBSA frame")
+    axis.set_ylabel("Running mean ΔTOTAL (kcal/mol)")
+    axis.legend()
+    figure.tight_layout()
+    if figure_dir is not None:
+        save_figure(figure, figure_dir)
+    print("Displaying MMGBSA analysis figure.")
+    plt.show()
     return 0
 
 

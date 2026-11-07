@@ -24,6 +24,15 @@ show_engine_output() {
     fi
 }
 
+# Keep engine stdout/stderr in engine.<stage>.log beside <stage>.out.
+# Each attempt appends a header, so earlier attempts stay readable.
+run_engine() {
+    local engine_log=$1
+    shift
+    echo "== $(date '+%Y-%m-%d %H:%M:%S') $*" >> "$engine_log"
+    "$@" >> "$engine_log" 2>&1
+}
+
 # Partial output is never removed or overwritten; the user moves it out of work.
 # Called after cd work, so paths are relative to work.
 die_partial() {
@@ -86,9 +95,11 @@ run_stage() {
         return
     fi
 
+    local engine_log="engine.$prefix.log"
     echo "Running: $label"
-    if ! "$@"; then
+    if ! run_engine "$engine_log" "$@"; then
         show_engine_output "$output"
+        show_engine_output "$engine_log"
         die_partial "$label failed. " "$label" "${stage_outputs[@]}"
     fi
     local required_output
@@ -123,9 +134,6 @@ fi
 if [[ ! -s "$topology" || ! -s "$coordinates" ]]; then
     die "Run ../prepare.sh first."
 fi
-if (( ! dry_run )) && [[ -e work/.ratchet.out.success.json ]]; then
-    die "Ratchet MD already completed: work/ratchet.nc. Extract seeds with python3 anal.py. To generate a new pathway, move work aside (for example: mv work work.old) and rerun ./run.sh."
-fi
 
 if (( ! dry_run )); then
     "${PYTHON:-python3}" helpers/input_identity.py --verify work
@@ -137,6 +145,19 @@ if (( ! dry_run )); then
     "${PYTHON:-python3}" helpers/input_identity.py \
         --record work/.source.identity.json --stage "run source inputs" \
         "${source_options[@]}" --value="$engine"
+fi
+
+# A completed ratchet MD is reused; run_stage refuses a partial one.
+# A new pathway needs a new work (for example: mv work work.old).
+if (( ! dry_run )) && [[ -e work/.ratchet.out.success.json ]]; then
+    "${PYTHON:-python3}" helpers/input_identity.py \
+        --check-completion work/.ratchet.out.identity.json >/dev/null
+    echo "Skipping completed ratchet MD: work/ratchet.nc"
+    echo "Next: python3 anal.py"
+    exit 0
+fi
+
+if (( ! dry_run )); then
     mkdir -p work/inputs
     cp "$topology" work/system.parm7
     cp "$coordinates" work/system.rst7

@@ -287,7 +287,12 @@ def write_rmd_inputs(output: Path, values: dict[str, object]) -> None:
             "Generate a target-directed ratchet-MD pathway",
             [
                 f"nstlim={int(values['path_steps'])}",
-                *common_dynamics(values, str(runtime["production_ensemble"])),
+                # Seeds are picked from ratchet.nc frames, so write them as often
+                # as ratchet.dat (the tutorial uses the same 500-step interval).
+                *[
+                    f"ntwx={int(values['ratchet_output_interval'])}" if line.startswith("ntwx=") else line
+                    for line in common_dynamics(values, str(runtime["production_ensemble"]))
+                ],
                 "ntr=0",
                 "plumed=1",
                 "plumedfile='plumed.dat'",
@@ -297,7 +302,12 @@ def write_rmd_inputs(output: Path, values: dict[str, object]) -> None:
     )
 
 
-def write_us_inputs(output: Path, values: dict[str, object], atom_1: int, atom_2: int) -> None:
+def write_us_inputs(
+    output: Path,
+    values: dict[str, object],
+    group_1: list[int],
+    group_2: list[int],
+) -> None:
     input_dir = output / "inputs"
     input_dir.mkdir(parents=True, exist_ok=True)
     runtime = values["runtime"]
@@ -364,16 +374,42 @@ def write_us_inputs(output: Path, values: dict[str, object], atom_1: int, atom_2
     )
     (output / "restraint.RST.template").write_text(
         "&rst\n"
-        f" iat={atom_1},{atom_2},\n"
+        f" iat={restraint_atom(group_1)},{restraint_atom(group_2)},\n"
         " r1=0.0,\n"
         " r2=CENTER,\n"
         " r3=CENTER,\n"
         " r4=99.0,\n"
         " rk2=FORCE,\n"
         " rk3=FORCE,\n"
-        "/\n",
+        + restraint_groups(group_1, group_2)
+        + "/\n",
         encoding="utf-8",
     )
+
+
+def restraint_atom(group: list[int]) -> int:
+    # AMBER nmropt: a negative iat entry means "use the igrN group".
+    return group[0] if len(group) == 1 else -1
+
+
+def restraint_groups(group_1: list[int], group_2: list[int]) -> str:
+    """Return igr1/igr2 lines for multi-atom sides; empty for two single atoms."""
+    lines = []
+    for number, group in ((1, group_1), (2, group_2)):
+        if len(group) == 1:
+            continue
+        # Ten atoms per line keeps long groups readable; namelist arrays may
+        # continue across lines.
+        rows = [
+            ",".join(str(atom) for atom in group[start : start + 10])
+            for start in range(0, len(group), 10)
+        ]
+        lines.append(f" igr{number}=" + ",\n  ".join(rows) + ",\n")
+    if not lines:
+        return ""
+    # ir6=0 selects center-of-mass averaging (Amber26 manual, p. 674), which
+    # matches PLUMED COM and the cpptraj distance used for seed selection.
+    return "".join(lines) + " ir6=0,\n"
 
 
 def selected_atoms(topology: Path, mask: str) -> list[int]:
@@ -390,11 +426,29 @@ def selected_atoms(topology: Path, mask: str) -> list[int]:
     ]
 
 
-def one_atom(topology: Path, mask: str) -> int:
-    atoms = selected_atoms(topology, mask)
-    if len(atoms) != 1:
-        raise ValueError(f"mask must select exactly one atom: {mask} selected {len(atoms)}")
-    return atoms[0]
+def reaction_coordinate_groups(
+    topology: Path,
+    values: dict[str, object],
+) -> tuple[list[int], list[int]]:
+    """Resolve the two distance sides; each side is one atom or an atom group."""
+    groups = []
+    for key in ("mask_1", "mask_2"):
+        mask = str(values[key])
+        atoms = selected_atoms(topology, mask)
+        if not atoms:
+            raise ValueError(f"atom_{key} selected no atoms: {mask}")
+        groups.append(atoms)
+    group_1, group_2 = groups
+    if set(group_1) & set(group_2):
+        raise ValueError("atom_mask_1 and atom_mask_2 must select different atoms")
+
+    # Group centers are computed with NOPBC after WHOLEMOLECULES, so every
+    # group atom must belong to the rebuilt whole_molecule_mask selection.
+    whole = set(selected_atoms(topology, str(values["whole_molecule_mask"])))
+    for key, group in (("atom_mask_1", group_1), ("atom_mask_2", group_2)):
+        if len(group) > 1 and not set(group) <= whole:
+            raise ValueError(f"{key} group atoms must be inside whole_molecule_mask")
+    return group_1, group_2
 
 
 def compress_atom_ranges(atoms: list[int]) -> str:
@@ -413,17 +467,25 @@ def compress_atom_ranges(atoms: list[int]) -> str:
 
 
 def write_plumed(output: Path, values: dict[str, object], topology: Path) -> None:
-    atom_1 = one_atom(topology, str(values["mask_1"]))
-    atom_2 = one_atom(topology, str(values["mask_2"]))
-    if atom_1 == atom_2:
-        raise ValueError("atom_mask_1 and atom_mask_2 select the same atom")
+    group_1, group_2 = reaction_coordinate_groups(topology, values)
     molecule = compress_atom_ranges(
         selected_atoms(topology, str(values["whole_molecule_mask"]))
     )
+    # A multi-atom side becomes a PLUMED COM virtual atom (mass weighted, like
+    # AMBER ir6=0). NOPBC is safe because WHOLEMOLECULES runs first.
+    centers = ""
+    endpoints = []
+    for label, group in (("group_1", group_1), ("group_2", group_2)):
+        if len(group) == 1:
+            endpoints.append(str(group[0]))
+            continue
+        centers += f"{label}: COM ATOMS={compress_atom_ranges(group)} NOPBC\n"
+        endpoints.append(label)
     target_nm = float(values["target_distance_angstrom"]) / 10.0
     (output / "plumed.dat").write_text(
         f"WHOLEMOLECULES ENTITY0={molecule}\n"
-        f"reaction_coordinate: DISTANCE ATOMS={atom_1},{atom_2} NOPBC\n"
+        + centers
+        + f"reaction_coordinate: DISTANCE ATOMS={endpoints[0]},{endpoints[1]} NOPBC\n"
         "ratchet: ABMD ARG=reaction_coordinate "
         f"TO={target_nm:.6f} KAPPA={float(values['kappa']):.6f}\n"
         "PRINT ARG=reaction_coordinate,ratchet.bias,ratchet.reaction_coordinate_min "
@@ -459,11 +521,8 @@ def main() -> None:
         else:
             if args.topology is None or not args.topology.is_file():
                 raise ValueError("us mode requires --topology PARM7")
-            atom_1 = one_atom(args.topology, str(values["mask_1"]))
-            atom_2 = one_atom(args.topology, str(values["mask_2"]))
-            if atom_1 == atom_2:
-                raise ValueError("atom_mask_1 and atom_mask_2 select the same atom")
-            write_us_inputs(args.output, values, atom_1, atom_2)
+            group_1, group_2 = reaction_coordinate_groups(args.topology, values)
+            write_us_inputs(args.output, values, group_1, group_2)
     except (OSError, ValueError) as error:
         raise SystemExit(f"Config error: {error}") from None
 

@@ -67,11 +67,12 @@ def read_schedule(temperature_path, kappa_path):
                 f"{temperatures[index - 1]} then {temperatures[index]}"
             )
 
+    # REST3 strengthens protein-water vdW in hot states, so kappa never drops below 1.
     for index, kappa in enumerate(kappas):
-        if kappa <= 0.0:
-            raise ValueError(f"{kappa_path}: kappa value {index + 1} must be greater than 0")
+        if kappa < 1.0:
+            raise ValueError(f"{kappa_path}: kappa value {index + 1} must be 1.0 or greater")
     if not math.isclose(kappas[0], 1.0, abs_tol=1.0e-6):
-        raise ValueError(f"{kappa_path}: the first kappa value must be 1")
+        raise ValueError(f"{kappa_path}: the first kappa value must be 1.0")
 
     return temperatures, kappas
 

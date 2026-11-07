@@ -37,7 +37,8 @@ def arguments() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def resolve_atom(topology: Path, mask: str) -> int:
+def resolve_group(topology: Path, mask: str) -> list[int]:
+    """Return the 1-based atom numbers selected by one reaction-coordinate mask."""
     try:
         import parmed
         from parmed.amber.mask import AmberMask
@@ -45,9 +46,32 @@ def resolve_atom(topology: Path, mask: str) -> int:
         raise SystemExit("ParmEd is required to validate replica-window masks") from error
     structure = parmed.load_file(str(topology))
     selected = [index + 1 for index, value in enumerate(AmberMask(structure, mask).Selection()) if value]
-    if len(selected) != 1:
-        raise SystemExit(f"Mask must select exactly one atom: {mask} selected {len(selected)}")
-    return selected[0]
+    if not selected:
+        raise SystemExit(f"Mask must select at least one atom: {mask}")
+    return selected
+
+
+def restraint_atom_fields(group_1: list[int], group_2: list[int]) -> str:
+    """Return the &rst atom fields of the distance restraint.
+
+    A single atom goes directly into iat. For a group, iat(n) = -1 and igr<n>
+    lists its atoms; with the default ir6 = 0 AMBER restrains the group's center
+    of mass (Amber26 manual, section 31.1.1: iat, igr1/igr2, ir6). sander allows
+    at most 200 atoms per group; pmemd allows up to the system atom count.
+    """
+    if set(group_1) & set(group_2):
+        raise SystemExit("The two reaction-coordinate masks must not select the same atom")
+    iat = []
+    group_lines = []
+    for group_number, group in enumerate((group_1, group_2), 1):
+        if len(group) == 1:
+            iat.append(str(group[0]))
+            continue
+        iat.append("-1")
+        # Ten atoms per line keeps large groups readable in distance.RST.
+        chunks = [",".join(str(atom) for atom in group[start:start + 10]) for start in range(0, len(group), 10)]
+        group_lines.append(f" igr{group_number}=" + ",\n  ".join(chunks) + ",")
+    return "\n".join([f" iat={iat[0]},{iat[1]},", *group_lines])
 
 
 def read_centers(path: Path) -> list[float]:
@@ -188,10 +212,11 @@ def main() -> None:
     run = section(config, "run")
     umbrella = section(config, "umbrella")
     state_centers = read_centers(Path(string_value(umbrella, "windows_file")))
-    atom_1 = resolve_atom(args.topology, string_value(umbrella, "atom_mask_1"))
-    atom_2 = resolve_atom(args.topology, string_value(umbrella, "atom_mask_2"))
-    if atom_1 == atom_2:
-        raise SystemExit("The two reaction-coordinate masks select the same atom")
+    # Each mask selects one atom or an atom group (restrained at its center of mass).
+    atom_fields = restraint_atom_fields(
+        resolve_group(args.topology, string_value(umbrella, "atom_mask_1")),
+        resolve_group(args.topology, string_value(umbrella, "atom_mask_2")),
+    )
 
     force = positive_float(umbrella, "force_constant")
     exchange = positive_int(umbrella, "exchange_interval_steps")
@@ -261,7 +286,7 @@ def main() -> None:
         seed = seeds[index]
         directory = args.output / replica
         directory.mkdir()
-        (directory / "distance.RST").write_text(f"&rst\n iat={atom_1},{atom_2},\n r1=0.0, r2={center:.6f}, r3={center:.6f}, r4=999.0,\n rk2={force:.6f}, rk3={force:.6f},\n/\n", encoding="utf-8")
+        (directory / "distance.RST").write_text(f"&rst\n{atom_fields}\n r1=0.0, r2={center:.6f}, r3={center:.6f}, r4=999.0,\n rk2={force:.6f}, rk3={force:.6f},\n/\n", encoding="utf-8")
         if args.method == "gareus":
             # Each window starts from the shared NPT box and keeps that volume.
             (directory / "equilibrate.in").write_text(

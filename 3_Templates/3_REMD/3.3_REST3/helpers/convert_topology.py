@@ -9,6 +9,11 @@ from pathlib import Path
 
 import parmed
 
+from scale_cmap import COLD_CMAP_TYPE_PREFIX
+from tempered_selection import read_selection
+
+HOT_CMAP_TYPE_PREFIX = "XC"
+
 # Parser 0.2.2 finds topology sections with substring tests such as
 # `"system" in line`. ParmEd names multi-residue molecules system1, system2, ...,
 # so every molecule whose name contains a section word is renamed.
@@ -19,15 +24,29 @@ PARSER_SECTION_WORDS = (
 PARSER_SOLUTE_PREFIX = "Solute_"
 
 
-def preserve_residue_specific_cmaps(structure: parmed.Structure) -> dict[str, str]:
-    """Give each residue/CMAP combination a distinct C-alpha type."""
-    cmap_names: dict[tuple[int, str], str] = {}
+def preserve_residue_specific_cmaps(
+    structure: parmed.Structure, hot_atom_indices: set[int]
+) -> dict[str, str]:
+    """Give each residue/CMAP combination a distinct C-alpha type.
+
+    REST scales every map in [ cmaptypes ], so residues outside the tempered
+    region get their own unscaled XU<n> types. A CMAP is hot when its central
+    C-alpha atom is tempered.
+    """
+    existing_types = {str(atom.type) for atom in structure.atoms}
+    cmap_names: dict[tuple[int, str, bool], str] = {}
+    type_counts = {True: 0, False: 0}
     atom_names: dict[int, str] = {}
 
     for cmap in structure.cmaps:
         residue_name = cmap.atom3.residue.name
-        cmap_key = (id(cmap.type), residue_name)
-        cmap_name = cmap_names.setdefault(cmap_key, f"XC{len(cmap_names)}")
+        is_hot = cmap.atom3.idx in hot_atom_indices
+        cmap_key = (id(cmap.type), residue_name, is_hot)
+        if cmap_key not in cmap_names:
+            prefix = HOT_CMAP_TYPE_PREFIX if is_hot else COLD_CMAP_TYPE_PREFIX
+            cmap_names[cmap_key] = f"{prefix}{type_counts[is_hot]}"
+            type_counts[is_hot] += 1
+        cmap_name = cmap_names[cmap_key]
         atom_key = id(cmap.atom3)
         if atom_key in atom_names and atom_names[atom_key] != cmap_name:
             raise SystemExit("Different CMAPs are assigned to one C-alpha atom.")
@@ -36,10 +55,13 @@ def preserve_residue_specific_cmaps(structure: parmed.Structure) -> dict[str, st
             cmap.atom3.atom_type.name = cmap_name
             cmap.atom3.type = cmap_name
             atom_names[atom_key] = cmap_name
+    collisions = sorted(set(cmap_names.values()) & existing_types)
+    if collisions:
+        raise SystemExit(f"Generated CMAP type names already exist as atom types: {collisions}")
     if structure.cmaps and not cmap_names:
         raise SystemExit("Could not separate residue-specific CMAPs.")
 
-    return {name: residue for (_, residue), name in cmap_names.items()}
+    return {name: residue for (_, residue, _), name in cmap_names.items()}
 
 
 def rename_parser_unsafe_molecules(topology: Path) -> dict[str, str]:
@@ -91,6 +113,12 @@ def main() -> None:
         type=Path,
         help="Output GROMACS coordinate file",
     )
+    parser.add_argument(
+        "--tempered-atoms",
+        type=Path,
+        required=True,
+        help="tempered_atoms.tsv; CMAPs of other residues get unscaled XU types",
+    )
     args = parser.parse_args()
 
     for path in (args.topology, args.coordinates):
@@ -98,7 +126,11 @@ def main() -> None:
             raise SystemExit(f"Input file not found: {path}")
 
     structure = parmed.load_file(str(args.topology), xyz=str(args.coordinates))
-    cmap_types = preserve_residue_specific_cmaps(structure)
+    try:
+        hot_atom_indices = {index - 1 for index, _, _ in read_selection(args.tempered_atoms)}
+    except (OSError, ValueError) as error:
+        raise SystemExit(f"Error: {error}") from None
+    cmap_types = preserve_residue_specific_cmaps(structure, hot_atom_indices)
     structure.save(str(args.output_topology), overwrite=True)
     structure.save(str(args.output_coordinates), overwrite=True)
     renamed = rename_parser_unsafe_molecules(args.output_topology)

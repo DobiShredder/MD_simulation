@@ -64,6 +64,15 @@ show_engine_output() {
     fi
 }
 
+# Keep engine stdout/stderr in engine.<stage>.log beside <stage>.out.
+# Each attempt appends a header, so earlier attempts stay readable.
+run_engine() {
+    local engine_log=$1
+    shift
+    echo "== $(date '+%Y-%m-%d %H:%M:%S') $*" >> "$engine_log"
+    "$@" >> "$engine_log" 2>&1
+}
+
 # Partial output is never removed or overwritten; the user moves it out of work.
 die_partial() {
     local reason=$1
@@ -183,9 +192,10 @@ run_stage() {
     echo "Running: rMD - $label"
     if ! (
         cd work
-        "${command[@]}"
+        run_engine "engine.$stage.log" "${command[@]}"
     ); then
         show_engine_output "$prefix.out"
+        show_engine_output "work/engine.$stage.log"
         die_partial "rMD $label failed. " "$label" "${stage_outputs[@]}"
     fi
     local output

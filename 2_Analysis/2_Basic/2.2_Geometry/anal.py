@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Plot Chignolin distances, angles, and residue-5 phi/psi."""
+"""Plot Chignolin distances, angles, and one residue's phi/psi."""
 
 from __future__ import annotations
 
+import argparse
 from pathlib import Path
 
 from result_generation import verify_generation
@@ -11,19 +12,29 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def residue_five_columns(header: list[str]) -> tuple[int, int]:
+# Residue for the phi/psi scatter; it must lie inside the multidihedral
+# resrange (2-9) in inputs/cpptraj.in.
+RAMACHANDRAN_RESIDUE = 5
+
+# Used only with --save-figure DIR.
+FIGURE_NAME = "geometry.png"
+FIGURE_DPI = 150
+
+
+def residue_torsion_columns(header: list[str], residue: int) -> tuple[int, int]:
+    suffix = f":{residue}"
     phi = [
         index
         for index, name in enumerate(header)
-        if "phi" in name.lower() and name.endswith(":5")
+        if "phi" in name.lower() and name.endswith(suffix)
     ]
     psi = [
         index
         for index, name in enumerate(header)
-        if "psi" in name.lower() and name.endswith(":5")
+        if "psi" in name.lower() and name.endswith(suffix)
     ]
     if len(phi) != 1 or len(psi) != 1:
-        raise ValueError(f"residue 5 phi/psi column not found: {header}")
+        raise ValueError(f"residue {residue} phi/psi column not found: {header}")
     return phi[0], psi[0]
 
 
@@ -34,8 +45,32 @@ def read_table(path: Path) -> tuple[list[str], np.ndarray]:
     return header, data
 
 
+def save_figure(figure: plt.Figure, figure_dir: Path) -> None:
+    figure_dir.mkdir(parents=True, exist_ok=True)
+    figure_path = figure_dir / FIGURE_NAME
+    figure.savefig(figure_path, dpi=FIGURE_DPI)
+    print(f"Saved figure: {figure_path}")
+
+
+def parse_arguments() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--save-figure",
+        metavar="DIR",
+        type=Path,
+        help="also save the figure as PNG in DIR (outside output/); "
+        "by default the figure is only displayed",
+    )
+    return parser.parse_args()
+
+
 def main() -> int:
+    args = parse_arguments()
     output_dir = Path(__file__).resolve().parent / "output"
+    figure_dir = args.save_figure
+    if figure_dir is not None and figure_dir.resolve().is_relative_to(output_dir):
+        # Extra files in output/ would invalidate its recorded generation hashes.
+        raise SystemExit(f"Error: --save-figure DIR must be outside {output_dir}")
     from writer_guard import protect_python_entry
     protect_python_entry("output", reads=(output_dir,))
     generation = verify_generation(output_dir)
@@ -46,8 +81,9 @@ def main() -> int:
         raise ValueError("geometry.dat has too few columns.")
     if not np.array_equal(geometry[:, 0], torsions[:, 0]):
         raise ValueError("Frame indices in the geometry outputs do not match.")
+    print(f"Frames: {len(geometry)}")
 
-    phi_column, psi_column = residue_five_columns(torsion_header)
+    phi_column, psi_column = residue_torsion_columns(torsion_header, RAMACHANDRAN_RESIDUE)
 
     figure, axes = plt.subplots(3, 1, figsize=(8, 10))
     axes[0].plot(geometry[:, 0], geometry[:, 1], label="Terminal Cα distance")
@@ -62,13 +98,15 @@ def main() -> int:
     axes[2].scatter(torsions[:, phi_column], torsions[:, psi_column], s=12, alpha=0.6)
     axes[2].set_xlim(-180, 180)
     axes[2].set_ylim(-180, 180)
-    axes[2].set_xlabel("Residue 5 φ (degree)")
-    axes[2].set_ylabel("Residue 5 ψ (degree)")
+    axes[2].set_xlabel(f"Residue {RAMACHANDRAN_RESIDUE} φ (degree)")
+    axes[2].set_ylabel(f"Residue {RAMACHANDRAN_RESIDUE} ψ (degree)")
 
     figure.tight_layout()
-    print("Displaying Geometry analysis figure.")
     if verify_generation(output_dir) != generation:
         raise ValueError(f"Analysis generation changed while reading: {output_dir}")
+    if figure_dir is not None:
+        save_figure(figure, figure_dir)
+    print("Displaying Geometry analysis figure.")
     plt.show()
     print("Completed: Geometry analysis (interactive figure).")
     return 0
