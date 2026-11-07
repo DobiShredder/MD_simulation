@@ -14,8 +14,8 @@ force field, 온도·압력과 production length를 대상 system에 맞게 수�
 | 3 | [REMD](3_REMD/README.md) | T-REMD, REST2, REST3, REUS, GaREUS |
 | 4 | [GaMD](4_GaMD/README.md) | GaMD, LiGaMD3, Pep-GaMD |
 | 5 | [FEP](5_FEP/README.md) | RBFE, ABFE |
-| 6 | [WE](6_WE/README.md) | WESTPA + AMBER |
-| 7 | [MetaD](7_MetaD/README.md) | WT-MetaD, Funnel scaffold, OPES |
+| 6 | [MetaD](6_MetaD/README.md) | WT-MetaD, Funnel scaffold, OPES |
+| 7 | [WE](7_WE/README.md) | WESTPA + AMBER |
 
 ### 실행 환경
 
@@ -26,8 +26,8 @@ force field, 온도·압력과 production length를 대상 system에 맞게 수�
 | 3 | T-REMD, REUS, GaREUS: `pmemd.cuda.MPI`. REST2, REST3: PLUMED 2.10.2 이상으로 patch한 GROMACS 2024.3 `gmx_mpi` | State 수만큼 MPI rank, GPU |
 | 4 | AMBER `pmemd.cuda` | GPU 1개 |
 | 5 | AMBER `pmemd.cuda` | GPU 1개 |
-| 6 | WESTPA 2 + AMBER `pmemd.cuda` | GPU |
-| 7 | PLUMED 2.10 연동 AMBER `pmemd.cuda`. Funnel은 `funnel`, OPES는 `opes` module이 필요합니다. | GPU 1개 |
+| 6 | PLUMED 2.10 연동 AMBER `pmemd.cuda`. Funnel은 `funnel`, OPES는 `opes` module이 필요합니다. | GPU 1개 |
+| 7 | WESTPA 2 + AMBER `pmemd.cuda` | GPU |
 
 Build 조건과 실행 option은 각 family README에 있습니다. `pmemd.cuda` 없이
 `sander`로 짧게 test하는 조건은 [루트 README](../README.md)를 참고합니다.
@@ -60,8 +60,8 @@ target system before running.
 | 3 | [REMD](3_REMD/README.md) | T-REMD, REST2, REST3, REUS, GaREUS |
 | 4 | [GaMD](4_GaMD/README.md) | GaMD, LiGaMD3, Pep-GaMD |
 | 5 | [FEP](5_FEP/README.md) | RBFE, ABFE |
-| 6 | [WE](6_WE/README.md) | WESTPA + AMBER |
-| 7 | [MetaD](7_MetaD/README.md) | WT-MetaD, Funnel scaffold, OPES |
+| 6 | [MetaD](6_MetaD/README.md) | WT-MetaD, Funnel scaffold, OPES |
+| 7 | [WE](7_WE/README.md) | WESTPA + AMBER |
 
 ### Runtime requirements
 
@@ -72,8 +72,8 @@ target system before running.
 | 3 | T-REMD, REUS, GaREUS: `pmemd.cuda.MPI`. REST2, REST3: GROMACS 2024.3 `gmx_mpi` patched with PLUMED 2.10.2 or newer | One MPI rank per state, GPU |
 | 4 | AMBER `pmemd.cuda` | One GPU |
 | 5 | AMBER `pmemd.cuda` | One GPU |
-| 6 | WESTPA 2 + AMBER `pmemd.cuda` | GPU |
-| 7 | PLUMED 2.10-enabled AMBER `pmemd.cuda`; Funnel needs the `funnel` module and OPES the `opes` module | One GPU |
+| 6 | PLUMED 2.10-enabled AMBER `pmemd.cuda`; Funnel needs the `funnel` module and OPES the `opes` module | One GPU |
+| 7 | WESTPA 2 + AMBER `pmemd.cuda` | GPU |
 
 Build requirements and run options are in each family README. See the
 [root README](../README.md) for short `sander` tests without `pmemd.cuda`.

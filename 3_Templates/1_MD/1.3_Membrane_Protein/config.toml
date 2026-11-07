@@ -49,3 +49,5 @@ trajectory_interval_steps = 5000
 energy_interval_steps = 5000
 restart_interval_steps = 5000
 random_seed = "random"
+
+# Other AMBER options: [amber.<stage>.<namelist>] tables; see README "Engine option passthrough".

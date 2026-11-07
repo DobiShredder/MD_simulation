@@ -9,9 +9,10 @@ from pathlib import Path
 
 sys.dont_write_bytecode = True
 sys.path.insert(0, ".")
-from apply_config import apply_config  # noqa: E402
+from apply_config import apply_config, apply_engine_passthrough  # noqa: E402
 from config_utils import (  # noqa: E402
     amber_ensemble_lines,
+    apply_plumed_options,
     choice_value,
     load_config,
     nonnegative_float,
@@ -466,7 +467,9 @@ def compress_atom_ranges(atoms: list[int]) -> str:
     return ",".join(ranges)
 
 
-def write_plumed(output: Path, values: dict[str, object], topology: Path) -> None:
+def write_plumed(
+    output: Path, values: dict[str, object], topology: Path, config: dict[str, object]
+) -> None:
     group_1, group_2 = reaction_coordinate_groups(topology, values)
     molecule = compress_atom_ranges(
         selected_atoms(topology, str(values["whole_molecule_mask"]))
@@ -482,16 +485,18 @@ def write_plumed(output: Path, values: dict[str, object], topology: Path) -> Non
         centers += f"{label}: COM ATOMS={compress_atom_ranges(group)} NOPBC\n"
         endpoints.append(label)
     target_nm = float(values["target_distance_angstrom"]) / 10.0
-    (output / "plumed.dat").write_text(
+    text = (
         f"WHOLEMOLECULES ENTITY0={molecule}\n"
         + centers
         + f"reaction_coordinate: DISTANCE ATOMS={endpoints[0]},{endpoints[1]} NOPBC\n"
         "ratchet: ABMD ARG=reaction_coordinate "
         f"TO={target_nm:.6f} KAPPA={float(values['kappa']):.6f}\n"
         "PRINT ARG=reaction_coordinate,ratchet.bias,ratchet.reaction_coordinate_min "
-        f"STRIDE={int(values['ratchet_output_interval'])} FILE=ratchet.dat\n",
-        encoding="utf-8",
+        f"STRIDE={int(values['ratchet_output_interval'])} FILE=ratchet.dat\n"
     )
+    # [plumed] passthrough: extra ABMD keywords and extra actions.
+    text = apply_plumed_options(config, text, "ratchet")
+    (output / "plumed.dat").write_text(text, encoding="utf-8")
 
 
 def write_resolved(config_path: Path, output: Path, salt_pairs: int | None) -> None:
@@ -517,12 +522,14 @@ def main() -> None:
             if args.topology is None or not args.topology.is_file():
                 raise ValueError("rmd mode requires --topology PARM7")
             write_rmd_inputs(args.output, values)
-            write_plumed(args.output, values, args.topology)
+            write_plumed(args.output, values, args.topology, load_config(args.config))
+            apply_engine_passthrough(args.config, args.output)
         else:
             if args.topology is None or not args.topology.is_file():
                 raise ValueError("us mode requires --topology PARM7")
             group_1, group_2 = reaction_coordinate_groups(args.topology, values)
             write_us_inputs(args.output, values, group_1, group_2)
+            apply_engine_passthrough(args.config, args.output)
     except (OSError, ValueError) as error:
         raise SystemExit(f"Config error: {error}") from None
 

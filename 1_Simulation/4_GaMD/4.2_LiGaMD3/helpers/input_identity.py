@@ -35,7 +35,7 @@ def read_identity(record):
         return previous
     except (OSError, ValueError) as error:
         raise RuntimeError(f"Input identity record is unreadable: {record}: {error}. "
-                           "Files were preserved. Move work aside (for example: mv work work.old) and rerun ./build.sh.") from error
+                           "Files were preserved. Move work aside (for example: mv work work.old) and run the workflow again.") from error
 
 
 def require_writer(record):
@@ -69,14 +69,14 @@ def check(record, stage, inputs, values, outputs, config_path=None):
             context = ", ".join(sorted(changed)) if changed else "execution settings"
             if not changed and config_path:
                 context = f"{config_path} (consumed settings)"
-            raise RuntimeError(f"{stage}: input changed: {context}. Existing results and identity were preserved. Move work aside (for example: mv work work.old) and rerun ./build.sh.")
+            raise RuntimeError(f"{stage}: input changed: {context}. Existing results and identity were preserved. Move work aside (for example: mv work work.old) and run the workflow again.")
         return
     existing = [name for name in outputs if Path(name).exists() or Path(name).is_symlink()]
     completion_marker = record.with_name(record.name.replace(".identity.json", ".success.json"))
     if completion_marker.exists() or completion_marker.is_symlink():
         existing.append(str(completion_marker))
     if existing:
-        raise RuntimeError(f"{stage}: results have no input identity: {existing[0]}. Files were preserved. Move work aside (for example: mv work work.old) and rerun ./build.sh.")
+        raise RuntimeError(f"{stage}: results have no input identity: {existing[0]}. Files were preserved. Move work aside (for example: mv work work.old) and run the workflow again.")
     record.parent.mkdir(parents=True, exist_ok=True)
     # Exclusive creation: never replace an earlier identity with current inputs.
     with record.open("x") as handle:
@@ -112,7 +112,7 @@ def verify(directory, managed_outputs=False):
         for name, expected in previous["files"].items():
             path = Path(name)
             if not path.is_file() or digest(path) != expected:
-                raise RuntimeError(f"{previous['stage']}: input changed: {name}. Files and identity were preserved. Move work aside (for example: mv work work.old) and rerun ./build.sh.")
+                raise RuntimeError(f"{previous['stage']}: input changed: {name}. Files and identity were preserved. Move work aside (for example: mv work work.old) and run the workflow again.")
         known_outputs.update(previous["outputs"])
         # GaMD keeps a mutable engine file beside its recorded immutable snapshots.
         for name in previous["outputs"]:
@@ -123,14 +123,16 @@ def verify(directory, managed_outputs=False):
         # Its wrapper separately requires an identity for that HDF5 file.
         return
     for path in directory.rglob("*"):
-        runtime_name = path.name.startswith(("min-solvent.", "min-all.", "minimize.", "heat.", "equilibrate.", "production.", "gamd_prepare."))
+        runtime_name = path.name.startswith(("min-solvent.", "min-environment.", "min-lipid.", "min-all.", "minimize.", "heat.",
+                                           "equil.", "equil-heavy.", "equil-backbone.", "equilibrate.",
+                                           "equilibrate-heavy.", "equilibrate-backbone.", "production.", "gamd_prepare."))
         result_file = (path.name.endswith(".complete") or path.suffix in (".out", ".nc", ".cpt")
                        or (runtime_name and path.suffix in (".gro", ".log", ".tpr", ".edr", ".rst7", ".info", ".rst"))
                        or path.name in ("mdinfo", "exchange.log", "production.group", "gamd.prepare.log", "gamd-restart.dat", "production_start.rst7",
                                         "prepared.gamd.rst", "HILLS", "KERNELS", "COLVAR", "opes.state", "DELTAFS", "FUNNEL_GRID"))
         if path.is_file() and result_file:
             if str(path.resolve()) not in known_outputs:
-                raise RuntimeError(f"{path.name}: results have no input identity: {path}. Files were preserved. Move work aside (for example: mv work work.old) and rerun ./build.sh.")
+                raise RuntimeError(f"{path.name}: results have no input identity: {path}. Files were preserved. Move work aside (for example: mv work work.old) and run the workflow again.")
 
 
 

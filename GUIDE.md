@@ -17,8 +17,8 @@
    - [Replica exchange](#13-replica-exchange)
    - [Gaussian accelerated MD](#14-gaussian-accelerated-md)
    - [Free-energy perturbation](#15-free-energy-perturbation)
-   - [Weighted ensemble](#16-weighted-ensemble)
-   - [Metadynamics와 OPES](#17-metadynamics와-opes)
+   - [Metadynamics와 OPES](#16-metadynamics와-opes)
+   - [Weighted ensemble](#17-weighted-ensemble)
 2. [Trajectory 분석](#2-trajectory-분석)
 3. [참고 자료](#3-참고-자료)
 4. [부록: 실행 상태와 복구](#4-부록-실행-상태와-복구)
@@ -86,8 +86,8 @@ structure and scientific choices
 | 3 | REMD 계열 | replica exchange를 통한 sampling 향상 | 교환 변수와 replica 분포 설계 |
 | 4 | GaMD 계열 | reaction-coordinate-free barrier 완화 | boost 통계와 reweighting 검증 |
 | 5 | FEP | 두 alchemical state의 free energy 차이 | 안정적인 mapping과 lambda overlap |
-| 6 | WE | 희귀 사건의 pathway, flux와 rate | progress coordinate와 상태 정의 |
-| 7 | MetaD/OPES | CV 공간의 barrier 완화와 자유에너지 탐색 | 물리적으로 유효한 CV와 bias 설정 |
+| 6 | MetaD/OPES | CV 공간의 barrier 완화와 자유에너지 탐색 | 물리적으로 유효한 CV와 bias 설정 |
+| 7 | WE | 희귀 사건의 pathway, flux와 rate | progress coordinate와 상태 정의 |
 
 
 
@@ -218,20 +218,7 @@ State overlap과 bootstrap uncertainty를 함께 확인합니다.
 
 
 
-### 1.6 Weighted ensemble
-
-Weighted ensemble은 여러 weighted trajectory segment를 전파하고 WESTPA가 binning과 resampling을 수행하는 path-sampling 방법입니다.
-물리적 dynamics를 변경하는 bias potential을 추가하지 않지만, progress coordinate와 초기·최종 상태 정의가 효율과 해석을 좌우합니다.
-
-Chignolin 예제는 residue 2–9 Cα RMSD를 progress coordinate로 사용하여
-total weight, restart, random seed, bin occupancy와 partially unfolded target 도달을 점검합니다.
-Flux와 rate estimator는 포함하지 않습니다. Resampling과 weight는 WESTPA가 관리합니다.
-
-- [WESTPA + AMBER WE 튜토리얼](1_Simulation/6_WE/README.md)
-
-
-
-### 1.7 Metadynamics와 OPES
+### 1.6 Metadynamics와 OPES
 
 Metadynamics는 선택한 collective variable 공간에 history-dependent bias를 누적하여 이미 방문한 영역에서 벗어나도록 합니다.
 Well-Tempered MetaD는 bias 증가를 완화하고, OPES는 목표 distribution에 접근하도록 bias를 구성합니다.
@@ -240,7 +227,20 @@ Funnel MetaD는 trypsin–benzamidine binding 경로를 cone과 cylinder 안으�
 Input에는 CV, Gaussian width·height, bias factor, pace, wall, grid와 단위를 기록합니다.
 Restart할 때는 AMBER restart와 method별 `HILLS` 또는 OPES state를 함께 이어갑니다.
 
-- [MetaD와 OPES 튜토리얼](1_Simulation/7_MetaD/README.md)
+- [MetaD와 OPES 튜토리얼](1_Simulation/6_MetaD/README.md)
+
+
+
+### 1.7 Weighted ensemble
+
+Weighted ensemble은 여러 weighted trajectory segment를 전파하고 WESTPA가 binning과 resampling을 수행하는 path-sampling 방법입니다.
+물리적 dynamics를 변경하는 bias potential을 추가하지 않지만, progress coordinate와 초기·최종 상태 정의가 효율과 해석을 좌우합니다.
+
+Chignolin 예제는 residue 2–9 Cα RMSD를 progress coordinate로 사용하여
+total weight, restart, random seed, bin occupancy와 partially unfolded target 도달을 점검합니다.
+Flux와 rate estimator는 포함하지 않습니다. Resampling과 weight는 WESTPA가 관리합니다.
+
+- [WESTPA + AMBER WE 튜토리얼](1_Simulation/7_WE/README.md)
 
 
 
@@ -339,7 +339,7 @@ mv work/heat.out work/heat.rst7 work/heat.info work.failed/
   지정할 수도 있습니다.
 - PLUMED bias를 이어받는 MetaD/OPES template은 segment마다
   `bias_start/`에 시작 시점 bias file을 남깁니다. 복원 절차는
-  [3_Templates/7_MetaD/README.md](3_Templates/7_MetaD/README.md)에 있습니다.
+  [3_Templates/6_MetaD/README.md](3_Templates/6_MetaD/README.md)에 있습니다.
 
 #### Build
 
@@ -437,8 +437,8 @@ judging convergence.
    - [Replica exchange](#13-replica-exchange-1)
    - [Gaussian accelerated MD](#14-gaussian-accelerated-md-1)
    - [Free-energy perturbation](#15-free-energy-perturbation-1)
-   - [Weighted ensemble](#16-weighted-ensemble-1)
-   - [Metadynamics and OPES](#17-metadynamics-and-opes)
+   - [Metadynamics and OPES](#16-metadynamics-and-opes)
+   - [Weighted ensemble](#17-weighted-ensemble-1)
 2. [Trajectory analysis](#2-trajectory-analysis)
 3. [References](#3-references)
 4. [Appendix: Run state and recovery](#4-appendix-run-state-and-recovery)
@@ -500,8 +500,8 @@ atoms, or atom selections for your system.
 | 3 | REMD family | Better sampling through replica exchange | Design of the exchange variable and replica spacing |
 | 4 | GaMD family | Barrier lowering without a reaction coordinate | Boost statistics and validated reweighting |
 | 5 | FEP | Free-energy difference between two alchemical states | A stable mapping and lambda overlap |
-| 6 | WE | Pathways, flux, and rates of rare events | Progress coordinate and state definitions |
-| 7 | MetaD/OPES | Barrier lowering and free-energy exploration in CV space | Physically meaningful CVs and bias settings |
+| 6 | MetaD/OPES | Barrier lowering and free-energy exploration in CV space | Physically meaningful CVs and bias settings |
+| 7 | WE | Pathways, flux, and rates of rare events | Progress coordinate and state definitions |
 
 #### Common workflow
 
@@ -626,21 +626,7 @@ bootstrap uncertainty together.
 
 - [FEP tutorials](1_Simulation/5_FEP/README.md)
 
-#### 1.6 Weighted ensemble
-
-Weighted ensemble is a path-sampling method that propagates many weighted
-trajectory segments while WESTPA handles binning and resampling. It adds no
-bias potential to the physical dynamics, but efficiency and interpretation
-depend on the progress coordinate and the initial and target state definitions.
-
-The chignolin example uses the Cα RMSD of residues 2–9 as the progress
-coordinate. It checks total weight, restart, random seeds, bin occupancy, and
-arrival at a partially unfolded target. Flux and rate estimators are not
-included. WESTPA manages resampling and weights.
-
-- [WESTPA + AMBER WE tutorial](1_Simulation/6_WE/README.md)
-
-#### 1.7 Metadynamics and OPES
+#### 1.6 Metadynamics and OPES
 
 Metadynamics builds up a history-dependent bias in a chosen collective-variable
 space, pushing the system out of regions it has already visited. Well-Tempered
@@ -652,7 +638,21 @@ Record the CVs, Gaussian width and height, bias factor, pace, walls, grid, and
 units in the input. On restart, continue the AMBER restart together with the
 method's `HILLS` file or OPES state.
 
-- [MetaD and OPES tutorials](1_Simulation/7_MetaD/README.md)
+- [MetaD and OPES tutorials](1_Simulation/6_MetaD/README.md)
+
+#### 1.7 Weighted ensemble
+
+Weighted ensemble is a path-sampling method that propagates many weighted
+trajectory segments while WESTPA handles binning and resampling. It adds no
+bias potential to the physical dynamics, but efficiency and interpretation
+depend on the progress coordinate and the initial and target state definitions.
+
+The chignolin example uses the Cα RMSD of residues 2–9 as the progress
+coordinate. It checks total weight, restart, random seeds, bin occupancy, and
+arrival at a partially unfolded target. Flux and rate estimators are not
+included. WESTPA manages resampling and weights.
+
+- [WESTPA + AMBER WE tutorial](1_Simulation/7_WE/README.md)
 
 ### 2. Trajectory analysis
 
@@ -741,7 +741,7 @@ mv work/heat.out work/heat.rst7 work/heat.info work.failed/
   then `build.sh`. Templates can also use a new `WORK_DIR`.
 - MetaD/OPES templates that continue PLUMED bias keep the bias files at the
   start of each segment in `bias_start/`. See
-  [3_Templates/7_MetaD/README.md](3_Templates/7_MetaD/README.md) for the restore
+  [3_Templates/6_MetaD/README.md](3_Templates/6_MetaD/README.md) for the restore
   steps.
 
 #### Build

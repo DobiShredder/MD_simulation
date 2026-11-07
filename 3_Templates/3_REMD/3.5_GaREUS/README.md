@@ -220,6 +220,27 @@ Langevin dynamics(`ntt=3`)는 restart마다 다른 `ig`를 써야 하므로 stag
 equilibration은 각 seed에 +1,000,000, GaMD preparation은 +2,000,000,
 production segment N은 +(2+N)×1,000,000입니다.
 
+### Engine option 직접 지정
+
+Config key가 없는 AMBER option은 `[amber.<stage>.<namelist>]` table로 지정합니다. Stage 우선순위, 값 형식과 거부되는 keyword는 [3_Templates README](../../README.md#engine-option-직접-지정)를 따릅니다.
+
+```toml
+[amber.md.cntrl]
+gamma_ln = 2.0
+
+[amber.production.cntrl]
+iwrap = 1
+```
+
+| Stage | Input |
+| --- | --- |
+| `minimization` | `minimize.in` |
+| `heating` | `heat.in` |
+| `equilibration` | `equilibrate.in` |
+| `production` | `gamd_prepare.in`, `production.NNN.template.in` |
+
+GaMD parameter preparation(`gamd_prepare.in`)도 production stage입니다. 모든 window에 같은 값을 씁니다.
+
 ### 문제 해결
 
 | Message 또는 증상 | 원인 | 조치 |
@@ -448,6 +469,27 @@ With `"random"`, shared heating gets a random seed and every other stage uses
 `ig` on each restart, so each stage adds 1,000,000: shared heating +0, shared
 and window equilibration +1,000,000 on their own seed, GaMD preparation
 +2,000,000, and production segment N +(2+N)×1,000,000.
+
+### Engine option passthrough
+
+AMBER options without a config key go into `[amber.<stage>.<namelist>]` tables. Stage precedence, value formats and refused keywords are described in the [3_Templates README](../../README.md#engine-option-passthrough).
+
+```toml
+[amber.md.cntrl]
+gamma_ln = 2.0
+
+[amber.production.cntrl]
+iwrap = 1
+```
+
+| Stage | Input |
+| --- | --- |
+| `minimization` | `minimize.in` |
+| `heating` | `heat.in` |
+| `equilibration` | `equilibrate.in` |
+| `production` | `gamd_prepare.in`, `production.NNN.template.in` |
+
+GaMD parameter preparation (`gamd_prepare.in`) is a production stage. Every window gets the same values.
 
 ### Troubleshooting
 

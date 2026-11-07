@@ -289,6 +289,23 @@ part output 이름과 기존 파일 보존을 확인했습니다. 공개 runner�
 continuation은 미검증입니다. Runner가 GPU ID를 전달하므로 CPU-only 환경에서는
 실행되지 않습니다.
 
+### Engine option 직접 지정
+
+Config key가 없는 GROMACS mdp option은 `[gromacs.<stage>]` table로 지정합니다. Stage 우선순위, 값 형식과 거부되는 option은 [3_Templates README](../../README.md#engine-option-직접-지정)를 따릅니다.
+
+```toml
+[gromacs.production]
+nstcalcenergy = 100
+```
+
+| Stage | Input |
+| --- | --- |
+| `minimization` | `minimize.mdp` |
+| `equilibration` | `equilibrate.mdp` |
+| `production` | `production.mdp` |
+
+REST는 모든 stage를 GROMACS로 실행하므로 `[gromacs]`만 씁니다. Scale-one 검사용 `energy_check.mdp`는 바꾸지 않습니다. 모든 replica에 같은 값을 씁니다.
+
 ### 문제 해결
 
 | Message 또는 증상 | 원인 | 조치 |
@@ -599,6 +616,23 @@ The segment helper was checked with actual single-replica GROMACS 2024.3 CPU run
 for cumulative step/time, part output names and preservation of existing files.
 Public-runner MPI HREX/GPU continuation remains unverified. The runner passes GPU
 IDs and cannot run in a CPU-only environment.
+
+### Engine option passthrough
+
+GROMACS mdp options without a config key go into `[gromacs.<stage>]` tables. Stage precedence, value formats and refused options are described in the [3_Templates README](../../README.md#engine-option-passthrough).
+
+```toml
+[gromacs.production]
+nstcalcenergy = 100
+```
+
+| Stage | Input |
+| --- | --- |
+| `minimization` | `minimize.mdp` |
+| `equilibration` | `equilibrate.mdp` |
+| `production` | `production.mdp` |
+
+REST runs every stage with GROMACS, so only `[gromacs]` applies. The scale-one check input `energy_check.mdp` is left unchanged. Every replica gets the same values.
 
 ### Troubleshooting
 

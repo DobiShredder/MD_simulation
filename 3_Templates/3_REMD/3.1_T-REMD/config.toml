@@ -42,3 +42,5 @@ generator_tolerance = 0.0001
 exchange_interval_steps = 1000
 random_seed = "random"
 temperature_file = "inputs/temperatures.txt"
+
+# Other AMBER options: [amber.<stage>.<namelist>] tables; see README "Engine option passthrough".

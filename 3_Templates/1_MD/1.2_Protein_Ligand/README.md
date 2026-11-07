@@ -113,6 +113,25 @@ Config에 없는 고정값은 positional restraint 10(solvent minimization) → 
 따라 달라집니다. 전체 실행이 끝나면 `Production segments: work/001 through work/010`이
 출력됩니다. Segment가 하나이면 `Production output: work/production.out`입니다.
 
+### Engine option 직접 지정
+
+Config key가 없는 AMBER option은 `[amber.<stage>.<namelist>]` table로 지정합니다. Stage 우선순위, 값 형식과 거부되는 keyword는 [3_Templates README](../../README.md#engine-option-직접-지정)를 따릅니다.
+
+```toml
+[amber.md.cntrl]
+gamma_ln = 2.0
+
+[amber.production.cntrl]
+iwrap = 1
+```
+
+| Stage | Input |
+| --- | --- |
+| `minimization` | `min-solvent.in`, `min-all.in` |
+| `heating` | `heat.in` |
+| `equilibration` | `equilibrate.in` |
+| `production` | `production.in` |
+
 ### 자주 생기는 문제
 
 공통 message는 [상위 README](../README.md#자주-생기는-문제)에 있습니다.
@@ -243,6 +262,25 @@ dynamics. Each run is one `pmemd.cuda` process on one GPU, and segments run in
 order. Run time depends on the GPU and the atom count. A full run ends with
 `Production segments: work/001 through work/010`; a single segment prints
 `Production output: work/production.out`.
+
+### Engine option passthrough
+
+AMBER options without a config key go into `[amber.<stage>.<namelist>]` tables. Stage precedence, value formats and refused keywords are described in the [3_Templates README](../../README.md#engine-option-passthrough).
+
+```toml
+[amber.md.cntrl]
+gamma_ln = 2.0
+
+[amber.production.cntrl]
+iwrap = 1
+```
+
+| Stage | Input |
+| --- | --- |
+| `minimization` | `min-solvent.in`, `min-all.in` |
+| `heating` | `heat.in` |
+| `equilibration` | `equilibrate.in` |
+| `production` | `production.in` |
 
 ### Common problems
 

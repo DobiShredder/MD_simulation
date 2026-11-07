@@ -44,3 +44,5 @@ windows_file = "windows.tsv"
 force_constant = 1.0
 exchange_interval_steps = 1000
 distance_output_interval_steps = 500
+
+# Other AMBER options: [amber.<stage>.<namelist>] tables; see README "Engine option passthrough".

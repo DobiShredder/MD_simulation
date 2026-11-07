@@ -16,6 +16,7 @@ from config_utils import (
     disulfide_pairs,
     disulfide_tleap_lines,
     load_config,
+    plumed_options,
     run_settings,
     salt_settings,
     salt_tleap_lines,
@@ -100,6 +101,296 @@ def stage_for_path(path: Path) -> str:
     return "other"
 
 
+# Engine passthrough: [amber.<stage>.<namelist>] and [gromacs.<stage>] tables
+# write any engine keyword into the generated inputs. "all" applies to every
+# stage and "md" to heating, equilibration and production (MD-only keywords
+# such as gamma_ln break minimization); later tables win: all < md < stage.
+# Keywords that the template derives
+# from its own config keys or method logic are refused so restarts, windows
+# and replicas stay consistent; the message names the config key to use.
+MD_STAGES = ("heating", "equilibration", "production")
+RUN_STAGES = ("minimization", *MD_STAGES)
+PASSTHROUGH_STAGES = ("all", "md", *RUN_STAGES)
+
+AMBER_MANAGED = {
+    "imin": "the stage type (fixed by the template workflow)",
+    "irest": "the stage restart chain (fixed by the template workflow)",
+    "ntx": "the stage restart chain (fixed by the template workflow)",
+    "ntmin": "the minimization method (fixed by the template workflow)",
+    "nstlim": "[run] *_steps",
+    "dt": "[run] timestep",
+    "maxcyc": "[run] minimization_steps",
+    "ncyc": "[run] minimization_steepest_steps",
+    "ntpr": "[run] energy_interval_steps",
+    "ntwr": "[run] restart_interval_steps",
+    "ntwx": "[run] trajectory_interval_steps",
+    "tempi": "[run] heating_initial_temperature",
+    "temp0": "[run] temperature",
+    "pres0": "[run] pressure",
+    "ntb": "[run] equilibration_ensemble / production_ensemble",
+    "ntp": "[run] *_ensemble and pressure_coupling",
+    "ig": "[run] random_seed",
+    "ntc": "[run] constraint_mode",
+    "ntf": "[run] constraint_mode",
+    "nmropt": "the template restraints (DISANG)",
+    "ntr": "the template positional restraints",
+    "restraintmask": "the template positional restraints",
+    "restraint_wt": "the template positional restraints",
+    "numexchg": "the replica-exchange settings",
+    "gremd_acyc": "the replica-exchange settings",
+    "plumed": "the PLUMED coupling ([plumed] tables)",
+    "plumedfile": "the PLUMED coupling ([plumed] tables)",
+    "icfe": "[alchemical]",
+    "ifsc": "[alchemical]",
+    "aces26": "[alchemical]",
+    "timask1": "[alchemical] or [gamd] masks",
+    "timask2": "[alchemical] masks",
+    "scmask1": "[alchemical] masks",
+    "scmask2": "[alchemical] masks",
+    "crgmask": "[alchemical] masks",
+    "clambda": "[alchemical] lambda windows",
+    "ifmbar": "[alchemical] lambda windows",
+    "mbar_states": "[alchemical] lambda windows",
+    "mbar_lambda": "[alchemical] lambda windows",
+    "bar_intervall": "[run] mbar_interval_steps",
+    "scalpha": "[alchemical] scalpha",
+    "scbeta": "[alchemical] scbeta",
+    "gti_add_sc": "[alchemical]",
+    "gti_ele_sc": "[alchemical] gti_ele_sc",
+    "gti_vdw_sc": "[alchemical] gti_vdw_sc",
+    "gti_lam_sch": "[alchemical] gti_lam_sch",
+    "igamd": "[gamd]",
+    "ie": "[gamd]",
+    "irest_gamd": "[gamd]",
+    "ntcmd": "[gamd] conventional_*_steps",
+    "nteb": "[gamd] boost_*_steps",
+    "ntcmdprep": "[gamd] conventional_preparation_steps",
+    "ntebprep": "[gamd] boost_preparation_steps",
+    "ntave": "[gamd] averaging_interval_steps",
+    "sigma0p": "[gamd] sigma0P",
+    "sigma0d": "[gamd] sigma0D",
+    "sigma0b": "[gamd] sigma0B",
+    "bgpro2atm": "[gamd] masks",
+    "edpro2atm": "[gamd] masks",
+    "ied": "[gamd]",
+    "iep": "[gamd]",
+}
+# Sequential or per-window namelists written by the template.
+AMBER_MANAGED_NAMELISTS = {"wt": "the template restraint schedule", "rst": "the DISANG restraint file"}
+
+GROMACS_MANAGED = {
+    "integrator": "the stage type (fixed by the template workflow)",
+    "nsteps": "[run] *_steps",
+    "dt": "[run] timestep",
+    "tinit": "the segment restart chain (fixed by the template workflow)",
+    "init-step": "the segment restart chain (fixed by the template workflow)",
+    "continuation": "the segment restart chain (fixed by the template workflow)",
+    "gen-vel": "the segment restart chain (fixed by the template workflow)",
+    "gen-temp": "[run] temperature",
+    "gen-seed": "[replica_exchange] random_seed",
+    "ld-seed": "[replica_exchange] random_seed",
+    "ref-t": "[run] temperature",
+    "pcoupl": "[run] *_ensemble",
+    "ref-p": "[run] pressure",
+    "nstenergy": "[run] energy_interval_steps",
+    "nstlog": "[run] energy_interval_steps",
+    "nstxout-compressed": "[run] trajectory_interval_steps",
+    "constraints": "[run] constraint_mode",
+}
+
+IDENTIFIER = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
+MDP_KEY = re.compile(r"^[A-Za-z][A-Za-z0-9_-]*$")
+
+
+def check_passthrough_engines(config: dict[str, object]) -> None:
+    """Refuse tables for an engine this template does not run (they would be ignored)."""
+    run = config.get("run", {})
+    gromacs_template = isinstance(run, dict) and "production_engine" in run  # REST2/REST3
+    if "gromacs" in config and not gromacs_template:
+        raise ValueError("[gromacs] tables apply only to the GROMACS REST templates; use [amber]")
+    if "amber" in config and gromacs_template:
+        raise ValueError("REST runs every stage with GROMACS; use [gromacs] instead of [amber]")
+    plumed_bias = ("metadynamics", "opes", "opes_expanded", "ratchet_md")
+    if "plumed" in config and not any(name in config for name in plumed_bias):
+        raise ValueError("[plumed] applies only to templates with a PLUMED bias (MetaD/OPES, US ratchet MD)")
+
+
+def passthrough_stage(path: Path) -> str | None:
+    """Stage of a generated input for passthrough; None leaves the file unchanged."""
+    stage = stage_for_path(path)
+    if stage == "other" and path.name.startswith(("ratchet.", "continue.")):
+        # US ratchet MD and window continuation segments are production MD.
+        return "production"
+    # Other files (for example the REST scale-one energy_check.mdp) keep the
+    # template settings so their checks stay meaningful.
+    return None if stage == "other" else stage
+
+
+def table_order(stage: str) -> tuple[str, ...]:
+    return ("all", "md", stage) if stage in MD_STAGES else ("all", stage)
+
+
+def passthrough_tables(config: dict[str, object], engine: str) -> dict[str, dict]:
+    tables = config.get(engine, {})
+    if not isinstance(tables, dict):
+        raise ValueError(f"[{engine}] must contain stage tables")
+    for stage, value in tables.items():
+        if stage not in PASSTHROUGH_STAGES:
+            raise ValueError(
+                f"[{engine}.{stage}]: unknown stage; use one of {', '.join(PASSTHROUGH_STAGES)}"
+            )
+        if not isinstance(value, dict):
+            raise ValueError(f"[{engine}.{stage}] must be a table")
+    return tables
+
+
+def amber_value(location: str, value: object) -> str:
+    if isinstance(value, bool):
+        raise ValueError(f"{location}: AMBER flags are integers; write 0 or 1")
+    if isinstance(value, (int, float)):
+        return str(value)
+    if isinstance(value, str):
+        if "'" in value:
+            raise ValueError(f"{location}: string values must not contain single quotes")
+        return f"'{value}'"
+    if isinstance(value, list) and value and all(
+        isinstance(item, (int, float)) and not isinstance(item, bool) for item in value
+    ):
+        return ",".join(str(item) for item in value)
+    raise ValueError(f"{location}: use a number, a string or a list of numbers")
+
+
+def amber_assignments(config: dict[str, object], stage: str) -> dict[str, dict[str, str]]:
+    """Merge [amber.all|md|<stage>.*] into {namelist: {key: value}}."""
+    tables = passthrough_tables(config, "amber")
+    run = config.get("run", {})
+    # Templates that expose these as config keys manage them; others allow overrides.
+    managed = dict(AMBER_MANAGED)
+    for keyword, run_key in (("cut", "cutoff"), ("fswitch", "lj_force_switch")):
+        if isinstance(run, dict) and run_key in run:
+            managed[keyword] = f"[run] {run_key}"
+    merged: dict[str, dict[str, str]] = {}
+    for table_stage in table_order(stage):
+        for namelist, values in tables.get(table_stage, {}).items():
+            location = f"[amber.{table_stage}.{namelist}]"
+            if not isinstance(values, dict):
+                raise ValueError(f"{location} must be a table of keywords")
+            if not IDENTIFIER.match(namelist):
+                raise ValueError(f"{location}: invalid namelist name")
+            if namelist.lower() in AMBER_MANAGED_NAMELISTS:
+                raise ValueError(
+                    f"{location}: &{namelist} is written by {AMBER_MANAGED_NAMELISTS[namelist.lower()]}"
+                )
+            for key, value in values.items():
+                if not IDENTIFIER.match(key):
+                    raise ValueError(f"{location}: invalid keyword {key!r}")
+                if key.lower() in managed:
+                    raise ValueError(
+                        f"{location} {key}: set by the template; use {managed[key.lower()]}"
+                    )
+                merged.setdefault(namelist.lower(), {})[key] = amber_value(f"{location} {key}", value)
+    return merged
+
+
+def namelist_span(text: str, namelist: str) -> tuple[int, int] | None:
+    """Return (body start, terminator start) of the first &namelist block."""
+    header = re.search(rf"(?im)^[ \t]*&{re.escape(namelist)}\b", text)
+    if header is None:
+        return None
+    terminator = re.compile(r"(?im)^[ \t]*/[ \t]*$|&end\b|/[ \t]*$").search(text, header.end())
+    if terminator is None:
+        raise ValueError(f"&{namelist} has no terminator")
+    return header.end(), terminator.start()
+
+
+def set_namelist_values(text: str, namelist: str, values: dict[str, str]) -> str:
+    span = namelist_span(text, namelist)
+    if span is None:
+        cntrl = namelist_span(text, "cntrl")
+        if cntrl is None:
+            return text
+        # A new namelist goes right after &cntrl, before any &wt/DISANG lines.
+        line_end = text.find("\n", cntrl[1])
+        insert_at = len(text) if line_end < 0 else line_end + 1
+        text = text[:insert_at] + f"&{namelist}\n/\n" + text[insert_at:]
+        span = namelist_span(text, namelist)
+    start, end = span
+    body = text[start:end]
+    additions = []
+    for key, value in values.items():
+        pattern = re.compile(
+            rf"(?i)(?<![A-Za-z0-9_]){re.escape(key)}\s*=\s*('[^']*'|\"[^\"]*\"|[^,\n/]+)"
+        )
+        if pattern.search(body):
+            body = pattern.sub(lambda _match: f"{key}={value}", body, count=1)
+        else:
+            additions.append(f"  {key}={value},\n")
+    if additions:
+        body = body.rstrip(" \t")
+        if body.strip() and not body.rstrip().endswith(","):
+            body = body.rstrip() + ","
+        if not body.endswith("\n"):
+            body += "\n"
+        body += "".join(additions)
+    return text[:start] + body + text[end:]
+
+
+def apply_amber_passthrough(text: str, assignments: dict[str, dict[str, str]]) -> str:
+    for namelist, values in assignments.items():
+        text = set_namelist_values(text, namelist, values)
+    return text
+
+
+def mdp_key(key: str) -> str:
+    return key.lower().replace("_", "-")
+
+
+def gromacs_value(location: str, value: object) -> str:
+    if isinstance(value, bool):
+        return "yes" if value else "no"
+    if isinstance(value, (int, float, str)):
+        return str(value)
+    if isinstance(value, list) and value and all(
+        isinstance(item, (int, float, str)) and not isinstance(item, bool) for item in value
+    ):
+        return " ".join(str(item) for item in value)
+    raise ValueError(f"{location}: use a number, a string, a boolean or a list")
+
+
+def gromacs_assignments(config: dict[str, object], stage: str) -> dict[str, str]:
+    tables = passthrough_tables(config, "gromacs")
+    merged: dict[str, str] = {}
+    for table_stage in table_order(stage):
+        location = f"[gromacs.{table_stage}]"
+        for key, value in tables.get(table_stage, {}).items():
+            if not MDP_KEY.match(key):
+                raise ValueError(f"{location}: invalid mdp option {key!r}")
+            if mdp_key(key) in GROMACS_MANAGED:
+                raise ValueError(
+                    f"{location} {key}: set by the template; use {GROMACS_MANAGED[mdp_key(key)]}"
+                )
+            merged[key] = gromacs_value(f"{location} {key}", value)
+    return merged
+
+
+def apply_gromacs_passthrough(text: str, assignments: dict[str, str]) -> str:
+    for key, value in assignments.items():
+        pattern = re.compile(r"(?m)^[ \t]*([A-Za-z][A-Za-z0-9_-]*)[ \t]*=.*$")
+        replaced = False
+
+        def replace(match: re.Match[str]) -> str:
+            nonlocal replaced
+            if mdp_key(match.group(1)) != mdp_key(key):
+                return match.group(0)
+            replaced = True
+            return f"{match.group(1)} = {value}"
+
+        text = pattern.sub(replace, text)
+        if not replaced:
+            text = text.rstrip("\n") + f"\n{key} = {value}\n"
+    return text
+
+
 def apply_amber_input(
     path: Path,
     runtime: dict[str, object],
@@ -108,6 +399,7 @@ def apply_amber_input(
     cation: str,
     anion: str,
     generated_minimization_max: int,
+    config: dict[str, object] | None = None,
 ) -> None:
     text = path.read_text(encoding="utf-8")
     original = text
@@ -146,6 +438,9 @@ def apply_amber_input(
         )
     text = text.replace("Na+,Cl-", f"{cation},{anion}")
     text = text.replace("K+,Cl-", f"{cation},{anion}")
+    passthrough = passthrough_stage(path)
+    if config is not None and passthrough is not None:
+        text = apply_amber_passthrough(text, amber_assignments(config, passthrough))
     if text != original:
         path.write_text(text, encoding="utf-8")
 
@@ -160,6 +455,7 @@ def mdp_assignment(text: str, key: str, value: object) -> str:
 def apply_gromacs_input(
     path: Path,
     runtime: dict[str, object],
+    config: dict[str, object] | None = None,
 ) -> None:
     text = path.read_text(encoding="utf-8")
     original = text
@@ -177,6 +473,9 @@ def apply_gromacs_input(
             ]
         )
         text = mdp_assignment(text, "pcoupl", "no" if ensemble == "NVT" else "C-rescale")
+    passthrough = passthrough_stage(path)
+    if config is not None and passthrough is not None:
+        text = apply_gromacs_passthrough(text, gromacs_assignments(config, passthrough))
     if text != original:
         path.write_text(text, encoding="utf-8")
 
@@ -414,6 +713,12 @@ def _apply_config(config_path: Path, work_dir: Path) -> None:
             f"timestep must be 2.0 fs or less without hydrogen mass repartitioning: {timestep_fs:g}"
         )
     validate_divalent_neutralization(work_dir, salt)
+    # Check passthrough tables up front so a typo fails even when no file uses it.
+    check_passthrough_engines(config)
+    for stage in RUN_STAGES:
+        amber_assignments(config, stage)
+        gromacs_assignments(config, stage)
+    plumed_options(config)
 
     generated_minimization_steps: list[int] = []
     for path in work_dir.rglob("*"):
@@ -435,7 +740,7 @@ def _apply_config(config_path: Path, work_dir: Path) -> None:
         if path.name.startswith("tleap") and path.suffix == ".in":
             apply_tleap_input(path, work_dir, build, salt)
         elif path.suffix == ".mdp":
-            apply_gromacs_input(path, runtime)
+            apply_gromacs_input(path, runtime, config)
         elif path.name.endswith((".in", ".in.template")):
             apply_amber_input(
                 path,
@@ -445,8 +750,36 @@ def _apply_config(config_path: Path, work_dir: Path) -> None:
                 str(salt["cation"]),
                 str(salt["anion"]),
                 generated_minimization_max,
+                config,
             )
     synchronize_resolved_config(config, work_dir, runtime)
+
+
+def apply_engine_passthrough(config_path: Path, directory: Path) -> None:
+    """Apply only the [amber]/[gromacs] passthrough tables to inputs in directory.
+
+    For generators that write stage inputs outside the build-time apply_config
+    pass (for example the US seed and window inputs).
+    """
+    try:
+        config = load_config(config_path)
+        for path in sorted(directory.rglob("*")):
+            is_mdp = path.suffix == ".mdp"
+            is_amber = path.name.endswith((".in", ".in.template")) and not path.name.startswith("tleap")
+            if not path.is_file() or not (is_mdp or is_amber):
+                continue
+            stage = passthrough_stage(path)
+            if stage is None:
+                continue
+            text = path.read_text(encoding="utf-8")
+            if is_mdp:
+                updated = apply_gromacs_passthrough(text, gromacs_assignments(config, stage))
+            else:
+                updated = apply_amber_passthrough(text, amber_assignments(config, stage))
+            if updated != text:
+                path.write_text(updated, encoding="utf-8")
+    except ValueError as error:
+        raise SystemExit(f"Config error: {error}") from None
 
 
 def apply_config(config_path: Path, work_dir: Path) -> None:

@@ -75,8 +75,8 @@ MD_simulation/
 │   ├── 3_REMD/              # REMD, REST2, REST3, REUS, GaREUS
 │   ├── 4_GaMD/              # GaMD variants
 │   ├── 5_FEP/               # RBFE and ABFE
-│   ├── 6_WE/                # WESTPA + AMBER weighted ensemble
-│   └── 7_MetaD/             # MetaD and OPES variants
+│   ├── 6_MetaD/             # MetaD and OPES variants
+│   └── 7_WE/                # WESTPA + AMBER weighted ensemble
 ├── 2_Analysis/
 │   ├── 1_Preprocessing/
 │   ├── 2_Basic/
@@ -91,8 +91,8 @@ MD_simulation/
     ├── 3_REMD/              # T-REMD, REST2, REST3, REUS and GaREUS
     ├── 4_GaMD/              # GaMD variants
     ├── 5_FEP/               # RBFE and ABFE
-    ├── 6_WE/                # WESTPA + AMBER weighted ensemble
-    └── 7_MetaD/             # MetaD and OPES variants
+    ├── 6_MetaD/             # MetaD and OPES variants
+    └── 7_WE/                # WESTPA + AMBER weighted ensemble
 ```
 
 [GUIDE.md 부록](GUIDE.md#4-부록-실행-상태와-복구)은 모든 `build.sh`, `run.sh`, `anal.py`가 공통으로
@@ -110,8 +110,8 @@ shared by every `build.sh`, `run.sh` and `anal.py`.
 | 3   | Replica Exchange               | REMD, REST2, REST3, REUS, GaREUS                                  | [Open](1_Simulation/3_REMD/README.md)  |
 | 4   | Gaussian accelerated MD        | Chignolin GaMD, trypsin–benzamidine LiGaMD3, SH3–peptide Pep-GaMD | [Open](1_Simulation/4_GaMD/README.md)  |
 | 5   | Free Energy Perturbation       | T4L benzene→toluene RBFE and T4L–JZ4 ABFE                         | [Open](1_Simulation/5_FEP/README.md)   |
-| 6   | Weighted Ensemble              | Chignolin Cα RMSD sampling with WESTPA and AMBER                  | [Open](1_Simulation/6_WE/README.md)    |
-| 7   | Metadynamics                   | WT-MetaD, funnel MetaD and OPES variants                          | [Open](1_Simulation/7_MetaD/README.md) |
+| 6   | Metadynamics                   | WT-MetaD, funnel MetaD and OPES variants                          | [Open](1_Simulation/6_MetaD/README.md) |
+| 7   | Weighted Ensemble              | Chignolin Cα RMSD sampling with WESTPA and AMBER                  | [Open](1_Simulation/7_WE/README.md)    |
 
 ## Analysis tutorials / 분석 방법 튜토리얼
 

@@ -203,9 +203,6 @@ tab 또는 newline으로 값을 구분할 수 있고 `#` 뒤에는 comment를 �
 
 아래는 구분자 형식을 보여 주는 예시이며, 실제 file의 값을 소수 셋째 자리로 줄였습니다.
 
-The example below shows the separator format; the temperatures are the bundled
-values rounded to three decimals.
-
 ```text
 # temperatures.txt
 300.000, 317.890, 336.847, 356.935
@@ -466,6 +463,9 @@ and `inputs/kappa.txt` contains this example's kappa schedule. The tutorial
 build always reads these bundled files. Values in either file may be separated
 by commas, semicolons, vertical bars, spaces, tabs or newlines; text after `#`
 is ignored.
+
+The example below shows the separator format; the temperatures are the bundled
+values rounded to three decimals.
 
 ```text
 # temperatures.txt

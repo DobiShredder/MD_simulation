@@ -50,3 +50,5 @@ cpu_threads_per_replica = 1
 gpu_count = 1
 random_seed = "random"
 temperature_file = "inputs/temperatures.txt"
+
+# Other GROMACS mdp options: [gromacs.<stage>] tables; see README "Engine option passthrough".

@@ -82,7 +82,10 @@ def main() -> None:
         # Leave missing files and syntax errors to the config readers.
         return
     known = set(args.known_keys.read_text(encoding="utf-8").split())
-    unknown = sorted(used - known)
+    # Engine passthrough tables take any engine keyword; apply_config checks
+    # their stage names and refuses template-managed keywords.
+    passthrough = ("amber.", "gromacs.", "plumed.")
+    unknown = sorted(name for name in used - known if not name.startswith(passthrough))
     for name in unknown:
         section, _, key = name.rpartition(".")
         location = f"[{section}] {key}" if section else key

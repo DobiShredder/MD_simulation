@@ -74,3 +74,5 @@ ligand_anchor_3 = ":LIG@C3"
 distance_force = 5.0
 angle_force = 100.0
 torsion_force = 100.0
+
+# Other AMBER options: [amber.<stage>.<namelist>] tables; see README "Engine option passthrough".

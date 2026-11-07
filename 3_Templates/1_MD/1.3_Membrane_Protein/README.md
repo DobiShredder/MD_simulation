@@ -170,6 +170,27 @@ process 하나가 GPU 하나로 계산하며 순서대로 진행합니다. 실�
 출력됩니다. 결과 판단은 tutorial [3_Simulation README](../../../1_Simulation/1_MD/1.3_Membrane_Protein/3_Simulation/README.md#주요-output과-완료-확인)의
 membrane 확인 항목을 참고합니다.
 
+### Engine option 직접 지정
+
+Config key가 없는 AMBER option은 `[amber.<stage>.<namelist>]` table로 지정합니다. Stage 우선순위, 값 형식과 거부되는 keyword는 [3_Templates README](../../README.md#engine-option-직접-지정)를 따릅니다.
+
+```toml
+[amber.md.cntrl]
+gamma_ln = 2.0
+
+[amber.production.cntrl]
+iwrap = 1
+```
+
+| Stage | Input |
+| --- | --- |
+| `minimization` | `min-lipid.in`, `min-solvent.in` |
+| `heating` | `heat.in` |
+| `equilibration` | `equilibrate.in`, `equilibrate-<stage>.in` |
+| `production` | `production.in` |
+
+`cut`과 `fswitch`는 `[run] cutoff`, `lj_force_switch`로 정하므로 table에 쓸 수 없습니다.
+
 ### 자주 생기는 문제
 
 공통 message는 [상위 README](../README.md#자주-생기는-문제)에 있습니다.
@@ -358,6 +379,27 @@ depends on the GPU and the atom count. A full run ends with
 `Production segments: work/001 through work/010`. For judging the result, see
 the membrane checks in the tutorial
 [3_Simulation README](../../../1_Simulation/1_MD/1.3_Membrane_Protein/3_Simulation/README.md#main-outputs-and-completion-check).
+
+### Engine option passthrough
+
+AMBER options without a config key go into `[amber.<stage>.<namelist>]` tables. Stage precedence, value formats and refused keywords are described in the [3_Templates README](../../README.md#engine-option-passthrough).
+
+```toml
+[amber.md.cntrl]
+gamma_ln = 2.0
+
+[amber.production.cntrl]
+iwrap = 1
+```
+
+| Stage | Input |
+| --- | --- |
+| `minimization` | `min-lipid.in`, `min-solvent.in` |
+| `heating` | `heat.in` |
+| `equilibration` | `equilibrate.in`, `equilibrate-<stage>.in` |
+| `production` | `production.in` |
+
+`cut` and `fswitch` come from `[run] cutoff` and `lj_force_switch`, so the tables cannot set them.
 
 ### Common problems
 

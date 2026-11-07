@@ -170,9 +170,6 @@ Temperature는 comma, semicolon, vertical bar, space, tab 또는 newline으로
 
 아래는 구분자 형식을 보여 주는 예시이며, 실제 file의 값을 소수 셋째 자리로 줄였습니다.
 
-The example below shows the separator format; the values are the bundled ones
-rounded to three decimals.
-
 ```text
 # REST2 effective temperatures in K
 300.000, 317.890, 336.847, 356.935
@@ -396,6 +393,9 @@ The bundled `inputs/temperatures.txt` contains an eight-state Chignolin ladder,
 and the tutorial build always reads it. Values may be separated by commas,
 semicolons, vertical bars, spaces, tabs or newlines, and text after `#` is a
 comment.
+
+The example below shows the separator format; the values are the bundled ones
+rounded to three decimals.
 
 ```text
 # REST2 effective temperatures in K

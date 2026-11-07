@@ -35,7 +35,7 @@
 **/structure.download.*/
 **/.dependencies.download.pending
 # Small tracked alanine-dipeptide inputs for MetaD/OPES examples
-!1_Simulation/7_MetaD/*/structure/alanine-dipeptide.pdb
+!1_Simulation/6_MetaD/*/structure/alanine-dipeptide.pdb
 
 # WESTPA runtime products
 **/west.h5

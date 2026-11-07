@@ -228,6 +228,27 @@ dynamics(`ntt=3`)는 restart마다 다른 `ig`를 써야 하므로 stage마다 1
 더합니다. Heating은 +0, equilibration은 +1,000,000, production segment N은
 +(2+N)×1,000,000입니다.
 
+### Engine option 직접 지정
+
+Config key가 없는 AMBER option은 `[amber.<stage>.<namelist>]` table로 지정합니다. Stage 우선순위, 값 형식과 거부되는 keyword는 [3_Templates README](../../README.md#engine-option-직접-지정)를 따릅니다.
+
+```toml
+[amber.md.cntrl]
+gamma_ln = 2.0
+
+[amber.production.cntrl]
+iwrap = 1
+```
+
+| Stage | Input |
+| --- | --- |
+| `minimization` | `minimize.in` |
+| `heating` | `heat.in` |
+| `equilibration` | `equilibrate.in` |
+| `production` | `production.NNN.template.in` |
+
+모든 window에 같은 값을 씁니다. Window별 값은 지정할 수 없습니다.
+
 ### 문제 해결
 
 | Message 또는 증상 | 원인 | 조치 |
@@ -468,6 +489,27 @@ integer, the window seed is `integer + 7919 × window index`. Langevin dynamics
 (`ntt=3`) needs a different `ig` on each restart, so each stage adds 1,000,000:
 heating +0, equilibration +1,000,000, and production segment N
 +(2+N)×1,000,000.
+
+### Engine option passthrough
+
+AMBER options without a config key go into `[amber.<stage>.<namelist>]` tables. Stage precedence, value formats and refused keywords are described in the [3_Templates README](../../README.md#engine-option-passthrough).
+
+```toml
+[amber.md.cntrl]
+gamma_ln = 2.0
+
+[amber.production.cntrl]
+iwrap = 1
+```
+
+| Stage | Input |
+| --- | --- |
+| `minimization` | `minimize.in` |
+| `heating` | `heat.in` |
+| `equilibration` | `equilibrate.in` |
+| `production` | `production.NNN.template.in` |
+
+Every window gets the same values; per-window values are not supported.
 
 ### Troubleshooting
 

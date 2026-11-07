@@ -57,3 +57,5 @@ boost_preparation_steps = 200000
 boost_statistics_steps = 1000000
 averaging_interval_steps = 50000
 sigma0 = 6.0
+
+# Other AMBER options: [amber.<stage>.<namelist>] tables; see README "Engine option passthrough".

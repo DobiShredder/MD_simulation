@@ -14,8 +14,8 @@
 | [`3_REMD`](3_REMD/README.md) | T-REMD, REST2, REST3, REUS와 GaREUS |
 | [`4_GaMD`](4_GaMD/README.md) | GaMD, LiGaMD3와 Pep-GaMD |
 | [`5_FEP`](5_FEP/README.md) | RBFE와 double-decoupling ABFE |
-| [`6_WE`](6_WE/README.md) | WESTPA와 AMBER를 사용하는 weighted ensemble |
-| [`7_MetaD`](7_MetaD/README.md) | WT-MetaD, funnel MetaD, OPES_METAD와 OPES_EXPANDED |
+| [`6_MetaD`](6_MetaD/README.md) | WT-MetaD, funnel MetaD, OPES_METAD와 OPES_EXPANDED |
+| [`7_WE`](7_WE/README.md) | WESTPA와 AMBER를 사용하는 weighted ensemble |
 
 | Directory | 기본 engine(선택 가능한 executable) | GPU와 MPI |
 | --- | --- | --- |
@@ -23,8 +23,8 @@
 | `2_US` | AMBER `pmemd.cuda`. Directed seed를 만드는 rMD 단계에는 PLUMED 연동 build가 필요합니다. | GPU 1개 |
 | `3_REMD` | T-REMD, REUS, GaREUS: `pmemd.cuda.MPI`. REST2, REST3: PLUMED 2.10.2 이상으로 patch한 GROMACS 2024.3 `gmx_mpi` | State 수만큼 MPI rank, GPU |
 | `4_GaMD`, `5_FEP` | AMBER `pmemd.cuda` | GPU 1개 |
-| `6_WE` | WESTPA 2 + AMBER `pmemd.cuda`(`pmemd`, `sander`) | 기본 GPU 1개. `WE_GPU_IDS`로 worker별 GPU를 지정합니다. |
-| `7_MetaD` | PLUMED 2.10 연동 AMBER `pmemd.cuda`(`pmemd`, `sander`) | GPU 1개 또는 CPU |
+| `6_MetaD` | PLUMED 2.10 연동 AMBER `pmemd.cuda`(`pmemd`, `sander`) | GPU 1개 또는 CPU |
+| `7_WE` | WESTPA 2 + AMBER `pmemd.cuda`(`pmemd`, `sander`) | 기본 GPU 1개. `WE_GPU_IDS`로 worker별 GPU를 지정합니다. |
 
 Engine 설정 key와 build 조건은 각 leaf README에 있습니다.
 
@@ -117,6 +117,59 @@ kcal/mol, GROMACS는 time ps, PLUMED는 length nm와 energy kJ/mol을
 Config의 숫자 값과 numeric array에는 NaN/Inf를 사용할 수 없습니다. 양수와 0을
 허용하는 범위는 parameter별로 다릅니다.
 
+### Engine option 직접 지정
+
+Config key가 없는 AMBER, GROMACS, PLUMED option은 engine table로 생성된 input에
+씁니다. Build가 input을 만든 뒤 값을 넣으므로 실행 command는 바뀌지 않습니다.
+
+```toml
+[amber.md.cntrl]          # heating, equilibration, production
+gamma_ln = 2.0
+
+[amber.production.cntrl]
+iwrap = 1
+
+[amber.production.ewald]  # 없는 namelist는 &cntrl 바로 뒤에 만듭니다.
+skinnb = 2.0
+
+[gromacs.production]      # REST2/REST3
+nstcalcenergy = 100
+
+[plumed]                  # MetaD/OPES, US ratchet MD
+extra_lines = ["d2: DISTANCE ATOMS=1,10", "PRINT ARG=d2 STRIDE=5000 FILE=extra.dat"]
+
+[plumed.bias_options]     # template의 주 bias action에 추가(METAD 예)
+GRID_WFILE = "metad.grid"
+GRID_WSTRIDE = 50000
+```
+
+| Table | 적용 위치 |
+| --- | --- |
+| `[amber.<stage>.<namelist>]` | AMBER input의 해당 namelist(`cntrl`, `ewald` 등). 숫자, 문자열(작은따옴표로 기록), 숫자 list를 쓰고 flag는 0/1로 씁니다. |
+| `[gromacs.<stage>]` | GROMACS mdp option. `-`와 `_`는 같은 option으로 봅니다. `true`/`false`는 `yes`/`no`, list는 공백으로 구분해 기록합니다. |
+| `[plumed] extra_lines` | `plumed.dat` 끝에 action 줄을 추가합니다. |
+| `[plumed.bias_options]` | 주 bias action(METAD, OPES_METAD, OPES_EXPANDED, ABMD)에 keyword를 추가합니다. `true`는 값이 없는 flag입니다. |
+
+Stage는 `all`, `md`(heating, equilibration, production), `minimization`,
+`heating`, `equilibration`, `production`입니다. 같은 keyword가 여러 table에 있으면
+`all` < `md` < 개별 stage 순서로 뒤의 값을 씁니다. Thermostat처럼 MD에만 쓰는
+keyword를 `all`에 넣으면 minimization input에서 engine이 거부하므로 `md`에
+넣습니다. 각 leaf README에 input file별 stage를 적었습니다.
+
+Template이 config key나 method logic으로 정하는 keyword는 덮어쓸 수 없습니다.
+`dt`, `nstlim`, `temp0`, `ig`, `ntb`/`ntp`, restraint, replica exchange, alchemical,
+GaMD keyword와 `plumed`/`plumedfile`가 해당합니다. Build는 거부한 keyword와 대신
+쓸 config key를 출력하고 멈춥니다. PLUMED에서는 template이 이미 쓴 bias keyword와
+`RESTART`, `FILE`, `STATE_*`, `OBSERVATION_STEPS`처럼 segment restart를 따르는
+keyword를 거부합니다. Template이 실행하지 않는 engine의 table(예: AMBER
+template의 `[gromacs]`)도 거부합니다.
+
+값의 의미와 unit은 engine manual을 따릅니다. Template은 table·keyword 이름과 값
+형식만 검사하고 engine이 그 keyword를 지원하는지는 검사하지 않습니다. 지원하지
+않는 keyword는 engine이 input을 읽을 때 실패하므로 짧은 test run으로 확인합니다.
+AMBER table은 AmberTools 26 `sander`로 input parsing을 확인했고, GROMACS와 PLUMED
+table은 생성된 text만 확인했습니다(engine parsing 미검증).
+
 ### 실행 상태
 
 Completion marker, partial output, input 변경, 동시 실행과 실패 후 재실행 규칙은
@@ -137,8 +190,8 @@ protocols; adjust them for the system and assess them with pilot simulations.
 | [`3_REMD`](3_REMD/README.md) | T-REMD, REST2, REST3, REUS, and GaREUS |
 | [`4_GaMD`](4_GaMD/README.md) | GaMD, LiGaMD3, and Pep-GaMD |
 | [`5_FEP`](5_FEP/README.md) | RBFE and double-decoupling ABFE |
-| [`6_WE`](6_WE/README.md) | Weighted ensemble with WESTPA and AMBER |
-| [`7_MetaD`](7_MetaD/README.md) | WT-MetaD, funnel MetaD, OPES_METAD, and OPES_EXPANDED |
+| [`6_MetaD`](6_MetaD/README.md) | WT-MetaD, funnel MetaD, OPES_METAD, and OPES_EXPANDED |
+| [`7_WE`](7_WE/README.md) | Weighted ensemble with WESTPA and AMBER |
 
 | Directory | Default engine (selectable executables) | GPU and MPI |
 | --- | --- | --- |
@@ -146,8 +199,8 @@ protocols; adjust them for the system and assess them with pilot simulations.
 | `2_US` | AMBER `pmemd.cuda`; the rMD directed-seed stage needs a PLUMED-enabled build | One GPU |
 | `3_REMD` | T-REMD, REUS, GaREUS: `pmemd.cuda.MPI`. REST2, REST3: GROMACS 2024.3 `gmx_mpi` patched with PLUMED 2.10.2 or newer | One MPI rank per state, GPU |
 | `4_GaMD`, `5_FEP` | AMBER `pmemd.cuda` | One GPU |
-| `6_WE` | WESTPA 2 + AMBER `pmemd.cuda` (`pmemd`, `sander`) | One GPU by default; `WE_GPU_IDS` assigns a GPU per worker |
-| `7_MetaD` | PLUMED 2.10-enabled AMBER `pmemd.cuda` (`pmemd`, `sander`) | One GPU or CPU |
+| `6_MetaD` | PLUMED 2.10-enabled AMBER `pmemd.cuda` (`pmemd`, `sander`) | One GPU or CPU |
+| `7_WE` | WESTPA 2 + AMBER `pmemd.cuda` (`pmemd`, `sander`) | One GPU by default; `WE_GPU_IDS` assigns a GPU per worker |
 
 Engine config keys and build requirements are in each leaf README.
 
@@ -235,6 +288,60 @@ and energies in kJ/mol.
 
 Numeric config values and arrays must be finite. Whether zero is allowed
 depends on the parameter.
+
+### Engine option passthrough
+
+AMBER, GROMACS and PLUMED options without a config key go into the generated
+inputs through engine tables. The build writes them after generating the
+inputs, so the run commands do not change.
+
+```toml
+[amber.md.cntrl]          # heating, equilibration, production
+gamma_ln = 2.0
+
+[amber.production.cntrl]
+iwrap = 1
+
+[amber.production.ewald]  # a missing namelist is created right after &cntrl
+skinnb = 2.0
+
+[gromacs.production]      # REST2/REST3
+nstcalcenergy = 100
+
+[plumed]                  # MetaD/OPES, US ratchet MD
+extra_lines = ["d2: DISTANCE ATOMS=1,10", "PRINT ARG=d2 STRIDE=5000 FILE=extra.dat"]
+
+[plumed.bias_options]     # added to the main bias action (METAD example)
+GRID_WFILE = "metad.grid"
+GRID_WSTRIDE = 50000
+```
+
+| Table | Applies to |
+| --- | --- |
+| `[amber.<stage>.<namelist>]` | That namelist of the AMBER input (`cntrl`, `ewald`, ...). Use numbers, strings (written in single quotes) or number lists; flags are 0/1. |
+| `[gromacs.<stage>]` | GROMACS mdp options; `-` and `_` name the same option. `true`/`false` become `yes`/`no`, and lists are written space-separated. |
+| `[plumed] extra_lines` | Action lines appended to `plumed.dat`. |
+| `[plumed.bias_options]` | Keywords added to the main bias action (METAD, OPES_METAD, OPES_EXPANDED, ABMD); `true` is a bare flag. |
+
+Stages are `all`, `md` (heating, equilibration, production), `minimization`,
+`heating`, `equilibration` and `production`. When a keyword appears in several
+tables, the later one wins: `all` < `md` < the stage itself. MD-only keywords such
+as thermostat settings belong in `md`; in `all` the engine rejects them in the
+minimization input. Each leaf README lists the stage of every input file.
+
+Keywords that the template derives from config keys or method logic cannot be
+overridden: `dt`, `nstlim`, `temp0`, `ig`, `ntb`/`ntp`, restraint, replica-exchange,
+alchemical and GaMD keywords, and `plumed`/`plumedfile`. The build stops and names
+the refused keyword and the config key to use instead. For PLUMED, bias keywords
+the template already writes and keywords that follow the segment restart chain
+(`RESTART`, `FILE`, `STATE_*`, `OBSERVATION_STEPS`) are refused. Tables for an engine the
+template does not run (for example `[gromacs]` in an AMBER template) are refused.
+
+Values and units follow the engine manual. The template checks table and keyword
+names and value formats, not whether the engine supports a keyword; an unsupported
+keyword fails when the engine reads the input, so confirm with a short test run.
+AMBER tables were parsed by AmberTools 26 `sander`; GROMACS and PLUMED tables were
+checked as generated text only (engine parsing unverified).
 
 ### Run state
 

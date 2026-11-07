@@ -141,6 +141,30 @@ GPU와 atom 수에 따라 달라집니다.
 `WINDOWS_DIR`, `PRODUCTION_TIMESTEP_PS`, `TEMPERATURE_KELVIN`과 PMF grid를 이 template
 값에 맞춘 뒤 계산합니다.
 
+### Engine option 직접 지정
+
+Config key가 없는 AMBER option은 `[amber.<stage>.<namelist>]` table로 지정합니다. Stage 우선순위, 값 형식과 거부되는 keyword는 [3_Templates README](../../README.md#engine-option-직접-지정)를 따릅니다.
+
+```toml
+[amber.md.cntrl]
+gamma_ln = 2.0
+
+[amber.production.cntrl]
+iwrap = 1
+
+[plumed]
+extra_lines = ["PRINT ARG=reaction_coordinate STRIDE=500 FILE=rc_fine.dat"]
+```
+
+| Stage | Input |
+| --- | --- |
+| `minimization` | `min-solvent.in`, `min-all.in`, window `min.in` |
+| `heating` | `heat.in` |
+| `equilibration` | `equil.in` |
+| `production` | `ratchet.in`, window `production.in`, `continue.in` |
+
+Ratchet MD(`ratchet.in`)도 production stage입니다. `[plumed]`는 ratchet MD의 `plumed.dat`에만 적용되며 bias action label은 `ratchet`(ABMD)입니다.
+
 ### 자주 생기는 문제
 
 남은 파일 처리는 [GUIDE.md 부록](../../../GUIDE.md#4-부록-실행-상태와-복구)을 따릅니다.
@@ -301,6 +325,30 @@ computing the PMF with the
 [US PMF analysis](../../../2_Analysis/7_Enhanced_Sampling/7.1_Umbrella_Sampling/README.md),
 set its `WINDOWS_DIR`, `PRODUCTION_TIMESTEP_PS`, `TEMPERATURE_KELVIN`, and PMF
 grid to match this template.
+
+### Engine option passthrough
+
+AMBER options without a config key go into `[amber.<stage>.<namelist>]` tables. Stage precedence, value formats and refused keywords are described in the [3_Templates README](../../README.md#engine-option-passthrough).
+
+```toml
+[amber.md.cntrl]
+gamma_ln = 2.0
+
+[amber.production.cntrl]
+iwrap = 1
+
+[plumed]
+extra_lines = ["PRINT ARG=reaction_coordinate STRIDE=500 FILE=rc_fine.dat"]
+```
+
+| Stage | Input |
+| --- | --- |
+| `minimization` | `min-solvent.in`, `min-all.in`, window `min.in` |
+| `heating` | `heat.in` |
+| `equilibration` | `equil.in` |
+| `production` | `ratchet.in`, window `production.in`, `continue.in` |
+
+Ratchet MD (`ratchet.in`) is a production stage. `[plumed]` applies only to the ratchet-MD `plumed.dat`; its bias action label is `ratchet` (ABMD).
 
 ### Common problems
 

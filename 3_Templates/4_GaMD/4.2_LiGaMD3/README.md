@@ -168,13 +168,34 @@ template이며, runner가 각 segment directory의 `production.in`을 생성해 
 지원하지 않는 executable은 기본값으로 대체하지 않고 error로 중단합니다. Runner가
 `helpers/config_utils.py`를 자동 호출해 이 설정을 읽습니다.
 
+### Engine option 직접 지정
+
+Config key가 없는 AMBER option은 `[amber.<stage>.<namelist>]` table로 지정합니다. Stage 우선순위, 값 형식과 거부되는 keyword는 [3_Templates README](../../README.md#engine-option-직접-지정)를 따릅니다.
+
+```toml
+[amber.md.cntrl]
+gamma_ln = 2.0
+
+[amber.production.cntrl]
+iwrap = 1
+```
+
+| Stage | Input |
+| --- | --- |
+| `minimization` | `minimize.in` |
+| `heating` | `heat.in` |
+| `equilibration` | `equilibrate.in` |
+| `production` | `gamd_prepare.in`, `production.in` |
+
+GaMD parameter preparation(`gamd_prepare.in`)도 production stage입니다.
+
 ### 문제 해결
 
 | Message | 원인과 조치 |
 | --- | --- |
 | `Error: LiGaMD3 on the Amber 26 GPU engine is unverified; rerun with --allow-unverified after reading README.md.` | 위 미검증 설명을 읽은 뒤 `--allow-unverified`를 붙입니다. `--dry-run`에는 필요하지 않습니다. |
 | `Engine configuration error (...): Unsupported engine '...'; expected: pmemd.cuda` | `AMBER_ENGINE` 또는 `run.engine`을 serial `pmemd.cuda`로 바꿉니다. |
-| `LiGaMD3 receptor_mask must select one contiguous atom range` 또는 `ligand_mask and receptor_mask overlap` | `receptor_mask`가 water, ion과 ligand를 모두 제외해야 합니다. 기본 mask의 `Na+,Cl-`는 `salt_type`에 맞게 자동으로 바뀝니다. 직접 쓴 mask에서는 ion residue 이름을 함께 고칩니다. |
+| `LiGaMD3 receptor_mask must select one contiguous atom range` 또는 `ligand_mask and receptor_mask overlap` | `receptor_mask`가 water, ion과 ligand를 모두 제외해야 합니다. Mask에 쓴 `Na+,Cl-` 또는 `K+,Cl-`는 `salt_type`에 맞게 자동으로 바뀝니다. Ion을 다른 형식으로 썼다면 residue 이름을 직접 고칩니다. |
 | `Config error: ligand MOL2 charge does not match ligand_net_charge: X` | `ligand_net_charge`를 MOL2 charge 합과 맞추거나 charge를 다시 fitting합니다. |
 | `Config error: production steps must be divisible by production_segments` | `production_steps`를 `production_segments`의 배수로 맞춥니다. |
 | `GaMD statistics in config.toml: NAME (V) must be a multiple of averaging_interval_steps (A)` | 네 statistics 길이를 `averaging_interval_steps`의 배수로 맞춥니다. |
@@ -353,13 +374,34 @@ installation paths are accepted. Empty overrides, missing engine settings and
 unsupported executables fail instead of falling back to a default. The runner
 invokes `helpers/config_utils.py` automatically to read this setting.
 
+### Engine option passthrough
+
+AMBER options without a config key go into `[amber.<stage>.<namelist>]` tables. Stage precedence, value formats and refused keywords are described in the [3_Templates README](../../README.md#engine-option-passthrough).
+
+```toml
+[amber.md.cntrl]
+gamma_ln = 2.0
+
+[amber.production.cntrl]
+iwrap = 1
+```
+
+| Stage | Input |
+| --- | --- |
+| `minimization` | `minimize.in` |
+| `heating` | `heat.in` |
+| `equilibration` | `equilibrate.in` |
+| `production` | `gamd_prepare.in`, `production.in` |
+
+GaMD parameter preparation (`gamd_prepare.in`) is a production stage.
+
 ### Troubleshooting
 
 | Message | Cause and fix |
 | --- | --- |
 | `Error: LiGaMD3 on the Amber 26 GPU engine is unverified; rerun with --allow-unverified after reading README.md.` | Read the unverified note above, then add `--allow-unverified`. `--dry-run` does not need it. |
 | `Engine configuration error (...): Unsupported engine '...'; expected: pmemd.cuda` | Set `AMBER_ENGINE` or `run.engine` to serial `pmemd.cuda`. |
-| `LiGaMD3 receptor_mask must select one contiguous atom range` or `ligand_mask and receptor_mask overlap` | `receptor_mask` must exclude water, ions and the ligand. The default mask's `Na+,Cl-` follows `salt_type` automatically; in a custom mask, update the ion residue names yourself. |
+| `LiGaMD3 receptor_mask must select one contiguous atom range` or `ligand_mask and receptor_mask overlap` | `receptor_mask` must exclude water, ions and the ligand. `Na+,Cl-` or `K+,Cl-` written in a mask follows `salt_type` automatically; if the ions are written another way, update the residue names yourself. |
 | `Config error: ligand MOL2 charge does not match ligand_net_charge: X` | Match `ligand_net_charge` to the MOL2 charge sum or refit the charges. |
 | `Config error: production steps must be divisible by production_segments` | Make `production_steps` a multiple of `production_segments`. |
 | `GaMD statistics in config.toml: NAME (V) must be a multiple of averaging_interval_steps (A)` | Make all four statistics lengths multiples of `averaging_interval_steps`. |

@@ -6,6 +6,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 import math
+import re
 
 try:
     import tomllib
@@ -30,6 +31,27 @@ def check_finite_config(value: object, location: str = "config") -> None:
             check_finite_config(item, f"{location}[{index}]")
 
 
+def check_method_support(config: dict[str, Any], path: Path) -> None:
+    """Reject settings outside a method's supported scope (keyed by its own section)."""
+    build = config.get("build")
+    if "restraints" in config and "alchemical" in config:
+        # ABFE: the charge-decoupling cycle has no net-charge correction.
+        charge = build.get("ligand_net_charge") if isinstance(build, dict) else None
+        if isinstance(charge, bool) or not isinstance(charge, int) or charge != 0:
+            raise ValueError(
+                f"ABFE supports only neutral ligands: build.ligand_net_charge "
+                f"must be integer 0 ({path})"
+            )
+    if "opes_expanded" in config:
+        # OPES_EXPANDED multithermal sampling is defined at fixed volume.
+        run = section(config, "run")
+        if choice_value(run, "production_ensemble", {"NVT", "NPT"}) != "NVT":
+            raise ValueError(
+                f"OPES_EXPANDED production supports only NVT: "
+                f"run.production_ensemble must be NVT ({path})"
+            )
+
+
 def load_config(path: Path) -> dict[str, Any]:
     if not path.is_file():
         raise ValueError(f"Config file not found: {path}")
@@ -38,12 +60,7 @@ def load_config(path: Path) -> dict[str, Any]:
             config = tomllib.load(handle)
             check_finite_config(config)
             build = config.get("build")
-            charge = build.get("ligand_net_charge") if isinstance(build, dict) else None
-            if isinstance(charge, bool) or not isinstance(charge, int) or charge != 0:
-                raise ValueError(
-                    f"ABFE supports only neutral ligands: build.ligand_net_charge "
-                    f"must be integer 0 ({path})"
-                )
+            check_method_support(config, path)
             if isinstance(build, dict) and "salt_concentration" in build:
                 concentration = build["salt_concentration"]
                 if (
@@ -294,6 +311,88 @@ def amber_ensemble_lines(
         f"pres0={pressure:.3f}",
         "taup=2.0",
     ]
+
+
+PLUMED_KEYWORD = re.compile(r"^[A-Z][A-Z0-9_]*$")
+# Bias-state and output files follow the segment restart chain, even where a
+# keyword is written only in some segments (STATE_RFILE on restarts).
+PLUMED_SEGMENT_KEYWORDS = {"RESTART", "FILE", "STATE_RFILE", "STATE_WFILE", "STATE_WSTRIDE", "OBSERVATION_STEPS"}
+
+
+def plumed_options(config: dict[str, Any]) -> tuple[list[str], dict[str, str]]:
+    """Read [plumed] extra_lines and [plumed.bias_options] (PLUMED passthrough)."""
+    values = config.get("plumed", {})
+    if not isinstance(values, dict):
+        raise ValueError("[plumed] must be a table")
+    unknown = sorted(set(values) - {"extra_lines", "bias_options"})
+    if unknown:
+        raise ValueError(f"[plumed] supports extra_lines and bias_options, not: {', '.join(unknown)}")
+    lines = values.get("extra_lines", [])
+    if not isinstance(lines, list) or not all(
+        isinstance(line, str) and line.strip() and "\n" not in line for line in lines
+    ):
+        raise ValueError("[plumed] extra_lines must be a list of one-line strings")
+    for line in lines:
+        action = line.split("#", 1)[0].split()
+        if action and action[0].endswith(":"):
+            action = action[1:]
+        if action and action[0].upper() == "RESTART":
+            raise ValueError("[plumed] extra_lines: RESTART is written by the segment workflow")
+    options = values.get("bias_options", {})
+    if not isinstance(options, dict):
+        raise ValueError("[plumed.bias_options] must be a table")
+    rendered: dict[str, str] = {}
+    for key, value in options.items():
+        location = f"[plumed.bias_options] {key}"
+        if not PLUMED_KEYWORD.match(key):
+            raise ValueError(f"{location}: PLUMED keywords are upper case")
+        if value is True:
+            rendered[key] = ""
+        elif isinstance(value, bool):
+            raise ValueError(f"{location}: remove the key instead of setting false")
+        elif isinstance(value, (int, float, str)):
+            rendered[key] = str(value)
+        elif isinstance(value, list) and value and all(
+            isinstance(item, (int, float, str)) and not isinstance(item, bool) for item in value
+        ):
+            rendered[key] = ",".join(str(item) for item in value)
+        else:
+            raise ValueError(f"{location}: use true, a number, a string or a list")
+    return [line.strip() for line in lines], rendered
+
+
+def apply_plumed_options(config: dict[str, Any], text: str, bias_label: str) -> str:
+    """Add [plumed.bias_options] to the template bias action and append extra_lines."""
+    lines, options = plumed_options(config)
+    if options:
+        header = re.search(rf"(?m)^{re.escape(bias_label)}:[ \t]*[A-Z_]+\b.*$", text)
+        if header is None:
+            raise ValueError(f"PLUMED bias action '{bias_label}:' was not found")
+        multiline = header.group(0).rstrip().endswith("...")
+        if multiline:
+            closing = re.compile(r"(?m)^[ \t]*\.\.\.[ \t]*$").search(text, header.end())
+            if closing is None:
+                raise ValueError(f"PLUMED bias action '{bias_label}:' is not closed")
+            block_end = closing.start()
+        else:
+            block_end = header.end()
+        block = text[header.start():block_end]
+        present = set(re.findall(r"(?<![A-Za-z0-9_.])([A-Z][A-Z0-9_]*)(?==|\s|$)", block))
+        for key in options:
+            if key in present or key in PLUMED_SEGMENT_KEYWORDS:
+                raise ValueError(
+                    f"[plumed.bias_options] {key}: written by the template; "
+                    "change the matching config key instead"
+                )
+        added = [key if value == "" else f"{key}={value}" for key, value in options.items()]
+        if multiline:
+            insertion = "".join(f"  {item}\n" for item in added)
+        else:
+            insertion = "".join(f" {item}" for item in added)
+        text = text[:block_end] + insertion + text[block_end:]
+    if lines:
+        text = text.rstrip("\n") + "\n\n# [plumed] extra_lines from config.toml\n" + "\n".join(lines) + "\n"
+    return text
 
 
 def main() -> None:

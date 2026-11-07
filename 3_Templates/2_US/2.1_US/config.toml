@@ -52,3 +52,5 @@ path_generation_steps = 500000
 output_interval_steps = 500
 minimum_density = 0.90
 maximum_density = 1.10
+
+# Other AMBER/PLUMED options: [amber.<stage>.<namelist>] and [plumed] tables; see README "Engine option passthrough".

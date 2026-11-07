@@ -212,6 +212,27 @@ window를 동시에 실행할 수 있습니다. 완료 기록이 있는 stage는
 `./run.sh` command를 표시합니다. 그 밖의 실행 상태, 실패 후 재실행, 동시 실행
 보호는 [GUIDE.md 부록](../../../GUIDE.md#4-부록-실행-상태와-복구)을 참고합니다.
 
+### Engine option 직접 지정
+
+Config key가 없는 AMBER option은 `[amber.<stage>.<namelist>]` table로 지정합니다. Stage 우선순위, 값 형식과 거부되는 keyword는 [3_Templates README](../../README.md#engine-option-직접-지정)를 따릅니다.
+
+```toml
+[amber.md.cntrl]
+gamma_ln = 2.0
+
+[amber.production.cntrl]
+iwrap = 1
+```
+
+| Stage | Input |
+| --- | --- |
+| `minimization` | `minimize.in` |
+| `heating` | `heat.in.template` |
+| `equilibration` | `equilibrate.in.template` |
+| `production` | `production.in.template` |
+
+모든 environment, stage leg와 lambda window에 같은 값을 씁니다. Window별 값은 지정할 수 없습니다.
+
 ### 문제 해결
 
 | Message | 원인과 조치 |
@@ -442,6 +463,27 @@ so independent windows can run concurrently. Stages with a completion record are
 not rerun. For partial output, the error names the window, the leftover files
 and the `./run.sh` command to rerun. See [GUIDE.md appendix](../../../GUIDE.md#4-appendix-run-state-and-recovery) for
 other run state, reruns after failure and concurrent-run protection.
+
+### Engine option passthrough
+
+AMBER options without a config key go into `[amber.<stage>.<namelist>]` tables. Stage precedence, value formats and refused keywords are described in the [3_Templates README](../../README.md#engine-option-passthrough).
+
+```toml
+[amber.md.cntrl]
+gamma_ln = 2.0
+
+[amber.production.cntrl]
+iwrap = 1
+```
+
+| Stage | Input |
+| --- | --- |
+| `minimization` | `minimize.in` |
+| `heating` | `heat.in.template` |
+| `equilibration` | `equilibrate.in.template` |
+| `production` | `production.in.template` |
+
+Every environment, leg and lambda window gets the same values; per-window values are not supported.
 
 ### Troubleshooting
 

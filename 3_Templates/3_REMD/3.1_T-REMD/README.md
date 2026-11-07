@@ -222,6 +222,27 @@ seed는 `"random"`이면 무작위, 정수이면 `정수 + 7919 × replica 수`�
 minimization, heating, NPT equilibration을 따로 실행하고 production도 NPT로
 실행합니다.
 
+### Engine option 직접 지정
+
+Config key가 없는 AMBER option은 `[amber.<stage>.<namelist>]` table로 지정합니다. Stage 우선순위, 값 형식과 거부되는 keyword는 [3_Templates README](../../README.md#engine-option-직접-지정)를 따릅니다.
+
+```toml
+[amber.md.cntrl]
+gamma_ln = 2.0
+
+[amber.production.cntrl]
+iwrap = 1
+```
+
+| Stage | Input |
+| --- | --- |
+| `minimization` | `minimize.in` |
+| `heating` | `heat.in` |
+| `equilibration` | `equilibrate.in` |
+| `production` | `production.NNN.in` |
+
+모든 replica에 같은 값을 씁니다. Replica별 값은 지정할 수 없습니다.
+
 ### 문제 해결
 
 | Message 또는 증상 | 원인 | 조치 |
@@ -458,6 +479,27 @@ same length as stage 3. The shared seed is random for `"random"` and
 With `production_ensemble = "NPT"`, there is no `work/shared`: each replica is
 minimized, heated and NPT-equilibrated separately, and production also runs at
 NPT.
+
+### Engine option passthrough
+
+AMBER options without a config key go into `[amber.<stage>.<namelist>]` tables. Stage precedence, value formats and refused keywords are described in the [3_Templates README](../../README.md#engine-option-passthrough).
+
+```toml
+[amber.md.cntrl]
+gamma_ln = 2.0
+
+[amber.production.cntrl]
+iwrap = 1
+```
+
+| Stage | Input |
+| --- | --- |
+| `minimization` | `minimize.in` |
+| `heating` | `heat.in` |
+| `equilibration` | `equilibrate.in` |
+| `production` | `production.NNN.in` |
+
+Every replica gets the same values; per-replica values are not supported.
 
 ### Troubleshooting
 
