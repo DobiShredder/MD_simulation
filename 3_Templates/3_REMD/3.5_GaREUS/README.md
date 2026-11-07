@@ -17,8 +17,7 @@ production 시작 시 같은 boost parameter를 사용합니다.
 | `download.sh` | `download.sh PDB_ID`로 source PDB를 받습니다. |
 | `build.sh` | Topology, window와 GaMD input을 생성합니다. REUS와 같은 window/restraint generator에 GaMD parameter-preparation input을 추가합니다. |
 | `run.sh` | 공통 preproduction, window equilibration, 공통 GaMD preparation과 AMBER `-rem 3` GaREUS production을 실행합니다. 실제 실행에는 `--allow-unverified`가 필요합니다. |
-| `config.toml` | Force field, box, stage 길이, umbrella와 `[gamd]` 설정입니다. |
-| `windows.tsv` | Umbrella center 목록(Å)입니다. |
+| `config.toml` | Force field, box, stage 길이, umbrella center 목록을 포함한 `[umbrella]`와 `[gamd]` 설정입니다. |
 | `helpers/` | `build.sh` 또는 `run.sh`가 자동 호출하는 leaf-local 내부 code이며 직접 실행하지 않습니다. `generate_inputs.py`는 LEaP input과 resolved 설정을, `make_window_replicas.py`는 window별 MD input과 restraint를 만듭니다. |
 
 이 directory만 별도로 복사해 사용할 수 있습니다. Python dependency는 복사한
@@ -59,7 +58,7 @@ error로 중단합니다.
 
 | 항목 | 규칙 |
 | --- | --- |
-| Replica 수 | `windows.tsv`의 center 수입니다. 기본 20개입니다. |
+| Replica 수 | `umbrella.centers`의 center 수입니다. 기본 20개입니다. |
 | Pre-production | `pmemd.cuda` process 하나가 shared stage, window별 equilibration, reference window의 GaMD preparation을 순서대로 실행합니다. |
 | Production MPI rank | Window당 1개입니다. `MPI_PROCESSES`가 window 수와 다르면 시작 전에 거부합니다. |
 | GPU | `run.sh`는 GPU를 지정하지 않습니다. `pmemd.cuda.MPI`는 `CUDA_VISIBLE_DEVICES`에 보이는 GPU를 rank에 나눠 씁니다(Amber26 manual 24.6.5, p. 506). GPU 1개로도 실행되지만 모든 rank가 나눠 쓰므로 느립니다. |
@@ -200,12 +199,12 @@ Segment마다 `exchange.NNN.log`가 따로 생기며, 끊긴 계산은
 
 ### Window와 force constant
 
-`windows_file`은 항상 명시적인 center 목록을 읽으며 `auto`/`file` mode가
-아닙니다. Blank line과 `#`로 시작하는 comment line을 제외하고 각 행에는 center
-하나만 적습니다. Center 목록은 비어 있지 않고 중복 없이 오름차순이어야 합니다.
-각 행이 한 exchange state가 됩니다. Replica 수는 2 이상의 짝수여야 하며
-`build.sh`와 `run.sh`는 홀수 schedule을 자동 조정하지 않고 거부합니다.
-`run.sh --dry-run`도 같은 검사를 합니다.
+`umbrella.centers`는 center를 Å 단위로 나열한 TOML array이며 `auto`/`file`
+mode가 없습니다. 기본값은 `[6.0, 7.0, ..., 25.0]`입니다. 값은 양수이고 중복 없이
+오름차순이어야 하며, 각 값이 한 exchange state가 됩니다. Replica 수는 2 이상의
+짝수여야 하며 `build.sh`와 `run.sh`는 홀수 schedule을 자동 조정하지 않고
+거부합니다. `run.sh --dry-run`도 같은 검사를 합니다. Center는 `build.sh`만
+읽으므로 build 뒤 center를 바꾸면 새 `WORK_DIR`에서 다시 build합니다.
 
 기본 `force_constant = 1.0`(AMBER `rk`)은 1 Å 간격에서 예상 인접 교환 확률 약
 0.2입니다(미검증).
@@ -246,8 +245,8 @@ GaMD parameter preparation(`gamd_prepare.in`)도 production stage입니다. 모�
 | Message 또는 증상 | 원인 | 조치 |
 | --- | --- | --- |
 | `Error: actual execution requires ./run.sh --allow-unverified.` | 검증 범위를 확인하는 opt-in이 없습니다. | 위 실행 절의 미검증 내용을 읽고 `--allow-unverified`를 붙입니다. |
-| `Config error: gamd.reference_replica must be a window index from 0 to N` | Reference window index가 범위 밖입니다. | `windows.tsv` 행 순서 기준 0부터 시작하는 index로 고칩니다. |
-| `Build did not complete: work/build.done is missing; ...` | Build가 중간에 실패했습니다. Mask와 `windows.tsv` error는 [REUS README](../3.4_REUS/README.md#문제-해결)와 같습니다. | Build error를 확인하고 `mv work work.old` 후 다시 build합니다. |
+| `Config error: gamd.reference_replica must be a window index from 0 to N` | Reference window index가 범위 밖입니다. | `umbrella.centers` 순서 기준 0부터 시작하는 index로 고칩니다. |
+| `Build did not complete: work/build.done is missing; ...` | Build가 중간에 실패했습니다. Mask와 `umbrella.centers` error는 [REUS README](../3.4_REUS/README.md#문제-해결)와 같습니다. | Build error를 확인하고 `mv work work.old` 후 다시 build합니다. |
 | `GaMD parameter preparation failed: work/NNN/gamd_prepare.out` | Reference window의 GaMD preparation이 실패했습니다. | `gamd_prepare.out`, `engine.gamd_prepare.log`와 `gamd.prepare.log`를 확인합니다. |
 | `GaREUS segment N failed: work/mpirun.production.NNN.log, work/exchange.NNN.log` | MPI, GPU 또는 engine error입니다. | `run.sh`가 출력한 log 끝부분과 각 window의 `production.NNN.out`을 확인합니다. 남은 partial output은 [GUIDE.md 부록](../../../GUIDE.md#4-부록-실행-상태와-복구) 절차로 옮깁니다. |
 | `GaMD continuation state missing: work/NNN/gamd-restart.dat` | Segment 뒤 GaMD state가 없습니다. | 그 segment output을 partial로 보고 GUIDE 부록 절차로 옮긴 뒤 다시 실행합니다. |
@@ -268,8 +267,7 @@ windows, so production starts with the same boost parameters everywhere.
 | `download.sh` | Downloads a source PDB with `download.sh PDB_ID`. |
 | `build.sh` | Creates the topology, windows and GaMD inputs. It extends the REUS window/restraint generator with GaMD parameter-preparation input. |
 | `run.sh` | Runs shared preproduction, window equilibration, shared GaMD preparation and AMBER `-rem 3` GaREUS production. Actual execution requires `--allow-unverified`. |
-| `config.toml` | Force field, box, stage lengths, umbrella and `[gamd]` settings. |
-| `windows.tsv` | Umbrella center list (Å). |
+| `config.toml` | Force field, box, stage lengths, `[umbrella]` settings including the center list, and `[gamd]` settings. |
 | `helpers/` | Leaf-local internal code called automatically by `build.sh` or `run.sh`; not an entry point. `generate_inputs.py` writes LEaP inputs and resolved settings, and `make_window_replicas.py` writes per-window MD inputs and restraints. |
 
 This directory can be copied and used on its own. Install its Python
@@ -310,7 +308,7 @@ concurrent-run protection.
 
 | Item | Rule |
 | --- | --- |
-| Replica count | Number of centers in `windows.tsv`; 20 by default. |
+| Replica count | Number of values in `umbrella.centers`; 20 by default. |
 | Pre-production | One `pmemd.cuda` process runs the shared stages, each window's equilibration and the GaMD preparation in the reference window, in turn. |
 | Production MPI ranks | One per window. A different `MPI_PROCESSES` is rejected before launch. |
 | GPUs | `run.sh` does not assign GPUs. `pmemd.cuda.MPI` distributes ranks over the GPUs visible in `CUDA_VISIBLE_DEVICES` (Amber26 manual 24.6.5, p. 506). One GPU works but is slow because every rank shares it. |
@@ -450,12 +448,12 @@ Each segment writes its own `exchange.NNN.log`; resume an interrupted run with
 
 ### Windows and force constant
 
-`windows_file` always supplies an explicit center list and is not an
-`auto`/`file` mode. After blank lines and full-line `#` comments are skipped,
-each row must contain exactly one center. The list must be nonempty, unique and
-increasing. Each row becomes one exchange state. The replica count must be even
-and at least two; `build.sh` and `run.sh` reject odd schedules without adjusting
-them, and `run.sh --dry-run` applies the same check.
+`umbrella.centers` is a TOML array of centers in Å; there is no `auto`/`file`
+mode. The default is `[6.0, 7.0, ..., 25.0]`. Values must be positive, unique
+and increasing, and each value becomes one exchange state. The replica count
+must be even and at least two; `build.sh` and `run.sh` reject odd schedules
+without adjusting them, and `run.sh --dry-run` applies the same check. Only
+`build.sh` reads the centers, so rebuild in a new `WORK_DIR` after changing them.
 
 The default `force_constant = 1.0` (AMBER `rk`) gives a predicted neighbor
 acceptance of about 0.2 at 1 Å spacing (unverified).
@@ -496,8 +494,8 @@ GaMD parameter preparation (`gamd_prepare.in`) is a production stage. Every wind
 | Message or symptom | Cause | Action |
 | --- | --- | --- |
 | `Error: actual execution requires ./run.sh --allow-unverified.` | The opt-in for the unverified scope is missing. | Read the unverified item in the run section and add `--allow-unverified`. |
-| `Config error: gamd.reference_replica must be a window index from 0 to N` | The reference window index is out of range. | Use a 0-based index in `windows.tsv` row order. |
-| `Build did not complete: work/build.done is missing; ...` | The build failed partway. Mask and `windows.tsv` errors match the [REUS README](../3.4_REUS/README.md#troubleshooting). | Read the build error, `mv work work.old`, and rebuild. |
+| `Config error: gamd.reference_replica must be a window index from 0 to N` | The reference window index is out of range. | Use a 0-based index in `umbrella.centers` order. |
+| `Build did not complete: work/build.done is missing; ...` | The build failed partway. Mask and `umbrella.centers` errors match the [REUS README](../3.4_REUS/README.md#troubleshooting). | Read the build error, `mv work work.old`, and rebuild. |
 | `GaMD parameter preparation failed: work/NNN/gamd_prepare.out` | GaMD preparation in the reference window failed. | Check `gamd_prepare.out`, `engine.gamd_prepare.log` and `gamd.prepare.log`. |
 | `GaREUS segment N failed: work/mpirun.production.NNN.log, work/exchange.NNN.log` | MPI, GPU or engine error. | Read the log tail printed by `run.sh` and each window's `production.NNN.out`. Move retained partial output as described in the [GUIDE.md appendix](../../../GUIDE.md#4-appendix-run-state-and-recovery). |
 | `GaMD continuation state missing: work/NNN/gamd-restart.dat` | The GaMD state is missing after a segment. | Treat that segment's output as partial, move it as described in the GUIDE appendix, and rerun. |

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from pathlib import Path
 
@@ -58,7 +59,9 @@ def resolve(config_path: Path) -> dict[str, object]:
         raise ValueError("ligand_force_field currently supports only GAFF2")
     if string_value(build, "charge_method").upper() != "RESP":
         raise ValueError("charge_method currently supports only RESP")
-    string_value(build, "ligand_residue_name")
+    ligand_residue = string_value(build, "ligand_residue_name").upper()
+    if not re.fullmatch(r"[A-Z0-9]{1,3}", ligand_residue):
+        raise ValueError("ligand_residue_name must contain one to three letters or digits")
     net_charge = build.get("ligand_net_charge")
     if isinstance(net_charge, bool) or not isinstance(net_charge, int):
         raise ValueError("ligand_net_charge must be an integer")
@@ -79,6 +82,7 @@ def resolve(config_path: Path) -> dict[str, object]:
 
     return {
         "force_field": force_field,
+        "ligand_residue": ligand_residue,
         "force_field_profile": force_field_profile,
         "water_model": water_model,
         "box_distance": positive_float(build, "solute_box_distance"),
@@ -110,7 +114,8 @@ def write_tleap(
         f"source {protein_source}",
         "source leaprc.gaff2",
         "loadamberparams ligand.frcmod",
-        "LIG = loadmol2 ligand.mol2",
+        # tleap matches the PDB ligand residue name to this unit name.
+        f"{values['ligand_residue']} = loadmol2 ligand.mol2",
     ]
     lines.extend([
         f"source {water_source}",

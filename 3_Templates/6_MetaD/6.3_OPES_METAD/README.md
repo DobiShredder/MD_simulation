@@ -58,7 +58,13 @@ PLUMED 문서에 따라 reweighting에 쓰지 않습니다. Segment마다 얻은
 
 ### 주요 parameter
 
-`cv.dat`의 label과 `collective_variable.arguments`를 함께 수정합니다. 기본
+CV는 `config.toml`의 `[collective_variable] definitions`에 PLUMED action으로 한
+줄씩 씁니다(PLUMED unit nm, rad). TOML literal string(`'''`)이므로 escape가
+필요 없습니다. `build.sh`가 이 문자열을 `work/cv.dat`로 저장하고 `run.sh`는 이
+file로 `plumed.dat`를 만듭니다. `definitions`를 바꾸면 새 `WORK_DIR`에서 다시
+build합니다.
+
+`definitions`의 label과 `collective_variable.arguments`를 함께 수정합니다. 기본
 alanine φ/ψ atom 번호는 다른 topology에 적용하지 않습니다. CV마다 sigma 하나가
 필요합니다.
 
@@ -86,7 +92,7 @@ step 수(`production_steps / production_segments`)도 이 값으로 나누어떨
 
 ### Engine option 직접 지정
 
-Config key가 없는 AMBER option은 `[amber.<stage>.<namelist>]` table로 지정합니다. Stage 우선순위, 값 형식과 거부되는 keyword는 [3_Templates README](../../README.md#engine-option-직접-지정)를 따릅니다.
+Config key가 없는 AMBER option은 `[amber.<stage>.<namelist>]`, PLUMED option은 `[plumed]` table로 지정합니다. Stage 우선순위, 값 형식과 거부되는 keyword는 [3_Templates README](../../README.md#engine-option-직접-지정)를 따릅니다.
 
 ```toml
 [amber.md.cntrl]
@@ -116,6 +122,7 @@ NLIST = true   # OPES_METAD: kernel neighbor list (flag)
 | `state_write_interval_steps must be divisible by pace_steps` | `state_write_interval_steps`를 `pace_steps`의 배수로 바꿉니다. |
 | `production steps per segment (...) must be divisible by state_write_interval_steps` | Segment 길이나 `state_write_interval_steps`를 바꿉니다. |
 | `sigma must contain N values`, `sigma values must be positive` | CV마다 양수 sigma 하나를 적습니다. |
+| `[collective_variable] definitions must contain the PLUMED CV actions` | `config.toml`의 `definitions`에 PLUMED CV action을 한 줄 이상 적습니다. |
 
 공통 error는 [MetaD template README](../README.md)의 문제 해결에 있습니다.
 
@@ -185,7 +192,13 @@ the FES from successive segments until it stops changing.
 
 ### Key parameters
 
-Edit the labels in `cv.dat` and `collective_variable.arguments` together. The
+Write the CVs as PLUMED actions, one per line, in
+`[collective_variable] definitions` of `config.toml` (PLUMED units nm, rad). It
+is a TOML literal string (`'''`), so no escaping is needed. `build.sh` saves the
+string as `work/cv.dat`, and `run.sh` builds `plumed.dat` from that file. After
+changing `definitions`, build again in a new `WORK_DIR`.
+
+Edit the labels in `definitions` and `collective_variable.arguments` together. The
 supplied alanine φ/ψ atom numbers do not apply to other topologies. One sigma is
 needed per CV.
 
@@ -213,7 +226,7 @@ the steps per segment (`production_steps / production_segments`), so the last
 
 ### Engine option passthrough
 
-AMBER options without a config key go into `[amber.<stage>.<namelist>]` tables. Stage precedence, value formats and refused keywords are described in the [3_Templates README](../../README.md#engine-option-passthrough).
+AMBER options without a config key go into `[amber.<stage>.<namelist>]` tables and PLUMED options into `[plumed]`. Stage precedence, value formats and refused keywords are described in the [3_Templates README](../../README.md#engine-option-passthrough).
 
 ```toml
 [amber.md.cntrl]
@@ -243,6 +256,7 @@ NLIST = true   # OPES_METAD: kernel neighbor list (flag)
 | `state_write_interval_steps must be divisible by pace_steps` | Make `state_write_interval_steps` a multiple of `pace_steps`. |
 | `production steps per segment (...) must be divisible by state_write_interval_steps` | Change the segment length or `state_write_interval_steps`. |
 | `sigma must contain N values`, `sigma values must be positive` | Give one positive sigma per CV. |
+| `[collective_variable] definitions must contain the PLUMED CV actions` | Put at least one PLUMED CV action in `definitions` of `config.toml`. |
 
 Common errors are listed under Troubleshooting in the
 [MetaD template README](../README.md).

@@ -121,7 +121,7 @@ if (( ! dry_run )); then
     fi
 fi
 
-# Reject invalid file schedules before replacing build inputs or logs.
+# Reject invalid list schedules before replacing build inputs or logs.
 if ! "$python" helpers/generate_inputs.py "$method" "$config" "$work_dir/inputs" --validate-only; then
     die "Config validation failed: $config"
 fi

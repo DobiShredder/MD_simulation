@@ -120,7 +120,9 @@ Config의 숫자 값과 numeric array에는 NaN/Inf를 사용할 수 없습니�
 ### Engine option 직접 지정
 
 Config key가 없는 AMBER, GROMACS, PLUMED option은 engine table로 생성된 input에
-씁니다. Build가 input을 만든 뒤 값을 넣으므로 실행 command는 바뀌지 않습니다.
+씁니다. Input을 만드는 단계(build, MetaD `plumed.dat`은 각 segment 시작)에서 값을
+넣으므로 실행 command는 바뀌지 않습니다. 아래 예시는 table 종류를 모아 보인
+것입니다. 한 template에는 그 template이 실행하는 engine의 table만 씁니다.
 
 ```toml
 [amber.md.cntrl]          # heating, equilibration, production
@@ -153,13 +155,13 @@ GRID_WSTRIDE = 50000
 Stage는 `all`, `md`(heating, equilibration, production), `minimization`,
 `heating`, `equilibration`, `production`입니다. 같은 keyword가 여러 table에 있으면
 `all` < `md` < 개별 stage 순서로 뒤의 값을 씁니다. Thermostat처럼 MD에만 쓰는
-keyword를 `all`에 넣으면 minimization input에서 engine이 거부하므로 `md`에
-넣습니다. 각 leaf README에 input file별 stage를 적었습니다.
+keyword를 `all`에 넣으면 minimization input에서 engine이 거부할 수 있으므로
+`md`에 넣습니다. 각 leaf README에 input file별 stage를 적었습니다.
 
 Template이 config key나 method logic으로 정하는 keyword는 덮어쓸 수 없습니다.
 `dt`, `nstlim`, `temp0`, `ig`, `ntb`/`ntp`, restraint, replica exchange, alchemical,
-GaMD keyword와 `plumed`/`plumedfile`가 해당합니다. Build는 거부한 keyword와 대신
-쓸 config key를 출력하고 멈춥니다. PLUMED에서는 template이 이미 쓴 bias keyword와
+GaMD keyword와 `plumed`/`plumedfile`가 해당합니다. Input을 만드는 script는 거부한
+keyword와 대신 쓸 config key를 출력하고 멈춥니다. PLUMED에서는 template이 이미 쓴 bias keyword와
 `RESTART`, `FILE`, `STATE_*`, `OBSERVATION_STEPS`처럼 segment restart를 따르는
 keyword를 거부합니다. Template이 실행하지 않는 engine의 table(예: AMBER
 template의 `[gromacs]`)도 거부합니다.
@@ -292,8 +294,10 @@ depends on the parameter.
 ### Engine option passthrough
 
 AMBER, GROMACS and PLUMED options without a config key go into the generated
-inputs through engine tables. The build writes them after generating the
-inputs, so the run commands do not change.
+inputs through engine tables. They are written when the inputs are generated
+(at build; for the MetaD `plumed.dat`, at the start of each segment), so the run
+commands do not change. The example below collects every table type; a template
+uses only the tables of the engine it runs.
 
 ```toml
 [amber.md.cntrl]          # heating, equilibration, production
@@ -326,16 +330,17 @@ GRID_WSTRIDE = 50000
 Stages are `all`, `md` (heating, equilibration, production), `minimization`,
 `heating`, `equilibration` and `production`. When a keyword appears in several
 tables, the later one wins: `all` < `md` < the stage itself. MD-only keywords such
-as thermostat settings belong in `md`; in `all` the engine rejects them in the
-minimization input. Each leaf README lists the stage of every input file.
+as thermostat settings belong in `md`; in `all` the engine may reject them in
+the minimization input. Each leaf README lists the stage of every input file.
 
 Keywords that the template derives from config keys or method logic cannot be
 overridden: `dt`, `nstlim`, `temp0`, `ig`, `ntb`/`ntp`, restraint, replica-exchange,
-alchemical and GaMD keywords, and `plumed`/`plumedfile`. The build stops and names
-the refused keyword and the config key to use instead. For PLUMED, bias keywords
+alchemical and GaMD keywords, and `plumed`/`plumedfile`. The script that generates
+the input stops and names the refused keyword and the config key to use instead. For PLUMED, bias keywords
 the template already writes and keywords that follow the segment restart chain
-(`RESTART`, `FILE`, `STATE_*`, `OBSERVATION_STEPS`) are refused. Tables for an engine the
-template does not run (for example `[gromacs]` in an AMBER template) are refused.
+(`RESTART`, `FILE`, `STATE_*`, `OBSERVATION_STEPS`) are refused. Tables for an
+engine the template does not run (for example `[gromacs]` in an AMBER template)
+are refused.
 
 Values and units follow the engine manual. The template checks table and keyword
 names and value formats, not whether the engine supports a keyword; an unsupported

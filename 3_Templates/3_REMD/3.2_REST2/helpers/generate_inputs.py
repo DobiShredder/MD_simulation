@@ -21,7 +21,7 @@ from config_utils import (  # noqa: E402
     string_value,
 )
 from force_field_profiles import resolve_force_field_profile  # noqa: E402
-from generate_states import read_number_list, read_temperatures  # noqa: E402
+from generate_states import configured_temperatures, kappa_values  # noqa: E402
 from tempered_selection import tempered_settings  # noqa: E402
 
 
@@ -48,7 +48,7 @@ def parse_arguments() -> argparse.Namespace:
     )
     parser.add_argument(
         "--validate-only", action="store_true",
-        help="Validate config and file schedules without writing inputs",
+        help="Validate config and list schedules without writing inputs",
     )
     return parser.parse_args()
 
@@ -67,12 +67,15 @@ def resolve(config_path: Path, method: str) -> dict[str, object]:
     if string_value(run, "constraint_mode").lower() != "h-bonds":
         raise ValueError("constraint_mode currently supports only h-bonds")
 
-    if string_value(exchange, "temperature_mode") == "file":
-        read_temperatures(Path(string_value(exchange, "temperature_file")))
-    if method == "rest3":
-        kappa = section(config, "rest3_kappa")
-        if string_value(kappa, "mode") == "file":
-            read_number_list(Path(string_value(kappa, "file")), "kappa")
+    # Check list schedules here so build.sh rejects them before running tleap.
+    # Auto ladders, and REST3 kappa against them, are checked after the predictor.
+    temperature_mode = string_value(exchange, "temperature_mode")
+    if temperature_mode == "list":
+        temperatures = configured_temperatures(exchange)
+        if method == "rest3":
+            kappa_values(config, temperatures)
+    elif temperature_mode != "auto":
+        raise ValueError("temperature_mode must be auto or list")
 
     production_steps = positive_int(run, "production_steps")
     segments = positive_int(run, "production_segments")

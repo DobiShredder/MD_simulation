@@ -143,8 +143,8 @@ AmberTools 26 cpptraj에서 H-REMD 형식 합성 log로만 확인했습니다. T
 
 | `temperature_mode` | 사용하는 설정 | 무시하는 설정 | 생성 결과 |
 | --- | --- | --- | --- |
-| `auto` (기본값) | `minimum_temperature`, `maximum_temperature`, `target_exchange_probability`, `generator_tolerance` | `temperature_file` | 전체 solvated system을 predictor에 넣어 `work/states.tsv`를 생성합니다. 1UBQ 기본값(300–450 K, p=0.20)은 67 state가 나와 p≈0.210, 68 state로 조정됩니다(AmberTools build 확인). |
-| `file` | `temperature_file` | Auto ladder 설정 | File 값을 순서대로 `work/states.tsv`에 기록합니다. |
+| `auto` (기본값) | `minimum_temperature`, `maximum_temperature`, `target_exchange_probability`, `generator_tolerance` | `temperatures` | 전체 solvated system을 predictor에 넣어 `work/states.tsv`를 생성합니다. 1UBQ 기본값(300–450 K, p=0.20)은 67 state가 나와 p≈0.210, 68 state로 조정됩니다(AmberTools build 확인). |
+| `list` | `temperatures` | Auto ladder 설정 | 목록 값을 순서대로 `work/states.tsv`에 기록합니다. |
 
 ### 숫자 option
 
@@ -180,13 +180,19 @@ probability를 올려 N+1개로 맞춥니다. N+1개가 되는 값 중 가장 �
 Auto ladder의 water 수는 first-pass LEaP build에서 셉니다. `build.sh --dry-run`은
 auto predictor를 실행하지 않으므로 auto replica 수는 실제 build에서 정해집니다.
 
-File mode의 홀수 schedule은 자동으로 바꾸지 않고 LEaP 실행 전에 거부합니다.
-`run.sh --dry-run`도 `work/states.tsv`의 count를 검사합니다. Temperature file은
-사용자가 생성해야 합니다. 공백, comma, semicolon, `|`를 구분자로 사용할 수
-있고 `#` 뒤는 comment입니다. 값은 finite 양수이고 중복 없이 오름차순이어야
-하며, 둘 이상이어야 하고 첫 값은 `run.temperature`와 같아야 합니다. `nan`,
-`inf`, `-inf`와 float 범위를 넘는 값은 topology와 input을 저장하기 전에 file
-경로와 함께 거부합니다.
+List mode는 `[replica_exchange] temperatures`에 K 단위 숫자 배열을 씁니다.
+`config.toml`에 주석으로 넣은 4개 값은 형식 예시일 뿐이며, 실제 ladder는 전체
+solvated system에 맞게 만들어야 합니다.
+
+```toml
+temperature_mode = "list"
+temperatures = [300.0, 302.5, 305.0, 307.6]
+```
+
+값은 finite 양수이고 중복 없이 오름차순이어야 하며, 둘 이상이어야 하고 첫 값은
+`run.temperature`와 같아야 합니다. 홀수 개 목록은 자동으로 바꾸지 않고 LEaP
+실행 전에 거부합니다. `nan`, `inf`, `-inf`는 config를 읽을 때 key 위치와 함께
+거부합니다. `run.sh --dry-run`도 `work/states.tsv`의 count를 검사합니다.
 
 ### Seed 규칙
 
@@ -247,12 +253,12 @@ iwrap = 1
 
 | Message 또는 증상 | 원인 | 조치 |
 | --- | --- | --- |
-| `Config error: Replica exchange requires an even number of temperatures: ...` | File mode temperature 수가 홀수입니다. | Temperature를 하나 추가하거나 빼고 다시 build합니다. |
+| `Config error: Replica exchange requires an even number of temperatures: replica_exchange.temperatures (N states)` | List mode temperature 수가 홀수입니다. | Temperature를 하나 추가하거나 빼고 다시 build합니다. |
 | `Config error: timestep must be 2.0 fs or less without hydrogen mass repartitioning` | `run.timestep`이 2 fs보다 큽니다. | 2.0 이하로 둡니다. |
 | `MPI_PROCESSES must equal the replica count: N` | Rank 수가 replica 수와 다릅니다. | `MPI_PROCESSES`를 지우거나 N으로 둡니다. |
 | `Executable not found: ...` | `pmemd.cuda`, `pmemd.cuda.MPI` 또는 launcher가 `PATH`에 없습니다. | AMBER 환경을 load하거나 `AMBER_ENGINE`, `AMBER_MPI_ENGINE`, `MPI_LAUNCHER`를 지정합니다. |
 | `T-REMD segment N failed: work/mpirun.production.NNN.log, work/exchange.NNN.log` | MPI, GPU 또는 engine error입니다. | `run.sh`가 출력한 log 끝부분과 각 replica의 `production.NNN.out`을 확인합니다. 남은 partial output은 [GUIDE.md 부록](../../../GUIDE.md#4-부록-실행-상태와-복구) 절차로 옮깁니다. |
-| 특정 pair의 success rate가 0에 가까움 | 그 구간 temperature 간격이 넓습니다. | 새 `WORK_DIR`에서 `target_exchange_probability`를 높이거나 file mode로 그 구간에 temperature를 추가합니다. |
+| 특정 pair의 success rate가 0에 가까움 | 그 구간 temperature 간격이 넓습니다. | 새 `WORK_DIR`에서 `target_exchange_probability`를 높이거나 list mode로 그 구간에 temperature를 추가합니다. |
 
 ## English
 
@@ -398,8 +404,8 @@ log only; reading a T-REMD `pmemd.cuda.MPI` log is unverified.
 
 | `temperature_mode` | Settings used | Settings ignored | Result |
 | --- | --- | --- | --- |
-| `auto` (default) | `minimum_temperature`, `maximum_temperature`, `target_exchange_probability`, `generator_tolerance` | `temperature_file` | Runs the predictor on the full solvated system and writes `work/states.tsv`. For 1UBQ the defaults (300–450 K, p=0.20) give 67 states, adjusted to 68 at p≈0.210 (checked with an AmberTools build). |
-| `file` | `temperature_file` | Auto-ladder settings | Copies the file values in order into `work/states.tsv`. |
+| `auto` (default) | `minimum_temperature`, `maximum_temperature`, `target_exchange_probability`, `generator_tolerance` | `temperatures` | Runs the predictor on the full solvated system and writes `work/states.tsv`. For 1UBQ the defaults (300–450 K, p=0.20) give 67 states, adjusted to 68 at p≈0.210 (checked with an AmberTools build). |
+| `list` | `temperatures` | Auto-ladder settings | Copies the list values in order into `work/states.tsv`. |
 
 ### Numeric options
 
@@ -437,13 +443,20 @@ The auto ladder counts waters from a first-pass LEaP build. `build.sh --dry-run`
 does not run the auto predictor, so the auto replica count is set by the actual
 build.
 
-Odd file schedules are rejected before LEaP, not adjusted. `run.sh --dry-run`
-also checks the `work/states.tsv` count. The user must create the temperature
-file. It accepts whitespace, commas, semicolons and `|` as separators; text
-after `#` is a comment. It must contain at least two unique, increasing, finite
-positive values, and its first value must equal `run.temperature`. `nan`, `inf`,
-`-inf` and values outside the float range are rejected with the file path
-before topology or inputs are saved.
+List mode reads a numeric array in K from `[replica_exchange] temperatures`.
+The four commented values in `config.toml` only show the format; build a real
+ladder for the whole solvated system.
+
+```toml
+temperature_mode = "list"
+temperatures = [300.0, 302.5, 305.0, 307.6]
+```
+
+The list must hold at least two unique, increasing, finite positive values,
+and its first value must equal `run.temperature`. An odd-length list is
+rejected before LEaP, not adjusted. `nan`, `inf` and `-inf` are rejected with
+the key location when the config is read. `run.sh --dry-run` also checks the
+`work/states.tsv` count.
 
 ### Seed rule
 
@@ -505,9 +518,9 @@ Every replica gets the same values; per-replica values are not supported.
 
 | Message or symptom | Cause | Action |
 | --- | --- | --- |
-| `Config error: Replica exchange requires an even number of temperatures: ...` | The file-mode schedule has an odd count. | Add or remove one temperature and rebuild. |
+| `Config error: Replica exchange requires an even number of temperatures: replica_exchange.temperatures (N states)` | The list-mode schedule has an odd count. | Add or remove one temperature and rebuild. |
 | `Config error: timestep must be 2.0 fs or less without hydrogen mass repartitioning` | `run.timestep` exceeds 2 fs. | Set it to 2.0 or less. |
 | `MPI_PROCESSES must equal the replica count: N` | The rank count differs from the replica count. | Unset `MPI_PROCESSES` or set it to N. |
 | `Executable not found: ...` | `pmemd.cuda`, `pmemd.cuda.MPI` or the launcher is not on `PATH`. | Load the AMBER environment or set `AMBER_ENGINE`, `AMBER_MPI_ENGINE` or `MPI_LAUNCHER`. |
 | `T-REMD segment N failed: work/mpirun.production.NNN.log, work/exchange.NNN.log` | MPI, GPU or engine error. | Read the log tail printed by `run.sh` and each replica's `production.NNN.out`. Move retained partial output as described in the [GUIDE.md appendix](../../../GUIDE.md#4-appendix-run-state-and-recovery). |
-| One pair's success rate stays near 0 | The temperature gap in that region is too wide. | In a new `WORK_DIR`, raise `target_exchange_probability` or add temperatures there in file mode. |
+| One pair's success rate stays near 0 | The temperature gap in that region is too wide. | In a new `WORK_DIR`, raise `target_exchange_probability` or add temperatures there in list mode. |

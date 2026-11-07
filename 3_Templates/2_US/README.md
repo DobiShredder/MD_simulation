@@ -9,8 +9,9 @@ harmonic restraint를 사용합니다.
 
 [`2.1_US`](2.1_US/README.md)에서 topology build, rMD, seed 추출, window build와
 simulation을 순서대로 실행합니다. Reaction-coordinate atom mask와 center 목록은
-system별 input입니다. Window center는 `windows_file`의 explicit list를 항상
-사용하며, `auto`/`file` mode를 선택하는 option은 없습니다.
+system별 input입니다. Window center와 force constant는 `config.toml`의
+`umbrella.centers`, `umbrella.force_constants` 배열을 항상 사용하며, `auto`/`file`
+mode를 선택하는 option은 없습니다.
 
 `us/run.sh --window N`과 `--windows START-END`는 1-based index를 사용하며 범위는
 inclusive입니다. `--preparation-only`와 `--production-only`로 선택한 window의
@@ -34,8 +35,9 @@ restraints.
 
 [`2.1_US`](2.1_US/README.md) runs the topology build, rMD, seed extraction,
 window build, and simulation in order. The reaction-coordinate atom masks and the
-center list are system-specific inputs. Window centers always come from the
-explicit list in `windows_file`; there is no `auto`/`file` mode switch.
+center list are system-specific inputs. Window centers and force constants
+always come from the `umbrella.centers` and `umbrella.force_constants` arrays in
+`config.toml`; there is no `auto`/`file` mode switch.
 
 `us/run.sh --window N` and the inclusive `--windows START-END` range both use
 1-based indices. The selected windows can be split into preparation and

@@ -15,13 +15,13 @@ replica_exchange.maximum_temperature
 replica_exchange.minimum_temperature
 replica_exchange.random_seed
 replica_exchange.target_exchange_probability
-replica_exchange.temperature_file
 replica_exchange.temperature_mode
-rest3_kappa.file
+replica_exchange.temperatures
 rest3_kappa.maximum_kappa
 rest3_kappa.maximum_temperature
 rest3_kappa.mode
 rest3_kappa.onset_temperature
+rest3_kappa.values
 run.constraint_mode
 run.energy_interval_steps
 run.equilibration_engine

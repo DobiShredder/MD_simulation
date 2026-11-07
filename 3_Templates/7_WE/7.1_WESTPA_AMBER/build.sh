@@ -143,22 +143,17 @@ for executable in "$engine" "$cpptraj"; do
 done
 
 "$python" helpers/input_identity.py --verify "$work_dir"
-we_source_files=$("$python" - "$config" <<'PY'
+# The target state lives in the config; the basis-state list is a separate file.
+basis_state_file=$("$python" - "$config" <<'PY'
 import sys
 sys.path.insert(0, "helpers")
 from pathlib import Path
 from config_utils import load_config
-config = load_config(Path(sys.argv[1]))["weighted_ensemble"]
-print(config["basis_state_file"])
-print(config["target_state_file"])
+print(load_config(Path(sys.argv[1]))["weighted_ensemble"]["basis_state_file"])
 PY
 )
-identity_options=(--input "$input" --input "$config")
-while IFS= read -r source_file; do
-    identity_options+=(--input "$source_file")
-done <<< "$we_source_files"
 "$python" helpers/input_identity.py --record "$work_dir/.build-source.identity.json" \
-    --stage "WE basis build source" "${identity_options[@]}" \
+    --stage "WE basis build source" --input "$input" --input "$config" --input "$basis_state_file" \
     --output "$work_dir/.system.complete" --output "$work_dir/.basis.complete" \
     --output "$work_dir/system.parm7" --output "$work_dir/system.rst7"
 

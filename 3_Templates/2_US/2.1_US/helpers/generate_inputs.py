@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from pathlib import Path
 
@@ -46,6 +47,52 @@ def render_cntrl(title: str, values: list[str]) -> str:
 # AMBER manual (ntr, netfrc): stages with ntr=1 should also set netfrc=0.
 RESTRAINED_EWALD = "&ewald\n  netfrc=0,\n/\n"
 
+# us/build.sh substitutes the window values into restraint.RST as text, so they
+# must be plain decimals without a sign or exponent.
+PLAIN_DECIMAL = re.compile(r"^[0-9]+([.][0-9]+)?$")
+# rmd/anal.py writes target_A to seeds.tsv with three decimals, and us/build.sh
+# requires each configured center to match it within this tolerance (Å).
+SEED_CENTER_TOLERANCE_ANGSTROM = 1e-6
+
+
+def umbrella_windows(umbrella: dict[str, object]) -> list[tuple[str, str]]:
+    """Return (center Å, force kcal mol^-1 Å^-2) text pairs, one per window."""
+    centers = umbrella.get("centers")
+    forces = umbrella.get("force_constants")
+    if not isinstance(centers, list) or not centers:
+        raise ValueError("umbrella.centers must be a non-empty array of distances in Å")
+    if not isinstance(forces, list) or len(forces) != len(centers):
+        raise ValueError(
+            f"umbrella.force_constants must be an array with one value per center ({len(centers)})"
+        )
+
+    windows: list[tuple[str, str]] = []
+    previous_center: float | None = None
+    for window_number, (center, force) in enumerate(zip(centers, forces), 1):
+        for value in (center, force):
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                raise ValueError(f"Window {window_number} center and force must be numeric: {center} {force}")
+            if value <= 0:
+                raise ValueError(f"Window {window_number} center and force must be positive: {center} {force}")
+            if not PLAIN_DECIMAL.match(repr(value)):
+                raise ValueError(
+                    f"Window {window_number} center and force must be plain decimals without an exponent: "
+                    f"{center} {force}"
+                )
+        if previous_center is not None and center <= previous_center:
+            raise ValueError(f"Window centers must be unique and increasing: {previous_center} -> {center}")
+        if abs(center - float(f"{center:.3f}")) >= SEED_CENTER_TOLERANCE_ANGSTROM:
+            raise ValueError(f"Window {window_number} center must have at most three decimals: {center}")
+        windows.append((repr(center), repr(force)))
+        previous_center = center
+    return windows
+
+
+def window_table(windows: list[tuple[str, str]]) -> str:
+    """Window table copied into rmd/work/seeds/windows.tsv and compared by us/build.sh."""
+    rows = ["# CENTER_A FORCE_KCAL_MOL_A2"] + [f"{center} {force}" for center, force in windows]
+    return "\n".join(rows) + "\n"
+
 
 def resolve(config_path: Path) -> dict[str, object]:
     config = load_config(config_path)
@@ -63,6 +110,8 @@ def resolve(config_path: Path) -> dict[str, object]:
         raise ValueError("constraint_mode currently supports only h-bonds")
     if positive_int(run, "production_segments") != 1:
         raise ValueError("umbrella sampling currently supports production_segments=1")
+    # Check the windows at the root build, before ratchet MD and seed extraction.
+    umbrella_windows(umbrella)
 
     density_minimum = nonnegative_float(ratchet, "minimum_density")
     density_maximum = positive_float(ratchet, "maximum_density")

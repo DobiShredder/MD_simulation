@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 import csv
-import math
 import os
 import shutil
 import subprocess
@@ -16,6 +15,7 @@ from pathlib import Path
 sys.dont_write_bytecode = True
 sys.path.insert(0, "../helpers")
 from config_utils import load_config, positive_float, section, string_value  # noqa: E402
+from generate_inputs import umbrella_windows, window_table  # noqa: E402
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -24,29 +24,13 @@ def parse_arguments() -> argparse.Namespace:
     )
     parser.add_argument("--dry-run", action="store_true", help="validate settings without running cpptraj")
     parser.add_argument("--cpptraj", default="cpptraj", help="cpptraj executable (default: cpptraj)")
+    parser.add_argument(
+        "--config",
+        type=Path,
+        default=Path("../config.toml"),
+        help="config whose [umbrella] centers/force_constants define the windows (default: ../config.toml)",
+    )
     return parser.parse_args()
-
-
-def read_centers(path: Path) -> list[float]:
-    centers: list[float] = []
-    with path.open(encoding="utf-8") as handle:
-        for line_number, raw_line in enumerate(handle, 1):
-            line = raw_line.strip()
-            if not line or line.startswith("#"):
-                continue
-            fields = line.split()
-            if len(fields) != 2:
-                raise ValueError(f"{path}:{line_number}: expected CENTER_A FORCE")
-            center = float(fields[0])
-            force = float(fields[1])
-            if not math.isfinite(center) or not math.isfinite(force) or center <= 0 or force <= 0:
-                raise ValueError(f"{path}:{line_number}: center and force must be positive")
-            centers.append(center)
-    if not centers:
-        raise ValueError(f"No umbrella windows found: {path}")
-    if centers != sorted(centers) or len(centers) != len(set(centers)):
-        raise ValueError("Window centers must be unique and increasing")
-    return centers
 
 
 def run_cpptraj(executable: str, topology: Path, commands: str) -> None:
@@ -165,8 +149,10 @@ def main() -> int:
     try:
         config = load_config(config_path)
         umbrella = section(config, "umbrella")
-        windows = root / string_value(umbrella, "windows_file")
-        centers = read_centers(windows)
+        # Windows are read from the editable config, so they can be chosen after
+        # the ratchet MD; masks and seed_max_error must match the root build.
+        windows = umbrella_windows(section(load_config(args.config), "umbrella"))
+        centers = [float(center) for center, _ in windows]
         mask_1 = string_value(umbrella, "atom_mask_1")
         mask_2 = string_value(umbrella, "atom_mask_2")
         maximum_error = positive_float(umbrella, "seed_max_error")
@@ -183,13 +169,14 @@ def main() -> int:
             or os.environ.get("MD_WRITER_ENTRY") != sys.argv[0]):
         command = [sys.executable, "../helpers/writer_guard.py", "--python-entry",
                    "--registry", "../work", "--read", "../work",
-                   "--read", str(trajectory), "--read", str(windows),
+                   "--read", str(args.config),
+                   "--read", str(trajectory),
                    "--write", str(output), "--", *sys.argv]
         os.execv(sys.executable, command)
 
     if shutil.which(args.cpptraj) is None:
         raise SystemExit(f"cpptraj not found: {args.cpptraj}")
-    for path in (topology, trajectory, windows):
+    for path in (topology, trajectory):
         if not path.is_file():
             raise SystemExit(f"Required input not found: {path}")
     if output.exists():
@@ -210,7 +197,7 @@ def main() -> int:
                 mask_2,
             )
         stage = "ordered seed selection"
-        print(f"Selecting ordered seed frames: {windows}", flush=True)
+        print(f"Selecting ordered seed frames: umbrella.centers in {args.config}", flush=True)
         selected = select_crossings(values, centers, maximum_error)
         stage = "seed restart extraction"
         print(f"Extracting seed restarts: {trajectory} -> {output}", flush=True)
@@ -223,7 +210,8 @@ def main() -> int:
         )
         stage = "seed metadata writing"
         write_metadata(output / "seeds.tsv", centers, selected)
-        shutil.copyfile(windows, output / "windows.tsv")
+        # us/build.sh compares this copy with the config to detect window changes.
+        (output / "windows.tsv").write_text(window_table(windows), encoding="utf-8")
     except (OSError, RuntimeError, ValueError) as error:
         raise SystemExit(
             f"Error during {stage} (trajectory: {trajectory}; output: {output}): {error}"

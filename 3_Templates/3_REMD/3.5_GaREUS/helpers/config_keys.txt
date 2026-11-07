@@ -34,7 +34,7 @@ run.trajectory_interval_steps
 run.window_equilibration_steps
 umbrella.atom_mask_1
 umbrella.atom_mask_2
+umbrella.centers
 umbrella.distance_output_interval_steps
 umbrella.exchange_interval_steps
 umbrella.force_constant
-umbrella.windows_file

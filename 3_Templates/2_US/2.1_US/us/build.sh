@@ -4,23 +4,38 @@ set -euo pipefail
 original_args=("$@")
 
 dry_run=0
-if [[ "${1:-}" == --dry-run && $# -eq 1 ]]; then
-    dry_run=1
-elif [[ "${1:-}" == -h || "${1:-}" == --help ]]; then
-    cat <<'EOF'
-Usage: ./build.sh [--dry-run]
+window_config=../config.toml
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --dry-run) dry_run=1; shift ;;
+        --config)
+            if [[ $# -lt 2 ]]; then
+                echo "Error: --config requires a file." >&2
+                exit 2
+            fi
+            window_config=$2
+            shift 2
+            ;;
+        -h|--help)
+            cat <<'EOF'
+Usage: ./build.sh [--config FILE] [--dry-run]
 
 Create umbrella-window directories from the rMD seed restarts.
 
 Options:
-  --dry-run   Validate the window table and print the planned generator.
-  -h, --help  Show this help message and exit.
+  --config FILE  Read [umbrella] centers/force_constants from FILE
+                 (default: ../config.toml; use the file given to rmd/anal.py).
+  --dry-run      Validate the umbrella windows and print the planned generator.
+  -h, --help     Show this help message and exit.
 EOF
-    exit 0
-elif (( $# != 0 )); then
-    echo "Usage: ./build.sh [--dry-run]" >&2
-    exit 2
-fi
+            exit 0
+            ;;
+        *)
+            echo "Usage: ./build.sh [--config FILE] [--dry-run]" >&2
+            exit 2
+            ;;
+    esac
+done
 
 die() {
     echo "Error: $*" >&2
@@ -36,58 +51,47 @@ window_root=${WORK_DIR:-work}
 if [[ ! -s "$config" ]]; then
     die "Resolved config not found: $config. Run the root build.sh first."
 fi
-window_file=$("$python" - "$config" <<'PY'
-import sys
-from pathlib import Path
-sys.path.insert(0, "../helpers")
-from config_utils import load_config, section, string_value
-
-config = load_config(Path(sys.argv[1]))
-print(Path("..") / string_value(section(config, "umbrella"), "windows_file"))
-PY
-)
+if [[ ! -s "$window_config" ]]; then
+    die "Window config not found: $window_config"
+fi
 seed_windows="$seed_dir/windows.tsv"
 if (( ! ${dry_run:-0} )) && [[ ${MD_WRITER_PARENT:-} != "$PPID" || ${MD_WRITER_ENTRY:-} != "$0" ]]; then
     exec "${PYTHON:-python3}" ../helpers/writer_guard.py \
-        --registry "../work" --read "../work" --read "$seed_dir" --read "$window_file" --write "$window_root" -- "$0" "${original_args[@]}"
+        --registry "../work" --read "../work" --read "$seed_dir" --read "$window_config" \
+        --write "$window_root" -- "$0" "${original_args[@]}"
 fi
 
-if [[ ! -s "$window_file" ]]; then
-    die "Window settings not found: $window_file"
+# umbrella.centers and force_constants come from the editable config, as in
+# rmd/anal.py, so windows can be chosen after the ratchet MD. generate_inputs.py
+# checks count, order, sign and plain-decimal format, and prints the same
+# "CENTER FORCE" table that rmd/anal.py saved with the seeds.
+if ! window_table=$("$python" - "$window_config" <<'PY'
+import sys
+from pathlib import Path
+sys.path.insert(0, "../helpers")
+from config_utils import load_config, section
+from generate_inputs import umbrella_windows, window_table
+
+try:
+    windows = umbrella_windows(section(load_config(Path(sys.argv[1])), "umbrella"))
+except ValueError as error:
+    raise SystemExit(f"Config error: {error}") from None
+print(window_table(windows), end="")
+PY
+); then
+    die "Invalid umbrella windows in $window_config"
 fi
 
 window_rows=()
-previous_center=""
-while read -r center force extra_field; do
-    if [[ -z "${center:-}" || "$center" == \#* ]]; then
+while read -r center force; do
+    if [[ "$center" == \#* ]]; then
         continue
     fi
-    if [[ -n "${extra_field:-}" ]]; then
-        die "$window_file must contain exactly two columns: CENTER_A and FORCE."
-    fi
-    if [[ ! "$center" =~ ^[0-9]+([.][0-9]+)?$ ]] || \
-       [[ ! "$force" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
-        die "Window center and force must be numeric: $center $force"
-    fi
-    if ! awk -v center="$center" -v force="$force" \
-        'BEGIN { exit !(center > 0 && force > 0) }'; then
-        die "Window center and force must be positive: $center $force"
-    fi
-    if [[ -n "$previous_center" ]] && ! awk \
-        -v previous="$previous_center" -v center="$center" \
-        'BEGIN { exit !(center > previous) }'; then
-        die "Window centers must be unique and increasing: $previous_center -> $center"
-    fi
     window_rows+=("$center $force")
-    previous_center=$center
-done < "$window_file"
-
-if (( ${#window_rows[@]} == 0 )); then
-    die "No windows found in $window_file"
-fi
+done <<< "$window_table"
 
 if (( dry_run )); then
-    echo "Dry run: umbrella-window build from $window_file"
+    echo "Dry run: umbrella-window build from umbrella.centers in $window_config"
     echo "+ $python -B ../helpers/generate_inputs.py us $config $window_root --topology $topology"
     echo "Umbrella windows: ${#window_rows[@]}"
     exit 0
@@ -101,12 +105,13 @@ for input in "$topology" "$config" "$seed_metadata" "$seed_windows"; do
         die "Required input not found: $input"
     fi
 done
-if ! cmp -s "$window_file" "$seed_windows"; then
-    die "Window table changed since seed extraction: $window_file (seed table: $seed_windows). Extract a new seed generation."
+seed_table=$(< "$seed_windows")
+if [[ "$window_table" != "$seed_table" ]]; then
+    die "Window table changed since seed extraction: umbrella.centers/force_constants in $window_config (seed table: $seed_windows). Extract a new seed generation."
 fi
 metadata_count=$(awk 'NR > 1 && NF {count++} END {print count+0}' "$seed_metadata")
 if (( metadata_count != ${#window_rows[@]} )); then
-    die "Window count differs from seed metadata: $window_file ($metadata_count seeds)."
+    die "Window count differs from seed metadata: $window_config has ${#window_rows[@]} windows ($metadata_count seeds)."
 fi
 if [[ -e "$window_root" ]]; then
     die "Window output already exists: $window_root"

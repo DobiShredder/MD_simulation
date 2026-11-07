@@ -105,7 +105,7 @@ Funnel geometry, hill과 20 Å solvent padding은 system 크기와 최대 projec
 
 ### Engine option 직접 지정
 
-Config key가 없는 AMBER option은 `[amber.<stage>.<namelist>]` table로 지정합니다. Stage 우선순위, 값 형식과 거부되는 keyword는 [3_Templates README](../../README.md#engine-option-직접-지정)를 따릅니다.
+Config key가 없는 AMBER option은 `[amber.<stage>.<namelist>]`, PLUMED option은 `[plumed]` table로 지정합니다. Stage 우선순위, 값 형식과 거부되는 keyword는 [3_Templates README](../../README.md#engine-option-직접-지정)를 따릅니다.
 
 ```toml
 [amber.md.cntrl]
@@ -255,7 +255,7 @@ size and the maximum projection.
 
 ### Engine option passthrough
 
-AMBER options without a config key go into `[amber.<stage>.<namelist>]` tables. Stage precedence, value formats and refused keywords are described in the [3_Templates README](../../README.md#engine-option-passthrough).
+AMBER options without a config key go into `[amber.<stage>.<namelist>]` tables and PLUMED options into `[plumed]`. Stage precedence, value formats and refused keywords are described in the [3_Templates README](../../README.md#engine-option-passthrough).
 
 ```toml
 [amber.md.cntrl]

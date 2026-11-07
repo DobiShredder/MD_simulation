@@ -169,7 +169,7 @@ if (( ! dry_run )); then
     fi
 fi
 
-# Reject invalid file schedules before replacing build inputs or logs.
+# Reject invalid list schedules before replacing build inputs or logs.
 if ! "$python" helpers/generate_inputs.py "$method" "$config" "$work_dir/inputs" --validate-only; then
     die "Config validation failed: $config"
 fi
@@ -272,9 +272,9 @@ log_event convert-topology 0 "outputs=$work_dir/topol.top,$work_dir/system.gro"
 if ! reference_charge=$("$python" "$helper_dir/net_charge.py" "$work_dir/topol.top"); then
     die "Reference net-charge calculation failed: $work_dir/topol.top"
 fi
-log_command preprocess "$gmx" grompp -f inputs/energy_check.mdp -p "$work_dir/topol.top" -c "$work_dir/system.gro" -pp "$build_tmp/processed.top" -o "$build_tmp/preprocess.tpr"
+log_command preprocess "$gmx" grompp -f "$helper_dir/energy_check.mdp" -p "$work_dir/topol.top" -c "$work_dir/system.gro" -pp "$build_tmp/processed.top" -o "$build_tmp/preprocess.tpr"
 if ! run_grompp "base topology" "$build_tmp/grompp_preprocess.log" "$reference_charge" \
-    "$gmx" grompp -f "inputs/energy_check.mdp" \
+    "$gmx" grompp -f "$helper_dir/energy_check.mdp" \
     -p "$work_dir/topol.top" -c "$work_dir/system.gro" \
     -pp "$build_tmp/processed.top" -o "$build_tmp/preprocess.tpr"; then
     die "Processed topology generation failed: $build_tmp/grompp_preprocess.log"
@@ -328,7 +328,7 @@ for variant in unscaled scale_one; do
     fi
     if ! run_grompp "energy check $variant" "$energy_dir/$variant.grompp.log" "$expected_charge" \
         "$gmx" grompp \
-        -f "inputs/energy_check.mdp" \
+        -f "$helper_dir/energy_check.mdp" \
         -p "$topology" \
         -c "$work_dir/system.gro" \
         -o "$energy_dir/$variant.tpr"; then
@@ -344,7 +344,7 @@ for variant in unscaled scale_one; do
     if ! "$gmx" energy \
         -f "$energy_dir/$variant.edr" \
         -o "$energy_dir/$variant.xvg" \
-        < "inputs/energy_selection.txt" \
+        < "$helper_dir/energy_selection.txt" \
         > "$energy_dir/$variant.energy.log" 2>&1; then
         die "Potential-energy extraction failed: $energy_dir/$variant.energy.log"
     fi

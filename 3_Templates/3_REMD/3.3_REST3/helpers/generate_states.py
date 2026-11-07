@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 import math
-import re
 import secrets
 import sys
 from pathlib import Path
@@ -80,27 +79,27 @@ def count_system(topology_path: Path) -> dict[str, int]:
     return counts
 
 
-def read_number_list(path: Path, label: str) -> list[float]:
-    if not path.is_file():
-        raise ValueError(f"{label} file not found: {path}")
-    parts: list[str] = []
-    for line in path.read_text(encoding="utf-8").splitlines():
-        parts.extend(re.split(r"[,;|\s]+", line.split("#", 1)[0].strip()))
-    try:
-        values = [float(part) for part in parts if part]
-    except ValueError as error:
-        raise ValueError(f"{label} file contains a nonnumeric value: {path}") from error
-    if any(not math.isfinite(value) for value in values):
-        raise ValueError(f"{label} file contains a nonfinite value: {path}")
-    return values
+def number_list(values: dict[str, object], key: str, label: str) -> list[float]:
+    raw = values.get(key)
+    if not isinstance(raw, list) or not raw:
+        raise ValueError(f"{label} must be a non-empty array of numbers")
+    numbers: list[float] = []
+    for item in raw:
+        if isinstance(item, bool) or not isinstance(item, (int, float)):
+            raise ValueError(f"{label} contains a nonnumeric value: {item!r}")
+        if not math.isfinite(item):
+            raise ValueError(f"{label} contains a nonfinite value: {item!r}")
+        numbers.append(float(item))
+    return numbers
 
 
-def read_temperatures(path: Path) -> list[float]:
-    values = read_number_list(path, "temperature")
+def configured_temperatures(exchange: dict[str, object]) -> list[float]:
+    label = "replica_exchange.temperatures"
+    values = number_list(exchange, "temperatures", label)
     if len(values) < 2 or values != sorted(set(values)) or values[0] <= 0:
-        raise ValueError(f"{path}: temperatures must contain at least two unique increasing values")
+        raise ValueError(f"{label} must contain at least two unique increasing values")
     if len(values) % 2:
-        raise ValueError(f"Replica exchange requires an even number of temperatures: {path} ({len(values)} states)")
+        raise ValueError(f"Replica exchange requires an even number of temperatures: {label} ({len(values)} states)")
     return values
 
 
@@ -118,16 +117,18 @@ def state_seeds(value: object, count: int) -> list[int]:
 def kappa_values(config: dict[str, object], temperatures: list[float]) -> list[float]:
     values = section(config, "rest3_kappa")
     mode = string_value(values, "mode")
-    if mode == "file":
-        path = Path(string_value(values, "file"))
-        parsed = read_number_list(path, "kappa")
-        if len(parsed) != len(temperatures):
-            raise ValueError("kappa and temperature lists must have the same length")
-        if any(value < 1.0 for value in parsed):
-            raise ValueError("kappa values must be 1.0 or greater")
-        return parsed
+    if mode == "list":
+        kappas = number_list(values, "values", "rest3_kappa.values")
+        if any(kappa < 1.0 for kappa in kappas):
+            raise ValueError("rest3_kappa.values must all be 1.0 or greater")
+        if len(kappas) != len(temperatures):
+            raise ValueError(
+                f"rest3_kappa.values has {len(kappas)} entries but the schedule has "
+                f"{len(temperatures)} temperatures; they must have the same length"
+            )
+        return kappas
     if mode != "linear":
-        raise ValueError("rest3_kappa.mode must be linear or file")
+        raise ValueError("rest3_kappa.mode must be linear or list")
     onset = positive_float(values, "onset_temperature")
     maximum_temperature = positive_float(values, "maximum_temperature")
     maximum_kappa = positive_float(values, "maximum_kappa")
@@ -183,10 +184,8 @@ def main() -> None:
                     f"probability from {target:.4f} to {used_target:.4f} to get "
                     f"{len(temperatures)} states in {minimum:.2f}-{maximum:.2f} K."
                 )
-        elif mode == "file":
-            temperatures = read_temperatures(
-                Path(string_value(exchange, "temperature_file"))
-            )
+        elif mode == "list":
+            temperatures = configured_temperatures(exchange)
             predictor_atoms = (
                 counts["solute_atoms"] + counts["ion_atoms"]
                 if args.method == "remd"
@@ -194,7 +193,7 @@ def main() -> None:
             )
             predictor_waters = counts["water_molecules"] if args.method == "remd" else 0
         else:
-            raise ValueError("temperature_mode must be auto or file")
+            raise ValueError("temperature_mode must be auto or list")
 
         if len(temperatures) < 2 or len(temperatures) % 2:
             raise ValueError(

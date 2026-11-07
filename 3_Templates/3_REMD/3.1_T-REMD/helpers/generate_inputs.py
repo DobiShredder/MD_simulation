@@ -22,7 +22,7 @@ from config_utils import (  # noqa: E402
     string_value,
 )
 from force_field_profiles import resolve_force_field_profile  # noqa: E402
-from generate_states import read_temperatures  # noqa: E402
+from generate_states import configured_temperatures  # noqa: E402
 
 # Langevin dynamics (ntt=3) should use a different ig on each restart
 # (Amber26 manual, ig). An integer random_seed gives each restarted stage its
@@ -55,7 +55,7 @@ def parse_arguments() -> argparse.Namespace:
     )
     parser.add_argument(
         "--validate-only", action="store_true",
-        help="Validate config and file schedules without writing inputs",
+        help="Validate config and list schedules without writing inputs",
     )
     return parser.parse_args()
 
@@ -74,9 +74,12 @@ def resolve(config_path: Path, method: str) -> dict[str, object]:
     if string_value(run, "constraint_mode").lower() != "h-bonds":
         raise ValueError("constraint_mode currently supports only h-bonds")
 
+    # Check list schedules here so build.sh rejects them before running tleap.
     temperature_mode = string_value(exchange, "temperature_mode")
-    if temperature_mode == "file":
-        read_temperatures(Path(string_value(exchange, "temperature_file")))
+    if temperature_mode == "list":
+        configured_temperatures(exchange)
+    elif temperature_mode != "auto":
+        raise ValueError("temperature_mode must be auto or list")
 
     production_steps = positive_int(run, "production_steps")
     segments = positive_int(run, "production_segments")

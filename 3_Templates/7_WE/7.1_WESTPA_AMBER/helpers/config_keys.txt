@@ -28,7 +28,8 @@ weighted_ensemble.iterations_per_block
 weighted_ensemble.mode
 weighted_ensemble.progress_coordinate_mask
 weighted_ensemble.run_blocks
-weighted_ensemble.target_state_file
+weighted_ensemble.target_state.label
+weighted_ensemble.target_state.progress_coordinate
 weighted_ensemble.tau_steps
 weighted_ensemble.total_iterations
 weighted_ensemble.walkers_per_bin

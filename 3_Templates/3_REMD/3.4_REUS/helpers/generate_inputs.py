@@ -18,7 +18,7 @@ from config_utils import (  # noqa: E402
     section,
     string_value,
 )
-from make_window_replicas import read_centers
+from make_window_replicas import window_centers  # noqa: E402
 from force_field_profiles import resolve_force_field_profile  # noqa: E402
 
 
@@ -41,7 +41,7 @@ def parse_arguments() -> argparse.Namespace:
 def resolve(config_path: Path) -> dict[str, object]:
     config = load_config(config_path)
     umbrella = section(config, "umbrella")
-    read_centers(Path(string_value(umbrella, "windows_file")))
+    window_centers(umbrella)
     build = section(config, "build")
     run = section(config, "run")
 

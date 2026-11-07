@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import math
 import shutil
 import sys
 from pathlib import Path
@@ -11,7 +12,7 @@ from pathlib import Path
 sys.dont_write_bytecode = True
 sys.path.insert(0, ".")
 from apply_config import apply_config  # noqa: E402
-from check_we_states import check_target_bins, read_target_values  # noqa: E402
+from check_we_states import check_target_bins  # noqa: E402
 from config_utils import load_config, positive_float, positive_int, section, string_value  # noqa: E402
 
 
@@ -34,6 +35,21 @@ def float_list(values: dict[str, object], key: str) -> list[float]:
     if result != sorted(set(result)):
         raise ValueError(f"{key} must be unique and increasing")
     return result
+
+
+def target_state(values: dict[str, object]) -> tuple[str, float]:
+    """Return the label and progress coordinate of the single WESTPA target state."""
+    raw = values.get("target_state")
+    if not isinstance(raw, dict) or set(raw) != {"label", "progress_coordinate"}:
+        raise ValueError("target_state must be { label = \"NAME\", progress_coordinate = VALUE }")
+    label = raw["label"]
+    # WESTPA reads the tstate file as whitespace-separated LABEL VALUE lines.
+    if not isinstance(label, str) or not label or label.startswith("#") or len(label.split()) != 1:
+        raise ValueError("target_state.label must be one word without whitespace or a leading #")
+    value = raw["progress_coordinate"]
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+        raise ValueError("target_state.progress_coordinate must be a finite number")
+    return label, float(value)
 
 
 def render_west_config(boundaries: list[float], walkers: int, iterations: int) -> str:
@@ -99,9 +115,9 @@ def main() -> None:
             raise ValueError("mode currently supports only steady_state")
         mask = string_value(we, "progress_coordinate_mask")
         basis = Path(string_value(we, "basis_state_file"))
-        target = Path(string_value(we, "target_state_file"))
-        if not basis.is_file() or not target.is_file():
-            raise ValueError("basis_state_file and target_state_file must exist")
+        if not basis.is_file():
+            raise ValueError(f"basis_state_file must exist: {basis}")
+        target_label, target_value = target_state(we)
         tau_steps = positive_int(we, "tau_steps")
         trajectory_interval = positive_int(run, "trajectory_interval_steps")
         # Frames must land on the segment end so seg.nc ends at the seg.rst7 point.
@@ -116,7 +132,7 @@ def main() -> None:
         initial = positive_int(we, "initial_walkers")
         boundaries = float_list(we, "bin_boundaries")
         # Check targets before the basis-state MD; build.sh checks the basis bin later.
-        check_target_bins(boundaries, read_target_values(target))
+        check_target_bins(boundaries, [target_value])
         timestep_ps = positive_float(run, "timestep") / 1000.0
         temperature = positive_float(run, "temperature")
         pressure = positive_float(run, "pressure")
@@ -128,7 +144,10 @@ def main() -> None:
     (args.output / "inputs").mkdir(exist_ok=True)
     (args.output / "bstates").mkdir(exist_ok=True)
     shutil.copy2(basis, args.output / "bstates/bstates.txt")
-    shutil.copy2(target, args.output / "tstate.file")
+    # w_init --tstate-file and anal.py read the target from this generated file.
+    (args.output / "tstate.file").write_text(
+        f"# label representative-progress-coordinate\n{target_label} {target_value!r}\n", encoding="utf-8"
+    )
     (args.output / "progress_coordinate.mask").write_text(mask + "\n", encoding="utf-8")
     (args.output / "initial_walkers.txt").write_text(f"{initial}\n", encoding="ascii")
     shutil.copy2(args.config, args.output / "source_config.toml")

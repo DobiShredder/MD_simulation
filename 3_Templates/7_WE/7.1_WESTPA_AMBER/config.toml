@@ -32,7 +32,9 @@ random_seed = "random"
 mode = "steady_state"
 progress_coordinate_mask = ":2-9@CA"
 basis_state_file = "bstates/bstates.txt"
-target_state_file = "tstate.file"
+# Walkers whose progress coordinate (Cα RMSD, Å) reaches the bin holding this
+# value are recycled; build.sh writes work/tstate.file for w_init.
+target_state = { label = "partially_unfolded", progress_coordinate = 3.25 }
 tau_steps = 5000
 total_iterations = 10000
 run_blocks = 10

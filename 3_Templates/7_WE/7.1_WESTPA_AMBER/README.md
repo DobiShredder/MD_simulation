@@ -53,7 +53,7 @@ python3 anal.py
 | `config.toml` | 수정 | force field, MD 길이, progress coordinate, bin과 walker 설정 |
 | `download.sh` | 직접 실행 | 예시 PDB 다운로드 |
 | `build.sh` | 직접 실행 | topology, RMSD reference, equilibrated basis restart와 WESTPA config 생성 |
-| `helpers/configure_we.py` | `build.sh`가 호출 | block config와 AMBER segment input 생성 |
+| `helpers/configure_we.py` | `build.sh`가 호출 | block config, AMBER segment input과 `work/tstate.file` 생성 |
 | `helpers/check_we_states.py` | `build.sh`가 호출 | basis progress coordinate가 target bin 밖인지 확인 |
 | `init.sh` | 직접 실행 | basis/target state에서 `work/west.h5` 초기화 |
 | `run.sh` | 직접 실행 | 선택한 block 또는 남은 block을 이어서 실행 |
@@ -129,6 +129,7 @@ Block config의 `max_total_iterations`는 1000, 2000, …, 10000처럼 누적됩
 | `walkers_per_bin` | 4 | walker | Resampling | WESTPA `bin_target_counts` |
 | `initial_walkers` | 4 | walker | `init.sh` | `w_init --segs-per-state` |
 | `bin_boundaries` | 0.0, 0.5, …, 2.5, 3.0 | Å | Resampling | RMSD bin 경계. 마지막 bin은 `[3.0, inf)` |
+| `target_state` | `partially_unfolded`, 3.25 | Å | Recycling | Target label과 representative progress coordinate. `work/tstate.file`로 기록 |
 
 Basis-state MD는 tutorial과 같은 whole-system minimization, 20 K부터 시작하는
 restrained NVT heating과 NPT equilibration 순서입니다. Heating과 equilibration은
@@ -143,7 +144,17 @@ WESTPA segment input도 `trajectory_interval_steps`를 `ntwx`로 사용해
 계산합니다.
 
 `bstates/bstates.txt`는 basis restart의 label, probability와 filename을 기록합니다.
-`tstate.file`의 값은 target bin 안의 representative progress coordinate이고,
+Target state는 `[weighted_ensemble]`의 `target_state` inline table에 씁니다.
+
+```toml
+target_state = { label = "partially_unfolded", progress_coordinate = 3.25 }
+```
+
+`label`은 공백이 없는 한 단어이고, `progress_coordinate`는 target bin 안의
+representative progress coordinate(Å)입니다. `helpers/configure_we.py`가 이 값을
+WESTPA `LABEL VALUE` 형식의 `work/tstate.file`로 쓰고, `init.sh`가 이를
+`w_init --tstate-file`에 넘깁니다. Target은 하나만 지정합니다.
+
 WESTPA는 그 값이 속한 bin을 target으로 사용합니다. 따라서 target boundary는
 `bin_boundaries`와 함께 설계합니다. Bin은 `[b0, b1)`, …, `[마지막 boundary, inf)`
 입니다. `build.sh`는 basis MD 전에 target 값이 첫 boundary 이상인지와 모든 bin이
@@ -163,8 +174,9 @@ progress coordinate와 그 bin을 출력하고, basis가 target bin 안에 있�
 | `random_seed` | `"random"` 또는 양의 정수 | `"random"` | Basis-state MD의 velocity seed를 무작위 또는 고정값으로 설정합니다. |
 | `weighted_ensemble.mode` | `steady_state`만 지원 | `steady_state` | Target 도달 walker를 basis state로 recycling합니다. |
 
-`basis_state_file`과 `target_state_file`은 `steady_state` mode에서 모두 필요하며,
-`init.sh`가 이를 읽어 `work/west.h5`를 초기화합니다.
+`basis_state_file`과 `target_state`는 `steady_state` mode에서 모두 필요하며,
+`init.sh`는 `work/bstates/bstates.txt`와 `work/tstate.file`로 `work/west.h5`를
+초기화합니다.
 
 ### Engine과 worker
 
@@ -257,7 +269,7 @@ iwrap = 1
 | Error message | 확인할 것 |
 | --- | --- |
 | `Config error: ...` (`build.sh`) | `trajectory_interval_steps`가 `tau_steps`를 나누는지, `run_blocks × iterations_per_block = total_iterations`인지, bin이 증가하는 숫자인지 봅니다. |
-| `the basis progress coordinate ... lies in a target bin` | Basis state가 target 안에 있습니다. `bin_boundaries`나 `tstate.file`을 다시 정하고 새 `WORK_DIR`에서 build합니다. |
+| `the basis progress coordinate ... lies in a target bin` | Basis state가 target 안에 있습니다. `bin_boundaries`나 `target_state`를 다시 정하고 새 `WORK_DIR`에서 build합니다. |
 | `w_init not found. Activate the WESTPA 2 environment.` | WESTPA를 설치한 environment를 activate합니다. |
 | `Existing WESTPA state retained` | 이어서 실행은 `./run.sh`, 새 run은 다른 `WORK_DIR`에서 `init.sh`를 실행합니다. |
 | `Multiple process workers cannot share the default pmemd.cuda engine`, `exceeds the number of WE_GPU_IDS entries` | Worker마다 서로 다른 GPU id를 `WE_GPU_IDS`에 적습니다. |
@@ -321,7 +333,7 @@ internal code called automatically.
 | `config.toml` | Edit | Force field, MD lengths, progress coordinate, bins and walkers |
 | `download.sh` | Run directly | Downloads an example PDB |
 | `build.sh` | Run directly | Topology, RMSD reference, equilibrated basis restart and WESTPA configs |
-| `helpers/configure_we.py` | Called by `build.sh` | Block configs and AMBER segment input |
+| `helpers/configure_we.py` | Called by `build.sh` | Block configs, AMBER segment input and `work/tstate.file` |
 | `helpers/check_we_states.py` | Called by `build.sh` | Checks that the basis progress coordinate lies outside the target bin |
 | `init.sh` | Run directly | Initializes `work/west.h5` from basis/target states |
 | `run.sh` | Run directly | Runs a selected block or continues the remaining blocks |
@@ -399,6 +411,7 @@ Each block config's `max_total_iterations` is cumulative: 1000, 2000, …, 10000
 | `walkers_per_bin` | 4 | walker | Resampling | WESTPA `bin_target_counts` |
 | `initial_walkers` | 4 | walker | `init.sh` | `w_init --segs-per-state` |
 | `bin_boundaries` | 0.0, 0.5, …, 2.5, 3.0 | Å | Resampling | RMSD bin edges; the last bin is `[3.0, inf)` |
+| `target_state` | `partially_unfolded`, 3.25 | Å | Recycling | Target label and representative progress coordinate, written to `work/tstate.file` |
 
 Basis-state MD follows the tutorial: whole-system minimization, restrained NVT
 heating from 20 K and NPT equilibration. Heating and equilibration write
@@ -413,10 +426,23 @@ progress coordinate comes from the parent restart and `seg.rst7`, not from
 `seg.nc`.
 
 `bstates/bstates.txt` records the label, probability and filename of the basis
-restart. A `tstate.file` value is a representative progress coordinate inside
-its target bin, and WESTPA uses the bin that contains it as the target. Design
+restart.
+
+The target state is the `target_state` inline table in `[weighted_ensemble]`:
+
+```toml
+target_state = { label = "partially_unfolded", progress_coordinate = 3.25 }
+```
+
+`label` is a single word without whitespace. `progress_coordinate` is a
+representative progress coordinate (Å) inside the target bin.
+`helpers/configure_we.py` writes it to `work/tstate.file` in the WESTPA
+`LABEL VALUE` format, and `init.sh` passes that file to `w_init --tstate-file`.
+Only one target is supported.
+
+WESTPA uses the bin that contains the target value as the target. Design
 the target together with `bin_boundaries`. Bins are `[b0, b1)`, …,
-`[last boundary, inf)`. Before basis MD, `build.sh` checks that every target
+`[last boundary, inf)`. Before basis MD, `build.sh` checks that the target
 value is at or above the first boundary and that at least one bin is not a
 target. After basis MD, `helpers/check_we_states.py` prints the basis progress
 coordinate and its bin, and stops if the basis lies in a target bin.
@@ -433,8 +459,9 @@ coordinate and its bin, and stops if the basis lies in a target bin.
 | `random_seed` | `"random"` or a positive integer | `"random"` | Sets a random or fixed velocity seed for basis-state MD. |
 | `weighted_ensemble.mode` | `steady_state` only | `steady_state` | Recycles walkers reaching the target to the basis state. |
 
-Both `basis_state_file` and `target_state_file` are required in `steady_state`
-mode; `init.sh` reads them when initializing `work/west.h5`.
+Both `basis_state_file` and `target_state` are required in `steady_state`
+mode; `init.sh` initializes `work/west.h5` from `work/bstates/bstates.txt` and
+`work/tstate.file`.
 
 ### Engine and workers
 
@@ -530,7 +557,7 @@ Values in `segment.in.template` apply to every WE segment. `gamma_ln` directly a
 | Error message | What to check |
 | --- | --- |
 | `Config error: ...` (`build.sh`) | `trajectory_interval_steps` divides `tau_steps`, `run_blocks × iterations_per_block = total_iterations`, and bins are increasing numbers. |
-| `the basis progress coordinate ... lies in a target bin` | The basis state is inside the target. Redefine `bin_boundaries` or `tstate.file` and build in a new `WORK_DIR`. |
+| `the basis progress coordinate ... lies in a target bin` | The basis state is inside the target. Redefine `bin_boundaries` or `target_state` and build in a new `WORK_DIR`. |
 | `w_init not found. Activate the WESTPA 2 environment.` | Activate the environment where WESTPA is installed. |
 | `Existing WESTPA state retained` | Continue with `./run.sh`; start a new run with `init.sh` in another `WORK_DIR`. |
 | `Multiple process workers cannot share the default pmemd.cuda engine`, `exceeds the number of WE_GPU_IDS entries` | Give each worker its own GPU id in `WE_GPU_IDS`. |

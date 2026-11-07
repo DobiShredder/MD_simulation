@@ -15,8 +15,8 @@ replica_exchange.maximum_temperature
 replica_exchange.minimum_temperature
 replica_exchange.random_seed
 replica_exchange.target_exchange_probability
-replica_exchange.temperature_file
 replica_exchange.temperature_mode
+replica_exchange.temperatures
 run.constraint_mode
 run.energy_interval_steps
 run.equilibration_engine

@@ -15,8 +15,10 @@ ratchet MD를 실행합니다. Generated input은 `work/inputs/`, PLUMED input�
 `--production-only`는 완료된 equilibration output에서 ratchet MD만 실행합니다.
 `--dry-run`은 계획한 command만 출력합니다.
 
-`anal.py`는 `umbrella.windows_file`(기본 `us/windows.tsv`)의 ordered center에 맞는
-first-crossing restart를 `work/seeds/` 아래에 저장합니다.
+`anal.py`는 leaf `../config.toml`(`--config FILE`로 변경)의 `umbrella.centers` 순서에
+맞는 first-crossing restart를 `work/seeds/` 아래에 저장합니다. Window는 rMD 뒤에
+`work/ratchet.dat`를 보고 정해도 됩니다. 사용한 window 목록은 `work/seeds/windows.tsv`에
+남기며 `../us/build.sh`가 이를 config와 비교합니다.
 
 기본값에서 `work/ratchet.nc`와 `work/ratchet.dat`는 `output_interval_steps`(500 steps, 1 ps)마다
 기록되어 ratchet.nc는 1,000 frame입니다.
@@ -53,8 +55,10 @@ equilibration, and ratchet MD. Generated AMBER inputs are stored under
 ratchet MD from completed equilibration output, and `--dry-run` prints the
 planned commands.
 
-`anal.py` writes first-crossing restarts for the ordered centers in
-`umbrella.windows_file` (default `us/windows.tsv`) under `work/seeds/`.
+`anal.py` writes first-crossing restarts for the ordered `umbrella.centers` in
+the leaf `../config.toml` (change with `--config FILE`) under `work/seeds/`. The
+windows can be chosen after the rMD from `work/ratchet.dat`. It records the window
+list in `work/seeds/windows.tsv`, which `../us/build.sh` compares with the config.
 
 By default, `work/ratchet.nc` and `work/ratchet.dat` are both written every
 `output_interval_steps` (500 steps, 1 ps), giving 1,000 frames in ratchet.nc. On success, `run.sh` and `anal.py`

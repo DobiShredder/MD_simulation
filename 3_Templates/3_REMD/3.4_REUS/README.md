@@ -4,9 +4,9 @@
 
 Reaction coordinate의 각 umbrella center를 replica state로 두고 AMBER
 Hamiltonian replica exchange(`-rem 3`)로 인접 state를 교환합니다. 각 replica는 자기
-harmonic window를 sampling합니다. `windows.tsv`에는 center를 Å 단위로 한 줄에
-하나씩 적고 `config.toml`에는 두 AMBER atom mask, force constant와 exchange
-interval을 지정합니다. Reaction coordinate는 두 mask 사이의 거리입니다.
+harmonic window를 sampling합니다. `config.toml`의 `[umbrella]`에 center 목록(Å),
+두 AMBER atom mask, force constant와 exchange interval을 지정합니다. Reaction
+coordinate는 두 mask 사이의 거리입니다.
 
 ### 파일 역할
 
@@ -15,8 +15,7 @@ interval을 지정합니다. Reaction coordinate는 두 mask 사이의 거리입
 | `download.sh` | `download.sh PDB_ID`로 source PDB를 받습니다. |
 | `build.sh` | LEaP system, `work/states.tsv`, window별 MD input과 restraint를 만듭니다. |
 | `run.sh` | Window별 preproduction과 `pmemd.cuda.MPI -rem 3` replica exchange를 순서대로 실행합니다. |
-| `config.toml` | Force field, box, stage 길이, atom mask, force constant와 exchange interval 설정입니다. |
-| `windows.tsv` | Umbrella center 목록(Å)입니다. |
+| `config.toml` | Force field, box, stage 길이, umbrella center 목록, atom mask, force constant와 exchange interval 설정입니다. |
 | `helpers/` | `build.sh` 또는 `run.sh`가 자동 호출하는 leaf-local 내부 code이며 직접 실행하지 않습니다. `generate_inputs.py`는 LEaP input과 resolved 설정을, `make_window_replicas.py`는 window별 MD input과 restraint를 만듭니다. |
 
 이 directory만 별도로 복사해 사용할 수 있습니다. Python dependency는 복사한
@@ -55,7 +54,7 @@ error로 중단합니다.
 
 | 항목 | 규칙 |
 | --- | --- |
-| Replica 수 | `windows.tsv`의 center 수입니다. 기본 20개입니다. |
+| Replica 수 | `umbrella.centers`의 center 수입니다. 기본 20개입니다. |
 | Pre-production | `pmemd.cuda` process 하나가 window별 minimization, heating, equilibration을 순서대로 실행합니다. |
 | Production MPI rank | Window당 1개입니다. `MPI_PROCESSES`가 window 수와 다르면 시작 전에 거부합니다. |
 | GPU | `run.sh`는 GPU를 지정하지 않습니다. `pmemd.cuda.MPI`는 `CUDA_VISIBLE_DEVICES`에 보이는 GPU를 rank에 나눠 씁니다(Amber26 manual 24.6.5, p. 506). GPU 1개로도 실행되지만 모든 rank가 나눠 쓰므로 느립니다. |
@@ -207,12 +206,23 @@ Segment 1은 `equilibrate.rst7`, segment N은 같은 window directory의
 `18/19 ≈ 0.947368 Å`입니다. State table과 restraint center는 소수점 8자리로
 기록합니다.
 
-`windows_file`은 항상 명시적인 center 목록을 읽으며 `auto`/`file` mode가
-아닙니다. Blank line과 `#`로 시작하는 comment line을 제외하고 각 행에는 center
-하나만 적습니다. Center 목록은 비어 있지 않고 중복 없이 오름차순이어야 합니다.
-각 행이 한 exchange state가 됩니다. Replica 수는 2 이상의 짝수여야 하며
-`build.sh`와 `run.sh`는 홀수 schedule을 자동 조정하지 않고 거부합니다.
-`run.sh --dry-run`도 같은 검사를 합니다.
+`umbrella.centers`는 center를 Å 단위로 나열한 TOML array이며 `auto`/`file`
+mode가 없습니다. 값은 양수이고 중복 없이 오름차순이어야 합니다. 각 값이 한
+exchange state가 됩니다. Replica 수는 2 이상의 짝수여야 하며 `build.sh`와
+`run.sh`는 홀수 schedule을 자동 조정하지 않고 거부합니다. `run.sh --dry-run`도
+같은 검사를 합니다.
+
+```toml
+[umbrella]
+centers = [
+    6.00000000, 6.94736842, 7.89473684, 8.84210526, 9.78947368,
+    # ... 20 values in total
+]
+force_constant = 1.0
+```
+
+Center는 `build.sh`가 `work/states.tsv`와 window input을 만들 때만 읽습니다.
+Build 뒤 center를 바꾸면 새 `WORK_DIR`에서 다시 build합니다.
 
 기본 `force_constant = 1.0`은 AMBER `rk`(E = rk(r − r₀)², kcal mol⁻¹ Å⁻²)입니다.
 기본 0.947 Å 간격에서 300 K window 폭은 약 0.55 Å이고 예상 인접 교환 확률은 약
@@ -254,7 +264,7 @@ iwrap = 1
 | Message 또는 증상 | 원인 | 조치 |
 | --- | --- | --- |
 | `Mask must select at least one atom: ...` 또는 `The two reaction-coordinate masks must not select the same atom` | Mask가 비었거나 두 mask가 겹칩니다. | `work/system.parm7` 기준 residue 번호와 atom 이름으로 mask를 고치고 새 `WORK_DIR`에서 build합니다. |
-| `Replica exchange requires at least two and an even number of windows: ...`(build), `... states: ...`(run) 또는 `window centers must be non-empty, unique, and increasing` | `windows.tsv`의 center 수가 홀수이거나 순서가 틀립니다. | Center를 오름차순 짝수 개로 맞춥니다. |
+| `Replica exchange requires at least two and an even number of windows: ...`(build), `... states: ...`(run), `window centers must be non-empty, unique, and increasing` 또는 `umbrella.centers must be an array of positive distances in Å` | `umbrella.centers`의 값 수가 홀수이거나, 순서가 틀리거나, 양수가 아닌 값이 있습니다. | Center를 양수 오름차순 짝수 개로 맞춥니다. |
 | `Build did not complete: work/build.done is missing; ...` | Build가 중간에 실패했습니다. | Build error를 확인하고 `mv work work.old` 후 다시 build합니다. |
 | `MPI_PROCESSES must equal the window count: N` | Rank 수가 window 수와 다릅니다. | `MPI_PROCESSES`를 지우거나 N으로 둡니다. |
 | `REUS segment N failed: work/mpirun.production.NNN.log, work/exchange.NNN.log` | MPI, GPU 또는 engine error입니다. | `run.sh`가 출력한 log 끝부분과 각 window의 `production.NNN.out`을 확인합니다. 남은 partial output은 [GUIDE.md 부록](../../../GUIDE.md#4-부록-실행-상태와-복구) 절차로 옮깁니다. |
@@ -264,9 +274,9 @@ iwrap = 1
 
 Each umbrella center on the reaction coordinate is a replica state, and AMBER
 Hamiltonian replica exchange (`-rem 3`) swaps neighboring states while every replica
-samples its harmonic window. List centers in Å, one per line, in `windows.tsv`,
-and set the two AMBER atom masks, force constant and exchange interval in
-`config.toml`. The reaction coordinate is the distance between the two masks.
+samples its harmonic window. Set the center list (Å), the two AMBER atom masks,
+force constant and exchange interval under `[umbrella]` in `config.toml`. The
+reaction coordinate is the distance between the two masks.
 
 ### File roles
 
@@ -275,8 +285,7 @@ and set the two AMBER atom masks, force constant and exchange interval in
 | `download.sh` | Downloads a source PDB with `download.sh PDB_ID`. |
 | `build.sh` | Builds the LEaP system, `work/states.tsv`, per-window MD inputs and restraints. |
 | `run.sh` | Runs per-window preproduction and `pmemd.cuda.MPI -rem 3` replica exchange in order. |
-| `config.toml` | Force field, box, stage lengths, atom masks, force constant and exchange interval. |
-| `windows.tsv` | Umbrella center list (Å). |
+| `config.toml` | Force field, box, stage lengths, umbrella centers, atom masks, force constant and exchange interval. |
 | `helpers/` | Leaf-local internal code called automatically by `build.sh` or `run.sh`; not an entry point. `generate_inputs.py` writes LEaP inputs and resolved settings, and `make_window_replicas.py` writes per-window MD inputs and restraints. |
 
 This directory can be copied and used on its own. Install its Python
@@ -315,7 +324,7 @@ concurrent-run protection.
 
 | Item | Rule |
 | --- | --- |
-| Replica count | Number of centers in `windows.tsv`; 20 by default. |
+| Replica count | Number of values in `umbrella.centers`; 20 by default. |
 | Pre-production | One `pmemd.cuda` process runs minimization, heating and equilibration for each window in turn. |
 | Production MPI ranks | One per window. A different `MPI_PROCESSES` is rejected before launch. |
 | GPUs | `run.sh` does not assign GPUs. `pmemd.cuda.MPI` distributes ranks over the GPUs visible in `CUDA_VISIBLE_DEVICES` (Amber26 manual 24.6.5, p. 506). One GPU works but is slow because every rank shares it. |
@@ -468,12 +477,23 @@ The default has 20 centers including both 6 and 24 Å, spaced by
 `18/19 ≈ 0.947368 Å`. State tables and restraint centers use eight decimal
 places.
 
-`windows_file` always supplies an explicit center list and is not an
-`auto`/`file` mode. After blank lines and full-line `#` comments are skipped,
-each row must contain exactly one center. The list must be nonempty, unique and
-increasing. Each row becomes one exchange state. The replica count must be even
-and at least two; `build.sh` and `run.sh` reject odd schedules without adjusting
-them, and `run.sh --dry-run` applies the same check.
+`umbrella.centers` is a TOML array of centers in Å; there is no `auto`/`file`
+mode. Values must be positive, unique and increasing, and each value becomes one
+exchange state. The replica count must be even and at least two; `build.sh` and
+`run.sh` reject odd schedules without adjusting them, and `run.sh --dry-run`
+applies the same check.
+
+```toml
+[umbrella]
+centers = [
+    6.00000000, 6.94736842, 7.89473684, 8.84210526, 9.78947368,
+    # ... 20 values in total
+]
+force_constant = 1.0
+```
+
+Only `build.sh` reads the centers, when it writes `work/states.tsv` and the
+window inputs. To change centers after a build, rebuild in a new `WORK_DIR`.
 
 The default `force_constant = 1.0` is the AMBER `rk` (E = rk(r − r₀)²,
 kcal mol⁻¹ Å⁻²). At the default 0.947 Å spacing, 300 K windows are about 0.55 Å
@@ -516,7 +536,7 @@ Every window gets the same values; per-window values are not supported.
 | Message or symptom | Cause | Action |
 | --- | --- | --- |
 | `Mask must select at least one atom: ...` or `The two reaction-coordinate masks must not select the same atom` | A mask is empty or the masks overlap. | Fix the masks using residue numbers and atom names in `work/system.parm7`, then build in a new `WORK_DIR`. |
-| `Replica exchange requires at least two and an even number of windows: ...` (build), `... states: ...` (run), or `window centers must be non-empty, unique, and increasing` | `windows.tsv` has an odd count or bad order. | Provide an even number of increasing centers. |
+| `Replica exchange requires at least two and an even number of windows: ...` (build), `... states: ...` (run), `window centers must be non-empty, unique, and increasing`, or `umbrella.centers must be an array of positive distances in Å` | `umbrella.centers` has an odd count, bad order, or a non-positive value. | Provide an even number of positive, increasing centers. |
 | `Build did not complete: work/build.done is missing; ...` | The build failed partway. | Read the build error, `mv work work.old`, and rebuild. |
 | `MPI_PROCESSES must equal the window count: N` | The rank count differs from the window count. | Unset `MPI_PROCESSES` or set it to N. |
 | `REUS segment N failed: work/mpirun.production.NNN.log, work/exchange.NNN.log` | MPI, GPU or engine error. | Read the log tail printed by `run.sh` and each window's `production.NNN.out`. Move retained partial output as described in the [GUIDE.md appendix](../../../GUIDE.md#4-appendix-run-state-and-recovery). |

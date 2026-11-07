@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Check that the WE basis state starts outside every target bin.
 
-WESTPA uses the bin that contains each tstate.file value as a target (recycling)
-bin. Bins are [b0, b1), ..., [b_last, inf) from bin_boundaries.
+WESTPA uses the bin that contains each work/tstate.file value as a target
+(recycling) bin. configure_we.py writes that file from weighted_ensemble.target_state.
+Bins are [b0, b1), ..., [b_last, inf) from bin_boundaries.
 """
 
 from __future__ import annotations
@@ -90,7 +91,7 @@ def main() -> None:
         raise SystemExit(
             f"Error: the basis progress coordinate {basis_value:g} A lies in a target bin "
             f"{bin_label(boundaries, basis_bin)}, so WESTPA would recycle the walkers at once. "
-            f"Change weighted_ensemble.bin_boundaries or the target state file and build in a new WORK_DIR."
+            f"Change weighted_ensemble.bin_boundaries or weighted_ensemble.target_state and build in a new WORK_DIR."
         )
 
 

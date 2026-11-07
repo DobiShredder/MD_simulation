@@ -6,7 +6,7 @@ build.salt_type
 build.solute_box_distance
 build.water_model
 collective_variable.arguments
-collective_variable.definitions_file
+collective_variable.definitions
 metadynamics.bias_factor
 metadynamics.grid_bins
 metadynamics.grid_max

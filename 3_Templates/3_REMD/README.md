@@ -89,17 +89,18 @@ T-REMD, REUS, GaREUS의 단일-replica AMBER stage는 engine stdout/stderr를
 
 ### State schedule 선택
 
-`temperature_mode`의 `auto`/`file` 선택은 T-REMD, REST2와 REST3에만 있습니다.
-REST3는 κ의 `linear`/`file` 선택을 추가합니다. REUS와 GaREUS는
-`windows_file`에 적힌 umbrella state를 항상 사용하며 이를 mode로 선택하지
-않습니다. 허용값과 file validation은 각 leaf README에 정리되어 있습니다.
+`temperature_mode`의 `auto`/`list` 선택은 T-REMD, REST2와 REST3에만 있습니다.
+`list`는 `config.toml`의 `temperatures` 배열을 읽고, REST3는 κ의
+`linear`/`list`(`values` 배열) 선택을 추가합니다. REUS와 GaREUS는
+`config.toml`의 `umbrella.centers` 배열에 적힌 umbrella state를 항상 사용하며
+이를 mode로 선택하지 않습니다. 허용값과 목록 validation은 각 leaf README에 정리되어 있습니다.
 
 T-REMD, REST2와 REST3는 같은 offline temperature predictor 계산식을 사용합니다.
 각 leaf에는 이 계산에 필요한 code가 별도로 들어 있습니다. T-REMD는
 explicit water를 포함한 전체 atom 수를 사용합니다. REST2/REST3는 tempered atom
 수(기본은 water와 ion을 제외한 solute 전체, `tempered_mask`로 변경)와 water 0을
-사용합니다. `temperature_mode="file"`은
-사용자가 제공한 temperature를 그대로 사용합니다. 두 mode 모두 resolved state와
+사용합니다. `temperature_mode="list"`는
+사용자가 적은 temperature를 그대로 사용합니다. 두 mode 모두 resolved state와
 random seed를 `work/states.tsv`에 기록합니다.
 
 생성된 temperature ladder는 근사값이므로 pilot run에서 neighboring acceptance와
@@ -212,16 +213,17 @@ last 20 lines.
 
 ### Choosing the state schedule
 
-The `auto`/`file` `temperature_mode` choice applies only to T-REMD, REST2 and
-REST3. REST3 additionally provides `linear`/`file` κ selection. REUS and GaREUS
-always read the umbrella states listed in `windows_file`; this is not a mode
-switch. Each leaf README gives the accepted values and file validation.
+The `auto`/`list` `temperature_mode` choice applies only to T-REMD, REST2 and
+REST3. `list` reads the `temperatures` array in `config.toml`, and REST3 adds a
+`linear`/`list` (`values` array) κ choice. REUS and GaREUS
+always read the umbrella states listed in the `umbrella.centers` array in
+`config.toml`; this is not a mode switch. Each leaf README gives the accepted values and list validation.
 
 T-REMD, REST2 and REST3 use the same offline temperature-prediction algorithm,
 implemented inside each leaf. T-REMD counts the full solvated system, whereas
 REST2/REST3 count the tempered atoms (the whole non-water, non-ion solute by
 default, or `tempered_mask`) and supply zero waters.
-`temperature_mode="file"` uses the user-supplied temperatures as given. Both
+`temperature_mode="list"` uses the listed temperatures as given. Both
 modes record the resolved schedule and random seeds in `work/states.tsv`.
 
 Generated ladders are approximate, so check neighboring acceptance and round

@@ -2,7 +2,7 @@
 
 ## 한국어
 
-`cv.dat`에 정의한 CV를 방문할 때마다 Gaussian hill을 추가합니다. 이미 bias가
+`config.toml`에 정의한 CV를 방문할 때마다 Gaussian hill을 추가합니다. 이미 bias가
 쌓인 위치에서는 `BIASFACTOR=10`에 따라 새 hill이 작아져 conventional MetaD보다
 완만하게 free-energy surface를 채웁니다. WT-MetaD 방식은 이 directory에서
 고정되며 별도 config mode가 아닙니다.
@@ -66,7 +66,13 @@ weight는 `w = exp(metad.rbias / kT)`, `kT = k_B · temperature`(300 K에서
 
 ### 주요 parameter
 
-`config.toml`의 `collective_variable.arguments`는 `cv.dat`의 label과 같아야 합니다.
+CV는 `config.toml`의 `[collective_variable] definitions`에 PLUMED action으로 한
+줄씩 씁니다(PLUMED unit nm, rad). TOML literal string(`'''`)이므로 escape가
+필요 없습니다. `build.sh`가 이 문자열을 `work/cv.dat`로 저장하고 `run.sh`는 이
+file로 `plumed.dat`를 만듭니다. `definitions`를 바꾸면 새 `WORK_DIR`에서 다시
+build합니다.
+
+`collective_variable.arguments`는 `definitions`의 label과 같아야 합니다.
 기본 φ/ψ atom 번호는 capped alanine 예시이므로 topology에 맞게 바꿉니다.
 `sigma`, `grid_min`, `grid_max`와 `grid_bins`는 CV 수와 같은 길이여야 합니다.
 Grid 경계가 ±π이면 generated `plumed.dat`에 periodic torsion domain과 같은
@@ -97,7 +103,7 @@ Grid 경계가 ±π이면 generated `plumed.dat`에 periodic torsion domain과 �
 
 ### Engine option 직접 지정
 
-Config key가 없는 AMBER option은 `[amber.<stage>.<namelist>]` table로 지정합니다. Stage 우선순위, 값 형식과 거부되는 keyword는 [3_Templates README](../../README.md#engine-option-직접-지정)를 따릅니다.
+Config key가 없는 AMBER option은 `[amber.<stage>.<namelist>]`, PLUMED option은 `[plumed]` table로 지정합니다. Stage 우선순위, 값 형식과 거부되는 keyword는 [3_Templates README](../../README.md#engine-option-직접-지정)를 따릅니다.
 
 ```toml
 [amber.md.cntrl]
@@ -125,6 +131,7 @@ GRID_WSTRIDE = 50000
 | Error message | 확인할 것 |
 | --- | --- |
 | `PLUMED action unavailable: METAD` | `PLUMED`가 PLUMED 2.10 executable을 가리키는지 봅니다. |
+| `[collective_variable] definitions must contain the PLUMED CV actions` | `config.toml`의 `definitions`에 PLUMED CV action을 한 줄 이상 적습니다. |
 | `Config error in ...: sigma must contain N values` | `sigma`, `grid_min`, `grid_max`, `grid_bins`의 길이를 CV 수와 맞춥니다. |
 | `each grid_min value must be smaller than grid_max`, `bias_factor must be greater than one` | 해당 값을 고친 뒤 새 `WORK_DIR`에서 build합니다. |
 
@@ -136,8 +143,8 @@ Segment layout, `--segments` option, engine 선택과 실패한 segment의 `HILL
 
 ## English
 
-WT-MetaD deposits a Gaussian hill each time the CVs defined in `cv.dat` are
-visited. Where bias has already accumulated, `BIASFACTOR=10` shrinks new hills,
+WT-MetaD deposits a Gaussian hill each time the CVs defined in `config.toml`
+are visited. Where bias has already accumulated, `BIASFACTOR=10` shrinks new hills,
 so the free-energy surface fills more gradually than with conventional MetaD.
 The WT-MetaD method is fixed by this directory and is not a separate config
 mode.
@@ -203,7 +210,13 @@ Discard the initial part.
 
 ### Key parameters
 
-CV labels in `collective_variable.arguments` must match `cv.dat`; the supplied
+Write the CVs as PLUMED actions, one per line, in
+`[collective_variable] definitions` of `config.toml` (PLUMED units nm, rad). It
+is a TOML literal string (`'''`), so no escaping is needed. `build.sh` saves the
+string as `work/cv.dat`, and `run.sh` builds `plumed.dat` from that file. After
+changing `definitions`, build again in a new `WORK_DIR`.
+
+CV labels in `collective_variable.arguments` must match `definitions`; the supplied
 φ/ψ atom numbers are only a capped-alanine example, so change them for your
 topology. `sigma`, `grid_min`, `grid_max` and `grid_bins` must have one entry
 per CV. Grid bounds equal to ±π are written as `-pi`/`pi` in the generated
@@ -234,7 +247,7 @@ the common options in the [MetaD template README](../README.md).
 
 ### Engine option passthrough
 
-AMBER options without a config key go into `[amber.<stage>.<namelist>]` tables. Stage precedence, value formats and refused keywords are described in the [3_Templates README](../../README.md#engine-option-passthrough).
+AMBER options without a config key go into `[amber.<stage>.<namelist>]` tables and PLUMED options into `[plumed]`. Stage precedence, value formats and refused keywords are described in the [3_Templates README](../../README.md#engine-option-passthrough).
 
 ```toml
 [amber.md.cntrl]
@@ -262,6 +275,7 @@ GRID_WSTRIDE = 50000
 | Error message | What to check |
 | --- | --- |
 | `PLUMED action unavailable: METAD` | Check that `PLUMED` points to a PLUMED 2.10 executable. |
+| `[collective_variable] definitions must contain the PLUMED CV actions` | Put at least one PLUMED CV action in `definitions` of `config.toml`. |
 | `Config error in ...: sigma must contain N values` | Give `sigma`, `grid_min`, `grid_max` and `grid_bins` one entry per CV. |
 | `each grid_min value must be smaller than grid_max`, `bias_factor must be greater than one` | Fix the value and build in a new `WORK_DIR`. |
 

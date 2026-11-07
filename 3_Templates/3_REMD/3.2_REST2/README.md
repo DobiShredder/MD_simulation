@@ -5,7 +5,7 @@
 사용자가 준비한 protein PDB로 GROMACS/PLUMED REST2 HREX를 구성합니다. 기본
 tempered region은 water와 ion을 제외한 solute 전체이며 `tempered_mask`로 일부
 atom만 고를 수 있습니다. 기본
-`temperature_mode = "file"`은 `inputs/temperatures.txt`의 12개 effective
+`temperature_mode = "list"`는 `config.toml`의 `temperatures`에 적힌 12개 effective
 temperature(300–450 K, geometric 간격)를 사용하므로 system 크기와 관계없이
 12 replica를 만듭니다. 각 `T_i`에서 `lambda_pp=T_0/T_i`,
 `lambda_pw=sqrt(lambda_pp)`를 계산합니다.
@@ -22,7 +22,7 @@ segment의 exchange 통계를 확인하고 replica 수를 늘립니다.
 | `build.sh` | Solvated system, REST2 state table, scaled replica topology와 MDP input을 만들고 scale-one energy를 검사합니다. |
 | `run.sh` | Replica별 pre-production과 PLUMED `-hrex` production segment를 실행합니다. |
 | `config.toml` | Force field, box, salt, stage 길이, temperature ladder와 resource 설정입니다. |
-| `helpers/` | `build.sh` 또는 `run.sh`가 자동 호출하는 leaf-local 내부 code이며 직접 실행하지 않습니다. |
+| `helpers/` | `build.sh` 또는 `run.sh`가 자동 호출하는 leaf-local 내부 code입니다. Scale-one energy 검사 input(`energy_check.mdp`, `energy_selection.txt`)도 여기에 있으며 직접 실행하거나 수정하지 않습니다. |
 
 이 directory의 runtime code는 별도로 복사해 사용할 수 있습니다. Python
 dependency는 복사한 directory의 `requirements.txt`를 사용해 설치합니다.
@@ -65,7 +65,7 @@ executable은 기본값으로 대체하지 않고 error로 중단합니다.
 
 | 항목 | 기본값과 규칙 |
 | --- | --- |
-| Replica | 12개(`inputs/temperatures.txt`)입니다. `temperature_mode = "auto"`이면 build가 정합니다. |
+| Replica | 12개(`[replica_exchange] temperatures`)입니다. `temperature_mode = "auto"`이면 build가 정합니다. |
 | `--cpus N` | 생략하면 replica 수 × `cpu_threads_per_replica`(1)입니다. Replica 수로 나누어져야 하며 replica마다 `N/replica 수` thread(`-ntomp`)를 씁니다. |
 | `--gpus N` | 생략하면 `gpu_count`(1)입니다. 1–replica 수입니다. Minimization과 equilibration은 replica를 최대 N개씩 동시에 `gmx mdrun -ntmpi 1 -gpu_id (replica index mod N)`로 실행합니다. |
 | Production | `mpirun $MPI_OPTIONS -np 12 gmx_mpi mdrun -ntomp T -gpu_id 0,…,N-1 -multidir work/000 … -deffnm production.NNN -hrex -replex 1000 -plumed plumed.dat`입니다. Replica마다 external-MPI rank 하나를 씁니다. 두 번째 segment부터 `-cpi production.(NNN-1).cpt -noappend`가 붙습니다. |
@@ -120,7 +120,7 @@ accepted exchange입니다. Segment가 끝나면 log 끝의 `Repl average probab
 neighbour pair별 평균 acceptance가 나옵니다.
 
 - 0에 가까운 pair가 있으면 그 구간에 temperature를 추가하거나
-  `inputs/temperatures.txt`의 간격을 좁힙니다.
+  `temperatures`의 간격을 좁힙니다.
 - 모든 pair가 거의 0이면 PLUMED patch version을
   [준비 사항](../README.md#준비-사항)과 비교합니다.
 - Segment별 값을 비교해 시간에 따라 acceptance가 크게 변하지 않는지 봅니다.
@@ -147,8 +147,8 @@ neighbour pair별 평균 acceptance가 나옵니다.
 
 | `temperature_mode` | 사용하는 설정 | 무시하는 설정 | 생성 결과 |
 | --- | --- | --- | --- |
-| `auto` | `minimum_temperature`, `maximum_temperature`, `target_exchange_probability`, `generator_tolerance` | `temperature_file` | Tempered atom 수(`work/tempered_atoms.tsv`)와 water 0으로 ladder를 계산합니다. 1UBQ 기본값(300–450 K, p=0.20)은 11 state가 나와 p≈0.286, 12 state로 조정됩니다. |
-| `file` (기본값) | `temperature_file` | Auto ladder 설정 | File temperature에서 `lambda_pp=T0/T`, `lambda_pw=sqrt(lambda_pp)`를 계산합니다. |
+| `auto` | `minimum_temperature`, `maximum_temperature`, `target_exchange_probability`, `generator_tolerance` | `temperatures` | Tempered atom 수(`work/tempered_atoms.tsv`)와 water 0으로 ladder를 계산합니다. 1UBQ 기본값(300–450 K, p=0.20)은 11 state가 나와 p≈0.286, 12 state로 조정됩니다. |
+| `list` (기본값) | `temperatures` | Auto ladder 설정 | 목록 temperature에서 `lambda_pp=T0/T`, `lambda_pw=sqrt(lambda_pp)`를 계산합니다. |
 
 ### 숫자 option
 
@@ -156,7 +156,7 @@ neighbour pair별 평균 acceptance가 나옵니다.
 | --- | ---: | --- | --- | --- |
 | `solute_box_distance` | 14.0 | Å | Build | `solvatebox`/`solvateoct`의 solute–box 경계 거리입니다. |
 | `salt_concentration` | 150.0 | mM | Build | Neutralization 뒤 salt pair 수를 water 수 × (M/55.5)의 반올림으로 정합니다. |
-| `temperature` | 300.0 | K | 모든 MD | 모든 replica의 `ref-t`와 `gen-temp`입니다. Temperature file의 첫 값과 같아야 합니다. |
+| `temperature` | 300.0 | K | 모든 MD | 모든 replica의 `ref-t`와 `gen-temp`입니다. Temperature ladder의 첫 값과 같아야 합니다. |
 | `pressure` | 1.0 | bar | Equilibration, NPT production | `ref-p`입니다. |
 | `timestep` | 2.0 | fs | Equilibration, production | GROMACS `dt`(ps)로 변환합니다. |
 | `minimization_steps` | 5000 | steps | Minimization | Steepest descent 최대 `nsteps`입니다. `emtol=1000` kJ/mol/nm는 고정입니다. |
@@ -194,7 +194,7 @@ GROMACS topology는 같은 molecule의 반복 copy를 `[ moleculetype ]` 하나�
 C-alpha 기준으로 나눈 선택은 실제 GROMACS/PLUMED로 검증하지 않았습니다(미검증).
 Mask build는 fake `gmx`/`plumed` fixture로만 확인했습니다.
 
-### Replica 수와 temperature file
+### Replica 수와 temperature 목록
 
 Replica 수는 2 이상의 짝수여야 합니다. Auto mode에서 predictor가 홀수 N개
 state를 내면 온도 범위와 predictor 계산식은 그대로 두고 target exchange
@@ -204,14 +204,22 @@ probability를 올려 N+1개로 맞춥니다. N+1개가 되는 값 중 가장 �
 `build.sh --dry-run`은 auto predictor를 실행하지 않으므로 auto replica 수는 실제
 build에서 정해집니다.
 
-기본 `inputs/temperatures.txt`는 `T_i = 300 × 1.5^(i/11)`(i = 0–11)입니다. 다른
-범위나 replica 수를 쓰려면 이 file을 수정합니다. 구분자는 공백, comma, semicolon,
-`|`이며 `#` 뒤는 comment입니다. 값은 finite 양수이고 중복 없이 오름차순이어야
-하며, 둘 이상이어야 하고 첫 값은 `run.temperature`와 같아야 합니다. `nan`,
-`inf`, `-inf`와 float 범위를 넘는 값은 topology와 input을 저장하기 전에 file
-경로와 함께 거부합니다. File mode의 홀수 schedule은 자동으로 바꾸지 않고
-LEaP 실행 전에 거부하며, `run.sh --dry-run`도 `work/states.tsv`의 count를
-검사합니다.
+기본 `[replica_exchange] temperatures`는 `T_i = 300 × 1.5^(i/11)`(i = 0–11)인
+12개 값(K)입니다. 다른 범위나 replica 수를 쓰려면 이 배열을 수정합니다.
+
+```toml
+temperature_mode = "list"
+temperatures = [
+    300.000000, 311.264471, 322.951902, 335.078177,
+    347.659771, 360.713782, 374.257948, 388.310674,
+    402.891055, 418.018903, 433.714775, 450.000000,
+]
+```
+
+값은 finite 양수이고 중복 없이 오름차순이어야 하며, 둘 이상이어야 하고 첫 값은
+`run.temperature`와 같아야 합니다. 홀수 개 목록은 자동으로 바꾸지 않고 LEaP
+실행 전에 거부합니다. `nan`, `inf`, `-inf`는 config를 읽을 때 key 위치와 함께
+거부합니다. `run.sh --dry-run`도 `work/states.tsv`의 count를 검사합니다.
 
 ### Scaled replica의 net charge
 
@@ -268,7 +276,7 @@ Config key가 없는 GROMACS mdp option은 `[gromacs.<stage>]` table로 지정�
 
 ```toml
 [gromacs.production]
-nstcalcenergy = 100
+nstcalcenergy = 200
 ```
 
 | Stage | Input |
@@ -277,7 +285,7 @@ nstcalcenergy = 100
 | `equilibration` | `equilibrate.mdp` |
 | `production` | `production.mdp` |
 
-REST는 모든 stage를 GROMACS로 실행하므로 `[gromacs]`만 씁니다. Scale-one 검사용 `energy_check.mdp`는 바꾸지 않습니다. 모든 replica에 같은 값을 씁니다.
+REST는 모든 stage를 GROMACS로 실행하므로 `[gromacs]`만 씁니다. Heating stage가 없으므로 `[gromacs.heating]`은 적용되지 않습니다. Scale-one 검사용 `helpers/energy_check.mdp`는 바꾸지 않습니다. 모든 replica에 같은 값을 씁니다. 예시의 `nstcalcenergy`(GROMACS 기본값 100)는 `nstenergy`(`energy_interval_steps`, 5000)가 그 배수가 되도록 정합니다(GROMACS 2026.3 manual).
 
 ### 문제 해결
 
@@ -295,8 +303,8 @@ REST는 모든 stage를 GROMACS로 실행하므로 `[gromacs]`만 씁니다. Sca
 This template builds GROMACS/PLUMED REST2 HREX from a user-prepared protein
 PDB. The tempered region defaults to the complete non-water, non-ion solute;
 `tempered_mask` selects a subset of atoms instead. The default
-`temperature_mode = "file"` reads 12 geometric effective temperatures
-(300–450 K) from `inputs/temperatures.txt`, so the build creates 12 replicas for
+`temperature_mode = "list"` uses the 12 geometric effective temperatures
+(300–450 K) in `temperatures` in `config.toml`, so the build creates 12 replicas for
 any system and derives `lambda_pp=T_0/T_i` and `lambda_pw=sqrt(lambda_pp)` for
 each state.
 
@@ -313,7 +321,7 @@ when needed.
 | `build.sh` | Builds the solvated system, REST2 state table, scaled replica topologies and MDP inputs, and checks the scale-one energy. |
 | `run.sh` | Runs per-replica pre-production and PLUMED `-hrex` production segments. |
 | `config.toml` | Force field, box, salt, stage lengths, temperature ladder and resource settings. |
-| `helpers/` | Leaf-local internal code called automatically by `build.sh` or `run.sh`; not an entry point. |
+| `helpers/` | Leaf-local internal code called automatically by `build.sh` or `run.sh`; not an entry point. It also holds the scale-one energy-check inputs (`energy_check.mdp`, `energy_selection.txt`), which are not user settings. |
 
 This directory's runtime code can be copied on its own. Install the Python
 dependencies from the local `requirements.txt` after copying it.
@@ -356,7 +364,7 @@ concurrent-run protection.
 
 | Item | Default and rule |
 | --- | --- |
-| Replicas | 12 (`inputs/temperatures.txt`); with `temperature_mode = "auto"` the build sets the count. |
+| Replicas | 12 (`[replica_exchange] temperatures`); with `temperature_mode = "auto"` the build sets the count. |
 | `--cpus N` | Defaults to replicas × `cpu_threads_per_replica` (1). Must divide by the replica count; each replica gets `N/replicas` threads (`-ntomp`). |
 | `--gpus N` | Defaults to `gpu_count` (1); range 1 to the replica count. Minimization and equilibration run up to N replicas at once with `gmx mdrun -ntmpi 1 -gpu_id (replica index mod N)`. |
 | Production | `mpirun $MPI_OPTIONS -np 12 gmx_mpi mdrun -ntomp T -gpu_id 0,…,N-1 -multidir work/000 … -deffnm production.NNN -hrex -replex 1000 -plumed plumed.dat`, one external-MPI rank per replica. From the second segment `-cpi production.(NNN-1).cpt -noappend` is added. |
@@ -412,7 +420,7 @@ accepted exchange across that state boundary. At the end of a segment the log
 reports `Repl average probabilities` per neighbour pair.
 
 - If a pair is near zero, add a temperature in that gap or narrow the spacing in
-  `inputs/temperatures.txt`.
+  `temperatures`.
 - If every pair is near zero, compare the PLUMED patch version with the
   [prerequisites](../README.md#prerequisites).
 - Compare segments to check that acceptance does not drift strongly over time.
@@ -438,8 +446,8 @@ replica order printed in the `Repl ex` lines.
 
 | `temperature_mode` | Settings used | Settings ignored | Result |
 | --- | --- | --- | --- |
-| `auto` | `minimum_temperature`, `maximum_temperature`, `target_exchange_probability`, `generator_tolerance` | `temperature_file` | Predicts the ladder from the tempered atom count (`work/tempered_atoms.tsv`) and zero waters. For 1UBQ the defaults (300–450 K, p=0.20) give 11 states, adjusted to 12 at p≈0.286. |
-| `file` (default) | `temperature_file` | Auto-ladder settings | Computes `lambda_pp=T0/T` and `lambda_pw=sqrt(lambda_pp)` from the file temperatures. |
+| `auto` | `minimum_temperature`, `maximum_temperature`, `target_exchange_probability`, `generator_tolerance` | `temperatures` | Predicts the ladder from the tempered atom count (`work/tempered_atoms.tsv`) and zero waters. For 1UBQ the defaults (300–450 K, p=0.20) give 11 states, adjusted to 12 at p≈0.286. |
+| `list` (default) | `temperatures` | Auto-ladder settings | Computes `lambda_pp=T0/T` and `lambda_pw=sqrt(lambda_pp)` from the listed temperatures. |
 
 ### Numeric options
 
@@ -447,7 +455,7 @@ replica order printed in the `Repl ex` lines.
 | --- | ---: | --- | --- | --- |
 | `solute_box_distance` | 14.0 | Å | Build | Solute-to-box-edge distance for `solvatebox`/`solvateoct`. |
 | `salt_concentration` | 150.0 | mM | Build | Salt pairs after neutralization = water count × (M/55.5), rounded. |
-| `temperature` | 300.0 | K | All MD | `ref-t` and `gen-temp` of every replica; must equal the first temperature-file value. |
+| `temperature` | 300.0 | K | All MD | `ref-t` and `gen-temp` of every replica; must equal the first ladder temperature. |
 | `pressure` | 1.0 | bar | Equilibration, NPT production | `ref-p`. |
 | `timestep` | 2.0 | fs | Equilibration, production | Converted to GROMACS `dt` in ps. |
 | `minimization_steps` | 5000 | steps | Minimization | Maximum steepest-descent `nsteps`; `emtol=1000` kJ/mol/nm is fixed. |
@@ -486,7 +494,7 @@ boundary, and the CMAP split by central C-alpha, are not verified with real
 GROMACS/PLUMED (미검증). Mask builds were checked only with fake `gmx`/`plumed`
 fixtures.
 
-### Replica count and temperature file
+### Replica count and temperature list
 
 The replica count must be even and at least two. When the auto predictor returns
 an odd count N, the temperature range and predictor algorithm are kept and the
@@ -497,14 +505,24 @@ predicted probability. The value used is printed by the build and stored as
 `build.sh --dry-run` does not run the auto predictor, so the auto replica count
 is set by the actual build.
 
-The default `inputs/temperatures.txt` holds `T_i = 300 × 1.5^(i/11)` for
-i = 0–11. Edit it to change the range or replica count. It accepts whitespace,
-commas, semicolons and `|` as separators; text after `#` is a comment. It must
-contain at least two unique, increasing, finite positive values, and its first
-value must equal `run.temperature`. `nan`, `inf`, `-inf` and values outside the
-float range are rejected with the file path before topology or inputs are saved.
-Odd file schedules are rejected before LEaP, not adjusted, and `run.sh --dry-run`
-also checks the `work/states.tsv` count.
+The default `[replica_exchange] temperatures` holds the 12 values (K) of
+`T_i = 300 × 1.5^(i/11)` for i = 0–11. Edit the array to change the range or
+replica count.
+
+```toml
+temperature_mode = "list"
+temperatures = [
+    300.000000, 311.264471, 322.951902, 335.078177,
+    347.659771, 360.713782, 374.257948, 388.310674,
+    402.891055, 418.018903, 433.714775, 450.000000,
+]
+```
+
+The list must hold at least two unique, increasing, finite positive values,
+and its first value must equal `run.temperature`. An odd-length list is
+rejected before LEaP, not adjusted. `nan`, `inf` and `-inf` are rejected with
+the key location when the config is read. `run.sh --dry-run` also checks the
+`work/states.tsv` count.
 
 ### Net charge of scaled replicas
 
@@ -563,7 +581,7 @@ GROMACS mdp options without a config key go into `[gromacs.<stage>]` tables. Sta
 
 ```toml
 [gromacs.production]
-nstcalcenergy = 100
+nstcalcenergy = 200
 ```
 
 | Stage | Input |
@@ -572,7 +590,7 @@ nstcalcenergy = 100
 | `equilibration` | `equilibrate.mdp` |
 | `production` | `production.mdp` |
 
-REST runs every stage with GROMACS, so only `[gromacs]` applies. The scale-one check input `energy_check.mdp` is left unchanged. Every replica gets the same values.
+REST runs every stage with GROMACS, so only `[gromacs]` applies. There is no heating stage, so `[gromacs.heating]` has no effect. The scale-one check input `helpers/energy_check.mdp` is left unchanged. Every replica gets the same values. Choose `nstcalcenergy` (GROMACS default 100) so that `nstenergy` (`energy_interval_steps`, 5000) is a multiple of it (GROMACS 2026.3 manual).
 
 ### Troubleshooting
 

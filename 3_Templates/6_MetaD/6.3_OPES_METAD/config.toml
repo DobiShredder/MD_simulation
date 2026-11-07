@@ -31,8 +31,13 @@ restart_interval_steps = 5000
 random_seed = "random"
 
 [collective_variable]
-definitions_file = "cv.dat"
 arguments = ["phi", "psi"]
+# PLUMED CV actions (PLUMED units: nm, rad). One action per line; a TOML literal string needs no escaping.
+# Replace these atom numbers with the CV definition for the built system.
+definitions = '''
+phi: TORSION ATOMS=5,7,9,15
+psi: TORSION ATOMS=7,9,15,17
+'''
 
 [opes]
 # PLUMED units: angular sigma rad; energy kJ/mol

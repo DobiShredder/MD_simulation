@@ -134,7 +134,7 @@ log(`work/K/engine.production.log`)에 남습니다.
 | Error message | 확인할 것 |
 | --- | --- |
 | `PLUMED action unavailable: ... Rebuild PLUMED 2.10 with --enable-modules=...` | 해당 optional module을 넣어 PLUMED를 다시 build합니다. |
-| `PLUMED parse-only check failed: ...` | `work/plumed.parse.log`. `config.toml` 값이나 `cv.dat` label을 고친 뒤 새 `WORK_DIR`에서 build합니다. |
+| `PLUMED parse-only check failed: ...` | `work/plumed.parse.log`. `config.toml` 값이나 CV label을 고친 뒤 새 `WORK_DIR`에서 build합니다. |
 | `Config error in ...` | Error에 나온 key의 길이, 부호, 나누어떨어짐 조건을 확인합니다. |
 | `Bias state required for continuation was not found` | 직전 segment의 root bias file이 지워졌습니다. 위 복구 절차로 되돌립니다. |
 | `Bias output exists before the first production segment` | 실패한 segment 1의 file입니다. Error에 출력된 `mv` command를 실행합니다. |
@@ -280,7 +280,7 @@ stdout/stderr log (`work/K/engine.production.log`).
 | Error message | What to check |
 | --- | --- |
 | `PLUMED action unavailable: ... Rebuild PLUMED 2.10 with --enable-modules=...` | Rebuild PLUMED with that optional module. |
-| `PLUMED parse-only check failed: ...` | `work/plumed.parse.log`. Fix `config.toml` values or `cv.dat` labels and build in a new `WORK_DIR`. |
+| `PLUMED parse-only check failed: ...` | `work/plumed.parse.log`. Fix `config.toml` values or CV labels and build in a new `WORK_DIR`. |
 | `Config error in ...` | Check the length, sign and divisibility rules of the key named in the error. |
 | `Bias state required for continuation was not found` | A root bias file of the previous segment is missing; restore it as described above. |
 | `Bias output exists before the first production segment` | The files come from a failed segment 1; run the printed `mv` command. |

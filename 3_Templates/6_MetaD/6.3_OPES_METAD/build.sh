@@ -94,11 +94,12 @@ if [[ -d "$work_dir" ]]; then
 fi
 
 if (( dry_run )); then
+    echo "+ write $work_dir/cv.dat from [collective_variable] definitions"
     echo "+ $python helpers/generate_inputs.py $config $work_dir/inputs"
     echo "+ first-pass tleap in $work_dir/.build_tmp.XXXXXX"
     echo "+ count waters and calculate salt formula units"
     echo "+ $tleap -f inputs/tleap.final.in"
-    echo "+ record topology atom count and collective-variable definitions"
+    echo "+ record topology atom count"
     exit 0
 fi
 
@@ -122,23 +123,26 @@ mkdir -p "$work_dir/inputs"
 cp "$input" "$work_dir/input.pdb"
 cp "$config" "$work_dir/source_config.toml"
 
-cv_file=$("$python" - "$config" <<'PY'
+# run.sh and helpers/generate_plumed.py read the PLUMED CV actions from work/cv.dat.
+"$python" - "$config" "$work_dir/cv.dat" <<'PY'
 import sys
 sys.path.insert(0, "helpers")
 from pathlib import Path
-from config_utils import load_config, section, string_value
+from config_utils import load_config, section
 
+config_path, cv_path = sys.argv[1], Path(sys.argv[2])
 try:
-    cv = section(load_config(Path(sys.argv[1])), "collective_variable")
-    print(string_value(cv, "definitions_file"))
+    cv = section(load_config(Path(config_path)), "collective_variable")
 except ValueError as error:
-    raise SystemExit(f"Config error in build CV setup ({sys.argv[1]}): {error}") from None
+    raise SystemExit(f"Config error in build CV setup ({config_path}): {error}") from None
+definitions = cv.get("definitions")
+if not isinstance(definitions, str) or not definitions.strip():
+    raise SystemExit(
+        f"Config error in build CV setup ({config_path}): "
+        "[collective_variable] definitions must contain the PLUMED CV actions"
+    )
+cv_path.write_text(definitions.strip() + "\n", encoding="utf-8")
 PY
-)
-if [[ ! -s "$cv_file" ]]; then
-    die "Collective-variable definition file not found: $cv_file"
-fi
-cp "$cv_file" "$work_dir/cv.dat"
 
 "$python" helpers/generate_inputs.py "$config" "$work_dir/inputs"
 build_tmp=$(mktemp -d "$work_dir/.build_tmp.XXXXXX")

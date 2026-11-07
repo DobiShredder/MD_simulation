@@ -74,20 +74,19 @@ def restraint_atom_fields(group_1: list[int], group_2: list[int]) -> str:
     return "\n".join([f" iat={iat[0]},{iat[1]},", *group_lines])
 
 
-def read_centers(path: Path) -> list[float]:
-    result: list[float] = []
-    for line_number, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
-        line = raw.strip()
-        if not line or line.startswith("#"):
-            continue
-        fields = line.split()
-        if len(fields) != 1:
-            raise SystemExit(f"{path}:{line_number}: expected one center per line")
-        result.append(float(fields[0]))
+def window_centers(umbrella: dict[str, object]) -> list[float]:
+    """Return the umbrella centers (Å) listed in [umbrella] centers, one per window."""
+    values = umbrella.get("centers")
+    if not isinstance(values, list) or not all(
+        isinstance(value, (int, float)) and not isinstance(value, bool) and value > 0
+        for value in values
+    ):
+        raise SystemExit("Config error: umbrella.centers must be an array of positive distances in Å")
+    result = [float(value) for value in values]
     if not result or result != sorted(set(result)):
-        raise SystemExit(f"{path}: window centers must be non-empty, unique, and increasing")
+        raise SystemExit("Config error: umbrella.centers: window centers must be non-empty, unique, and increasing")
     if len(result) < 2 or len(result) % 2:
-        raise SystemExit(f"Replica exchange requires at least two and an even number of windows: {path} ({len(result)} windows)")
+        raise SystemExit(f"Replica exchange requires at least two and an even number of windows: umbrella.centers ({len(result)} windows)")
     return result
 
 
@@ -156,7 +155,7 @@ def main() -> None:
     config = load_config(args.config)
     run = section(config, "run")
     umbrella = section(config, "umbrella")
-    state_centers = read_centers(Path(string_value(umbrella, "windows_file")))
+    state_centers = window_centers(umbrella)
     # Each mask selects one atom or an atom group (restrained at its center of mass).
     atom_fields = restraint_atom_fields(
         resolve_group(args.topology, string_value(umbrella, "atom_mask_1")),

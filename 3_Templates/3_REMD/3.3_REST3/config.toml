@@ -37,10 +37,16 @@ restart_interval_steps = 5000
 
 [replica_exchange]
 # Config unit: temperature K
-# "file" reads temperature_file (12 geometric states, 300-450 K by default).
+# "list" uses temperatures as given: increasing, even count, first value = run.temperature.
+# The default is 12 geometric states, T_i = 300 * (450 / 300)^(i / 11), i = 0..11.
 # "auto" predicts the ladder from the tempered atom count (tempered_atoms.tsv); an odd count is raised to
 # the next even count by increasing the target probability (range unchanged).
-temperature_mode = "file"
+temperature_mode = "list"
+temperatures = [
+    300.000000, 311.264471, 322.951902, 335.078177,
+    347.659771, 360.713782, 374.257948, 388.310674,
+    402.891055, 418.018903, 433.714775, 450.000000,
+]
 minimum_temperature = 300.0
 maximum_temperature = 450.0
 target_exchange_probability = 0.20
@@ -49,14 +55,19 @@ exchange_interval_steps = 1000
 cpu_threads_per_replica = 1
 gpu_count = 1
 random_seed = "random"
-temperature_file = "inputs/temperatures.txt"
 
 [rest3_kappa]
 # Config unit: temperature K
+# "linear": kappa = 1.0 up to onset_temperature, then rises linearly to maximum_kappa.
+# "list": values holds one kappa per state, same length as the temperature ladder, all >= 1.0.
 mode = "linear"
 onset_temperature = 357.0
 maximum_temperature = 450.0
 maximum_kappa = 1.020
-file = "inputs/kappa.txt"
+# Example: the linear default for the 12 default temperatures (rounded).
+# values = [
+#     1.000, 1.000, 1.000, 1.000, 1.000, 1.001,
+#     1.004, 1.007, 1.010, 1.013, 1.016, 1.020,
+# ]
 
 # Other GROMACS mdp options: [gromacs.<stage>] tables; see README "Engine option passthrough".

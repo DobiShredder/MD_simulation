@@ -34,7 +34,7 @@ cd ../us
 | `build.sh` | rMD와 모든 umbrella window가 공유하는 topology와 restart를 만듭니다. |
 | `rmd/run.sh` | Tutorial과 같은 minimization, heating, equilibration, PLUMED ABMD 순서로 pathway를 생성합니다. |
 | `rmd/anal.py` | Seed restart를 추출합니다. |
-| `us/build.sh` | `windows.tsv`의 `CENTER_A FORCE_KCAL_MOL_A2` row를 window directory로 변환합니다. |
+| `us/build.sh` | `umbrella.centers`와 `force_constants`의 각 항목을 window directory로 변환합니다. |
 | `us/run.sh` | 선택한 window를 실행합니다. |
 
 자세한 option은 [`rmd/README.md`](rmd/README.md)와 [`us/README.md`](us/README.md)에
@@ -78,9 +78,25 @@ harmonic distance force constant와 같은 양이 아닙니다.
 | `constraint_mode` | `h-bonds`만 지원 | `h-bonds` | Hydrogen-containing bond에 SHAKE를 적용합니다. |
 | `random_seed` | `"random"` 또는 양의 정수 | `"random"` | rMD와 모든 window의 heating `ig`입니다. `"random"`은 `ig=-1`입니다. 이후 equilibration, ratchet MD와 production은 `ig=-1`로 실행할 때마다 새 seed를 사용합니다. |
 
-`windows_file`은 항상 명시적인 window center 목록을 읽습니다. Blank line과 `#`로
-시작하는 comment line을 제외한 각 행은 whitespace로 구분한 `CENTER_A FORCE` 두 값이어야
-합니다. 두 값은 양수이고 center는 중복 없이 오름차순이어야 합니다.
+`[umbrella] centers`와 `force_constants`는 길이가 같은 TOML array입니다. 같은 위치의
+두 값이 한 window의 distance center(Å)와 AMBER restraint force
+constant(kcal mol⁻¹ Å⁻²)입니다. `auto`/`file` mode는 없습니다.
+
+```toml
+[umbrella]
+centers = [
+    4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0,
+    14.0, 15.0, 16.0, 17.0, 18.0, 19.0, 20.0, 21.0, 22.0,
+]
+force_constants = [
+    1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+    1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+]
+```
+
+두 값은 지수 표기가 없는 양수여야 합니다. Center는 중복 없이 오름차순이고 소수점
+아래 세 자리까지 씁니다. `seeds.tsv`가 center를 세 자리로 기록하고 `us/build.sh`가
+이 값과 비교하기 때문입니다. Root `build.sh`가 이 규칙을 rMD 전에 검사합니다.
 `production_segments`는 `1`만 지원합니다.
 
 ### 숫자 option
@@ -113,22 +129,26 @@ Config에 없는 고정값은 positional restraint 10(rMD solvent minimization),
 window heating), 1(rMD equilibration) kcal·mol⁻¹·Å⁻², `cut=10.0` Å, `gamma_ln=1.0` ps⁻¹,
 `taup=2.0` ps입니다.
 
-### Window table과 seed generation
+### Window 목록과 seed generation
 
-`rmd/anal.py`와 `us/build.sh`는 `resolved_config.toml`의 `umbrella.windows_file`을 같은
-leaf 기준으로 읽습니다. 기본값은 `us/windows.tsv`입니다. Seed 추출은 table 사본을
-`rmd/work/seeds/windows.tsv`에 저장합니다. Builder는 이 사본과 실제 table이 같은지,
-`seeds.tsv`의 개수·순서·center가 같은지 검사한 뒤 window를 만듭니다.
+`rmd/anal.py`와 `us/build.sh`는 `umbrella.centers`와 `force_constants`를 leaf의
+`config.toml`에서 읽습니다. 그래서 rMD가 끝난 뒤 `rmd/work/ratchet.dat`의 distance
+범위를 보고 window를 정해도 됩니다. Root build를 `--config FILE`로 했다면 두 script에도
+같은 `--config FILE`을 줍니다. Mask와 `seed_max_error`는 build 때 저장한
+`work/resolved_config.toml`에서 읽습니다.
+
+Seed 추출은 사용한 window 목록을 `CENTER_A FORCE_KCAL_MOL_A2` table로
+`rmd/work/seeds/windows.tsv`에 저장합니다. `us/build.sh`는 config의 목록이 이
+table과 같은지, `seeds.tsv`의 개수·순서·center가 같은지 검사한 뒤 window를 만듭니다.
 
 같은 seed로 window를 다시 만들 때는 `us/build.sh`와 `us/run.sh`에 같은 새
-`WORK_DIR`(기본 `work`)을 지정합니다. `windows.tsv`의 center나 force를 바꾸면
-`us/build.sh`가 seed 사본과 다르다고 거부하므로 seed generation부터 다시 합니다.
-Parent build, rMD와 seed 추출은 `work/`, `rmd/work/` 고정 경로를 쓰므로 leaf를 별도
-directory에 복사해 새 계산을 시작합니다.
+`WORK_DIR`(기본 `work`)을 지정합니다. Seed를 만든 뒤 center나 force constant를
+바꾸려면 `rmd/work/seeds`를 옮기고 `rmd/anal.py`부터 다시 실행합니다. Parent build,
+rMD와 seed 추출은 `work/`, `rmd/work/` 고정 경로를 씁니다.
 
 ### 계산량과 결과 판단
 
-기본 `windows.tsv`는 4–22 Å의 19개 window입니다. rMD는 engine 5회(minimization 2,
+기본 `umbrella.centers`는 4–22 Å의 19개 window입니다. rMD는 engine 5회(minimization 2,
 heating, equilibration, ratchet MD)로 0.5 + 1 + 1 = 2.5 ns를 계산합니다. Window는
 19개 × 4회 = 76회, window당 0.5 + 1 + 20 = 21.5 ns, 합계 408.5 ns(production 380 ns)입니다.
 각 실행은 `pmemd.cuda` process 하나가 GPU 하나를 사용합니다. `us/run.sh`는 선택한
@@ -143,7 +163,7 @@ GPU와 atom 수에 따라 달라집니다.
 
 ### Engine option 직접 지정
 
-Config key가 없는 AMBER option은 `[amber.<stage>.<namelist>]` table로 지정합니다. Stage 우선순위, 값 형식과 거부되는 keyword는 [3_Templates README](../../README.md#engine-option-직접-지정)를 따릅니다.
+Config key가 없는 AMBER option은 `[amber.<stage>.<namelist>]`, PLUMED option은 `[plumed]` table로 지정합니다. Stage 우선순위, 값 형식과 거부되는 keyword는 [3_Templates README](../../README.md#engine-option-직접-지정)를 따릅니다.
 
 ```toml
 [amber.md.cntrl]
@@ -175,7 +195,8 @@ Ratchet MD(`ratchet.in`)도 production stage입니다. `[plumed]`는 ratchet MD�
 | `rMD input generation failed; see the Config error above.` | Atom mask가 atom을 고르지 못했거나 두 mask가 겹칩니다. Message의 순서대로 `../work`를 옮기고 다시 build합니다. |
 | `Equilibration density is outside ...` | `rmd/work/equil.out`의 `Density` 추세와 box 크기를 확인합니다. |
 | `No ordered frame is within 0.750 Å of ...` | `rmd/work/ratchet.dat`에서 distance가 그 center에 도달했는지 봅니다(PLUMED 단위 nm, Å의 1/10). 도달했다면 `[ratchet_md] output_interval_steps`를 줄여 새 copy에서 다시 계산합니다. |
-| `Window table changed since seed extraction` | Seed를 만든 뒤 `windows.tsv`를 고쳤습니다. 새 copy에서 seed generation부터 다시 합니다. |
+| `Config error: Window ...` 또는 `Config error: umbrella.centers ...` | Window 목록이 위 규칙에 맞지 않습니다. `config.toml`을 고친 뒤 실패한 script를 다시 실행합니다. |
+| `Window table changed since seed extraction` | Seed를 만든 뒤 `config.toml`의 window 목록이 바뀌었습니다. `rmd/work/seeds`를 옮기고 `rmd/anal.py`부터 다시 실행합니다. |
 | `Partial ... output is retained` | Message의 `mv` command로 남은 파일을 옮긴 뒤 같은 command를 다시 실행합니다. |
 
 ## English
@@ -213,7 +234,7 @@ cd ../us
 | `build.sh` | Creates one topology and restart shared by rMD and every window. |
 | `rmd/run.sh` | Generates the pathway with the tutorial minimization, heating, equilibration, and PLUMED ABMD sequence. |
 | `rmd/anal.py` | Extracts seed restarts. |
-| `us/build.sh` | Converts the `CENTER_A FORCE_KCAL_MOL_A2` rows of `windows.tsv` into window directories. |
+| `us/build.sh` | Converts each entry of `umbrella.centers` and `force_constants` into a window directory. |
 | `us/run.sh` | Runs the selected windows. |
 
 See [`rmd/README.md`](rmd/README.md) and [`us/README.md`](us/README.md) for their
@@ -257,11 +278,27 @@ force constant.
 | `constraint_mode` | `h-bonds` only | `h-bonds` | Applies SHAKE to bonds involving hydrogen. |
 | `random_seed` | `"random"` or a positive integer | `"random"` | Sets the heating `ig` for rMD and every window; `"random"` maps to `ig=-1`. Later equilibration, ratchet MD, and production use `ig=-1` and receive a new seed per invocation. |
 
-`windows_file` always supplies an explicit list of window centers. After blank
-lines and full-line `#` comments are skipped, each row must contain two
-whitespace-separated values, `CENTER_A FORCE`. Both values must be positive, and
-centers must be unique and in increasing order. `production_segments` supports
-only `1`.
+`[umbrella] centers` and `force_constants` are TOML arrays of equal length.
+Values at the same position give one window's distance center (Å) and AMBER
+restraint force constant (kcal mol⁻¹ Å⁻²). There is no `auto`/`file` mode.
+
+```toml
+[umbrella]
+centers = [
+    4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0,
+    14.0, 15.0, 16.0, 17.0, 18.0, 19.0, 20.0, 21.0, 22.0,
+]
+force_constants = [
+    1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+    1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+]
+```
+
+Both values must be positive and written without an exponent. Centers must be
+unique, increasing, and have at most three decimals, because `seeds.tsv` stores
+them with three decimals and `us/build.sh` compares against it. The root
+`build.sh` checks these rules before rMD. `production_segments` supports only
+`1`.
 
 ### Numeric options
 
@@ -293,24 +330,27 @@ Fixed values outside the config are positional restraints of 10 (rMD solvent
 minimization), 2 (rMD and window heating), and 1 (rMD equilibration)
 kcal·mol⁻¹·Å⁻², `cut=10.0` Å, `gamma_ln=1.0` ps⁻¹, and `taup=2.0` ps.
 
-### Window tables and seed generations
+### Window list and seed generations
 
-Both `rmd/anal.py` and `us/build.sh` read `umbrella.windows_file` from
-`resolved_config.toml`, relative to the leaf directory; the default is
-`us/windows.tsv`. Seed extraction saves a copy at `rmd/work/seeds/windows.tsv`.
-Before creating windows, the builder checks this copy against the current table
-and verifies the count, order, and centers in `seeds.tsv`.
+`rmd/anal.py` and `us/build.sh` read `umbrella.centers` and `force_constants`
+from the leaf `config.toml`, so the windows can be chosen after the rMD from the
+distance range in `rmd/work/ratchet.dat`. If the root build used `--config FILE`,
+pass the same `--config FILE` to both scripts. Masks and `seed_max_error` come
+from `work/resolved_config.toml`, saved at build time.
+
+Seed extraction saves the window list it used as a `CENTER_A FORCE_KCAL_MOL_A2`
+table in `rmd/work/seeds/windows.tsv`. Before creating windows, `us/build.sh`
+checks the list in the config against this table and verifies the count, order,
+and centers in `seeds.tsv`.
 
 To rebuild windows from the same seeds, set the same fresh `WORK_DIR` (default
-`work`) for `us/build.sh` and `us/run.sh`. Changing a center or force in
-`windows.tsv` makes `us/build.sh` reject the table as different from the seed
-copy, so start again from seed generation. The parent build, rMD, and seed
-extraction use the fixed `work/` and `rmd/work/` paths; start those changes from
-a separate copy of the leaf.
+`work`) for `us/build.sh` and `us/run.sh`. To change a center or force constant
+after seed extraction, move `rmd/work/seeds` aside and rerun `rmd/anal.py`. The
+parent build, rMD, and seed extraction use the fixed `work/` and `rmd/work/` paths.
 
 ### Computational cost and judging the result
 
-The default `windows.tsv` has 19 windows from 4 to 22 Å. rMD runs the engine 5
+The default `umbrella.centers` has 19 windows from 4 to 22 Å. rMD runs the engine 5
 times (two minimizations, heating, equilibration, ratchet MD) for
 0.5 + 1 + 1 = 2.5 ns. The windows need 19 × 4 = 76 runs, 0.5 + 1 + 20 = 21.5 ns
 per window, and 408.5 ns in total (380 ns production). Each run is one
@@ -328,7 +368,7 @@ grid to match this template.
 
 ### Engine option passthrough
 
-AMBER options without a config key go into `[amber.<stage>.<namelist>]` tables. Stage precedence, value formats and refused keywords are described in the [3_Templates README](../../README.md#engine-option-passthrough).
+AMBER options without a config key go into `[amber.<stage>.<namelist>]` tables and PLUMED options into `[plumed]`. Stage precedence, value formats and refused keywords are described in the [3_Templates README](../../README.md#engine-option-passthrough).
 
 ```toml
 [amber.md.cntrl]
@@ -361,5 +401,6 @@ Handle retained files as described in the
 | `rMD input generation failed; see the Config error above.` | An atom mask selected no atoms or the two masks overlap. Move `../work` aside and rebuild as the message describes. |
 | `Equilibration density is outside ...` | Check the `Density` trend in `rmd/work/equil.out` and the box size. |
 | `No ordered frame is within 0.750 Å of ...` | Check in `rmd/work/ratchet.dat` whether the distance reached that center (PLUMED unit nm, 1/10 of Å). If it did, lower `[ratchet_md] output_interval_steps` and rerun in a fresh copy. |
-| `Window table changed since seed extraction` | `windows.tsv` was edited after seed extraction. Start again from seed generation in a fresh copy. |
+| `Config error: Window ...` or `Config error: umbrella.centers ...` | The window list breaks the rules above. Fix `config.toml` and rerun the failed script. |
+| `Window table changed since seed extraction` | The window list in `config.toml` changed after seed extraction. Move `rmd/work/seeds` aside and rerun `rmd/anal.py`. |
 | `Partial ... output is retained` | Move the retained files with the `mv` command in the message and rerun the same command. |
