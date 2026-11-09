@@ -88,6 +88,12 @@ python3 anal.py
 | REST2, REST3 | `./run.sh --cpus N --gpus N`; replica별 preproduction은 GPU별로 병렬 실행하며 각 process를 `-ntmpi 1`로 제한하고, production은 replica당 external-MPI rank 하나를 사용합니다. |
 | GaREUS | 검증 범위를 읽고 `./run.sh --allow-unverified`로 실행합니다. State 수만큼 MPI rank를 사용합니다. |
 
+T-REMD는 18개, REUS와 GaREUS는 20개 MPI rank를 띄웁니다. Open MPI는 CPU core보다
+많은 rank를 거부하고 `There are not enough slots available`로 멈춥니다. Core가 더
+적은 단일 node에서는 실행 전에 oversubscription을 허용합니다. Open MPI 4는
+`export OMPI_MCA_rmaps_base_oversubscribe=1`, Open MPI 5는
+`export PRTE_MCA_rmaps_default_mapping_policy=:oversubscribe`를 씁니다.
+
 공통으로 `download.sh`는 source structure를 받고, `prepare.py`는 첫 NMR model을
 정리합니다. `build.sh`는 topology와 replica별 input을 만들며, `run.sh`는
 pre-production과 replica exchange를 실행합니다. `anal.py`는 exchange log에서
@@ -233,6 +239,12 @@ python3 anal.py
 | T-REMD, REUS | `./run.sh`; one MPI rank per state. |
 | REST2, REST3 | `./run.sh --cpus N --gpus N`; per-replica preproduction runs concurrently across GPUs with `-ntmpi 1` per process, and production uses one external-MPI rank per replica. |
 | GaREUS | Read its validation limits and run `./run.sh --allow-unverified`. One MPI rank per state. |
+
+T-REMD starts 18 MPI ranks and REUS/GaREUS start 20. Open MPI refuses more
+ranks than CPU cores and stops with `There are not enough slots available`. On
+a single node with fewer cores, allow oversubscription before running:
+`export OMPI_MCA_rmaps_base_oversubscribe=1` for Open MPI 4 or
+`export PRTE_MCA_rmaps_default_mapping_policy=:oversubscribe` for Open MPI 5.
 
 In every folder, `download.sh` fetches the source structure, `prepare.py` cleans
 the first NMR model, `build.sh` creates the topology and per-replica inputs,

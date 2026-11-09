@@ -508,6 +508,22 @@ def write_window(
             directory / f"{name}.in",
             replacements,
         )
+    # A charge window holds two ligand copies. pmemd keeps their coordinates
+    # identical only in a TI run, so minimization uses the same linear TI masks;
+    # otherwise heating stops with "does not have match in V1".
+    minimize_options = ""
+    if stage.endswith("charge"):
+        minimize_options = alchemical_options(
+            stage,
+            lambda_value,
+            schedule,
+            collect_mbar=False,
+            ligand_mask=ligand_mask,
+            mbar_interval=mbar_interval,
+            softcore=softcore,
+            charge_masks=charge_masks.get(environment),
+        )
+    replacements["@MINIMIZE_ALCHEMICAL_OPTIONS@"] = minimize_options
     render(input_dir / "minimize.in", directory / "minimize.in", replacements)
 
     return (

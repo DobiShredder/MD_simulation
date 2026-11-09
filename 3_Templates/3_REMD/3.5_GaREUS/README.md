@@ -33,10 +33,11 @@ directory의 `requirements.txt`(NumPy, ParmEd, Python 3.11 미만이면 tomli)�
 ./run.sh --allow-unverified
 ```
 
-`gamd-restart.dat`은 filename이 고정되어 있고 multipmemd group file은 모든
-replica를 이 directory에서 실행합니다. Amber 26 GPU multipmemd에서 replica별
-GaMD state read/write가 분리되는지는 미검증이므로 실제 실행에는
-`--allow-unverified`가 필요합니다. `--dry-run`은 이 argument 없이 실행됩니다.
+multipmemd group file은 모든 replica를 이 directory에서 실행하므로 pmemd는 기본값으로
+`./gamd-restart.dat` 하나를 찾습니다. `run.sh`는 각 줄에
+`-gamdres work/NNN/gamd-restart.dat`를 넣어 window별 GaMD state를 지정합니다.
+`-gamdres`는 pmemd binary에는 있지만 manual에는 없고, GPU에서 window별 read/write를
+확인하지 않았으므로(미검증) 실제 실행에는 `--allow-unverified`가 필요합니다. `--dry-run`은 이 argument 없이 실행됩니다.
 
 `AMBER_ENGINE`이 설정되어 있으면 이를 사용하며, 없으면
 `work/resolved_config.toml`의 `run.engine`을 읽습니다. 허용하는 executable
@@ -284,10 +285,12 @@ dependencies (NumPy, ParmEd, and tomli below Python 3.11) from the local
 ./run.sh --allow-unverified
 ```
 
-`gamd-restart.dat` has a fixed filename, and the multipmemd group file runs
-every replica from this directory. Separate per-replica GaMD state reads and
-writes with Amber 26 GPU multipmemd are unverified, so actual execution requires
-`--allow-unverified`. `--dry-run` works without it.
+The multipmemd group file runs every replica from this directory, so pmemd
+looks for one `./gamd-restart.dat` by default. `run.sh` adds
+`-gamdres work/NNN/gamd-restart.dat` to each line so every window uses its own
+GaMD state. `-gamdres` exists in the pmemd binary but is not in the manual, and
+the per-window read and write are not yet confirmed on a GPU (unverified), so
+actual execution requires `--allow-unverified`. `--dry-run` works without it.
 
 `AMBER_ENGINE` overrides `run.engine` in `work/resolved_config.toml`. The
 accepted executable name is `pmemd.cuda`; installation paths are accepted.

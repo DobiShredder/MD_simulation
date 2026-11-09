@@ -59,9 +59,11 @@ python3 prepare.py structure/1UAO.raw.pdb structure/chignolin.pdb
 python3 anal.py
 ```
 
-`gamd-restart.dat`은 filename이 고정되어 있고 multipmemd는 replica output에
-suffix를 붙입니다. Amber 26 GPU에서 replica별 state read/write가 분리되는지
-확인하기 전에는 실제 실행에 `./run.sh --allow-unverified`가 필요합니다.
+multipmemd는 모든 replica를 같은 directory에서 실행합니다. 그래서 pmemd는 기본값으로
+`./gamd-restart.dat` 하나를 찾습니다. `run.sh`는 group file의 각 줄에
+`-gamdres work/NNN/gamd-restart.dat`를 넣어 window별 GaMD state를 지정합니다.
+`-gamdres`는 pmemd binary에는 있지만 manual에는 없는 option입니다. GPU에서 window별
+read/write를 확인하기 전에는 실제 실행에 `./run.sh --allow-unverified`가 필요합니다.
 
 단일-window stage는 `pmemd.cuda`, GaREUS는 `pmemd.cuda.MPI -rem 3`를 기본으로
 사용합니다. `AMBER_ENGINE`, `AMBER_MPI_ENGINE`과 `MPI_LAUNCHER`로 executable을
@@ -261,10 +263,12 @@ python3 prepare.py structure/1UAO.raw.pdb structure/chignolin.pdb
 python3 anal.py
 ```
 
-`gamd-restart.dat` has a fixed filename, and multipmemd appends suffixes to
-replica outputs. Actual execution requires `./run.sh --allow-unverified` until
-separate per-replica state reads and writes are confirmed with Amber 26 GPU
-multipmemd.
+multipmemd runs every replica in the same directory, so pmemd looks for one
+`./gamd-restart.dat` by default. `run.sh` adds
+`-gamdres work/NNN/gamd-restart.dat` to each group-file line so every window
+uses its own GaMD state. `-gamdres` exists in the pmemd binary but is not in the
+manual. Actual execution requires `./run.sh --allow-unverified` until a GPU run
+confirms the per-window read and write.
 
 The run uses `pmemd.cuda` for single-window stages and `pmemd.cuda.MPI -rem 3`
 for GaREUS. `AMBER_ENGINE`, `AMBER_MPI_ENGINE` and `MPI_LAUNCHER` override the

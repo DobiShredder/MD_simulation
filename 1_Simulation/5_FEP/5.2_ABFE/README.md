@@ -142,6 +142,10 @@ atom 번호를 확인합니다. Pmemd에서 `crgmask`는 두 endpoint 모두에 
 같은 JZ4를 `timask1`과 `timask2`에 함께 두면 charge가 양쪽에서 0이 되어 이
 stage의 값도 0이 됩니다.
 
+Charge window의 minimization도 같은 `timask1`, `timask2`, `crgmask`를 쓰는 TI run입니다.
+Pmemd는 TI run에서만 두 copy의 좌표를 같게 유지합니다. 이 설정이 없으면 두 copy가
+따로 움직이고 heating이 `Atom ... does not have match in V1`로 멈춥니다.
+
 Restraint stage는 λ=0의 restrained complex에서 λ=1의 unrestrained complex로
 진행합니다. 각 window의 `disang.rest`는 force constant에 `1-λ`를 곱한 일반 MD
 input입니다. Soft-core TI로 restraint만 바꾸는 방식은 쓰지 않습니다. ACES26에서는
@@ -343,6 +347,11 @@ topology and checks atom names, charges, coordinates, and restraint atom indices
 In pmemd `crgmask` applies to both endpoints, so placing the same JZ4 in both
 `timask1` and `timask2` would zero its charges in both states and give a zero
 charge leg.
+
+Charge-window minimization is also a TI run with the same `timask1`, `timask2`
+and `crgmask`. Pmemd keeps the two copies at identical coordinates only in a TI
+run; without these masks the copies drift apart and heating stops with
+`Atom ... does not have match in V1`.
 
 The restraint stage runs from a restrained complex at λ=0 to an unrestrained
 complex at λ=1. It is ordinary MD: each window's `disang.rest` scales the force

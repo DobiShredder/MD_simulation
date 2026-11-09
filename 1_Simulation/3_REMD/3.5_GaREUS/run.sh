@@ -527,6 +527,8 @@ while IFS=$'\t' read -r replica _; do
 done < work/states.tsv
 "${PYTHON:-python3}" helpers/input_identity.py "${production_identity[@]}"
 
+# multipmemd runs every group in this directory, so pmemd would look for one
+# ./gamd-restart.dat. -gamdres points each window at its own GaMD state.
 group_file=work/production.group
 : > "$group_file"
 while IFS=$'\t' read -r replica _; do
@@ -542,7 +544,7 @@ while IFS=$'\t' read -r replica _; do
         --record "$replica_dir/.production.engine.identity.json" --stage "production engine input" \
         --input "$replica_dir/production.in" --input "$replica_dir/distance.RST" \
         --input "$replica_dir/system.parm7"
-    echo "-O -i $replica_dir/production.in -o $replica_dir/production.out -p $replica_dir/system.parm7 -c $replica_dir/production_start.rst7 -r $replica_dir/production.rst7 -x $replica_dir/production.nc -inf $replica_dir/production.info -gamd $replica_dir/gamd.production.log" \
+    echo "-O -i $replica_dir/production.in -o $replica_dir/production.out -p $replica_dir/system.parm7 -c $replica_dir/production_start.rst7 -r $replica_dir/production.rst7 -x $replica_dir/production.nc -inf $replica_dir/production.info -gamd $replica_dir/gamd.production.log -gamdres $replica_dir/gamd-restart.dat" \
         >> "$group_file"
 done < work/states.tsv
 

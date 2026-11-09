@@ -159,7 +159,14 @@ def load_report(path: Path) -> ModuleType:
     if specification is None or specification.loader is None:
         raise SystemExit(f"MBAR report could not be read: {path}")
     report = importlib.util.module_from_spec(specification)
-    specification.loader.exec_module(report)
+    try:
+        specification.loader.exec_module(report)
+    except NameError as error:
+        # edgembar writes inf/nan as bare names when an estimate is not finite.
+        raise SystemExit(
+            f"MBAR report has a non-finite estimate ({error}): {path}. "
+            "Neighboring lambda windows probably do not overlap; add windows or sampling."
+        ) from None
     return report
 
 

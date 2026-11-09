@@ -178,6 +178,21 @@ Completion marker, partial output, input 변경, 동시 실행과 실패 후 재
 [GUIDE.md 부록](../GUIDE.md#4-부록-실행-상태와-복구)을 참고합니다. Method별 continuation 조건은 leaf
 README에서 설명합니다.
 
+### GPU NPT box 오류
+
+`pmemd.cuda`의 첫 NPT stage가 `Periodic box dimensions have changed too much from
+their initial values`로 멈출 수 있습니다. tleap이 만든 water box는 밀도가 낮아서
+NPT 초반에 부피가 크게 줄어듭니다. 그런데 GPU code는 계산 중에 grid cell을 다시
+만들지 않습니다. 같은 설정이어도 system에 따라 오류가 나기도 하고 나지 않기도
+합니다. OPC `rectangular` box는 octahedral box보다 시작 밀도가 낮습니다. 한
+protein에서 tleap 직후 0.80 g/cm³와 0.90 g/cm³였습니다.
+
+오류가 나면 error 메시지대로 partial output을 옮깁니다. 그다음 NPT 앞부분을 CPU
+engine(`pmemd` 또는 `sander`)으로 짧게 돌려 밀도를 맞춥니다. 이어지는 계산은 그
+restart에서 GPU로 진행합니다. 실패한 계산의 restart file에서 GPU로 다시 시작하는
+방법도 있습니다. 이때는 grid가 새로 만들어집니다. Template이 지원하면
+`box_shape = "octahedral"`로 시작 밀도를 높일 수도 있습니다.
+
 ## English
 
 `1_Simulation/` contains fixed-system tutorials. `3_Templates/` contains
@@ -353,3 +368,18 @@ checked as generated text only (engine parsing unverified).
 Completion markers, partial outputs, input changes, concurrent runs, and reruns
 after a failure are described in [GUIDE.md appendix](../GUIDE.md#4-appendix-run-state-and-recovery). See each leaf
 README for its continuation contract.
+
+### GPU NPT box error
+
+The first NPT stage on `pmemd.cuda` can stop with `Periodic box dimensions have
+changed too much from their initial values`. The water box from tleap starts at
+low density, so the volume shrinks a lot early in NPT, and the GPU code does not
+rebuild its grid cells during a run. Whether this happens depends on the system,
+even with the same settings. An OPC `rectangular` box starts less dense than an
+octahedral one: 0.80 versus 0.90 g/cm³ for one protein right after tleap.
+
+When it happens, move the partial output aside as the error message says. Then
+run the start of NPT briefly with a CPU engine (`pmemd` or `sander`) until the
+density settles, and continue on the GPU from that restart. Restarting on the
+GPU from the failed run's restart file also rebuilds the grid. Where the template
+supports it, `box_shape = "octahedral"` starts at a higher density.

@@ -18,7 +18,7 @@ Run preproduction, shared GaMD preparation, and AMBER GaREUS production.
 
 Options:
   --allow-unverified  Opt in to actual execution. Per-replica GaMD state
-                      handling (gamd-restart.dat) with Amber 26 multipmemd is
+                      (-gamdres <window>/gamd-restart.dat) with multipmemd is
                       unverified; see README.md.
   --preparation-only  Run through shared GaMD parameter preparation and stop.
   --production-only   Run exchange production from the completed GaMD state.
@@ -66,8 +66,9 @@ if (( preparation_only && production_only )); then
     echo "Error: --preparation-only and --production-only cannot be used together." >&2
     exit 2
 fi
-# gamd-restart.dat has a fixed filename; whether Amber 26 multipmemd reads and
-# writes it separately for each replica is unverified, so execution is opt-in.
+# Each group passes -gamdres for its own gamd-restart.dat. The flag is in the
+# pmemd binary but not in the manual, and a GPU run has not confirmed the
+# per-replica read/write yet, so execution is opt-in.
 if (( ! dry_run && ! allow_unverified )); then
     echo "Error: actual execution requires ./run.sh --allow-unverified." >&2
     echo "Per-replica GaMD state handling with Amber 26 multipmemd is unverified; see README.md before opting in." >&2
@@ -549,6 +550,8 @@ write_group_file() {
         group_command+=" -x $replica_dir/$segment_name.nc"
         group_command+=" -inf $replica_dir/$segment_name.info"
         group_command+=" -gamd $gamd_log"
+        # Without -gamdres every group would read ./gamd-restart.dat in this directory.
+        group_command+=" -gamdres $replica_dir/gamd-restart.dat"
 
         printf '%s\n' "$group_command" >> "$group_file"
     done < "$states_file"

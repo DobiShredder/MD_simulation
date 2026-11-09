@@ -93,6 +93,10 @@ copy의 atom 이름, charge, 좌표와 restraint atom을 확인한 뒤 residue �
 만듭니다. Pmemd의 `crgmask`는 두 endpoint 모두에 적용되므로 같은 ligand를
 `timask1`과 `timask2`에 함께 두면 charge leg가 0이 됩니다.
 
+Charge window의 minimization도 같은 `timask1`, `timask2`, `crgmask`를 쓰는 TI run입니다.
+Pmemd는 TI run에서만 두 copy의 좌표를 같게 유지합니다. 이 설정이 없으면 두 copy가
+따로 움직이고 heating이 `Atom ... does not have match in V1`로 멈춥니다.
+
 Restraint stage는 일반 MD입니다. ACES26에서는 SC/CC `ele,vdw`가 항상 λ로
 scaling되어(manual 27.1.7.4) soft-core TI로는 restraint만 바꿀 수 없습니다.
 `anal.py`는 DUMPAVE 값으로 full-strength restraint energy `U`를 계산하고 state j의
@@ -341,6 +345,11 @@ therefore the restraint anchors, are unchanged. `helpers/generate_inputs.py`
 checks names, charges, coordinates, and restraint atoms of both copies, then
 writes residue-number masks. Because pmemd applies `crgmask` to both endpoints,
 the same ligand in both `timask1` and `timask2` would give a zero charge leg.
+
+Charge-window minimization is also a TI run with the same `timask1`, `timask2`
+and `crgmask`. Pmemd keeps the two copies at identical coordinates only in a TI
+run; without these masks the copies drift apart and heating stops with
+`Atom ... does not have match in V1`.
 
 The restraint stage is ordinary MD. ACES26 always scales SC/CC `ele,vdw` with
 lambda (manual 27.1.7.4), so soft-core TI cannot change only the restraint.

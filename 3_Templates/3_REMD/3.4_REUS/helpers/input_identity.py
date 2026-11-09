@@ -130,6 +130,10 @@ def verify(directory, managed_outputs=False):
                        or (runtime_name and path.suffix in (".gro", ".log", ".tpr", ".edr", ".rst7", ".info", ".rst"))
                        or path.name in ("mdinfo", "exchange.log", "production.group", "gamd.prepare.log", "gamd-restart.dat", "production_start.rst7",
                                         "prepared.gamd.rst", "HILLS", "KERNELS", "COLVAR", "opes.state", "DELTAFS", "FUNNEL_GRID"))
+        # antechamber writes sqm.out beside the ligand parameters during build;
+        # it is a charge-calculation log, not an MD result.
+        if path.name == "sqm.out":
+            result_file = False
         if path.is_file() and result_file:
             if str(path.resolve()) not in known_outputs:
                 raise RuntimeError(f"{path.name}: results have no input identity: {path}. Files were preserved. Move work aside (for example: mv work work.old) and run the workflow again.")
